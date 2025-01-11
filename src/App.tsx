@@ -5,23 +5,10 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import SignUpPage from "./pages/SignUpPage";
-import LandingPage from "./pages/LandingPage";
-import Planner from "./pages/Planner";
-import ChatBot from "./pages/ChatBot";
+import Navbar from "./components/Navbar";
 
 const App = () => {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/signup" element={<SignUpPage />} />
-        <Route path="/planner" element={<Planner />} />
-        <Route path="/chatbot" element={<ChatBot />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
-  );
+  return <Navbar />;
 };
 
 export default App;
