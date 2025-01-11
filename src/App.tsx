@@ -1,7 +1,14 @@
 import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import Navbar from "./components/Navbar";
 
 const App = () => {
-  return <div className="bg-red-400 text-white">App</div>;
+  return <Navbar />;
 };
 
 export default App;
