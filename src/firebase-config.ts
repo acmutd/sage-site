@@ -5,12 +5,12 @@ import { getFirestore, Firestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: "AIzaSyDk2JpGIYhijysYTA3ZF0FIkRHFknGuXK0",
+  authDomain: "sage-gcp-backend.firebaseapp.com",
+  projectId: "sage-gcp-backend",
+  storageBucket: "sage-gcp-backend.firebasestorage.app",
+  messagingSenderId: "41867293286",
+  appId: "1:41867293286:web:7c0206ed96ff77d44533a7",
 };
 
 // Initialize Firebase
