@@ -1,43 +1,55 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { auth } from "../firebase-config";
 import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signOut,
+  fetchSignInMethodsForEmail,
 } from "firebase/auth";
 
 const LoginPage = () => {
   // State to store email and password input
-  signOut(auth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   // Google Sign-In Handler
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
+    provider.addScope("email");
+    provider.addScope("profile");
+    provider.setCustomParameters({ prompt: "select_account" });
 
     try {
       const result = await signInWithPopup(auth, provider);
-      console.log("Signed in with Google:", result.user);
+      const user = result.user;
+      console.log("User Info:", user);
+      console.log("User Email:", user.email); // email is null
+      console.log("User Provider Data:", user.providerData); // providerData has an email is populated properly though, "emw8105@gmail.com"
 
-      if (result.user.email === null) {
-        result.user
-          .delete()
-          .then(() => {
-            console.log("user deleted");
-          })
-          .catch((error) => {
-            console.error("Error deleting user: ", error);
-          });
+      const email =
+        user.email ||
+        user.providerData.find((p) => p.providerId === "google.com")?.email;
+
+      if (!email) {
+        console.error("Email is unavailable. Deleting user.");
+        await user.delete();
+        return;
+      }
+
+      console.log("Successfully retrieved email:", email);
+
+      // Check if the email is already associated with another sign-in method
+      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+      console.log("Sign-in methods for email:", signInMethods);
+      if (signInMethods.includes("password")) {
+        console.error(
+          "This email is already associated with an email/password account."
+        );
+        await user.delete();
       }
     } catch (error) {
-      if (error instanceof Error) {
-        console.error("Login Error:", error.message);
-      } else {
-        console.error("An unknown error occurred.");
-      }
+      console.error("Error during Google sign-in:", error);
     }
   };
 
@@ -50,23 +62,6 @@ const LoginPage = () => {
       if (typeof error === "object" && error !== null && "code" in error) {
         const firebaseError = error as { code: string; message: string };
         console.error("Login Error:", firebaseError.message);
-
-        // Debugging different cases
-        switch (firebaseError.code) {
-          case "auth/user-not-found":
-            console.error(
-              "User not found. Please check your email or sign up."
-            );
-            break;
-          case "auth/wrong-password":
-            console.error("Incorrect password. Try again.");
-            break;
-          case "auth/invalid-email":
-            console.error("Invalid email format.");
-            break;
-          default:
-            console.error("Unknown error:", firebaseError.message);
-        }
       } else {
         console.error("An unknown error occurred.");
       }
@@ -84,13 +79,7 @@ const LoginPage = () => {
     } catch (error: unknown) {
       if (typeof error === "object" && error !== null && "code" in error) {
         const firebaseError = error as { code: string; message: string };
-        if (firebaseError.code === "auth/email-already-in-use") {
-          console.error("This email is already registered. Try signing in.");
-        } else if (firebaseError.code === "auth/weak-password") {
-          console.error("Password should be at least 6 characters.");
-        } else {
-          console.error("Sign-Up Error:", firebaseError.message);
-        }
+        console.error(firebaseError);
       } else {
         console.error("An unknown error occurred.");
       }
