@@ -6,6 +6,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
+  updateEmail,
 } from "firebase/auth";
 
 const LoginPage = () => {
@@ -38,15 +39,17 @@ const LoginPage = () => {
       }
 
       console.log("Successfully retrieved email:", email);
+      console.log("User Provider Data:", user.providerData);
 
-      // Check if the email is already associated with another sign-in method
-      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
-      console.log("Sign-in methods for email:", signInMethods);
-      if (signInMethods.includes("password")) {
-        console.error(
-          "This email is already associated with an email/password account."
-        );
-        await user.delete();
+      if (!user.email && email) {
+        try {
+          console.log("About to update email");
+          await updateEmail(user, email);
+          console.log("User email updated:", email);
+        } catch (error) {
+          console.error("Error: ", error);
+          await user.delete();
+        }
       }
     } catch (error) {
       console.error("Error during Google sign-in:", error);
@@ -76,6 +79,9 @@ const LoginPage = () => {
         password
       );
       console.log("User Signed Up:", result.user);
+      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+      console.log("Sign-in methods for email:", signInMethods);
+      console.log("User Provider Data:", result.user.providerData);
     } catch (error: unknown) {
       if (typeof error === "object" && error !== null && "code" in error) {
         const firebaseError = error as { code: string; message: string };
