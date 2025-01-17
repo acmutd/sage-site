@@ -142,7 +142,7 @@ const SignUp = () => {
           </button>
 
           <div className="flex justify-center w-full mb-6 pt-5">
-            <Link to="/signup" className="mx-4 text-gray-500 underline">
+            <Link to="/login" className="mx-4 text-gray-500 underline">
               Already have an accout?
             </Link>
           </div>

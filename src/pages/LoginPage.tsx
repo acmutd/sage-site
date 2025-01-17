@@ -92,6 +92,24 @@ const LoginPage = () => {
 
         {/* Form Container */}
         <div className="w-4/5 flex flex-col items-center">
+          <button
+            onClick={handleGoogleLogin}
+            className="w-full border relative flex items-center justify-center bg-white text-black font-medium py-3 rounded-full hover:bg-gray-200 transition-all duration-300 ease-in-out"
+          >
+            <img
+              src="/GoogleIcon.png"
+              alt="Google"
+              className="absolute left-4 w-6 h-6"
+            />
+            <span className="flex-1 text-center">Sign in with Google</span>
+          </button>
+
+          <div className="flex items-center w-full mb-6 mt-6">
+            <div className="flex-1 border-t border-gray-500"></div>
+            <div className="mx-4 text-gray-500">or</div>
+            <div className="flex-1 border-t border-gray-500"></div>
+          </div>
+
           {/* Input Fields */}
           <input
             type="email"
@@ -117,27 +135,7 @@ const LoginPage = () => {
             Login
           </button>
 
-          {/* Divider */}
-          <div className="flex items-center w-full mb-6">
-            <div className="flex-1 border-t border-gray-500"></div>
-            <div className="mx-4 text-gray-500">or</div>
-            <div className="flex-1 border-t border-gray-500"></div>
-          </div>
-
-          {/* Google Sign-In Button */}
-          <button
-            onClick={handleGoogleLogin}
-            className="w-full border relative flex items-center justify-center bg-white text-black font-medium py-3 rounded-full hover:bg-gray-200 transition-all duration-300 ease-in-out"
-          >
-            <img
-              src="/GoogleIcon.png"
-              alt="Google"
-              className="absolute left-4 w-6 h-6"
-            />
-            <span className="flex-1 text-center">Sign in with Google</span>
-          </button>
-
-          <div className="flex justify-center w-full mb-6 pt-5">
+          <div className="flex justify-center w-full mb-6">
             <Link to="/signup" className="mx-4 text-gray-500 underline">
               Don't have an account yet?
             </Link>
