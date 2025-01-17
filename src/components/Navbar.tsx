@@ -10,6 +10,7 @@ import LandingPage from "../pages/LandingPage";
 import Planner from "../pages/Planner";
 import ChatBot from "../pages/ChatBot";
 import LoginPage from "../pages/LoginPage";
+import SignUp from "../pages/SignUp";
 
 const Navbar = () => {
   return (
@@ -60,6 +61,7 @@ const Navbar = () => {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUp />} />
         <Route path="/planner" element={<Planner />} />
         <Route path="/chatbot" element={<ChatBot />} />
         <Route path="*" element={<Navigate to="/" replace />} />
