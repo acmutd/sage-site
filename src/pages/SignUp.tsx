@@ -4,19 +4,17 @@ import { Link } from "react-router-dom";
 import {
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
   updateEmail,
 } from "firebase/auth";
 
-const LoginPage = () => {
-  // State to store email and password input
+const SignUp = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   // Google Sign-In Handler
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignUp = async () => {
     const provider = new GoogleAuthProvider();
     provider.addScope("email");
     provider.addScope("profile");
@@ -57,15 +55,21 @@ const LoginPage = () => {
     }
   };
 
-  // Email/Password Sign-In Handler
-  const handleEmailLogin = async () => {
+  const handleSignUp = async () => {
     try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      console.log("User Info:", result.user);
+      const result = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      console.log("User Signed Up:", result.user);
+      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+      console.log("Sign-in methods for email:", signInMethods);
+      console.log("User Provider Data:", result.user.providerData);
     } catch (error: unknown) {
       if (typeof error === "object" && error !== null && "code" in error) {
         const firebaseError = error as { code: string; message: string };
-        console.error("Login Error:", firebaseError.message);
+        console.error(firebaseError);
       } else {
         console.error("An unknown error occurred.");
       }
@@ -87,7 +91,7 @@ const LoginPage = () => {
       <div className="w-1/2 flex flex-col justify-center items-center">
         {/* Left-aligned Heading */}
         <div className="self-start text-2xl font-bold pb-5 pl-20">
-          Welcome back to Sage!
+          Make an account with Sage
         </div>
 
         {/* Form Container */}
@@ -111,10 +115,10 @@ const LoginPage = () => {
 
           {/* Signup Button */}
           <button
-            onClick={handleEmailLogin}
+            onClick={handleSignUp}
             className="w-full bg-[#5AED86] text-black font-semibold py-3 rounded-full hover:bg-green-500 transition-all duration-300 ease-in-out mb-6"
           >
-            Login
+            Sign Up
           </button>
 
           {/* Divider */}
@@ -126,7 +130,7 @@ const LoginPage = () => {
 
           {/* Google Sign-In Button */}
           <button
-            onClick={handleGoogleLogin}
+            onClick={handleGoogleSignUp}
             className="w-full border relative flex items-center justify-center bg-white text-black font-medium py-3 rounded-full hover:bg-gray-200 transition-all duration-300 ease-in-out"
           >
             <img
@@ -134,12 +138,12 @@ const LoginPage = () => {
               alt="Google"
               className="absolute left-4 w-6 h-6"
             />
-            <span className="flex-1 text-center">Sign in with Google</span>
+            <span className="flex-1 text-center">Sign up with Google</span>
           </button>
 
           <div className="flex justify-center w-full mb-6 pt-5">
             <Link to="/signup" className="mx-4 text-gray-500 underline">
-              Don't have an account yet?
+              Already have an accout?
             </Link>
           </div>
         </div>
@@ -148,4 +152,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default SignUp;
