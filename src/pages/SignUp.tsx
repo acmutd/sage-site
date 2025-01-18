@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { auth } from "../firebase-config";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -8,8 +8,11 @@ import {
   fetchSignInMethodsForEmail,
   updateEmail,
 } from "firebase/auth";
+import Cookies from "js-cookie";
 
 const SignUp = () => {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -48,8 +51,13 @@ const SignUp = () => {
         } catch (error) {
           console.error("Error: ", error);
           await user.delete();
+          return;
         }
       }
+
+      const token = await user.getIdToken();
+      Cookies.set("authToken", token, { expires: 7 });
+      navigate("/chatbot"); // Redirect after login
     } catch (error) {
       console.error("Error during Google sign-in:", error);
     }
@@ -66,6 +74,7 @@ const SignUp = () => {
       const signInMethods = await fetchSignInMethodsForEmail(auth, email);
       console.log("Sign-in methods for email:", signInMethods);
       console.log("User Provider Data:", result.user.providerData);
+      navigate("/chatbot");
     } catch (error: unknown) {
       if (typeof error === "object" && error !== null && "code" in error) {
         const firebaseError = error as { code: string; message: string };

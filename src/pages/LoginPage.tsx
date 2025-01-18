@@ -1,19 +1,22 @@
 import React, { useState } from "react";
 import { auth } from "../firebase-config";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
   updateEmail,
+  sendPasswordResetEmail,
 } from "firebase/auth";
+import Cookies from "js-cookie";
 
 const LoginPage = () => {
+  const navigate = useNavigate();
+
   // State to store email and password input
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
 
   // Google Sign-In Handler
   const handleGoogleLogin = async () => {
@@ -50,8 +53,13 @@ const LoginPage = () => {
         } catch (error) {
           console.error("Error: ", error);
           await user.delete();
+          return;
         }
       }
+
+      const token = await user.getIdToken();
+      Cookies.set("authToken", token, { expires: 7 });
+      navigate("/chatbot"); // Redirect after login
     } catch (error) {
       console.error("Error during Google sign-in:", error);
     }
@@ -62,6 +70,7 @@ const LoginPage = () => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
       console.log("User Info:", result.user);
+      navigate("/chatbot");
     } catch (error: unknown) {
       if (typeof error === "object" && error !== null && "code" in error) {
         const firebaseError = error as { code: string; message: string };
@@ -69,6 +78,24 @@ const LoginPage = () => {
       } else {
         console.error("An unknown error occurred.");
       }
+    }
+  };
+
+  // Password Reset Handler
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setResetMessage(
+        "Please enter your email before resetting your password."
+      );
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetMessage("Password reset link sent! Check your email.");
+    } catch (error) {
+      setResetMessage("Error sending password reset email. Try again.");
+      console.error("Password Reset Error:", error);
     }
   };
 
@@ -127,7 +154,7 @@ const LoginPage = () => {
             className="w-full px-4 py-3 border rounded-full bg-white text-black focus:ring-2 focus:ring-blue-400 focus:outline-none mb-6"
           />
 
-          {/* Signup Button */}
+          {/* Login Button */}
           <button
             onClick={handleEmailLogin}
             className="w-full bg-[#5AED86] text-black font-semibold py-3 rounded-full hover:bg-green-500 transition-all duration-300 ease-in-out mb-6"
@@ -135,9 +162,21 @@ const LoginPage = () => {
             Login
           </button>
 
-          <div className="flex justify-center w-full mb-6">
-            <Link to="/signup" className="mx-4 text-gray-500 underline">
-              Don't have an account yet?
+          {/* Password Reset Button */}
+          <button
+            onClick={handlePasswordReset}
+            className="mx-4 text-gray-500 underline mb-4"
+          >
+            Forgot your password?
+          </button>
+
+          {/* Show password reset message */}
+          {resetMessage && <p className="text-red-500">{resetMessage}</p>}
+
+          <div className="flex justify-center w-full mb-6 text-gray-500">
+            Don't have an account yet?
+            <Link to="/signup" className="mx-2 text-black underline">
+              Sign up for SAGE
             </Link>
           </div>
         </div>
