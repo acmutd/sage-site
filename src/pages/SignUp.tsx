@@ -57,7 +57,7 @@ const SignUp = () => {
 
       const token = await user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
-      navigate("/chatbot"); // Redirect after login
+      navigate("/onboarding"); // Redirect after login
     } catch (error) {
       console.error("Error during Google sign-in:", error);
     }
@@ -74,7 +74,7 @@ const SignUp = () => {
       const signInMethods = await fetchSignInMethodsForEmail(auth, email);
       console.log("Sign-in methods for email:", signInMethods);
       console.log("User Provider Data:", result.user.providerData);
-      navigate("/chatbot");
+      navigate("/onboarding");
     } catch (error: unknown) {
       if (typeof error === "object" && error !== null && "code" in error) {
         const firebaseError = error as { code: string; message: string };

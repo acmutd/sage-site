@@ -11,6 +11,7 @@ import Planner from "../pages/Planner";
 import ChatBot from "../pages/ChatBot";
 import LoginPage from "../pages/LoginPage";
 import SignUp from "../pages/SignUp";
+import Onboarding from "../pages/Onboarding";
 import { AuthProvider } from "../context/AuthContext";
 import ProtectedRoute from "./ProtectedRotue";
 
@@ -65,6 +66,14 @@ const Navbar = () => {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route
+            path="/onboarding"
+            element={
+              <ProtectedRoute>
+                <Onboarding />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/planner"
             element={

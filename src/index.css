@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+    font-family: 'Mermaid';
+    src: url('/fonts/Mermaid1001.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+  
+@font-face {
+    font-family: 'DMSans';
+    src: url('/fonts/DMSans.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
