@@ -1,12 +1,15 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, lazy, Suspense } from "react";
 import { useAuth } from "../context/AuthContext";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase-config";
 import { useNavigate } from "react-router-dom";
 
+const Onboarding = lazy(() => import("../components/Onboarding"));
+
 const Planner = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [loadOnboard, setLoadOnboard] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -46,11 +49,24 @@ const Planner = () => {
       )}
 
       <button
+        onClick={() => setLoadOnboard(true)}
+        className="bg-blue-500 text-white px-4 py-2 rounded-md mb-5 hover:bg-red-600 transition-all"
+      >
+        Transcipt Changed?
+      </button>
+
+      <button
         onClick={handleLogout}
         className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-all"
       >
         Logout
       </button>
+
+      {loadOnboard && (
+        <Suspense fallback={<p>Loading...</p>}>
+          <Onboarding onClose={() => setLoadOnboard(false)} />
+        </Suspense>
+      )}
     </div>
   );
 };
