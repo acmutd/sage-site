@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { auth } from "../firebase-config";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -12,11 +12,14 @@ import Cookies from "js-cookie";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // State to store email and password input
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+
+  const from = location.state?.from || "/chatbot";
 
   // Google Sign-In Handler
   const handleGoogleLogin = async () => {
@@ -59,7 +62,7 @@ const LoginPage = () => {
 
       const token = await user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
-      navigate("/chatbot"); // Redirect after login
+      navigate(from, { replace: true });
     } catch (error) {
       console.error("Error during Google sign-in:", error);
     }
@@ -70,7 +73,7 @@ const LoginPage = () => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
       console.log("User Info:", result.user);
-      navigate("/chatbot");
+      navigate(from, { replace: true });
     } catch (error: unknown) {
       if (typeof error === "object" && error !== null && "code" in error) {
         const firebaseError = error as { code: string; message: string };

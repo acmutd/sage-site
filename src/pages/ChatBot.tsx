@@ -33,15 +33,6 @@ const ChatBot = () => {
     }
   };
 
-  // This will be converted to a transcript button, but for development I am using it for the whole onboarding process
-  const handleTranscript = async () => {
-    try {
-      navigate("/onboarding");
-    } catch (error) {
-      console.error("Transcript button error:", error);
-    }
-  };
-
   return (
     <div className="flex flex-col items-center justify-center h-screen">
       <h1 className="text-2xl font-bold mb-4">ChatBot Page</h1>
@@ -56,13 +47,6 @@ const ChatBot = () => {
           </p>
         </div>
       )}
-
-      <button
-        onClick={handleTranscript}
-        className="bg-blue-500 text-white px-4 py-2 rounded-md mb-5 hover:bg-red-600 transition-all"
-      >
-        Transcipt Changed?
-      </button>
 
       <button
         onClick={handleLogout}

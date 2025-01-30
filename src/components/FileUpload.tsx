@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import useFileUpload from "../hooks/useFileUpload";
 
 const FileUploader = () => {
+  const navigate = useNavigate();
   const { selectedFile, isUploading, handleFileChange, uploadFile } =
     // This endpoint is only temporary until we have our own. This is just for testing purposes.
     useFileUpload(
@@ -17,6 +19,7 @@ const FileUploader = () => {
         setFileUrl(response.link); // Store the uploaded file URL
       }
       console.log("Upload success:", response);
+      navigate("/planner");
     } catch (error) {
       console.error("Upload failed:", error);
     }

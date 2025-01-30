@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { auth } from "../firebase-config";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -9,12 +9,14 @@ import {
   updateEmail,
 } from "firebase/auth";
 import Cookies from "js-cookie";
+import Onboarding from "../components/Onboarding";
 
 const SignUp = () => {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSignedUp, setIsSignedUp] = useState(false);
 
   // Google Sign-In Handler
   const handleGoogleSignUp = async () => {
@@ -57,7 +59,7 @@ const SignUp = () => {
 
       const token = await user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
-      navigate("/onboarding"); // Redirect after login
+      setIsSignedUp(true);
     } catch (error) {
       console.error("Error during Google sign-in:", error);
     }
@@ -74,7 +76,7 @@ const SignUp = () => {
       const signInMethods = await fetchSignInMethodsForEmail(auth, email);
       console.log("Sign-in methods for email:", signInMethods);
       console.log("User Provider Data:", result.user.providerData);
-      navigate("/onboarding");
+      setIsSignedUp(true);
     } catch (error: unknown) {
       if (typeof error === "object" && error !== null && "code" in error) {
         const firebaseError = error as { code: string; message: string };
@@ -157,6 +159,7 @@ const SignUp = () => {
           </div>
         </div>
       </div>
+      {/* {isSignedUp && <Onboarding />} */}
     </div>
   );
 };
