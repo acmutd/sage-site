@@ -88,78 +88,91 @@ const SignUp = () => {
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Left Side - Image */}
-      <div className="w-1/2 flex items-center justify-center bg-[#E4E4E4]">
-        <img
-          src="/LoginCorpImage.png"
-          alt="SAGE LOGIN"
-          className="h-auto w-3/4 object-contain"
-        />
-      </div>
-
-      {/* Right Side - Login Form */}
-      <div className="w-1/2 flex flex-col justify-center items-center">
-        {/* Left-aligned Heading */}
-        <div className="self-start text-2xl font-bold pb-5 pl-20">
-          Make an account with Sage
-        </div>
-
-        {/* Form Container */}
-        <div className="w-4/5 flex flex-col items-center">
-          {/* Input Fields */}
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 border rounded-full bg-white text-black focus:ring-2 focus:ring-blue-400 focus:outline-none mb-4"
+    <div className="flex h-screen dark justify-center items-center">
+      <div className="flex w-[75vw] h-[70vh] rounded-3xl overflow-hidden">
+        <div className="flex-[4] w-auto bg-[#E4E4E4] flex justify-center items-center">
+          <img
+            src="/login_graphic.svg"
+            alt="Login"
+            className="w-auto h-auto object-cover"
           />
+        </div>
+        <div className="flex-[6] w-auto bg-white font-[DMSans]">
+          <div className="flex flex-col justify-center h-full w-full mx-auto px-[5rem]">
+            <h3 className="text-[24px] font-medium font-bold text-[#1A1A1A] mb-8">
+              Make an account with Sage!
+            </h3>
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 border rounded-full bg-white text-black focus:ring-2 focus:ring-blue-400 focus:outline-none mb-6"
-          />
-
-          {/* Signup Button */}
-          <button
-            onClick={handleSignUp}
-            className="w-full bg-[#5AED86] text-black font-semibold py-3 rounded-full hover:bg-green-500 transition-all duration-300 ease-in-out mb-6"
-          >
-            Sign Up
-          </button>
-
-          {/* Divider */}
-          <div className="flex items-center w-full mb-6">
-            <div className="flex-1 border-t border-gray-500"></div>
-            <div className="mx-4 text-gray-500">or</div>
-            <div className="flex-1 border-t border-gray-500"></div>
-          </div>
-
-          {/* Google Sign-In Button */}
-          <button
-            onClick={handleGoogleSignUp}
-            className="w-full border relative flex items-center justify-center bg-white text-black font-medium py-3 rounded-full hover:bg-gray-200 transition-all duration-300 ease-in-out"
-          >
-            <img
-              src="/GoogleIcon.png"
-              alt="Google"
-              className="absolute left-4 w-6 h-6"
-            />
-            <span className="flex-1 text-center">Sign up with Google</span>
-          </button>
-
-          <div className="flex justify-center w-full mb-6 pt-5">
-            <Link to="/login" className="mx-4 text-gray-500 underline">
-              Already have an accout?
-            </Link>
+            <form className="w-full space-y-4">
+              <div className="space-y-1">
+                <label className="block text-[#1A1A1A] text-[15px] mb-1">
+                  Name
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter name/email"
+                  className="w-full h-[2.5rem] px-4 rounded-full border border-[#E5E5E5] text-[15px] placeholder:text-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[#1A1A1A] text-[15px] mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password here..."
+                  className="w-full h-[2.5rem] px-4 rounded-full border border-[#E5E5E5] text-[15px] placeholder:text-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[#1A1A1A] text-[15px] mb-1">
+                  Blabla
+                </label>
+                <input
+                  type="Email"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Email"
+                  className="w-full h-[2.5rem] px-4 rounded-full border border-[#E5E5E5] text-[15px] placeholder:text-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full h-[2.5rem] rounded-full bg-[#4ADE80] hover:bg-[#22c55e] transition-colors text-[15px] font-medium text-[#1A1A1A] mt-4"
+              >
+                Sign Up
+              </button>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-[#E5E5E5]"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white text-[#6B7280]">or</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-center">
+                <button
+                  type="button"
+                  className="w-full h-[2.5rem] rounded-full border border-[#E5E5E5] hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-[15px] text-[#1A1A1A]"
+                >
+                  <img src="/GoogleIcon.png" alt="Google" className="w-5 h-5" />
+                  Sign in with Google
+                </button>
+                <Link
+                  to="/Login"
+                  className="text-center text-[15px] text-[#6B7280] mt-3 hover:underline"
+                >
+                  Already have an account?
+                </Link>
+              </div>
+            </form>
           </div>
         </div>
       </div>
-      {/* {isSignedUp && <Onboarding />} */}
     </div>
   );
 };

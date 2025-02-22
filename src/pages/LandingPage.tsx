@@ -34,7 +34,7 @@ const LandingPage = () => {
         </Link>
         <div className="absolute bottom-0 p-4 flex items-center gap-2">
           <img src="/asterisk.svg" alt="asterisk" className="h-4 w-auto" />
-          <p className="text-white text-md">Powered by the SAGE team @ UTD</p>
+          <p className="text-white text-md">Powered by the ACM Dev team</p>
         </div>
       </div>
     </div>

@@ -104,7 +104,7 @@ const LoginPage = () => {
 
   return (
     <div className="flex h-screen dark justify-center items-center">
-      <div className="flex w-[70rem] h-[70vh] rounded-3xl overflow-hidden">
+      <div className="flex w-[75vw] h-[70vh] rounded-3xl overflow-hidden">
         <div className="flex-[4] w-auto bg-[#E4E4E4] flex justify-center items-center">
           <img
             src="/login_graphic.svg"
@@ -158,20 +158,22 @@ const LoginPage = () => {
                   <span className="px-4 bg-white text-[#6B7280]">or</span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                className="w-full h-[2.5rem] rounded-full border border-[#E5E5E5] hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-[15px] text-[#1A1A1A]"
-              >
-                <img src="/GoogleIcon.png" alt="Google" className="w-5 h-5" />
-                Sign in with Google
-              </button>
-              <p
-                onClick={handlePasswordReset}
-                className="text-center text-[15px] text-[#6B7280] mt-6 hover:underline"
-              >
-                Don't have an account?
-              </p>
+              <div className="flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  className="w-full h-[2.5rem] rounded-full border border-[#E5E5E5] hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-[15px] text-[#1A1A1A]"
+                >
+                  <img src="/GoogleIcon.png" alt="Google" className="w-5 h-5" />
+                  Sign in with Google
+                </button>
+                <Link
+                  to="/signup"
+                  className="text-center text-[15px] text-[#6B7280] mt-3 hover:underline"
+                >
+                  Don't have an account?
+                </Link>
+              </div>
             </form>
           </div>
         </div>
