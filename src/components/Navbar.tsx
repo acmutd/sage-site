@@ -1,4 +1,3 @@
-import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -12,16 +11,19 @@ import ChatBot from "../pages/ChatBot";
 import LoginPage from "../pages/LoginPage";
 import SignUp from "../pages/SignUp";
 import { AuthProvider } from "../context/AuthContext";
-import ProtectedRoute from "./ProtectedRotue";
-
+import ProtectedRoute from "./ProtectedRoute";
 const Navbar = () => {
   return (
     <AuthProvider>
       <Router>
-        <nav className="bg-[#181818] p-4 shadow-md">
+        <nav className="p-8 fixed w-full z-10">
           <div className="flex items-center justify-between w-full">
             <Link to="/" className="ml-0">
-              <img src="/SAGE-Name.png" alt="SAGE" className="h-8 w-auto" />
+              <img
+                src="/Sage_Logo_Light.svg"
+                alt="SAGE"
+                className="h-8 w-auto"
+              />
             </Link>
             <ul className="flex items-center space-x-6 mr-0">
               <li className="flex-row">
@@ -53,7 +55,7 @@ const Navbar = () => {
               <li>
                 <Link
                   to="/login"
-                  className="bg-[#5AED86] text-black text-base px-4 py-1 rounded-2xl font-semibold hover:bg-green-600 transition duration-300"
+                  className="bg-[#5AED86] text-black text-base px-8 py-3 rounded-full font-semibold hover:bg-green-600 transition duration-300"
                 >
                   Login
                 </Link>
@@ -61,28 +63,30 @@ const Navbar = () => {
             </ul>
           </div>
         </nav>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route
-            path="/planner"
-            element={
-              <ProtectedRoute>
-                <Planner />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/chatbot"
-            element={
-              <ProtectedRoute>
-                <ChatBot />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <div className="min-h-screen">
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route
+              path="/planner"
+              element={
+                <ProtectedRoute>
+                  <Planner />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/chatbot"
+              element={
+                <ProtectedRoute>
+                  <ChatBot />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
       </Router>
     </AuthProvider>
   );

@@ -3,15 +3,38 @@
 @tailwind utilities;
 
 @font-face {
-    font-family: 'Mermaid';
-    src: url('/fonts/Mermaid1001.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
-  
+  font-family: "Mermaid";
+  src: url("/fonts/Mermaid1001.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
 @font-face {
-    font-family: 'DMSans';
-    src: url('/fonts/DMSans.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
+  font-family: "DMSans";
+  src: url("/fonts/DMSans.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+body {
+  background-color: var(--black-color);
+  font-family: "DMSans", sans-serif;
+}
+:root {
+  --accent-color: #5aed86;
+  --black-color: #181818;
+  --white-color: #f9fbf9;
+}
+
+.accent {
+  color: var(--accent-color);
+}
+
+/* Tailwind CSS custom colors */
+.light {
+  background-color: var(--white-color);
+}
+
+.dark {
+  background-color: var(--black-color);
+}
