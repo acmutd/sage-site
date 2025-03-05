@@ -7,31 +7,33 @@ const LandingPage = () => {
       <img
         src="/landing-line1.svg"
         alt="Landing"
-        className="absolute object-cover z-10 top-[42vh] left-[-1vw]"
+        className="absolute object-cover top-[47vh] left-[-1vw] w-[9vw]"
       />
-      {/* <img
+      <img
         src="/landing-line2.svg"
         alt="Landing"
-        className="absolute object-cover z-10 top-[42vh] left-[43vw]"
-      /> */}
+        className="absolute object-cover top-[47vh] left-[42vw] w-[45vw]"
+      />
       <div className="pl-[10vw] z-10">
-        <h1 className="text-[#FFFFFF] text-[clamp(2rem,6vw,6rem)] font-[Mermaid] font-bold text-left w-full pb-[4.5rem]">
+        <h1 className="text-[#FFFFFF] text-[6vw] font-[Mermaid] font-bold text-left w-full">
           Say hello to <span className="text-[#5AED87]">SAGE</span>, your <br />
           personal Al-powered <br />
           student advisor.
         </h1>
-        <Link
-          to="/"
-          className="bg-[#5AED86] text-black text-base px-8 py-3 rounded-full font-semibold hover:bg-green-600 transition duration-300 mr-[1.875rem]"
-        >
-          Generate a degree plan
-        </Link>
-        <Link
-          to="/"
-          className="border-[#5AED86] border-2 text-white text-base px-8 py-3 rounded-full font-semibold hover:bg-green-600 transition duration-300"
-        >
-          Ask a question
-        </Link>
+        <div className="flex bg-[#181818] gap-4 rounded-l-full pr-8 absolute top-[calc(45vh+20vw)] left-[10vw]">
+          <Link
+            to="/"
+            className="bg-[#5AED86] border-[#5AED86] border-2 text-black text-[1.1vw] scale-[50vw] px-8 py-3 rounded-full font-semibold hover:bg-transparent hover:text-white transition duration-300"
+          >
+            Generate a degree plan
+          </Link>
+          <Link
+            to="/"
+            className="border-[#5AED86] border-2 text-white text-[1.1vw] px-8 py-3 rounded-full font-semibold hover:bg-[#5AED86] hover:text-black transition duration-300"
+          >
+            Ask a question
+          </Link>
+        </div>
         <div className="absolute bottom-0 p-4 flex items-center gap-2">
           <img src="/asterisk.svg" alt="asterisk" className="h-4 w-auto" />
           <p className="text-white text-md">Powered by the ACM Dev team</p>
