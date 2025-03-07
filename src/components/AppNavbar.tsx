@@ -11,7 +11,7 @@ import Planner from "../pages/Planner";
 import ChatBot from "../pages/ChatBot";
 import LoginPage from "../pages/LoginPage";
 import SignUp from "../pages/SignUp";
-import ProtectedRoute from "./ProtectedRotue";
+import ProtectedRoute from "./ProtectedRoute";
 import { RouteIcon, MessageCirclePlusIcon } from "lucide-react";
 
 const AppNavbar = () => {

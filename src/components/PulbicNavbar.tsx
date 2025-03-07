@@ -12,7 +12,7 @@ import ChatBot from "../pages/ChatBot";
 import LoginPage from "../pages/LoginPage";
 import SignUp from "../pages/SignUp";
 import { RouteIcon, MessageCirclePlusIcon } from "lucide-react";
-import ProtectedRoute from "./ProtectedRotue";
+import ProtectedRoute from "./ProtectedRoute";
 
 const PublicNavbar = () => {
   return (
