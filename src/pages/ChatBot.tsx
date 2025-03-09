@@ -55,10 +55,7 @@ const ChatBot = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // userId: user?.uid,
-
-          // This is for testing
-          userId: "test-user-123",
+          userId: user?.uid,
           action: "getConversations", // Specify the action to get conversations
         }),
       });
@@ -170,10 +167,7 @@ const ChatBot = () => {
     });
 
     const requestBody: any = {
-      // userId: user?.uid,
-
-      // This is for testing
-      id: "test-user-123",
+      userId: user?.uid,
       query: query,
     };
 
