@@ -10,10 +10,12 @@ import Planner from "../pages/Planner";
 import ChatBot from "../pages/ChatBot";
 import LoginPage from "../pages/LoginPage";
 import SignUp from "../pages/SignUp";
-import { AuthProvider } from "../context/AuthContext";
+import { AuthProvider, useAuth } from "../context/AuthContext";
 import ProtectedRoute from "./ProtectedRoute";
 
-const PublicNavbar = () => {
+const Navbar = () => {
+  const { user, logout } = useAuth();
+
   return (
     <AuthProvider>
       <nav className="p-8 fixed w-full z-10">
@@ -49,12 +51,23 @@ const PublicNavbar = () => {
               </Link>
             </li>
             <li>
-              <Link
-                to="/login"
-                className="bg-[#5AED86] text-black text-base px-8 py-3 rounded-full font-semibold hover:bg-green-600 transition duration-300"
-              >
-                Login
-              </Link>
+              {user ? (
+                // If user is logged in, show Sign Out button
+                <button
+                  onClick={logout} // Calls logout function
+                  className="bg-red-500 text-white text-base px-8 py-3 rounded-full font-semibold hover:bg-red-600 transition duration-300"
+                >
+                  Sign Out
+                </button>
+              ) : (
+                // If no user, show Login button
+                <Link
+                  to="/login"
+                  className="bg-[#5AED86] text-black text-base px-8 py-3 rounded-full font-semibold hover:bg-green-600 transition duration-300"
+                >
+                  Login
+                </Link>
+              )}
             </li>
           </ul>
         </div>
@@ -87,4 +100,4 @@ const PublicNavbar = () => {
   );
 };
 
-export default PublicNavbar;
+export default Navbar;

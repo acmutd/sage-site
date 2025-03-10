@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid"; // Import UUID generator
 
+const CACHE_EXPIRATION_TIME = 60 * 60 * 1000;
+
 const ChatBot = () => {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
@@ -43,6 +45,23 @@ const ChatBot = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
+  // Check if the cached data is still valid
+  const isCacheValid = (timestamp: number): boolean => {
+    const currentTime = Date.now();
+    return currentTime - timestamp < CACHE_EXPIRATION_TIME;
+  };
+
+  // Save conversation data with timestamp to localStorage
+  const saveConversationsToCache = (conversations: any[]) => {
+    localStorage.setItem(
+      "chatbot_conversations",
+      JSON.stringify({
+        data: conversations,
+        timestamp: Date.now(),
+      })
+    );
+  };
+
   // Fetch conversation data from Lambda (instead of directly from S3)
   const fetchConversation = async () => {
     if (!user?.uid) return;
@@ -50,12 +69,30 @@ const ChatBot = () => {
     setError(null);
 
     try {
-      // Call the Lambda function to get conversations
+      // Check if we have valid cached conversations
+      const cachedConversationsString = localStorage.getItem(
+        "chatbot_conversations"
+      );
+
+      if (cachedConversationsString) {
+        const cachedConversations = JSON.parse(cachedConversationsString);
+
+        if (isCacheValid(cachedConversations.timestamp)) {
+          console.log("Using cached conversations data");
+          setConversations(cachedConversations.data || []);
+          setChatHistoryLoad(false);
+          return cachedConversations.data;
+        }
+      }
+
+      // If cache is invalid or doesn't exist, fetch fresh data
+      console.log("Fetching fresh conversations data");
       const response = await fetch(GET_CONVERSATIONS_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: user?.uid,
+          // userId: user?.uid,
+          userId: "test-user-123",
           action: "getConversations", // Specify the action to get conversations
         }),
       });
@@ -64,6 +101,9 @@ const ChatBot = () => {
 
       const data = await response.json();
       setConversations(data || []);
+
+      // Cache the fetched conversations with a timestamp
+      saveConversationsToCache(data || []);
 
       return data;
     } catch (error) {
@@ -87,7 +127,7 @@ const ChatBot = () => {
           (conv) => conv.conversation_id !== conversation_id
         );
 
-        return [
+        const updatedConversations = [
           ...filteredConversations,
           {
             conversation_id,
@@ -95,6 +135,10 @@ const ChatBot = () => {
             messages,
           },
         ];
+
+        saveConversationsToCache(updatedConversations);
+
+        return updatedConversations;
       });
     }
 
@@ -106,7 +150,11 @@ const ChatBot = () => {
 
     localStorage.setItem(
       "chatbot_conversation",
-      JSON.stringify({ messages: [], conversation_id: newConversationId })
+      JSON.stringify({
+        messages: [],
+        conversation_id: newConversationId,
+        timeStamp: Date.now(),
+      })
     );
   };
 
@@ -115,7 +163,7 @@ const ChatBot = () => {
     setMessages(messages);
     localStorage.setItem(
       "chatbot_conversation",
-      JSON.stringify({ messages, conversation_id: id })
+      JSON.stringify({ messages, conversation_id: id, timestamp: Date.now() })
     );
   };
 
@@ -123,20 +171,48 @@ const ChatBot = () => {
     if (!user?.uid) return;
 
     const cachedData = localStorage.getItem("chatbot_conversation");
+
     if (cachedData) {
-      const { messages, conversation_id } = JSON.parse(cachedData);
-      setMessages(messages || []);
-      setconversation_id(conversation_id || null);
-    } else {
-      const data = await fetchConversation();
-      const lastConversation = data.length - 1;
-      const { messages, conversation_id } = data[lastConversation];
-      setMessages(messages || []);
-      setconversation_id(conversation_id || null);
+      const { messages, conversation_id, timestamp } = JSON.parse(cachedData);
+
+      // Check if the cached conversation is still valid
+      if (timestamp && isCacheValid(timestamp)) {
+        console.log("Using cached current conversation");
+        setMessages(messages || []);
+        setconversation_id(conversation_id || null);
+
+        // Also load the conversations list from cache if available
+        const cachedConversationsString = localStorage.getItem(
+          "chatbot_conversations"
+        );
+        if (cachedConversationsString) {
+          const cachedConversations = JSON.parse(cachedConversationsString);
+          if (isCacheValid(cachedConversations.timestamp)) {
+            setConversations(cachedConversations.data || []);
+            return;
+          }
+        }
+      }
+    }
+
+    // If no valid cache or cache expired, fetch fresh data
+    const data = await fetchConversation();
+    if (!data || data.length === 0) return;
+
+    const lastConversation = data.length - 1;
+    const lastConversationData = data[lastConversation];
+
+    if (lastConversationData) {
+      setMessages(lastConversationData.messages || []);
+      setconversation_id(lastConversationData.conversation_id || null);
 
       localStorage.setItem(
         "chatbot_conversation",
-        JSON.stringify({ messages, conversation_id })
+        JSON.stringify({
+          messages: lastConversationData.messages || [],
+          conversation_id: lastConversationData.conversation_id,
+          timestamp: Date.now(),
+        })
       );
     }
   };
@@ -154,20 +230,22 @@ const ChatBot = () => {
     setChatLoad(true);
 
     const userMessage = { role: "user", content: query };
-    setMessages((prev) => {
-      const updatedMessages = [...prev, userMessage];
+    const updatedMessagesWithUser = [...messages, userMessage];
+    setMessages(updatedMessagesWithUser);
 
-      // Save updated conversation to localStorage
-      localStorage.setItem(
-        "chatbot_conversation",
-        JSON.stringify({ messages: updatedMessages, conversation_id })
-      );
-
-      return updatedMessages;
-    });
+    // Save updated conversation to localStorage with timestamp
+    localStorage.setItem(
+      "chatbot_conversation",
+      JSON.stringify({
+        messages: updatedMessagesWithUser,
+        conversation_id,
+        timestamp: Date.now(),
+      })
+    );
 
     const requestBody: any = {
-      userId: user?.uid,
+      // id: user?.uid,
+      id: "test-user-123",
       query: query,
     };
 
@@ -188,26 +266,51 @@ const ChatBot = () => {
 
       const data = await response.json();
       const botMessage = { role: "bot", content: data.response };
+      const updatedMessagesWithBot = [...updatedMessagesWithUser, botMessage];
 
-      setMessages((prev) => {
-        const updatedMessages = [...prev, botMessage];
+      setMessages(updatedMessagesWithBot);
 
-        // Save updated conversation to localStorage
-        localStorage.setItem(
-          "chatbot_conversation",
-          JSON.stringify({
-            messages: updatedMessages,
-            conversation_id: data.conversation_id || conversation_id,
-          })
-        );
-
-        return updatedMessages;
-      });
+      localStorage.setItem(
+        "chatbot_conversation",
+        JSON.stringify({
+          messages: updatedMessagesWithBot,
+          conversation_id: data.conversation_id || conversation_id,
+          timestamp: Date.now(),
+        })
+      );
 
       // Update the conversation ID if returned by the API
+      const currentConvId = data.conversation_id || conversation_id;
       if (data.conversation_id && data.conversation_id !== conversation_id) {
         setconversation_id(data.conversation_id);
       }
+
+      // Update the conversations list in local storage with the new message
+      setConversations((prevConversations) => {
+        const updatedConversations = prevConversations.map((conv) =>
+          conv.conversation_id === currentConvId
+            ? { ...conv, messages: updatedMessagesWithBot }
+            : conv
+        );
+
+        // If this is a new conversation that wasn't in the list, add it
+        if (
+          !updatedConversations.some(
+            (conv) => conv.conversation_id === currentConvId
+          )
+        ) {
+          updatedConversations.push({
+            conversation_id: currentConvId!,
+            user_id: user?.uid || "test-user-123",
+            messages: updatedMessagesWithBot,
+          });
+        }
+
+        // Update the cached conversations
+        saveConversationsToCache(updatedConversations);
+
+        return updatedConversations;
+      });
 
       if (isNewConversation) {
         try {
@@ -226,12 +329,12 @@ const ChatBot = () => {
       console.error("Error sending query:", error);
     }
   };
-
   // This is used for testing purposes
   const clearCache = () => {
     setMessages([]);
     setconversation_id(null);
     localStorage.removeItem("chatbot_conversation");
+    localStorage.removeItem("chatbot_conversations");
   };
 
   useEffect(() => {
@@ -254,6 +357,38 @@ const ChatBot = () => {
       if (!conversation_id) return;
 
       try {
+        // Check if we have valid cached conversations
+        const cachedConversationsString = localStorage.getItem(
+          "chatbot_conversations"
+        );
+
+        if (cachedConversationsString) {
+          const cachedConversations = JSON.parse(cachedConversationsString);
+
+          if (isCacheValid(cachedConversations.timestamp)) {
+            console.log("Using cached conversations for history");
+            const selectedConversation = cachedConversations.data.find(
+              (conv: { conversation_id: string; messages: any[] }) =>
+                conv.conversation_id === conversation_id
+            );
+
+            if (selectedConversation) {
+              setMessages(selectedConversation.messages || []);
+
+              localStorage.setItem(
+                "chatbot_conversation",
+                JSON.stringify({
+                  messages: selectedConversation.messages || [],
+                  conversation_id,
+                  timestamp: Date.now(),
+                })
+              );
+              return;
+            }
+          }
+        }
+
+        // If no valid cache or selected conversation not found in cache, fetch from server
         const data = await fetchConversation(); // Reuse fetch function
 
         // Explicitly type conversations
@@ -270,6 +405,7 @@ const ChatBot = () => {
             JSON.stringify({
               messages: selectedConversation.messages || [],
               conversation_id,
+              timestamp: Date.now(),
             })
           );
         }
@@ -279,10 +415,10 @@ const ChatBot = () => {
     };
 
     reloadChatHistory();
-  }, [conversation_id]); // Runs every time conversation_id changes
+  }, [conversation_id]);
 
   return (
-    <div className="flex flex-1 bg-[#F9FBF9] overflow-hidden">
+    <div className="flex flex-1 bg-[#F9FBF9] overflow-hidden mt-20 max-h-[calc(100vh-5rem)]">
       {/* Chat History Bar - Expanded or Skinny */}
       <div
         className={`
