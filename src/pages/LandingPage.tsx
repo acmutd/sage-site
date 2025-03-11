@@ -12,10 +12,10 @@ const LandingPage = () => {
       <img
         src="/landing-line2.svg"
         alt="Landing"
-        className="absolute object-cover top-[47vh] left-[42vw] w-[45vw]"
+        className="absolute object-cover top-[47vh] left-[35vw] w-[45vw]"
       />
       <div className="pl-[10vw] z-10">
-        <h1 className="text-[#FFFFFF] text-[6vw] font-[Mermaid] font-bold text-left w-full">
+        <h1 className="text-[#FFFFFF] text-[5.5vw] font-[Mermaid] font-bold text-left w-full">
           Say hello to <span className="text-[#5AED87]">SAGE</span>, your <br />
           personal Al-powered <br />
           student advisor.
