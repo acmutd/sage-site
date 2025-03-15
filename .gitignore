@@ -26,3 +26,6 @@ dist-ssr
 .env.*
 prod.env
 dev.env
+
+# Ignore package-lock.json
+package-lock.json
