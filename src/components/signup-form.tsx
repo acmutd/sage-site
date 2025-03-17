@@ -45,6 +45,8 @@ export default function SignupForm() {
   const navigate = useNavigate();
   const [resetMessage, setResetMessage] = useState("");
 
+  const VITE_CRUD_API = import.meta.env.VITE_CRUD_API;
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -75,6 +77,17 @@ export default function SignupForm() {
 
       const token = await user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
+
+      await fetch(VITE_CRUD_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: result.user.uid,
+          token: token,
+          action: "createUser",
+        }),
+      });
+
       toast.success("Successfully signed up with Google!");
       navigate("/chatbot", { replace: true });
     } catch (error) {
@@ -92,6 +105,16 @@ export default function SignupForm() {
       );
       const token = await result.user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
+      await fetch(VITE_CRUD_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: result.user.uid,
+          token: token,
+          action: "createUser",
+        }),
+      });
+
       toast.success("Successfully signed up!");
       navigate("/chatbot", { replace: true });
     } catch (error: unknown) {

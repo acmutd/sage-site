@@ -31,7 +31,7 @@ const ChatBot = () => {
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
   const CHAT_API = import.meta.env.VITE_CHAT_API;
-  const GET_CONVERSATIONS_API = import.meta.env.VITE_GET_CONVERSATIONS_API;
+  const CRUD_API = import.meta.env.VITE_CRUD_API;
 
   const adjustTextareaHeight = () => {
     const textarea = textareaRef.current;
@@ -87,13 +87,14 @@ const ChatBot = () => {
 
       // If cache is invalid or doesn't exist, fetch fresh data
       console.log("Fetching fresh conversations data");
-      const response = await fetch(GET_CONVERSATIONS_API, {
+      const response = await fetch(CRUD_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // userId: user?.uid,
-          userId: "test-user-123",
-          action: "getConversations", // Specify the action to get conversations
+          userId: user?.uid,
+          // userId: "test-user-123",
+          action: "getConversations",
+          token: user.getIdToken(),
         }),
       });
 
