@@ -6,6 +6,8 @@ import {
   CornerRightUpIcon,
   MessageCirclePlusIcon,
   RefreshCcwIcon,
+  GraduationCapIcon,
+  CalendarSearchIcon,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid"; // Import UUID generator
 
@@ -26,6 +28,7 @@ const ChatBot = () => {
   const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
+  const [generateSchedule, setGenerateSchedule] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
@@ -43,6 +46,10 @@ const ChatBot = () => {
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
+  };
+
+  const handleToggleChange = () => {
+    setGenerateSchedule((prev) => !prev);
   };
 
   // Check if the cached data is still valid
@@ -64,7 +71,13 @@ const ChatBot = () => {
 
   // Fetch conversation data from Lambda (instead of directly from S3)
   const fetchConversation = async () => {
-    if (!user?.uid) return;
+    console.log("user.uid: ", user?.uid);
+
+    if (!user?.uid) {
+      console.warn("User ID is missing. Cannot fetch conversations.");
+      return;
+    }
+
     setChatHistoryLoad(true);
     setError(null);
 
@@ -79,11 +92,27 @@ const ChatBot = () => {
 
         if (isCacheValid(cachedConversations.timestamp)) {
           console.log("Using cached conversations data");
-          setConversations(cachedConversations.data || []);
+          setConversations(
+            Array.isArray(cachedConversations.data)
+              ? cachedConversations.data
+              : []
+          );
           setChatHistoryLoad(false);
           return cachedConversations.data;
         }
       }
+
+      if (!CRUD_API) {
+        throw new Error("CRUD_API environment variable is missing.");
+      }
+
+      // Ensure token is properly fetched
+      const token = await user.getIdToken();
+      if (!token) {
+        throw new Error("Failed to retrieve authentication token.");
+      }
+
+      console.log("token: ", token);
 
       // If cache is invalid or doesn't exist, fetch fresh data
       console.log("Fetching fresh conversations data");
@@ -94,14 +123,23 @@ const ChatBot = () => {
           userId: user?.uid,
           // userId: "test-user-123",
           action: "getConversations",
-          token: user.getIdToken(),
+          token,
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to fetch conversations");
+      console.log("response: ", response);
+      console.log("API Response Status:", response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to fetch conversations: ${response.status} - ${errorText}`
+        );
+      }
+      console.log("after response");
 
       const data = await response.json();
-      setConversations(data || []);
+      console.log("data: ", data);
+      setConversations(Array.isArray(data) ? data : []);
 
       // Cache the fetched conversations with a timestamp
       saveConversationsToCache(data || []);
@@ -123,12 +161,18 @@ const ChatBot = () => {
     if (messages.length > 0 && conversation_id) {
       // Save the existing conversation before starting a new one
       setConversations((prevConversations) => {
-        // Ensure the conversation isn't duplicated
+        if (!Array.isArray(prevConversations)) {
+          console.error(
+            "prevConversations is not an array:",
+            prevConversations
+          );
+          return [];
+        }
+
         const filteredConversations = prevConversations.filter(
           (conv) => conv.conversation_id !== conversation_id
         );
-
-        const updatedConversations = [
+        return [
           ...filteredConversations,
           {
             conversation_id,
@@ -136,10 +180,6 @@ const ChatBot = () => {
             messages,
           },
         ];
-
-        saveConversationsToCache(updatedConversations);
-
-        return updatedConversations;
       });
     }
 
@@ -189,7 +229,11 @@ const ChatBot = () => {
         if (cachedConversationsString) {
           const cachedConversations = JSON.parse(cachedConversationsString);
           if (isCacheValid(cachedConversations.timestamp)) {
-            setConversations(cachedConversations.data || []);
+            setConversations(
+              Array.isArray(cachedConversations.data)
+                ? cachedConversations.data
+                : []
+            );
             return;
           }
         }
@@ -226,7 +270,12 @@ const ChatBot = () => {
   };
 
   const handleSendQuery = async () => {
-    if (!query.trim()) return;
+    if (!query.trim()) {
+      console.warn("Query is empty, aborting request.");
+      return;
+    }
+
+    console.log("Sending query:", query);
 
     setChatLoad(true);
 
@@ -234,7 +283,6 @@ const ChatBot = () => {
     const updatedMessagesWithUser = [...messages, userMessage];
     setMessages(updatedMessagesWithUser);
 
-    // Save updated conversation to localStorage with timestamp
     localStorage.setItem(
       "chatbot_conversation",
       JSON.stringify({
@@ -244,15 +292,29 @@ const ChatBot = () => {
       })
     );
 
+    console.log("CHAT_API:", CHAT_API);
+    if (!CHAT_API) {
+      console.error("CHAT_API is missing. Check your .env file.");
+      return;
+    }
+
+    console.log(
+      "Current conversation_id before sending request:",
+      conversation_id
+    );
+
     const requestBody: any = {
-      // id: user?.uid,
-      id: "test-user-123",
+      id: user?.uid,
       query: query,
+      generate_schedule: generateSchedule,
     };
 
     if (conversation_id) {
       requestBody.conversation_id = conversation_id;
     }
+
+    console.log("Sending request body:", JSON.stringify(requestBody, null, 2));
+    console.log("requestBody: ", requestBody);
 
     setQuery("");
 
@@ -263,9 +325,22 @@ const ChatBot = () => {
         body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) throw new Error("Failed to get chatbot response");
+      console.log("Response status:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to get chatbot response: ${response.status} - ${errorText}`
+        );
+      }
 
       const data = await response.json();
+      console.log("Chatbot API response:", data);
+
+      if (!data.response) {
+        throw new Error("Chatbot API did not return a response.");
+      }
+
       const botMessage = { role: "bot", content: data.response };
       const updatedMessagesWithBot = [...updatedMessagesWithUser, botMessage];
 
@@ -280,13 +355,11 @@ const ChatBot = () => {
         })
       );
 
-      // Update the conversation ID if returned by the API
       const currentConvId = data.conversation_id || conversation_id;
       if (data.conversation_id && data.conversation_id !== conversation_id) {
         setconversation_id(data.conversation_id);
       }
 
-      // Update the conversations list in local storage with the new message
       setConversations((prevConversations) => {
         const updatedConversations = prevConversations.map((conv) =>
           conv.conversation_id === currentConvId
@@ -294,7 +367,6 @@ const ChatBot = () => {
             : conv
         );
 
-        // If this is a new conversation that wasn't in the list, add it
         if (
           !updatedConversations.some(
             (conv) => conv.conversation_id === currentConvId
@@ -307,7 +379,11 @@ const ChatBot = () => {
           });
         }
 
-        // Update the cached conversations
+        console.log(
+          "Updated conversations before saving:",
+          updatedConversations
+        );
+
         saveConversationsToCache(updatedConversations);
 
         return updatedConversations;
@@ -315,21 +391,23 @@ const ChatBot = () => {
 
       if (isNewConversation) {
         try {
-          await fetchConversation(); // triggers your reloading logic
+          await fetchConversation();
         } catch (error) {
           console.error(
             "Error fetching conversation after first message:",
             error
           );
         }
-        setIsNewConversation(false); // No longer new after the first message
+        setIsNewConversation(false);
       }
 
+      console.log("Chat query handled successfully.");
       setChatLoad(false);
     } catch (error) {
       console.error("Error sending query:", error);
     }
   };
+
   // This is used for testing purposes
   const clearCache = () => {
     setMessages([]);
@@ -362,6 +440,8 @@ const ChatBot = () => {
         const cachedConversationsString = localStorage.getItem(
           "chatbot_conversations"
         );
+
+        console.log("cachedConversationsString: ", cachedConversationsString);
 
         if (cachedConversationsString) {
           const cachedConversations = JSON.parse(cachedConversationsString);
@@ -419,7 +499,7 @@ const ChatBot = () => {
   }, [conversation_id]);
 
   return (
-    <div className="flex flex-1 bg-[#F9FBF9] overflow-hidden mt-20 max-h-[calc(100vh-5rem)]">
+    <div className="flex flex-1 bg-[#F9FBF9] overflow-hidden mt-20 min-h-[calc(100vh-5rem)] max-h-[calc(100vh-5rem)]">
       {/* Chat History Bar - Expanded or Skinny */}
       <div
         className={`
@@ -483,21 +563,23 @@ const ChatBot = () => {
             {error && <p className="text-red-500">{error}</p>}
 
             <ul className="space-y-2">
-              {conversations.map((conv) => (
-                <li
-                  key={conv.conversation_id}
-                  className={`p-2 cursor-pointer rounded hover:bg-blue-400 transition-colors ${
-                    conversation_id === conv.conversation_id
-                      ? "bg-blue-500 text-black"
-                      : "bg-white text-black"
-                  }`}
-                  onClick={() =>
-                    loadConversation(conv.conversation_id, conv.messages)
-                  }
-                >
-                  {conv ? conv.conversation_id : "dne"}
-                </li>
-              ))}
+              {Array.isArray(conversations) && conversations.length > 0
+                ? conversations.map((conv) => (
+                    <li
+                      key={conv.conversation_id}
+                      className={`p-2 cursor-pointer rounded hover:bg-blue-400 transition-colors ${
+                        conversation_id === conv.conversation_id
+                          ? "bg-blue-500 text-black"
+                          : "bg-white text-black"
+                      }`}
+                      onClick={() =>
+                        loadConversation(conv.conversation_id, conv.messages)
+                      }
+                    >
+                      {conv ? conv.conversation_id : "dne"}
+                    </li>
+                  ))
+                : null}
             </ul>
           </div>
         )}
@@ -529,32 +611,55 @@ const ChatBot = () => {
           <div className="w-full bg-[#F4F4F4] rounded-xl border flex flex-col flex-grow overflow-hidden">
             <div
               ref={chatContainerRef}
-              className="flex-1 p-3 overflow-y-auto space-y-2"
+              className="flex-1 p-3 overflow-y-auto space-y-2 flex flex-col justify-center items-center"
             >
-              {messages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`p-3 rounded-lg border border-[#CBD5E1] w-fit max-w-sm ${
-                    msg.role === "user"
-                      ? "bg-[#F9FBF9] text-black self-end ml-auto"
-                      : "bg-[#E5E4E4] text-black self-start mr-auto"
-                  }`}
-                >
-                  {msg.content}
-                </div>
-              ))}
+              {messages.length === 0 && !chatLoad ? (
+                <p className="text-gray-500 text-lg">
+                  Please say something to start
+                </p>
+              ) : (
+                messages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 rounded-lg border border-[#CBD5E1] w-fit max-w-sm ${
+                      msg.role === "user"
+                        ? "bg-[#F9FBF9] text-black self-end ml-auto"
+                        : "bg-[#E5E4E4] text-black self-start mr-auto"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                ))
+              )}
+
               {chatLoad && (
                 <div className="p-3 rounded-lg bg-[#E5E4E4] text-black self-start mr-auto border border-[#CBD5E1] w-fit max-w-sm">
                   <span className="animate-pulse">Chatbot is typing...</span>
                 </div>
               )}
-              {error && (
-                <div className="text-red-500 text-center p-2">{error}</div>
-              )}
             </div>
           </div>
           {/* Query Container */}
           <div className="w-full flex flex-row items-center justify-center p-3 border-t mt-4">
+            <button
+              className={`p-3 rounded-full ${
+                !generateSchedule ? "bg-[#5AED86]" : "bg-[#D3E2D8]"
+              }`}
+              onClick={() => setGenerateSchedule(false)}
+              aria-label="Set to False"
+            >
+              <GraduationCapIcon size={24} className="text-black" />
+            </button>
+
+            <button
+              className={`p-3 rounded-full ${
+                generateSchedule ? "bg-[#5AED86]" : "bg-[#D3E2D8]"
+              }`}
+              onClick={() => setGenerateSchedule(true)}
+              aria-label="Set to True"
+            >
+              <CalendarSearchIcon size={24} className="text-black" />
+            </button>
             <textarea
               ref={textareaRef}
               rows={1}
