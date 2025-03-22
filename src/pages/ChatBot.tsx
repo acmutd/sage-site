@@ -543,33 +543,37 @@ const ChatBot = () => {
             {error && <p className="text-red-500">{error}</p>}
 
             <ul className="space-y-2">
-              {Array.isArray(conversations) && conversations.length > 0
-                ? [...conversations]
-                    .sort((a, b) => {
-                      const aTime = new Date(
-                        a.messages?.[a.messages.length - 1]?.timestamp || 0
-                      ).getTime();
-                      const bTime = new Date(
-                        b.messages?.[b.messages.length - 1]?.timestamp || 0
-                      ).getTime();
-                      return bTime - aTime; // Most recent first
-                    })
-                    .map((conv) => (
-                      <li
-                        key={conv.conversation_id}
-                        className={`p-2 cursor-pointer rounded hover:bg-blue-400 transition-colors ${
-                          conversation_id === conv.conversation_id
-                            ? "bg-blue-500 text-black"
-                            : "bg-white text-black"
-                        }`}
-                        onClick={() =>
-                          loadConversation(conv.conversation_id, conv.messages)
-                        }
-                      >
-                        {conv ? conv.conversation_id : "dne"}
-                      </li>
-                    ))
-                : null}
+              {Array.isArray(conversations) && conversations.length > 0 ? (
+                conversations.map((conv) => {
+                  // Use the first message to represent the conversation topic
+                  const firstMessage =
+                    conv.messages?.[0]?.content || "No messages";
+                  const truncatedMessage =
+                    firstMessage.length > 50
+                      ? firstMessage.substring(0, 50) + "..."
+                      : firstMessage;
+
+                  return (
+                    <li
+                      key={conv.conversation_id}
+                      className={`p-2 cursor-pointer rounded hover:bg-[#c1d1c7] transition-colors ${
+                        conversation_id === conv.conversation_id
+                          ? "bg-[#d2e2d8] text-black"
+                          : "bg-white text-black"
+                      }`}
+                      onClick={() =>
+                        loadConversation(conv.conversation_id, conv.messages)
+                      }
+                    >
+                      {truncatedMessage}
+                    </li>
+                  );
+                })
+              ) : (
+                <li className="p-2 text-gray-500">
+                  No conversations available
+                </li>
+              )}
             </ul>
           </div>
         )}
