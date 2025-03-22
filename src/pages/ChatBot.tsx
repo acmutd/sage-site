@@ -600,7 +600,7 @@ const ChatBot = () => {
           flex flex-col flex-1 p-5 relative overflow-hidden
         `}
       >
-        <div className="rounded-full bg-[#0F172A] w-full p-1 mt-4 mb-4 flex">
+        <div className="rounded-full bg-[#0F172A] w-full p-3 mt-4 mb-4 flex items-center">
           <img
             src="/ProblemReportIcon.png"
             alt="ProblemReportIcon"
@@ -658,7 +658,7 @@ const ChatBot = () => {
           {/* Query Container */}
           <div className="w-full flex flex-row items-center justify-center p-3 border-t mt-4">
             <button
-              className={`p-3 rounded-full ${
+              className={`p-3 rounded-full mr-2 ${
                 !generateSchedule ? "bg-[#5AED86]" : "bg-[#D3E2D8]"
               }`}
               onClick={() => setGenerateSchedule(false)}
@@ -668,7 +668,7 @@ const ChatBot = () => {
             </button>
 
             <button
-              className={`p-3 rounded-full ${
+              className={`p-3 rounded-full mr-2 ${
                 generateSchedule ? "bg-[#5AED86]" : "bg-[#D3E2D8]"
               }`}
               onClick={() => setGenerateSchedule(true)}
@@ -676,12 +676,13 @@ const ChatBot = () => {
             >
               <CalendarSearchIcon size={24} className="text-black" />
             </button>
+
             <textarea
               ref={textareaRef}
               rows={1}
               placeholder="Ask a question..."
               aria-label="Chat input field"
-              className="w-full p-2 mr-4 border rounded-3xl resize-none overflow-auto-y focus:outline-none min-h-0 max-h-28"
+              className="w-full p-2 mr-2 border rounded-3xl resize-none overflow-auto-y focus:outline-none min-h-0 max-h-28" // Added right margin (mr-2)
               onChange={(e) => {
                 setQuery(e.target.value);
                 adjustTextareaHeight();
