@@ -1,9 +1,6 @@
-"use client";
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useState } from "react";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -43,7 +40,6 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function SignupForm() {
   const navigate = useNavigate();
-  const [resetMessage, setResetMessage] = useState("");
 
   const VITE_CRUD_API = import.meta.env.VITE_CRUD_API;
 
