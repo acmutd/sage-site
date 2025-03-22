@@ -25,6 +25,7 @@ const ChatBot = () => {
   >([]);
   const [chatHistoryLoad, setChatHistoryLoad] = useState(false);
   const [chatLoad, setChatLoad] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
@@ -159,26 +160,20 @@ const ChatBot = () => {
 
   const startNewChat = () => {
     if (messages.length > 0 && conversation_id) {
-      // Save the existing conversation before starting a new one
       setConversations((prevConversations) => {
-        if (!Array.isArray(prevConversations)) {
-          console.error(
-            "prevConversations is not an array:",
-            prevConversations
-          );
-          return [];
-        }
+        if (!Array.isArray(prevConversations)) return [];
 
         const filteredConversations = prevConversations.filter(
           (conv) => conv.conversation_id !== conversation_id
         );
+
         return [
-          ...filteredConversations,
           {
             conversation_id,
             user_id: user?.uid || "test-user-123",
             messages,
           },
+          ...filteredConversations,
         ];
       });
     }
@@ -242,10 +237,23 @@ const ChatBot = () => {
 
     // If no valid cache or cache expired, fetch fresh data
     const data = await fetchConversation();
-    if (!data || data.length === 0) return;
 
-    const lastConversation = data.length - 1;
-    const lastConversationData = data[lastConversation];
+    if (!Array.isArray(data) || data.length === 0) {
+      console.warn("No valid data returned from fetchConversation");
+      return;
+    }
+
+    const sorted = [...data].sort((a, b) => {
+      const aTime = new Date(
+        a.messages?.[a.messages.length - 1]?.timestamp || 0
+      ).getTime();
+      const bTime = new Date(
+        b.messages?.[b.messages.length - 1]?.timestamp || 0
+      ).getTime();
+      return bTime - aTime; // Most recent first
+    });
+
+    const lastConversationData = sorted[0];
 
     if (lastConversationData) {
       setMessages(lastConversationData.messages || []);
@@ -278,6 +286,7 @@ const ChatBot = () => {
     console.log("Sending query:", query);
 
     setChatLoad(true);
+    setChatError(null);
 
     const userMessage = { role: "user", content: query };
     const updatedMessagesWithUser = [...messages, userMessage];
@@ -298,11 +307,6 @@ const ChatBot = () => {
       return;
     }
 
-    console.log(
-      "Current conversation_id before sending request:",
-      conversation_id
-    );
-
     const requestBody: any = {
       id: user?.uid,
       query: query,
@@ -313,9 +317,6 @@ const ChatBot = () => {
       requestBody.conversation_id = conversation_id;
     }
 
-    console.log("Sending request body:", JSON.stringify(requestBody, null, 2));
-    console.log("requestBody: ", requestBody);
-
     setQuery("");
 
     try {
@@ -325,8 +326,6 @@ const ChatBot = () => {
         body: JSON.stringify(requestBody),
       });
 
-      console.log("Response status:", response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(
@@ -335,8 +334,6 @@ const ChatBot = () => {
       }
 
       const data = await response.json();
-      console.log("Chatbot API response:", data);
-
       if (!data.response) {
         throw new Error("Chatbot API did not return a response.");
       }
@@ -346,65 +343,48 @@ const ChatBot = () => {
 
       setMessages(updatedMessagesWithBot);
 
+      const currentConvId = data.conversation_id || conversation_id;
+
+      setconversation_id(currentConvId);
+
+      // 👇 Only prepend the conversation to state/cache if it's new
+      setConversations((prevConversations) => {
+        console.log("Inside update - prevConversations:", prevConversations);
+        const filtered = prevConversations.filter(
+          (conv) => conv.conversation_id !== currentConvId
+        );
+
+        const newConv = {
+          conversation_id: currentConvId!,
+          user_id: user?.uid || "test-user-123",
+          messages: updatedMessagesWithBot,
+        };
+
+        const updated = [newConv, ...filtered];
+
+        saveConversationsToCache(updated);
+
+        return updated;
+      });
+
+      if (isNewConversation) {
+        setIsNewConversation(false);
+      }
+
+      // Update local cache
       localStorage.setItem(
         "chatbot_conversation",
         JSON.stringify({
           messages: updatedMessagesWithBot,
-          conversation_id: data.conversation_id || conversation_id,
+          conversation_id: currentConvId,
           timestamp: Date.now(),
         })
       );
-
-      const currentConvId = data.conversation_id || conversation_id;
-      if (data.conversation_id && data.conversation_id !== conversation_id) {
-        setconversation_id(data.conversation_id);
-      }
-
-      setConversations((prevConversations) => {
-        const updatedConversations = prevConversations.map((conv) =>
-          conv.conversation_id === currentConvId
-            ? { ...conv, messages: updatedMessagesWithBot }
-            : conv
-        );
-
-        if (
-          !updatedConversations.some(
-            (conv) => conv.conversation_id === currentConvId
-          )
-        ) {
-          updatedConversations.push({
-            conversation_id: currentConvId!,
-            user_id: user?.uid || "test-user-123",
-            messages: updatedMessagesWithBot,
-          });
-        }
-
-        console.log(
-          "Updated conversations before saving:",
-          updatedConversations
-        );
-
-        saveConversationsToCache(updatedConversations);
-
-        return updatedConversations;
-      });
-
-      if (isNewConversation) {
-        try {
-          await fetchConversation();
-        } catch (error) {
-          console.error(
-            "Error fetching conversation after first message:",
-            error
-          );
-        }
-        setIsNewConversation(false);
-      }
-
-      console.log("Chat query handled successfully.");
-      setChatLoad(false);
     } catch (error) {
       console.error("Error sending query:", error);
+      setChatError("Chatbot has encountered an error. Please try again.");
+    } finally {
+      setChatLoad(false);
     }
   };
 
@@ -503,9 +483,9 @@ const ChatBot = () => {
       {/* Chat History Bar - Expanded or Skinny */}
       <div
         className={`
-          ${sidebarCollapsed ? "w-20" : "w-1/5"} 
+          ${sidebarCollapsed ? "w-20" : "w-1/5"}
           transition-width duration-300 ease-in-out
-          p-4 bg-gray-100 rounded-3xl border m-10 
+          p-4 bg-gray-100 rounded-3xl border m-10
           flex flex-col justify-between
           overflow-hidden
         `}
@@ -564,21 +544,31 @@ const ChatBot = () => {
 
             <ul className="space-y-2">
               {Array.isArray(conversations) && conversations.length > 0
-                ? conversations.map((conv) => (
-                    <li
-                      key={conv.conversation_id}
-                      className={`p-2 cursor-pointer rounded hover:bg-blue-400 transition-colors ${
-                        conversation_id === conv.conversation_id
-                          ? "bg-blue-500 text-black"
-                          : "bg-white text-black"
-                      }`}
-                      onClick={() =>
-                        loadConversation(conv.conversation_id, conv.messages)
-                      }
-                    >
-                      {conv ? conv.conversation_id : "dne"}
-                    </li>
-                  ))
+                ? [...conversations]
+                    .sort((a, b) => {
+                      const aTime = new Date(
+                        a.messages?.[a.messages.length - 1]?.timestamp || 0
+                      ).getTime();
+                      const bTime = new Date(
+                        b.messages?.[b.messages.length - 1]?.timestamp || 0
+                      ).getTime();
+                      return bTime - aTime; // Most recent first
+                    })
+                    .map((conv) => (
+                      <li
+                        key={conv.conversation_id}
+                        className={`p-2 cursor-pointer rounded hover:bg-blue-400 transition-colors ${
+                          conversation_id === conv.conversation_id
+                            ? "bg-blue-500 text-black"
+                            : "bg-white text-black"
+                        }`}
+                        onClick={() =>
+                          loadConversation(conv.conversation_id, conv.messages)
+                        }
+                      >
+                        {conv ? conv.conversation_id : "dne"}
+                      </li>
+                    ))
                 : null}
             </ul>
           </div>
@@ -601,11 +591,30 @@ const ChatBot = () => {
       {/* Main chat area */}
       <div
         className={`
-          ${sidebarCollapsed ? "w-full pr-24" : "w-3/4"} 
+          ${sidebarCollapsed ? "w-full pr-24" : "w-3/4"}
           transition-width duration-300 ease-in-out
           flex flex-col flex-1 p-5 relative overflow-hidden
         `}
       >
+        <div className="rounded-full bg-[#0F172A] w-full p-1 mt-4 mb-4 flex">
+          <img
+            src="/ProblemReportIcon.png"
+            alt="ProblemReportIcon"
+            className="h-6 w-auto pl-2 pr-2"
+          />
+          <span className="text-white">
+            This app is still in development. If you have any issues or
+            feedback,
+            <a
+              href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#5AED86] underline ml-1"
+            >
+              please click here
+            </a>
+          </span>
+        </div>
         {/* Chat container */}
         <div className="flex-grow flex flex-col overflow-hidden">
           <div className="w-full bg-[#F4F4F4] rounded-xl border flex flex-col flex-grow overflow-hidden">
@@ -632,10 +641,13 @@ const ChatBot = () => {
                 ))
               )}
 
-              {chatLoad && (
+              {chatLoad && !chatError && (
                 <div className="p-3 rounded-lg bg-[#E5E4E4] text-black self-start mr-auto border border-[#CBD5E1] w-fit max-w-sm">
-                  <span className="animate-pulse">Chatbot is typing...</span>
+                  <span className="animate-pulse">Thinking...</span>
                 </div>
+              )}
+              {chatError && (
+                <div className="text-red-500 font-semibold">{chatError}</div>
               )}
             </div>
           </div>
