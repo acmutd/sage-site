@@ -627,7 +627,7 @@ const ChatBot = () => {
                         : "bg-[#E5E4E4] text-black self-start mr-auto"
                     }`}
                   >
-                    {msg.content}
+                    <div style={{ whiteSpace: "pre-wrap" }}>{msg.content}</div>
                   </div>
                 ))
               )}
