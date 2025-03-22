@@ -25,6 +25,7 @@ const ChatBot = () => {
   >([]);
   const [chatHistoryLoad, setChatHistoryLoad] = useState(false);
   const [chatLoad, setChatLoad] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
@@ -71,7 +72,7 @@ const ChatBot = () => {
 
   // Fetch conversation data from Lambda (instead of directly from S3)
   const fetchConversation = async () => {
-    console.log("user.uid: ", user?.uid);
+    // console.log("user.uid: ", user?.uid);
 
     if (!user?.uid) {
       console.warn("User ID is missing. Cannot fetch conversations.");
@@ -112,7 +113,7 @@ const ChatBot = () => {
         throw new Error("Failed to retrieve authentication token.");
       }
 
-      console.log("token: ", token);
+      // console.log("token: ", token);
 
       // If cache is invalid or doesn't exist, fetch fresh data
       console.log("Fetching fresh conversations data");
@@ -128,17 +129,17 @@ const ChatBot = () => {
       });
 
       console.log("response: ", response);
-      console.log("API Response Status:", response.status);
+      // console.log("API Response Status:", response.status);
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(
           `Failed to fetch conversations: ${response.status} - ${errorText}`
         );
       }
-      console.log("after response");
+      // console.log("after response");
 
       const data = await response.json();
-      console.log("data: ", data);
+      // console.log("data: ", data);
       setConversations(Array.isArray(data) ? data : []);
 
       // Cache the fetched conversations with a timestamp
@@ -159,26 +160,20 @@ const ChatBot = () => {
 
   const startNewChat = () => {
     if (messages.length > 0 && conversation_id) {
-      // Save the existing conversation before starting a new one
       setConversations((prevConversations) => {
-        if (!Array.isArray(prevConversations)) {
-          console.error(
-            "prevConversations is not an array:",
-            prevConversations
-          );
-          return [];
-        }
+        if (!Array.isArray(prevConversations)) return [];
 
         const filteredConversations = prevConversations.filter(
           (conv) => conv.conversation_id !== conversation_id
         );
+
         return [
-          ...filteredConversations,
           {
             conversation_id,
             user_id: user?.uid || "test-user-123",
             messages,
           },
+          ...filteredConversations,
         ];
       });
     }
@@ -242,10 +237,23 @@ const ChatBot = () => {
 
     // If no valid cache or cache expired, fetch fresh data
     const data = await fetchConversation();
-    if (!data || data.length === 0) return;
 
-    const lastConversation = data.length - 1;
-    const lastConversationData = data[lastConversation];
+    if (!Array.isArray(data) || data.length === 0) {
+      console.warn("No valid data returned from fetchConversation");
+      return;
+    }
+
+    const sorted = [...data].sort((a, b) => {
+      const aTime = new Date(
+        a.messages?.[a.messages.length - 1]?.timestamp || 0
+      ).getTime();
+      const bTime = new Date(
+        b.messages?.[b.messages.length - 1]?.timestamp || 0
+      ).getTime();
+      return bTime - aTime; // Most recent first
+    });
+
+    const lastConversationData = sorted[0];
 
     if (lastConversationData) {
       setMessages(lastConversationData.messages || []);
@@ -278,6 +286,7 @@ const ChatBot = () => {
     console.log("Sending query:", query);
 
     setChatLoad(true);
+    setChatError(null);
 
     const userMessage = { role: "user", content: query };
     const updatedMessagesWithUser = [...messages, userMessage];
@@ -292,16 +301,11 @@ const ChatBot = () => {
       })
     );
 
-    console.log("CHAT_API:", CHAT_API);
+    // console.log("CHAT_API:", CHAT_API);
     if (!CHAT_API) {
       console.error("CHAT_API is missing. Check your .env file.");
       return;
     }
-
-    console.log(
-      "Current conversation_id before sending request:",
-      conversation_id
-    );
 
     const requestBody: any = {
       id: user?.uid,
@@ -313,9 +317,6 @@ const ChatBot = () => {
       requestBody.conversation_id = conversation_id;
     }
 
-    console.log("Sending request body:", JSON.stringify(requestBody, null, 2));
-    console.log("requestBody: ", requestBody);
-
     setQuery("");
 
     try {
@@ -325,8 +326,6 @@ const ChatBot = () => {
         body: JSON.stringify(requestBody),
       });
 
-      console.log("Response status:", response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(
@@ -335,8 +334,6 @@ const ChatBot = () => {
       }
 
       const data = await response.json();
-      console.log("Chatbot API response:", data);
-
       if (!data.response) {
         throw new Error("Chatbot API did not return a response.");
       }
@@ -346,65 +343,48 @@ const ChatBot = () => {
 
       setMessages(updatedMessagesWithBot);
 
+      const currentConvId = data.conversation_id || conversation_id;
+
+      setconversation_id(currentConvId);
+
+      // 👇 Only prepend the conversation to state/cache if it's new
+      setConversations((prevConversations) => {
+        console.log("Inside update - prevConversations:", prevConversations);
+        const filtered = prevConversations.filter(
+          (conv) => conv.conversation_id !== currentConvId
+        );
+
+        const newConv = {
+          conversation_id: currentConvId!,
+          user_id: user?.uid || "test-user-123",
+          messages: updatedMessagesWithBot,
+        };
+
+        const updated = [newConv, ...filtered];
+
+        saveConversationsToCache(updated);
+
+        return updated;
+      });
+
+      if (isNewConversation) {
+        setIsNewConversation(false);
+      }
+
+      // Update local cache
       localStorage.setItem(
         "chatbot_conversation",
         JSON.stringify({
           messages: updatedMessagesWithBot,
-          conversation_id: data.conversation_id || conversation_id,
+          conversation_id: currentConvId,
           timestamp: Date.now(),
         })
       );
-
-      const currentConvId = data.conversation_id || conversation_id;
-      if (data.conversation_id && data.conversation_id !== conversation_id) {
-        setconversation_id(data.conversation_id);
-      }
-
-      setConversations((prevConversations) => {
-        const updatedConversations = prevConversations.map((conv) =>
-          conv.conversation_id === currentConvId
-            ? { ...conv, messages: updatedMessagesWithBot }
-            : conv
-        );
-
-        if (
-          !updatedConversations.some(
-            (conv) => conv.conversation_id === currentConvId
-          )
-        ) {
-          updatedConversations.push({
-            conversation_id: currentConvId!,
-            user_id: user?.uid || "test-user-123",
-            messages: updatedMessagesWithBot,
-          });
-        }
-
-        console.log(
-          "Updated conversations before saving:",
-          updatedConversations
-        );
-
-        saveConversationsToCache(updatedConversations);
-
-        return updatedConversations;
-      });
-
-      if (isNewConversation) {
-        try {
-          await fetchConversation();
-        } catch (error) {
-          console.error(
-            "Error fetching conversation after first message:",
-            error
-          );
-        }
-        setIsNewConversation(false);
-      }
-
-      console.log("Chat query handled successfully.");
-      setChatLoad(false);
     } catch (error) {
       console.error("Error sending query:", error);
+      setChatError("Chatbot has encountered an error. Please try again.");
+    } finally {
+      setChatLoad(false);
     }
   };
 
@@ -441,7 +421,7 @@ const ChatBot = () => {
           "chatbot_conversations"
         );
 
-        console.log("cachedConversationsString: ", cachedConversationsString);
+        // console.log("cachedConversationsString: ", cachedConversationsString);
 
         if (cachedConversationsString) {
           const cachedConversations = JSON.parse(cachedConversationsString);
@@ -503,9 +483,9 @@ const ChatBot = () => {
       {/* Chat History Bar - Expanded or Skinny */}
       <div
         className={`
-          ${sidebarCollapsed ? "w-20" : "w-1/5"} 
+          ${sidebarCollapsed ? "w-20" : "w-1/5"}
           transition-width duration-300 ease-in-out
-          p-4 bg-gray-100 rounded-3xl border m-10 
+          p-4 bg-gray-100 rounded-3xl border m-10
           flex flex-col justify-between
           overflow-hidden
         `}
@@ -563,23 +543,37 @@ const ChatBot = () => {
             {error && <p className="text-red-500">{error}</p>}
 
             <ul className="space-y-2">
-              {Array.isArray(conversations) && conversations.length > 0
-                ? conversations.map((conv) => (
+              {Array.isArray(conversations) && conversations.length > 0 ? (
+                conversations.map((conv) => {
+                  // Use the first message to represent the conversation topic
+                  const firstMessage =
+                    conv.messages?.[0]?.content || "No messages";
+                  const truncatedMessage =
+                    firstMessage.length > 50
+                      ? firstMessage.substring(0, 50) + "..."
+                      : firstMessage;
+
+                  return (
                     <li
                       key={conv.conversation_id}
-                      className={`p-2 cursor-pointer rounded hover:bg-blue-400 transition-colors ${
+                      className={`p-2 cursor-pointer rounded hover:bg-[#c1d1c7] transition-colors ${
                         conversation_id === conv.conversation_id
-                          ? "bg-blue-500 text-black"
+                          ? "bg-[#d2e2d8] text-black"
                           : "bg-white text-black"
                       }`}
                       onClick={() =>
                         loadConversation(conv.conversation_id, conv.messages)
                       }
                     >
-                      {conv ? conv.conversation_id : "dne"}
+                      {truncatedMessage}
                     </li>
-                  ))
-                : null}
+                  );
+                })
+              ) : (
+                <li className="p-2 text-gray-500">
+                  No conversations available
+                </li>
+              )}
             </ul>
           </div>
         )}
@@ -601,11 +595,30 @@ const ChatBot = () => {
       {/* Main chat area */}
       <div
         className={`
-          ${sidebarCollapsed ? "w-full pr-24" : "w-3/4"} 
+          ${sidebarCollapsed ? "w-full pr-24" : "w-3/4"}
           transition-width duration-300 ease-in-out
           flex flex-col flex-1 p-5 relative overflow-hidden
         `}
       >
+        <div className="rounded-full bg-[#0F172A] w-full p-3 mt-4 mb-4 flex items-center">
+          <img
+            src="/ProblemReportIcon.png"
+            alt="ProblemReportIcon"
+            className="h-6 w-auto pl-2 pr-2"
+          />
+          <span className="text-white">
+            This app is still in development. If you have any issues or
+            feedback,
+            <a
+              href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#5AED86] underline ml-1"
+            >
+              please click here
+            </a>
+          </span>
+        </div>
         {/* Chat container */}
         <div className="flex-grow flex flex-col overflow-hidden">
           <div className="w-full bg-[#F4F4F4] rounded-xl border flex flex-col flex-grow overflow-hidden">
@@ -632,17 +645,20 @@ const ChatBot = () => {
                 ))
               )}
 
-              {chatLoad && (
+              {chatLoad && !chatError && (
                 <div className="p-3 rounded-lg bg-[#E5E4E4] text-black self-start mr-auto border border-[#CBD5E1] w-fit max-w-sm">
-                  <span className="animate-pulse">Chatbot is typing...</span>
+                  <span className="animate-pulse">Thinking...</span>
                 </div>
+              )}
+              {chatError && (
+                <div className="text-red-500 font-semibold">{chatError}</div>
               )}
             </div>
           </div>
           {/* Query Container */}
           <div className="w-full flex flex-row items-center justify-center p-3 border-t mt-4">
             <button
-              className={`p-3 rounded-full ${
+              className={`p-3 rounded-full mr-2 ${
                 !generateSchedule ? "bg-[#5AED86]" : "bg-[#D3E2D8]"
               }`}
               onClick={() => setGenerateSchedule(false)}
@@ -652,7 +668,7 @@ const ChatBot = () => {
             </button>
 
             <button
-              className={`p-3 rounded-full ${
+              className={`p-3 rounded-full mr-2 ${
                 generateSchedule ? "bg-[#5AED86]" : "bg-[#D3E2D8]"
               }`}
               onClick={() => setGenerateSchedule(true)}
@@ -660,12 +676,13 @@ const ChatBot = () => {
             >
               <CalendarSearchIcon size={24} className="text-black" />
             </button>
+
             <textarea
               ref={textareaRef}
               rows={1}
               placeholder="Ask a question..."
               aria-label="Chat input field"
-              className="w-full p-2 mr-4 border rounded-3xl resize-none overflow-auto-y focus:outline-none min-h-0 max-h-28"
+              className="w-full p-2 mr-2 border rounded-3xl resize-none overflow-auto-y focus:outline-none min-h-0 max-h-28" // Added right margin (mr-2)
               onChange={(e) => {
                 setQuery(e.target.value);
                 adjustTextareaHeight();

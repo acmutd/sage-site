@@ -9,8 +9,15 @@ import {
 } from "firebase/auth";
 import Cookies from "js-cookie";
 
-const AuthContext = createContext<{ user: User | null; logout: () => void }>({
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType>({
   user: null,
+  loading: true,
   logout: () => {},
 });
 
@@ -20,28 +27,30 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Ensure authentication persistence
         await setPersistence(auth, browserLocalPersistence);
 
-        // Listen for authentication state changes
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
           if (user) {
             setUser(user);
             const token = await user.getIdToken();
-            Cookies.set("authToken", token, { expires: 7 }); // Store auth token for 7 days
+            Cookies.set("authToken", token, { expires: 7 });
           } else {
             setUser(null);
-            Cookies.remove("authToken"); // Clear cookies on logout
+            Cookies.remove("authToken");
           }
+
+          setLoading(false);
         });
 
         return unsubscribe;
       } catch (error) {
         console.error("Error setting auth persistence:", error);
+        setLoading(false); // Fail-safe to prevent permanent loading
       }
     };
 
@@ -59,8 +68,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, logout }}>
-      {children}
+    <AuthContext.Provider value={{ user, loading, logout }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
