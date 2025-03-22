@@ -55,7 +55,7 @@ const Navbar = () => {
                 // If user is logged in, show Sign Out button
                 <button
                   onClick={logout} // Calls logout function
-                  className="bg-red-500 text-white text-base px-8 py-3 rounded-full font-semibold hover:bg-red-600 transition duration-300"
+                  className="bg-red-500 text-white text-base px-6 py-1.5 rounded-full font-semibold hover:bg-red-600 transition duration-300"
                 >
                   Sign Out
                 </button>

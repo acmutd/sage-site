@@ -72,7 +72,7 @@ const ChatBot = () => {
 
   // Fetch conversation data from Lambda (instead of directly from S3)
   const fetchConversation = async () => {
-    console.log("user.uid: ", user?.uid);
+    // console.log("user.uid: ", user?.uid);
 
     if (!user?.uid) {
       console.warn("User ID is missing. Cannot fetch conversations.");
@@ -113,7 +113,7 @@ const ChatBot = () => {
         throw new Error("Failed to retrieve authentication token.");
       }
 
-      console.log("token: ", token);
+      // console.log("token: ", token);
 
       // If cache is invalid or doesn't exist, fetch fresh data
       console.log("Fetching fresh conversations data");
@@ -129,17 +129,17 @@ const ChatBot = () => {
       });
 
       console.log("response: ", response);
-      console.log("API Response Status:", response.status);
+      // console.log("API Response Status:", response.status);
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(
           `Failed to fetch conversations: ${response.status} - ${errorText}`
         );
       }
-      console.log("after response");
+      // console.log("after response");
 
       const data = await response.json();
-      console.log("data: ", data);
+      // console.log("data: ", data);
       setConversations(Array.isArray(data) ? data : []);
 
       // Cache the fetched conversations with a timestamp
@@ -301,7 +301,7 @@ const ChatBot = () => {
       })
     );
 
-    console.log("CHAT_API:", CHAT_API);
+    // console.log("CHAT_API:", CHAT_API);
     if (!CHAT_API) {
       console.error("CHAT_API is missing. Check your .env file.");
       return;
@@ -421,7 +421,7 @@ const ChatBot = () => {
           "chatbot_conversations"
         );
 
-        console.log("cachedConversationsString: ", cachedConversationsString);
+        // console.log("cachedConversationsString: ", cachedConversationsString);
 
         if (cachedConversationsString) {
           const cachedConversations = JSON.parse(cachedConversationsString);
