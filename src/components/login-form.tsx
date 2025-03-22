@@ -1,9 +1,6 @@
-"use client";
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useState } from "react";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -39,7 +36,6 @@ type FormValues = z.infer<typeof formSchema>;
 export default function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [resetMessage, setResetMessage] = useState("");
   const from = location.state?.from || "/chatbot";
 
   const form = useForm<FormValues>({

@@ -1,10 +1,4 @@
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-  Link,
-} from "react-router-dom";
+import { Routes, Route, Navigate, Link } from "react-router-dom";
 import LandingPage from "../pages/LandingPage";
 import Planner from "../pages/Planner";
 import ChatBot from "../pages/ChatBot";
