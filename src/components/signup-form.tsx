@@ -223,7 +223,7 @@ export default function SignupForm() {
       <p className="text-center text-[14px] text-[#6B7280] mt-4">
         By signing up, you agree to our{" "}
         <a
-          href="/public/tos.pdf"
+          href="/tos.pdf"
           target="_blank"
           className="text-[#10B981] hover:underline"
         >
