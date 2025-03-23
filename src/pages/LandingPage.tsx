@@ -22,13 +22,13 @@ const LandingPage = () => {
         </h1>
         <div className="flex bg-[#181818] gap-4 rounded-l-full pr-8 absolute top-[calc(45vh+20vw)] left-[10vw]">
           <Link
-            to="/"
+            to="/planner"
             className="bg-[#5AED86] border-[#5AED86] border-2 text-black text-[1.1vw] scale-[50vw] px-8 py-3 rounded-full font-semibold hover:bg-transparent hover:text-white transition duration-300"
           >
             Generate a degree plan
           </Link>
           <Link
-            to="/"
+            to="/chatbot"
             className="border-[#5AED86] border-2 text-white text-[1.1vw] px-8 py-3 rounded-full font-semibold hover:bg-[#5AED86] hover:text-black transition duration-300"
           >
             Ask a question
