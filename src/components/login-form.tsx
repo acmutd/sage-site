@@ -8,7 +8,7 @@ import {
   sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "@/firebase-config";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import Cookies from "js-cookie";
 import { toast } from "sonner";
 
@@ -191,12 +191,12 @@ export default function LoginForm() {
           Forgot password?
         </button>
 
-        <a
-          href="/signup"
+        <Link
+          to="/signup"
           className="text-[15px] text-[#6B7280] hover:underline"
         >
           Don't have an account?
-        </a>
+        </Link>
       </div>
     </div>
   );
