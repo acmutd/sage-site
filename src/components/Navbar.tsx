@@ -12,7 +12,7 @@ const Navbar = () => {
 
   return (
     <AuthProvider>
-      <nav className="p-8 fixed w-full z-10">
+      <nav className="py-4 px-6 fixed w-full z-10">
         <div className="flex items-center justify-between w-full">
           <Link to="/" className="ml-0">
             <img src="/Sage_Logo_Light.svg" alt="SAGE" className="h-8 w-auto" />

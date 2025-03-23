@@ -475,7 +475,7 @@ const ChatBot = () => {
   }, [conversation_id]);
 
   return (
-    <div className="flex flex-1 bg-[#F9FBF9] overflow-hidden mt-20 min-h-[calc(100vh-5rem)] max-h-[calc(100vh-5rem)]">
+    <div className="flex flex-1 bg-[#F9FBF9] overflow-hidden mt-[4.25rem] min-h-[calc(100vh-5rem)] max-h-[calc(100vh-5rem)]">
       {/* Chat History Bar - Expanded or Skinny */}
       <div
         className={`
