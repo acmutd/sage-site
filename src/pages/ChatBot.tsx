@@ -622,11 +622,67 @@ const ChatBot = () => {
               ref={chatContainerRef}
               className="flex-1 p-3 overflow-y-auto space-y-2 flex flex-col items-center"
             >
-              {messages.length === 0 && !chatLoad ? (
-                <p className="text-gray-500 text-lg">
-                  Please say something to start
-                </p>
+              {messages.length === 0 && !chatLoad && !generateSchedule ? (
+                // Case 1: Intro content
+                <div className="w-full max-w-2xl text-left text-gray-700">
+                  <h1 className="text-3xl font-bold mb-2 font-mermaid">
+                    Hi, I’m Sage.
+                  </h1>
+                  <h2 className="text-xl font-semibold mb-4 font-dmsans">
+                    What can I help with?
+                  </h2>
+                  <p className="text-base text-gray-500 mb-2 font-dmsans">
+                    Here are some example questions that I can help you with:
+                  </p>
+                  <ul className="list-disc list-inside text-gray-500 text-sm space-y-1 pl-4 font-dmsans">
+                    <li>What time is the CSMC open?</li>
+                    <li>What are the requirements for graduation?</li>
+                    <li>
+                      How can I enroll in classes I don't have prereqs for if I
+                      plan to take the prereqs over the summer?
+                    </li>
+                    <li>Tell me about ACM UTD.</li>
+                  </ul>
+                </div>
+              ) : messages.length === 0 && !chatLoad && generateSchedule ? (
+                // Case 2: Custom rendering for generateSchedule = true
+                <div className="w-full max-w-2xl text-left text-gray-700">
+                  <h1 className="text-3xl font-bold mb-2 font-mermaid">
+                    Hi, I’m Sage.
+                  </h1>
+                  <h2 className="text-xl font-semibold mb-4 font-dmsans">
+                    Let's start building your schedule!
+                  </h2>
+                  <p className="text-base text-gray-500 mb-2 font-dmsans">
+                    Here are some example queries for the schedule generator
+                    that I can help you with:
+                  </p>
+                  <ul className="list-disc list-inside text-gray-500 text-sm space-y-1 pl-4 font-dmsans">
+                    <li>
+                      Generate a schedule with CS 2305, ECS 2390, CS 2336, CS
+                      2340, and PHYS 2325.
+                    </li>
+                    <li>
+                      I work after 4pm on Tuesday and Thursday. Can you avoid
+                      classes during that time?
+                    </li>
+                    <li>
+                      My friend is in CS 2336.002, can we make sure to include
+                      that class?
+                    </li>
+                    <li>Swap CS 2336 for CS 3341.</li>
+                    <li>
+                      I want Professor John Cole for CS 2340. Can we only use
+                      his sections?
+                    </li>
+                    <li>
+                      I need to enroll for summer classes, please generate a
+                      schedule using summer sections.
+                    </li>
+                  </ul>
+                </div>
               ) : (
+                // Case 3: Render chat messages
                 messages.map((msg, index) => (
                   <div
                     key={index}
@@ -654,8 +710,10 @@ const ChatBot = () => {
           {/* Query Container */}
           <div className="w-full flex flex-row items-center justify-center p-3 border-t mt-4">
             <button
-              className={`p-3 rounded-full mr-2 ${
-                !generateSchedule ? "bg-[#5AED86]" : "bg-[#D3E2D8]"
+              className={`p-3 rounded-full mr-2 transition-colors duration-200 ${
+                !generateSchedule
+                  ? "bg-[#5AED86] hover:bg-[#3CB765]"
+                  : "bg-[#D3E2D8] hover:bg-[#A9BFB4]"
               }`}
               onClick={() => setGenerateSchedule(false)}
               aria-label="Set to False"
@@ -664,8 +722,10 @@ const ChatBot = () => {
             </button>
 
             <button
-              className={`p-3 rounded-full mr-2 ${
-                generateSchedule ? "bg-[#5AED86]" : "bg-[#D3E2D8]"
+              className={`p-3 rounded-full mr-2 transition-colors duration-200 ${
+                generateSchedule
+                  ? "bg-[#5AED86] hover:bg-[#3CB765]"
+                  : "bg-[#D3E2D8] hover:bg-[#A9BFB4]"
               }`}
               onClick={() => setGenerateSchedule(true)}
               aria-label="Set to True"
