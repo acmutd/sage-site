@@ -12,9 +12,9 @@ const Planner = () => {
       <div className="relative z-10 flex items-center justify-center h-full">
         <div className="bg-black bg-opacity-60 px-8 py-6 rounded-2xl shadow-lg text-center">
           <h1 className="text-3xl md:text-5xl font-bold text-white">
-            Experimental Release
+            Planner Coming Soon
           </h1>
-          <p className="text-white mt-2 text-lg">Coming Soon</p>
+          <p className="text-white mt-2 text-lg">Not available in experimental release</p>
         </div>
       </div>
     </div>
