@@ -23,6 +23,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
+const VITE_CRUD_API = import.meta.env.VITE_CRUD_API;
+
 const formSchema = z
   .object({
     email: z.string().email({ message: "Please enter a valid email address" }),
@@ -40,8 +42,6 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function SignupForm() {
   const navigate = useNavigate();
-
-  const VITE_CRUD_API = import.meta.env.VITE_CRUD_API;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

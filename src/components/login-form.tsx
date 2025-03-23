@@ -24,6 +24,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
+const VITE_CRUD_API = import.meta.env.VITE_CRUD_API;
+
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z
@@ -67,6 +69,17 @@ export default function LoginForm() {
 
       const token = await user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
+
+      await fetch(VITE_CRUD_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: result.user.uid,
+          token: token,
+          action: "createUser",
+        }),
+      });
+
       toast.success("Successfully signed in with Google!");
       navigate(from, { replace: true });
     } catch (error) {
