@@ -620,7 +620,7 @@ const ChatBot = () => {
           <div className="w-full bg-[#F4F4F4] rounded-xl border flex flex-col flex-grow overflow-hidden">
             <div
               ref={chatContainerRef}
-              className="flex-1 p-3 overflow-y-auto space-y-2 flex flex-col justify-center items-center"
+              className="flex-1 p-3 overflow-y-auto space-y-2 flex flex-col items-center"
             >
               {messages.length === 0 && !chatLoad ? (
                 <p className="text-gray-500 text-lg">
