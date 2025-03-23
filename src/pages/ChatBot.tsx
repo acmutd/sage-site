@@ -9,7 +9,7 @@ import {
   GraduationCapIcon,
   CalendarSearchIcon,
 } from "lucide-react";
-import { v4 as uuidv4 } from "uuid"; // Import UUID generator
+import { v4 as uuidv4 } from "uuid";
 
 const CACHE_EXPIRATION_TIME = 60 * 60 * 1000;
 
@@ -47,10 +47,6 @@ const ChatBot = () => {
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
-  };
-
-  const handleToggleChange = () => {
-    setGenerateSchedule((prev) => !prev);
   };
 
   // Check if the cached data is still valid

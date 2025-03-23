@@ -1,9 +1,6 @@
-"use client";
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useState } from "react";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -11,7 +8,7 @@ import {
   sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "@/firebase-config";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import Cookies from "js-cookie";
 import { toast } from "sonner";
 
@@ -39,7 +36,6 @@ type FormValues = z.infer<typeof formSchema>;
 export default function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [resetMessage, setResetMessage] = useState("");
   const from = location.state?.from || "/chatbot";
 
   const form = useForm<FormValues>({
@@ -195,12 +191,12 @@ export default function LoginForm() {
           Forgot password?
         </button>
 
-        <a
-          href="/signup"
+        <Link
+          to="/signup"
           className="text-[15px] text-[#6B7280] hover:underline"
         >
           Don't have an account?
-        </a>
+        </Link>
       </div>
     </div>
   );
