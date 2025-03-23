@@ -1,11 +1,5 @@
-import { Routes, Route, Navigate, Link } from "react-router-dom";
-import LandingPage from "../pages/LandingPage";
-import Planner from "../pages/Planner";
-import ChatBot from "../pages/ChatBot";
-import LoginPage from "../pages/LoginPage";
-import SignUp from "../pages/SignUp";
+import { Link } from "react-router-dom";
 import { AuthProvider, useAuth } from "../context/AuthContext";
-import ProtectedRoute from "./ProtectedRoute";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -66,30 +60,6 @@ const Navbar = () => {
           </ul>
         </div>
       </nav>
-      <div className="min-h-screen">
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route
-            path="/planner"
-            element={
-              <ProtectedRoute>
-                <Planner />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/chatbot"
-            element={
-              <ProtectedRoute>
-                <ChatBot />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
     </AuthProvider>
   );
 };
