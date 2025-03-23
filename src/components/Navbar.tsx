@@ -1,18 +1,12 @@
-import { Routes, Route, Navigate, Link } from "react-router-dom";
-import LandingPage from "../pages/LandingPage";
-import Planner from "../pages/Planner";
-import ChatBot from "../pages/ChatBot";
-import LoginPage from "../pages/LoginPage";
-import SignUp from "../pages/SignUp";
+import { Link } from "react-router-dom";
 import { AuthProvider, useAuth } from "../context/AuthContext";
-import ProtectedRoute from "./ProtectedRoute";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
 
   return (
     <AuthProvider>
-      <nav className="p-8 fixed w-full z-10">
+      <nav className="py-4 px-6 fixed w-full z-10">
         <div className="flex items-center justify-between w-full">
           <Link to="/" className="ml-0">
             <img src="/Sage_Logo_Light.svg" alt="SAGE" className="h-8 w-auto" />
@@ -66,30 +60,6 @@ const Navbar = () => {
           </ul>
         </div>
       </nav>
-      <div className="min-h-screen">
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route
-            path="/planner"
-            element={
-              <ProtectedRoute>
-                <Planner />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/chatbot"
-            element={
-              <ProtectedRoute>
-                <ChatBot />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
     </AuthProvider>
   );
 };
