@@ -1,6 +1,5 @@
 {
     "rewrites": [
-        {"source": "/(.*)", "destination": "/"}, 
-        {"source": "/public/tos.pdf", "destination": "/public/tos.pdf"}
+        {"source": "/(.*)", "destination": "/"}
     ]
 }

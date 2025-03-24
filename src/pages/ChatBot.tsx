@@ -10,15 +10,14 @@ import {
   CalendarSearchIcon,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
+import MessageDisplay from "@/components/chatbot/MessageDisplay";
 
 const CACHE_EXPIRATION_TIME = 60 * 60 * 1000;
 
 const ChatBot = () => {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
-  const [messages, setMessages] = useState<{ role: string; content: string }[]>(
-    []
-  );
+  const [messages, setMessages] = useState<Message[]>([]);
   const [conversation_id, setconversation_id] = useState<string | null>(null);
   const [conversations, setConversations] = useState<
     { conversation_id: string; user_id: string; messages: any[] }[]
@@ -30,6 +29,12 @@ const ChatBot = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
   const [generateSchedule, setGenerateSchedule] = useState(false);
+  const [hovered, setHovered] = useState<"advising" | "schedule" | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const buttonRefs = {
+    advising: useRef(null),
+    schedule: useRef(null),
+  };
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
@@ -50,9 +55,13 @@ const ChatBot = () => {
   };
 
   // Check if the cached data is still valid
-  const isCacheValid = (timestamp: number): boolean => {
+  const isCacheValid = (timestamp: number, cacheUserId: any): boolean => {
+    if (!user?.uid || !timestamp || !cacheUserId) return false;
     const currentTime = Date.now();
-    return currentTime - timestamp < CACHE_EXPIRATION_TIME;
+    return (
+      currentTime - timestamp < CACHE_EXPIRATION_TIME &&
+      user.uid === cacheUserId
+    );
   };
 
   // Save conversation data with timestamp to localStorage
@@ -62,6 +71,7 @@ const ChatBot = () => {
       JSON.stringify({
         data: conversations,
         timestamp: Date.now(),
+        userId: user?.uid,
       })
     );
   };
@@ -87,7 +97,14 @@ const ChatBot = () => {
       if (cachedConversationsString) {
         const cachedConversations = JSON.parse(cachedConversationsString);
 
-        if (isCacheValid(cachedConversations.timestamp)) {
+        if (
+          cachedConversations.timestamp &&
+          cachedConversations.userId &&
+          isCacheValid(
+            cachedConversations.timestamp,
+            cachedConversations.userId
+          )
+        ) {
           console.log("Using cached conversations data");
           setConversations(
             Array.isArray(cachedConversations.data)
@@ -186,6 +203,7 @@ const ChatBot = () => {
         messages: [],
         conversation_id: newConversationId,
         timeStamp: Date.now(),
+        cacheUserId: user?.uid,
       })
     );
   };
@@ -195,7 +213,12 @@ const ChatBot = () => {
     setMessages(messages);
     localStorage.setItem(
       "chatbot_conversation",
-      JSON.stringify({ messages, conversation_id: id, timestamp: Date.now() })
+      JSON.stringify({
+        messages,
+        conversation_id: id,
+        timestamp: Date.now(),
+        cacheUserId: user?.uid,
+      })
     );
   };
 
@@ -203,12 +226,14 @@ const ChatBot = () => {
     if (!user?.uid) return;
 
     const cachedData = localStorage.getItem("chatbot_conversation");
+    console.log(user.uid);
 
     if (cachedData) {
-      const { messages, conversation_id, timestamp } = JSON.parse(cachedData);
+      const { messages, conversation_id, timestamp, cacheUserId } =
+        JSON.parse(cachedData);
 
       // Check if the cached conversation is still valid
-      if (timestamp && isCacheValid(timestamp)) {
+      if (timestamp && cacheUserId && isCacheValid(timestamp, cacheUserId)) {
         console.log("Using cached current conversation");
         setMessages(messages || []);
         setconversation_id(conversation_id || null);
@@ -219,7 +244,14 @@ const ChatBot = () => {
         );
         if (cachedConversationsString) {
           const cachedConversations = JSON.parse(cachedConversationsString);
-          if (isCacheValid(cachedConversations.timestamp)) {
+          if (
+            cachedConversations.timestamp &&
+            cachedConversations.userId &&
+            isCacheValid(
+              cachedConversations.timestamp,
+              cachedConversations.userId
+            )
+          ) {
             setConversations(
               Array.isArray(cachedConversations.data)
                 ? cachedConversations.data
@@ -228,6 +260,8 @@ const ChatBot = () => {
             return;
           }
         }
+      } else {
+        localStorage.removeItem("chatbot_conversation");
       }
     }
 
@@ -261,6 +295,7 @@ const ChatBot = () => {
           messages: lastConversationData.messages || [],
           conversation_id: lastConversationData.conversation_id,
           timestamp: Date.now(),
+          cacheUserId: user?.uid,
         })
       );
     }
@@ -294,6 +329,7 @@ const ChatBot = () => {
         messages: updatedMessagesWithUser,
         conversation_id,
         timestamp: Date.now(),
+        cacheUserId: user?.uid,
       })
     );
 
@@ -374,6 +410,7 @@ const ChatBot = () => {
           messages: updatedMessagesWithBot,
           conversation_id: currentConvId,
           timestamp: Date.now(),
+          cacheUserId: user?.uid,
         })
       );
     } catch (error) {
@@ -408,6 +445,26 @@ const ChatBot = () => {
   }, [messages]); // Runs when messages change
 
   useEffect(() => {
+    const updateTooltipPosition = (
+      buttonRef: React.RefObject<HTMLButtonElement>
+    ) => {
+      if (buttonRef && buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        setTooltipPosition({
+          top: rect.top - 50,
+          left: rect.left + rect.width / 2,
+        });
+      }
+    };
+
+    if (hovered === "advising") {
+      updateTooltipPosition(buttonRefs.advising);
+    } else if (hovered === "schedule") {
+      updateTooltipPosition(buttonRefs.schedule);
+    }
+  }, [hovered]);
+
+  useEffect(() => {
     const reloadChatHistory = async () => {
       if (!conversation_id) return;
 
@@ -422,7 +479,14 @@ const ChatBot = () => {
         if (cachedConversationsString) {
           const cachedConversations = JSON.parse(cachedConversationsString);
 
-          if (isCacheValid(cachedConversations.timestamp)) {
+          if (
+            cachedConversations.timestamp &&
+            cachedConversations.userId &&
+            isCacheValid(
+              cachedConversations.timestamp,
+              cachedConversations.userId
+            )
+          ) {
             console.log("Using cached conversations for history");
             const selectedConversation = cachedConversations.data.find(
               (conv: { conversation_id: string; messages: any[] }) =>
@@ -438,6 +502,7 @@ const ChatBot = () => {
                   messages: selectedConversation.messages || [],
                   conversation_id,
                   timestamp: Date.now(),
+                  cacheUserId: user?.uid,
                 })
               );
               return;
@@ -463,6 +528,7 @@ const ChatBot = () => {
               messages: selectedConversation.messages || [],
               conversation_id,
               timestamp: Date.now(),
+              cacheUserId: user?.uid,
             })
           );
         }
@@ -622,22 +688,74 @@ const ChatBot = () => {
               ref={chatContainerRef}
               className="flex-1 p-3 overflow-y-auto space-y-2 flex flex-col items-center"
             >
-              {messages.length === 0 && !chatLoad ? (
-                <p className="text-gray-500 text-lg">
-                  Please say something to start
-                </p>
+              {messages.length === 0 && !chatLoad && !generateSchedule ? (
+                // Case 1: Intro content
+                <div className="w-full max-w-2xl text-left text-gray-700">
+                  <h1 className="text-3xl font-bold mb-2 font-mermaid">
+                    Hi, I’m Sage.
+                  </h1>
+                  <h2 className="text-xl font-semibold mb-4 font-dmsans">
+                    What can I help with?
+                  </h2>
+                  <p className="text-base text-gray-500 mb-2 font-dmsans">
+                    Here are some example questions that I can help you with:
+                  </p>
+                  <ul className="list-disc list-inside text-gray-500 text-sm space-y-1 pl-4 font-dmsans">
+                    <li>What time is the CSMC open?</li>
+                    <li>What are the requirements for graduation?</li>
+                    <li>
+                      How can I enroll in classes I don't have prereqs for if I
+                      plan to take the prereqs over the summer?
+                    </li>
+                    <li>Tell me about ACM UTD and how I can get involved!</li>
+                    <li>
+                      What classes should a first-year graphic design major
+                      take?
+                    </li>
+                    <li>What do you know about Professor John Cole?</li>
+                  </ul>
+                </div>
+              ) : messages.length === 0 && !chatLoad && generateSchedule ? (
+                // Case 2: Custom rendering for generateSchedule = true
+                <div className="w-full max-w-2xl text-left text-gray-700">
+                  <h1 className="text-3xl font-bold mb-2 font-mermaid">
+                    Hi, I’m Sage.
+                  </h1>
+                  <h2 className="text-xl font-semibold mb-4 font-dmsans">
+                    Let's start building your schedule!
+                  </h2>
+                  <p className="text-base text-gray-500 mb-2 font-dmsans">
+                    Here are some example queries for the schedule generator
+                    that I can help you with:
+                  </p>
+                  <ul className="list-disc list-inside text-gray-500 text-sm space-y-1 pl-4 font-dmsans">
+                    <li>
+                      Generate a schedule with CS 2305, ECS 2390, CS 2336, CS
+                      2340, and PHYS 2325.
+                    </li>
+                    <li>
+                      I work after 4pm on Tuesday and Thursday. Can you avoid
+                      classes during that time?
+                    </li>
+                    <li>
+                      My friend is in CS 2336.002, can we make sure to include
+                      that class?
+                    </li>
+                    <li>Swap CS 2336 for CS 3341.</li>
+                    <li>
+                      I want Professor John Cole for CS 2340. Can we only use
+                      his sections?
+                    </li>
+                    <li>
+                      I need to enroll for summer classes, please generate a
+                      schedule using summer sections.
+                    </li>
+                  </ul>
+                </div>
               ) : (
                 messages.map((msg, index) => (
-                  <div
-                    key={index}
-                    className={`p-3 rounded-lg border border-[#CBD5E1] w-fit max-w-sm ${
-                      msg.role === "user"
-                        ? "bg-[#F9FBF9] text-black self-end ml-auto"
-                        : "bg-[#E5E4E4] text-black self-start mr-auto"
-                    }`}
-                  >
-                    <div style={{ whiteSpace: "pre-wrap" }}>{msg.content}</div>
-                  </div>
+                  // Case 3: Render chat messages
+                  <MessageDisplay key={index} message={msg} />
                 ))
               )}
 
@@ -653,25 +771,64 @@ const ChatBot = () => {
           </div>
           {/* Query Container */}
           <div className="w-full flex flex-row items-center justify-center p-3 border-t mt-4">
-            <button
-              className={`p-3 rounded-full mr-2 ${
-                !generateSchedule ? "bg-[#5AED86]" : "bg-[#D3E2D8]"
-              }`}
-              onClick={() => setGenerateSchedule(false)}
-              aria-label="Set to False"
+            {/* General Advising Button */}
+            <div
+              className="relative"
+              onMouseEnter={() => setHovered("advising")}
+              onMouseLeave={() => setHovered(null)}
+              ref={buttonRefs.advising}
             >
-              <GraduationCapIcon size={24} className="text-black" />
-            </button>
+              <button
+                className={`p-3 rounded-full mr-2 transition-colors duration-200 ${
+                  !generateSchedule
+                    ? "bg-[#5AED86] hover:bg-[#3CB765]"
+                    : "bg-[#D3E2D8] hover:bg-[#A9BFB4]"
+                }`}
+                onClick={() => setGenerateSchedule(false)}
+                aria-label="Ask a general advising question"
+              >
+                <GraduationCapIcon size={24} className="text-black" />
+              </button>
+            </div>
 
-            <button
-              className={`p-3 rounded-full mr-2 ${
-                generateSchedule ? "bg-[#5AED86]" : "bg-[#D3E2D8]"
-              }`}
-              onClick={() => setGenerateSchedule(true)}
-              aria-label="Set to True"
+            {/* Generate Schedule Button */}
+            <div
+              className="relative"
+              onMouseEnter={() => setHovered("schedule")}
+              onMouseLeave={() => setHovered(null)}
+              ref={buttonRefs.schedule}
             >
-              <CalendarSearchIcon size={24} className="text-black" />
-            </button>
+              <button
+                className={`p-3 rounded-full mr-2 transition-colors duration-200 ${
+                  generateSchedule
+                    ? "bg-[#5AED86] hover:bg-[#3CB765]"
+                    : "bg-[#D3E2D8] hover:bg-[#A9BFB4]"
+                }`}
+                onClick={() => setGenerateSchedule(true)}
+                aria-label="Generate your class schedule"
+              >
+                <CalendarSearchIcon size={24} className="text-black" />
+              </button>
+            </div>
+
+            {/* Tooltip popup */}
+            {hovered && (
+              <div
+                style={{
+                  position: "fixed",
+                  top: tooltipPosition.top,
+                  left: tooltipPosition.left,
+                  transform: "translateX(-50%)",
+                  zIndex: 1000,
+                }}
+                className="bg-black text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap"
+              >
+                {hovered === "advising"
+                  ? "Ask a general advising question"
+                  : "Generate your class schedule"}
+                <div className="absolute left-1/2 -bottom-2 transform -translate-x-3/4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-black"></div>
+              </div>
+            )}
 
             <textarea
               ref={textareaRef}

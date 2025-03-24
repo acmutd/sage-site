@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -24,6 +25,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
+const VITE_CRUD_API = import.meta.env.VITE_CRUD_API;
+
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z
@@ -37,6 +40,7 @@ export default function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from || "/chatbot";
+  const [loginError, setLoginError] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -67,6 +71,17 @@ export default function LoginForm() {
 
       const token = await user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
+
+      await fetch(VITE_CRUD_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: result.user.uid,
+          token: token,
+          action: "createUser",
+        }),
+      });
+
       toast.success("Successfully signed in with Google!");
       navigate(from, { replace: true });
     } catch (error) {
@@ -108,12 +123,22 @@ export default function LoginForm() {
       } else {
         toast.error("An unknown error occurred.");
       }
+      setLoginError(true);
     }
   }
 
   return (
     <div className="w-full space-y-6">
       <Form {...form}>
+        {loginError && (
+          <p className="text-red-500 text-sm">
+            Login failed. Please verify your credentials or{" "}
+            <Link to="/signup" className="underline font-bold">
+              sign up
+            </Link>{" "}
+            if you don’t have an account.
+          </p>
+        )}
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
             control={form.control}
@@ -129,6 +154,10 @@ export default function LoginForm() {
                     type="email"
                     className="h-[2.5rem] px-4 rounded-full border border-[#E5E5E5] text-[15px] placeholder:text-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
                     {...field}
+                    onChange={(e) => {
+                      setLoginError(false);
+                      field.onChange(e);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -149,6 +178,10 @@ export default function LoginForm() {
                     type="password"
                     className="h-[2.5rem] px-4 rounded-full border border-[#E5E5E5] text-[15px] placeholder:text-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
                     {...field}
+                    onChange={(e) => {
+                      setLoginError(false);
+                      field.onChange(e);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
