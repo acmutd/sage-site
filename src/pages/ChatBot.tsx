@@ -10,13 +10,14 @@ import {
   CalendarSearchIcon,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
+import MessageDisplay from "@/components/chatbot/MessageDisplay";
 
 const CACHE_EXPIRATION_TIME = 60 * 60 * 1000;
 
 const ChatBot = () => {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
-  const [messages, setMessages] = useState<{ role: string; content: string }[]>(
+  const [messages, setMessages] = useState<Message[]>(
     []
   );
   const [conversation_id, setconversation_id] = useState<string | null>(null);
@@ -627,18 +628,7 @@ const ChatBot = () => {
                   Please say something to start
                 </p>
               ) : (
-                messages.map((msg, index) => (
-                  <div
-                    key={index}
-                    className={`p-3 rounded-lg border border-[#CBD5E1] w-fit max-w-sm ${
-                      msg.role === "user"
-                        ? "bg-[#F9FBF9] text-black self-end ml-auto"
-                        : "bg-[#E5E4E4] text-black self-start mr-auto"
-                    }`}
-                  >
-                    <div style={{ whiteSpace: "pre-wrap" }}>{msg.content}</div>
-                  </div>
-                ))
+                messages.map((msg, index) => <MessageDisplay key={index} message={msg} />)
               )}
 
               {chatLoad && !chatError && (
