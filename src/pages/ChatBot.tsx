@@ -30,6 +30,12 @@ const ChatBot = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
   const [generateSchedule, setGenerateSchedule] = useState(false);
+  const [hovered, setHovered] = useState<"advising" | "schedule" | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const buttonRefs = {
+    advising: useRef(null),
+    schedule: useRef(null),
+  };
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
@@ -440,6 +446,26 @@ const ChatBot = () => {
   }, [messages]); // Runs when messages change
 
   useEffect(() => {
+    const updateTooltipPosition = (
+      buttonRef: React.RefObject<HTMLButtonElement>
+    ) => {
+      if (buttonRef && buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        setTooltipPosition({
+          top: rect.top - 50,
+          left: rect.left + rect.width / 2,
+        });
+      }
+    };
+
+    if (hovered === "advising") {
+      updateTooltipPosition(buttonRefs.advising);
+    } else if (hovered === "schedule") {
+      updateTooltipPosition(buttonRefs.schedule);
+    }
+  }, [hovered]);
+
+  useEffect(() => {
     const reloadChatHistory = async () => {
       if (!conversation_id) return;
 
@@ -682,7 +708,12 @@ const ChatBot = () => {
                       How can I enroll in classes I don't have prereqs for if I
                       plan to take the prereqs over the summer?
                     </li>
-                    <li>Tell me about ACM UTD.</li>
+                    <li>Tell me about ACM UTD and how I can get involved!</li>
+                    <li>
+                      What classes should a first-year graphic design major
+                      take?
+                    </li>
+                    <li>What do you know about Professor John Cole?</li>
                   </ul>
                 </div>
               ) : messages.length === 0 && !chatLoad && generateSchedule ? (
@@ -750,31 +781,64 @@ const ChatBot = () => {
           </div>
           {/* Query Container */}
           <div className="w-full flex flex-row items-center justify-center p-3 border-t mt-4">
-            <button
-              title="Ask Sage general question"
-              className={`p-3 rounded-full mr-2 transition-colors duration-200 ${
-                !generateSchedule
-                  ? "bg-[#5AED86] hover:bg-[#3CB765]"
-                  : "bg-[#D3E2D8] hover:bg-[#A9BFB4]"
-              }`}
-              onClick={() => setGenerateSchedule(false)}
-              aria-label="Set to False"
+            {/* General Advising Button */}
+            <div
+              className="relative"
+              onMouseEnter={() => setHovered("advising")}
+              onMouseLeave={() => setHovered(null)}
+              ref={buttonRefs.advising}
             >
-              <GraduationCapIcon size={24} className="text-black" />
-            </button>
+              <button
+                className={`p-3 rounded-full mr-2 transition-colors duration-200 ${
+                  !generateSchedule
+                    ? "bg-[#5AED86] hover:bg-[#3CB765]"
+                    : "bg-[#D3E2D8] hover:bg-[#A9BFB4]"
+                }`}
+                onClick={() => setGenerateSchedule(false)}
+                aria-label="Ask a general advising question"
+              >
+                <GraduationCapIcon size={24} className="text-black" />
+              </button>
+            </div>
 
-            <button
-              title="Generate your class schedule"
-              className={`p-3 rounded-full mr-2 transition-colors duration-200 ${
-                generateSchedule
-                  ? "bg-[#5AED86] hover:bg-[#3CB765]"
-                  : "bg-[#D3E2D8] hover:bg-[#A9BFB4]"
-              }`}
-              onClick={() => setGenerateSchedule(true)}
-              aria-label="Set to True"
+            {/* Generate Schedule Button */}
+            <div
+              className="relative"
+              onMouseEnter={() => setHovered("schedule")}
+              onMouseLeave={() => setHovered(null)}
+              ref={buttonRefs.schedule}
             >
-              <CalendarSearchIcon size={24} className="text-black" />
-            </button>
+              <button
+                className={`p-3 rounded-full mr-2 transition-colors duration-200 ${
+                  generateSchedule
+                    ? "bg-[#5AED86] hover:bg-[#3CB765]"
+                    : "bg-[#D3E2D8] hover:bg-[#A9BFB4]"
+                }`}
+                onClick={() => setGenerateSchedule(true)}
+                aria-label="Generate your class schedule"
+              >
+                <CalendarSearchIcon size={24} className="text-black" />
+              </button>
+            </div>
+
+            {/* Tooltip popup */}
+            {hovered && (
+              <div
+                style={{
+                  position: "fixed",
+                  top: tooltipPosition.top,
+                  left: tooltipPosition.left,
+                  transform: "translateX(-50%)",
+                  zIndex: 1000,
+                }}
+                className="bg-black text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap"
+              >
+                {hovered === "advising"
+                  ? "Ask a general advising question"
+                  : "Generate your class schedule"}
+                <div className="absolute left-1/2 -bottom-2 transform -translate-x-3/4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-black"></div>
+              </div>
+            )}
 
             <textarea
               ref={textareaRef}
