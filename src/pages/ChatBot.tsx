@@ -50,9 +50,13 @@ const ChatBot = () => {
   };
 
   // Check if the cached data is still valid
-  const isCacheValid = (timestamp: number): boolean => {
+  const isCacheValid = (timestamp: number, cacheUserId: any): boolean => {
+    if (!user?.uid || !timestamp || !cacheUserId) return false;
     const currentTime = Date.now();
-    return currentTime - timestamp < CACHE_EXPIRATION_TIME;
+    return (
+      currentTime - timestamp < CACHE_EXPIRATION_TIME &&
+      user.uid === cacheUserId
+    );
   };
 
   // Save conversation data with timestamp to localStorage
@@ -62,6 +66,7 @@ const ChatBot = () => {
       JSON.stringify({
         data: conversations,
         timestamp: Date.now(),
+        userId: user?.uid,
       })
     );
   };
@@ -87,7 +92,14 @@ const ChatBot = () => {
       if (cachedConversationsString) {
         const cachedConversations = JSON.parse(cachedConversationsString);
 
-        if (isCacheValid(cachedConversations.timestamp)) {
+        if (
+          cachedConversations.timestamp &&
+          cachedConversations.userId &&
+          isCacheValid(
+            cachedConversations.timestamp,
+            cachedConversations.userId
+          )
+        ) {
           console.log("Using cached conversations data");
           setConversations(
             Array.isArray(cachedConversations.data)
@@ -186,6 +198,7 @@ const ChatBot = () => {
         messages: [],
         conversation_id: newConversationId,
         timeStamp: Date.now(),
+        cacheUserId: user?.uid,
       })
     );
   };
@@ -195,7 +208,12 @@ const ChatBot = () => {
     setMessages(messages);
     localStorage.setItem(
       "chatbot_conversation",
-      JSON.stringify({ messages, conversation_id: id, timestamp: Date.now() })
+      JSON.stringify({
+        messages,
+        conversation_id: id,
+        timestamp: Date.now(),
+        cacheUserId: user?.uid,
+      })
     );
   };
 
@@ -203,12 +221,14 @@ const ChatBot = () => {
     if (!user?.uid) return;
 
     const cachedData = localStorage.getItem("chatbot_conversation");
+    console.log(user.uid);
 
     if (cachedData) {
-      const { messages, conversation_id, timestamp } = JSON.parse(cachedData);
+      const { messages, conversation_id, timestamp, cacheUserId } =
+        JSON.parse(cachedData);
 
       // Check if the cached conversation is still valid
-      if (timestamp && isCacheValid(timestamp)) {
+      if (timestamp && cacheUserId && isCacheValid(timestamp, cacheUserId)) {
         console.log("Using cached current conversation");
         setMessages(messages || []);
         setconversation_id(conversation_id || null);
@@ -219,7 +239,14 @@ const ChatBot = () => {
         );
         if (cachedConversationsString) {
           const cachedConversations = JSON.parse(cachedConversationsString);
-          if (isCacheValid(cachedConversations.timestamp)) {
+          if (
+            cachedConversations.timestamp &&
+            cachedConversations.userId &&
+            isCacheValid(
+              cachedConversations.timestamp,
+              cachedConversations.userId
+            )
+          ) {
             setConversations(
               Array.isArray(cachedConversations.data)
                 ? cachedConversations.data
@@ -228,6 +255,8 @@ const ChatBot = () => {
             return;
           }
         }
+      } else {
+        localStorage.removeItem("chatbot_conversation");
       }
     }
 
@@ -261,6 +290,7 @@ const ChatBot = () => {
           messages: lastConversationData.messages || [],
           conversation_id: lastConversationData.conversation_id,
           timestamp: Date.now(),
+          cacheUserId: user?.uid,
         })
       );
     }
@@ -294,6 +324,7 @@ const ChatBot = () => {
         messages: updatedMessagesWithUser,
         conversation_id,
         timestamp: Date.now(),
+        cacheUserId: user?.uid,
       })
     );
 
@@ -374,6 +405,7 @@ const ChatBot = () => {
           messages: updatedMessagesWithBot,
           conversation_id: currentConvId,
           timestamp: Date.now(),
+          cacheUserId: user?.uid,
         })
       );
     } catch (error) {
@@ -422,7 +454,14 @@ const ChatBot = () => {
         if (cachedConversationsString) {
           const cachedConversations = JSON.parse(cachedConversationsString);
 
-          if (isCacheValid(cachedConversations.timestamp)) {
+          if (
+            cachedConversations.timestamp &&
+            cachedConversations.userId &&
+            isCacheValid(
+              cachedConversations.timestamp,
+              cachedConversations.userId
+            )
+          ) {
             console.log("Using cached conversations for history");
             const selectedConversation = cachedConversations.data.find(
               (conv: { conversation_id: string; messages: any[] }) =>
@@ -438,6 +477,7 @@ const ChatBot = () => {
                   messages: selectedConversation.messages || [],
                   conversation_id,
                   timestamp: Date.now(),
+                  cacheUserId: user?.uid,
                 })
               );
               return;
@@ -463,6 +503,7 @@ const ChatBot = () => {
               messages: selectedConversation.messages || [],
               conversation_id,
               timestamp: Date.now(),
+              cacheUserId: user?.uid,
             })
           );
         }
@@ -710,6 +751,7 @@ const ChatBot = () => {
           {/* Query Container */}
           <div className="w-full flex flex-row items-center justify-center p-3 border-t mt-4">
             <button
+              title="Ask Sage general question"
               className={`p-3 rounded-full mr-2 transition-colors duration-200 ${
                 !generateSchedule
                   ? "bg-[#5AED86] hover:bg-[#3CB765]"
@@ -722,6 +764,7 @@ const ChatBot = () => {
             </button>
 
             <button
+              title="Generate your class schedule"
               className={`p-3 rounded-full mr-2 transition-colors duration-200 ${
                 generateSchedule
                   ? "bg-[#5AED86] hover:bg-[#3CB765]"
