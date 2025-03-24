@@ -754,6 +754,7 @@ const ChatBot = () => {
                 </div>
               ) : (
                 messages.map((msg, index) => (
+                  // Case 3: Render chat messages
                   <MessageDisplay key={index} message={msg} />
                 ))
               )}
