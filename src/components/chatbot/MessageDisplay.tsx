@@ -11,7 +11,7 @@ const MessageDisplay = ({ message }: MessageDisplayProps) => {
         // Determine indent
         let indent = 0;
         while (text[indent] === " ") {
-            console.log(text)
+            // console.log(text)
             indent++;
         }
         text = text.slice(indent);
@@ -66,7 +66,7 @@ const MessageDisplay = ({ message }: MessageDisplayProps) => {
         // Render the text with the appropriate wrapper
         switch (wrapper) {
             case "li":
-                console.log(indent);
+                // console.log(indent);
                 return <li style={{marginLeft: `${0.5 * indent}rem`}}>{outText}</li>;
             case "h1":
                 return <h1>{outText}</h1>;
@@ -79,10 +79,10 @@ const MessageDisplay = ({ message }: MessageDisplayProps) => {
 
     return (
         <div
-            className={`p-3 rounded-lg border border-[#CBD5E1] w-fit max-w-sm ${
+            className={`p-4 rounded-md border border-border w-fit max-w-sm ${
                 message.role === "user"
-                    ? "bg-[#F9FBF9] text-black self-end ml-auto"
-                    : "bg-[#E5E4E4] text-black self-start mr-auto"
+                    ? "bg-bglight self-end ml-auto"
+                    : "bg-[#E5E4E4] self-start mr-auto"
             }`}
         >
             {message.content.split("\n").map((line, index) => (

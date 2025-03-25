@@ -11,12 +11,9 @@
   font-style: normal;
 }
 
-/* @font-face {
-  font-family: "DMSans";
-  src: url("/fonts/DMSans.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-} */
+* {
+  @apply font-dmsans font-medium text-textdark;
+}
 h1 {
   @apply font-mermaid text-5xl;
 }
@@ -26,11 +23,8 @@ h2 {
 h3 {
   @apply font-dmsans text-2xl font-semibold;
 }
-p, a {
-  @apply font-dmsans font-medium;
-}
 small {
-  @apply font-dmsans font-medium text-sm;
+  @apply font-dmsans text-sm font-medium;
 }
 
 

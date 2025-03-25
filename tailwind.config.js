@@ -15,7 +15,7 @@ export default {
       },
       colors: {
         accent: "#5AED86",
-        secondary: "D3E2D8",
+        secondary: "#D3E2D8",
         destructive: "#DB0000",
         
         bglight: "#F9FBF9",
