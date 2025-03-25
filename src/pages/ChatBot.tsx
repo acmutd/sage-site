@@ -8,6 +8,8 @@ import {
   RefreshCcwIcon,
   GraduationCapIcon,
   CalendarSearchIcon,
+  MessagesSquare,
+  SquareAsterisk,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import MessageDisplay from "@/components/chatbot/MessageDisplay";
@@ -360,9 +362,19 @@ const ChatBot = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(
-          `Failed to get chatbot response: ${response.status} - ${errorText}`
-        );
+        const errorObj = JSON.parse(errorText);
+
+        if (
+          response.status === 401 &&
+          errorObj.error === "Daily query limit reached. Try again tomorrow."
+        ) {
+          setChatError("Daily query limit reached. Try again tomorrow.");
+        } else {
+          throw new Error(
+            `Failed to get chatbot response: ${response.status} - ${errorText}`
+          );
+        }
+        return;
       }
 
       const data = await response.json();
@@ -379,7 +391,7 @@ const ChatBot = () => {
 
       setconversation_id(currentConvId);
 
-      // 👇 Only prepend the conversation to state/cache if it's new
+      // Only prepend the conversation to state/cache if it's new
       setConversations((prevConversations) => {
         console.log("Inside update - prevConversations:", prevConversations);
         const filtered = prevConversations.filter(
@@ -541,70 +553,92 @@ const ChatBot = () => {
   }, [conversation_id]);
 
   return (
-    <div className="flex flex-1 bg-[#F9FBF9] overflow-hidden mt-[4.25rem] min-h-[calc(100vh-5rem)] max-h-[calc(100vh-5rem)]">
+    <div className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]">
       {/* Chat History Bar - Expanded or Skinny */}
       <div
         className={`
-          ${sidebarCollapsed ? "w-20" : "w-1/5"}
-          transition-width duration-300 ease-in-out
-          p-4 bg-gray-100 rounded-3xl border m-10
-          flex flex-col justify-between
-          overflow-hidden
+          ${sidebarCollapsed
+            ? "w-[5.25rem] rounded-md px-4 cursor-pointer"
+            : "w-[24rem] rounded-lg px-6"
+          }
+          transition-all duration-100
+          py-8 gap-8 overflow-hidden
+          bg-bglight border border-border
+          flex flex-col items-center
         `}
+        onClick={sidebarCollapsed ? toggleSidebar : undefined}
       >
-        {/* Top section */}
-        <div className="flex flex-col space-y-4">
-          {/* Button row when expanded */}
-          {!sidebarCollapsed && (
-            <div className="flex space-x-2 mb-2">
+        {/* Elements in the collapsed sidebar */}
+        {sidebarCollapsed && (
+          <div className="flex flex-col gap-8 h-full">
+            <button
+              className="transition-all p-2 rounded-sm text-textdark active:bg-border w-12 h-12 flex items-center justify-center"
+              onClick={toggleSidebar}
+              aria-label="Expand sidebar"
+            >
+              <ArrowRightToLineIcon size={24} />
+            </button>
+
+            <button
+              className="transition-all p-2 rounded-sm text-textdark border border-border active:bg-border w-12 h-12 flex items-center justify-center"
+              onClick={startNewChat}
+              aria-label="Start new chat"
+            >
+              <MessageCirclePlusIcon size={24} />
+            </button>
+
+            <button
+              className="transition-all p-2 rounded-sm text-textdark border border-border active:bg-border w-12 h-12 flex items-center justify-center"
+              onClick={toggleSidebar}
+              aria-label="Chat History"
+            >
+              <MessagesSquare size={24} />
+            </button>
+
+            {/* Spacer */}
+            <div className="flex flex-grow" />
+
+            <button
+              onClick={clearCache}
+              className="transition-all p-2 rounded-sm text-textdark border border-border active:bg-border w-12 h-12 flex items-center justify-center"
+              aria-label="Reset cache"
+            >
+              <RefreshCcwIcon size={20} />
+            </button>
+          </div>
+        )}
+
+        {/* Elements in the expanded sidebar */}
+        {!sidebarCollapsed && (
+          <div className="flex flex-col overflow-hidden gap-8">
+            {/* Buttons at the top */}
+            <div className="flex gap-3 justify-between">
               <button
-                className="flex items-center space-x-2 p-2 px-4 rounded-3xl bg-[#C1E3CB] text-black hover:text-gray-700 text-base font-semibold flex-grow"
+                className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700"
                 onClick={startNewChat}
               >
-                <MessageCirclePlusIcon size={20} />
+                <MessageCirclePlusIcon size={24} />
                 <span>Start new chat</span>
               </button>
               <button
-                className="p-2 rounded-3xl bg-[#C1E3CB] text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center"
+                className="p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center"
                 onClick={toggleSidebar}
                 aria-label="Collapse sidebar"
               >
                 <ArrowLeftToLineIcon size={20} />
               </button>
             </div>
-          )}
 
-          {/* Button column when collapsed */}
-          {sidebarCollapsed && (
-            <>
-              <button
-                className="p-3 rounded-full bg-[#C1E3CB] text-black hover:text-gray-700 mx-auto mb-4 w-12 h-12 flex items-center justify-center"
-                onClick={toggleSidebar}
-                aria-label="Expand sidebar"
-              >
-                <ArrowRightToLineIcon size={20} />
-              </button>
-
-              <button
-                className="p-3 rounded-full bg-[#C1E3CB] text-black hover:text-gray-700 mx-auto w-12 h-12 flex items-center justify-center"
-                onClick={startNewChat}
-                aria-label="Start new chat"
-              >
-                <MessageCirclePlusIcon size={20} />
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Middle section - Conversation list (only visible when expanded) */}
-        {!sidebarCollapsed && (
-          <div className="flex-grow overflow-y-auto my-4">
+            {/* Conversation list */}
             {chatHistoryLoad && (
-              <p className="text-gray-600">Loading conversations...</p>
+              <p className="text-textsecondary">Loading conversations...</p>
             )}
-            {error && <p className="text-red-500">{error}</p>}
+            {error && <p className="text-destructive">{error}</p>}
 
-            <ul className="space-y-2">
+            <ul
+              className="space-y-2 overflow-y-scroll"
+              style={{ scrollbarWidth: "none" }}
+            >
               {Array.isArray(conversations) && conversations.length > 0 ? (
                 conversations.map((conv) => {
                   // Use the first message to represent the conversation topic
@@ -618,16 +652,15 @@ const ChatBot = () => {
                   return (
                     <li
                       key={conv.conversation_id}
-                      className={`p-2 cursor-pointer rounded hover:bg-[#c1d1c7] transition-colors ${
-                        conversation_id === conv.conversation_id
-                          ? "bg-[#d2e2d8] text-black"
-                          : "bg-white text-black"
-                      }`}
+                      className={`p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors ${conversation_id === conv.conversation_id
+                          ? "bg-secondary"
+                          : "bg-bglight"
+                        }`}
                       onClick={() =>
                         loadConversation(conv.conversation_id, conv.messages)
                       }
                     >
-                      {truncatedMessage}
+                      <small>{truncatedMessage}</small>
                     </li>
                   );
                 })
@@ -639,219 +672,200 @@ const ChatBot = () => {
             </ul>
           </div>
         )}
-
-        {/* Bottom section - Reset cache button (only visible when collapsed) */}
-        {sidebarCollapsed && (
-          <div className="mt-auto pt-4">
-            <button
-              onClick={clearCache}
-              className="p-3 rounded-full bg-[#C1E3CB] text-black hover:text-gray-700 mx-auto w-12 h-12 flex items-center justify-center"
-              aria-label="Reset cache"
-            >
-              <RefreshCcwIcon size={20} />
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Main chat area */}
-      <div
-        className={`
-          ${sidebarCollapsed ? "w-full pr-24" : "w-3/4"}
-          transition-width duration-300 ease-in-out
-          flex flex-col flex-1 p-5 relative overflow-hidden
-        `}
-      >
-        <div className="rounded-full bg-[#0F172A] w-full p-3 mt-4 mb-4 flex items-center">
-          <img
-            src="/ProblemReportIcon.png"
-            alt="ProblemReportIcon"
-            className="h-6 w-auto pl-2 pr-2"
-          />
-          <span className="text-white">
-            This app is still in development. If you have any issues or
-            feedback,
-            <a
-              href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#5AED86] underline ml-1"
-            >
-              please click here
-            </a>
-          </span>
-        </div>
-        {/* Chat container */}
-        <div className="flex-grow flex flex-col overflow-hidden">
-          <div className="w-full bg-[#F4F4F4] rounded-xl border flex flex-col flex-grow overflow-hidden">
-            <div
-              ref={chatContainerRef}
-              className="flex-1 p-3 overflow-y-auto space-y-2 flex flex-col items-center"
-            >
-              {messages.length === 0 && !chatLoad && !generateSchedule ? (
-                // Case 1: Intro content
-                <div className="w-full max-w-2xl text-left text-gray-700">
-                  <h1 className="text-3xl font-bold mb-2 font-mermaid">
-                    Hi, I’m Sage.
-                  </h1>
-                  <h2 className="text-xl font-semibold mb-4 font-dmsans">
-                    What can I help with?
-                  </h2>
-                  <p className="text-base text-gray-500 mb-2 font-dmsans">
-                    Here are some example questions that I can help you with:
-                  </p>
-                  <ul className="list-disc list-inside text-gray-500 text-sm space-y-1 pl-4 font-dmsans">
-                    <li>What time is the CSMC open?</li>
-                    <li>What are the requirements for graduation?</li>
-                    <li>
-                      How can I enroll in classes I don't have prereqs for if I
-                      plan to take the prereqs over the summer?
-                    </li>
-                    <li>Tell me about ACM UTD and how I can get involved!</li>
-                    <li>
-                      What classes should a first-year graphic design major
-                      take?
-                    </li>
-                    <li>What do you know about Professor John Cole?</li>
-                  </ul>
-                </div>
-              ) : messages.length === 0 && !chatLoad && generateSchedule ? (
-                // Case 2: Custom rendering for generateSchedule = true
-                <div className="w-full max-w-2xl text-left text-gray-700">
-                  <h1 className="text-3xl font-bold mb-2 font-mermaid">
-                    Hi, I’m Sage.
-                  </h1>
-                  <h2 className="text-xl font-semibold mb-4 font-dmsans">
-                    Let's start building your schedule!
-                  </h2>
-                  <p className="text-base text-gray-500 mb-2 font-dmsans">
-                    Here are some example queries for the schedule generator
-                    that I can help you with:
-                  </p>
-                  <ul className="list-disc list-inside text-gray-500 text-sm space-y-1 pl-4 font-dmsans">
-                    <li>
-                      Generate a schedule with CS 2305, ECS 2390, CS 2336, CS
-                      2340, and PHYS 2325.
-                    </li>
-                    <li>
-                      I work after 4pm on Tuesday and Thursday. Can you avoid
-                      classes during that time?
-                    </li>
-                    <li>
-                      My friend is in CS 2336.002, can we make sure to include
-                      that class?
-                    </li>
-                    <li>Swap CS 2336 for CS 3341.</li>
-                    <li>
-                      I want Professor John Cole for CS 2340. Can we only use
-                      his sections?
-                    </li>
-                    <li>
-                      I need to enroll for summer classes, please generate a
-                      schedule using summer sections.
-                    </li>
-                  </ul>
-                </div>
-              ) : (
-                messages.map((msg, index) => (
-                  // Case 3: Render chat messages
-                  <MessageDisplay key={index} message={msg} />
-                ))
-              )}
-
-              {chatLoad && !chatError && (
-                <div className="p-3 rounded-lg bg-[#E5E4E4] text-black self-start mr-auto border border-[#CBD5E1] w-fit max-w-sm">
-                  <span className="animate-pulse">Thinking...</span>
-                </div>
-              )}
-              {chatError && (
-                <div className="text-red-500 font-semibold">{chatError}</div>
-              )}
-            </div>
+      <div className="flex justify-center h-full w-full">
+        <div
+          className={`
+            max-w-[80rem] duration-300 ease-in-out
+            flex flex-col flex-1 relative overflow-hidden
+            gap-6
+          `}
+        >
+          {/* Beta Disclaimer */}
+          <div className="rounded-full bg-textdark w-full py-3 px-6 flex gap-2 items-center">
+            <SquareAsterisk size={32} className="stroke-accent" />
+            <small className="text-textlight">
+              This app is still in development. If you have any issues or
+              feedback,
+              <a
+                href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent underline ml-1"
+              >
+                please click here.
+              </a>
+            </small>
           </div>
-          {/* Query Container */}
-          <div className="w-full flex flex-row items-center justify-center p-3 border-t mt-4">
-            {/* General Advising Button */}
-            <div
-              className="relative"
-              onMouseEnter={() => setHovered("advising")}
-              onMouseLeave={() => setHovered(null)}
-              ref={buttonRefs.advising}
-            >
-              <button
-                className={`p-3 rounded-full mr-2 transition-colors duration-200 ${
-                  !generateSchedule
-                    ? "bg-[#5AED86] hover:bg-[#3CB765]"
-                    : "bg-[#D3E2D8] hover:bg-[#A9BFB4]"
-                }`}
-                onClick={() => setGenerateSchedule(false)}
-                aria-label="Ask a general advising question"
-              >
-                <GraduationCapIcon size={24} className="text-black" />
-              </button>
-            </div>
-
-            {/* Generate Schedule Button */}
-            <div
-              className="relative"
-              onMouseEnter={() => setHovered("schedule")}
-              onMouseLeave={() => setHovered(null)}
-              ref={buttonRefs.schedule}
-            >
-              <button
-                className={`p-3 rounded-full mr-2 transition-colors duration-200 ${
-                  generateSchedule
-                    ? "bg-[#5AED86] hover:bg-[#3CB765]"
-                    : "bg-[#D3E2D8] hover:bg-[#A9BFB4]"
-                }`}
-                onClick={() => setGenerateSchedule(true)}
-                aria-label="Generate your class schedule"
-              >
-                <CalendarSearchIcon size={24} className="text-black" />
-              </button>
-            </div>
-
-            {/* Tooltip popup */}
-            {hovered && (
+          {/* Chat container */}
+          <div className="flex-grow flex flex-col overflow-hidden">
+            <div className="w-full bg-innercontainer rounded-lg border flex flex-col flex-grow overflow-hidden">
               <div
-                style={{
-                  position: "fixed",
-                  top: tooltipPosition.top,
-                  left: tooltipPosition.left,
-                  transform: "translateX(-50%)",
-                  zIndex: 1000,
-                }}
-                className="bg-black text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap"
+                ref={chatContainerRef}
+                className="p-8 overflow-y-auto space-y-2 flex flex-col items-center"
               >
-                {hovered === "advising"
-                  ? "Ask a general advising question"
-                  : "Generate your class schedule"}
-                <div className="absolute left-1/2 -bottom-2 transform -translate-x-3/4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-black"></div>
+                {messages.length === 0 && !chatLoad && !generateSchedule ? (
+                  // Case 1: Intro content
+                  <div className="w-full max-w-2xl text-left mt-[5rem]">
+                    <h1>Hi, I’m Sage.</h1>
+                    <h3>What can I help with?</h3>
+                    <p className="text-textsecondary mt-8">
+                      Here are some example questions that I can help you with:
+                    </p>
+                    <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
+                      <li>What time is the CSMC open?</li>
+                      <li>What are the requirements for graduation?</li>
+                      <li>
+                        How can I enroll in classes I don't have prereqs for if
+                        I plan to take the prereqs over the summer?
+                      </li>
+                      <li>Tell me about ACM UTD and how I can get involved!</li>
+                      <li>
+                        What classes should a first-year neuroscience major
+                        take?
+                      </li>
+                      <li>What do you know about Professor John Cole?</li>
+                    </ul>
+                  </div>
+                ) : messages.length === 0 && !chatLoad && generateSchedule ? (
+                  // Case 2: Custom rendering for generateSchedule = true
+                  <div className="w-full max-w-2xl text-left mt-[5rem]">
+                    <h1>Hi, I’m Sage.</h1>
+                    <h3>Let's start building your schedule!</h3>
+                    <p className="text-textsecondary mt-8">
+                      Here are some example queries for the schedule generator
+                      that I can help you with:
+                    </p>
+                    <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
+                      <li>
+                        Generate a schedule with CS 2305, ECS 2390, CS 2336, CS
+                        2340, and PHYS 2325.
+                      </li>
+                      <li>
+                        I work after 4pm on Tuesday and Thursday. Can you avoid
+                        classes during that time?
+                      </li>
+                      <li>
+                        My friend is in CS 2336.002, can we make sure to include
+                        that class?
+                      </li>
+                      <li>
+                        Swap CS 2336 for CS 3341, and no classes before 10am
+                      </li>
+                      <li>
+                        I want Professor John Cole for CS 2340. Can we only use
+                        his sections?
+                      </li>
+                      <li>
+                        I need to enroll for summer classes, please generate a
+                        schedule using summer sections.
+                      </li>
+                    </ul>
+                  </div>
+                ) : (
+                  messages.map((msg, index) => (
+                    // Case 3: Render chat messages
+                    <MessageDisplay key={index} message={msg} />
+                  ))
+                )}
+
+                {chatLoad && !chatError && (
+                  <div className="p-3 rounded-lg bg-[#E5E4E4] text-black self-start mr-auto border border-border w-fit max-w-sm">
+                    <span className="animate-pulse">Thinking...</span>
+                  </div>
+                )}
+                {chatError && (
+                  <div className="text-red-500 font-semibold">{chatError}</div>
+                )}
               </div>
-            )}
+            </div>
+            {/* Query Container */}
+            <div className="w-full flex flex-row gap-4 items-center justify-center mt-4">
+              {/* Mode Toggle */}
+              <div className="flex flex-row gap-2 p-2 bg-innercontainer border rounded-full border-border">
+                {/* General Advising Button */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => setHovered("advising")}
+                  onMouseLeave={() => setHovered(null)}
+                  ref={buttonRefs.advising}
+                >
+                  <button
+                    className={`p-2 rounded-full mr-2 transition-colors duration-200 ${!generateSchedule
+                        ? "bg-accent hover:bg-buttonhover"
+                        : "bg-secondary hover:bg-[#A9BFB4]"
+                      }`}
+                    onClick={() => setGenerateSchedule(false)}
+                    aria-label="Ask a general advising question"
+                  >
+                    <GraduationCapIcon size={24} className="text-black" />
+                  </button>
+                </div>
 
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              placeholder="Ask a question..."
-              aria-label="Chat input field"
-              className="w-full p-2 mr-2 border rounded-3xl resize-none overflow-auto-y focus:outline-none min-h-0 max-h-28" // Added right margin (mr-2)
-              onChange={(e) => {
-                setQuery(e.target.value);
-                adjustTextareaHeight();
-              }}
-              onKeyDown={handleEnter}
-              value={query}
-              disabled={chatHistoryLoad}
-            />
+                {/* Generate Schedule Button */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => setHovered("schedule")}
+                  onMouseLeave={() => setHovered(null)}
+                  ref={buttonRefs.schedule}
+                >
+                  <button
+                    className={`p-2 rounded-full transition-colors duration-200 ${generateSchedule
+                        ? "bg-accent hover:bg-buttonhover"
+                        : "bg-secondary hover:bg-[#A9BFB4]"
+                      }`}
+                    onClick={() => setGenerateSchedule(true)}
+                    aria-label="Generate your class schedule"
+                  >
+                    <CalendarSearchIcon size={24} className="text-black" />
+                  </button>
+                </div>
 
-            <button
-              className="bg-[#5AED86] text-black p-2 rounded-3xl hover:bg-[#4dca73] transition-colors disabled:opacity-50"
-              onClick={() => handleSendQuery()}
-              disabled={chatHistoryLoad || !query.trim()}
-            >
-              <CornerRightUpIcon />
-            </button>
+                {/* Tooltip popup */}
+                {hovered && (
+                  <div
+                    style={{
+                      position: "fixed",
+                      top: tooltipPosition.top,
+                      left: tooltipPosition.left,
+                      transform: "translateX(-50%)",
+                      zIndex: 1000,
+                    }}
+                    className="bg-black text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap"
+                  >
+                    {hovered === "advising"
+                      ? "Ask a general advising question"
+                      : "Generate your class schedule"}
+                    <div className="absolute left-1/2 -bottom-2 transform -translate-x-3/4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-black"></div>
+                  </div>
+                )}
+              </div>
+              <textarea
+                ref={textareaRef}
+                rows={1}
+                placeholder="Ask a question..."
+                aria-label="Chat input field"
+                className="w-full py-4 px-8 mr-2 border rounded-full resize-none overflow-auto-y focus:outline-none min-h-0 max-h-28"
+                style={{ scrollbarWidth: "none" }}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  adjustTextareaHeight();
+                }}
+                onKeyDown={handleEnter}
+                value={query}
+                disabled={chatHistoryLoad}
+              />
+
+              <button
+                className="flex h-full max-h-[3rem] justify-center items-center aspect-square bg-accent rounded-full hover:bg-buttonhover transition-colors disabled:opacity-50"
+                onClick={() => handleSendQuery()}
+                disabled={chatHistoryLoad || !query.trim()}
+              >
+                <CornerRightUpIcon size={24} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { AuthProvider, useAuth } from "../context/AuthContext";
+import { MessageCirclePlus, Route } from "lucide-react";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -15,27 +16,19 @@ const Navbar = () => {
             <li className="flex-row">
               <Link
                 to="/planner"
-                className="flex items-center space-x-2 text-white hover:text-gray-200 text-base font-semibold"
+                className="flex items-center gap-2 text-textlight hover:text-gray-200"
               >
-                <img
-                  src="/PlannerIcon.png"
-                  alt="Planner"
-                  className="h-6 w-auto"
-                />
-                <span>Plan your degree</span>
+                <Route className="stroke-accent"/>
+                Plan your degree
               </Link>
             </li>
             <li className="flex-row">
               <Link
                 to="/chatbot"
-                className="flex items-center space-x-2 text-white hover:text-gray-200 text-base font-semibold"
+                className="flex items-center gap-2 text-white hover:text-gray-200"
               >
-                <img
-                  src="/ChatbotIcon.png"
-                  alt="Chatbot"
-                  className="h-6 w-auto"
-                />
-                <span>Start a chat</span>
+                <MessageCirclePlus className="stroke-accent"/>
+                Start a chat
               </Link>
             </li>
             <li>
