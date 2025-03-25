@@ -549,7 +549,7 @@ const ChatBot = () => {
         className={`
           ${sidebarCollapsed ? "w-[5.25rem] rounded-md px-4 cursor-pointer" : "w-[24rem] rounded-lg px-6"}
           transition-all duration-100
-          py-8 gap-8 
+          py-8 gap-8 overflow-hidden
           bg-bglight border border-border
           flex flex-col items-center
         `}
@@ -784,7 +784,7 @@ const ChatBot = () => {
             <div className="w-full flex flex-row gap-4 items-center justify-center mt-4">
 
               {/* Mode Toggle */}
-              <div className="flex flex-row gap-2 p-2 h-full bg-innercontainer border rounded-full border-border">
+              <div className="flex flex-row gap-2 p-2 bg-innercontainer border rounded-full border-border">
                 {/* General Advising Button */}
                 <div
                   className="relative"
