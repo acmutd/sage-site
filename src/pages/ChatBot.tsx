@@ -362,9 +362,19 @@ const ChatBot = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(
-          `Failed to get chatbot response: ${response.status} - ${errorText}`
-        );
+        const errorObj = JSON.parse(errorText);
+
+        if (
+          response.status === 401 &&
+          errorObj.error === "Daily query limit reached. Try again tomorrow."
+        ) {
+          setChatError("Daily query limit reached. Try again tomorrow.");
+        } else {
+          throw new Error(
+            `Failed to get chatbot response: ${response.status} - ${errorText}`
+          );
+        }
+        return;
       }
 
       const data = await response.json();
@@ -381,7 +391,7 @@ const ChatBot = () => {
 
       setconversation_id(currentConvId);
 
-      // 👇 Only prepend the conversation to state/cache if it's new
+      // Only prepend the conversation to state/cache if it's new
       setConversations((prevConversations) => {
         console.log("Inside update - prevConversations:", prevConversations);
         const filtered = prevConversations.filter(
@@ -547,7 +557,11 @@ const ChatBot = () => {
       {/* Chat History Bar - Expanded or Skinny */}
       <div
         className={`
-          ${sidebarCollapsed ? "w-[5.25rem] rounded-md px-4 cursor-pointer" : "w-[24rem] rounded-lg px-6"}
+          ${
+            sidebarCollapsed
+              ? "w-[5.25rem] rounded-md px-4 cursor-pointer"
+              : "w-[24rem] rounded-lg px-6"
+          }
           transition-all duration-100
           py-8 gap-8 overflow-hidden
           bg-bglight border border-border
@@ -555,12 +569,9 @@ const ChatBot = () => {
         `}
         onClick={sidebarCollapsed ? toggleSidebar : undefined}
       >
-
         {/* Elements in the collapsed sidebar */}
         {sidebarCollapsed && (
-          <div
-            className="flex flex-col gap-8 h-full"
-          >
+          <div className="flex flex-col gap-8 h-full">
             <button
               className="transition-all p-2 rounded-sm text-textdark active:bg-border w-12 h-12 flex items-center justify-center"
               onClick={toggleSidebar}
@@ -601,7 +612,6 @@ const ChatBot = () => {
         {/* Elements in the expanded sidebar */}
         {!sidebarCollapsed && (
           <div className="flex flex-col overflow-hidden gap-8">
-
             {/* Buttons at the top */}
             <div className="flex gap-3 justify-between">
               <button
@@ -626,7 +636,10 @@ const ChatBot = () => {
             )}
             {error && <p className="text-destructive">{error}</p>}
 
-            <ul className="space-y-2 overflow-y-scroll" style={{ scrollbarWidth: "none" }}>
+            <ul
+              className="space-y-2 overflow-y-scroll"
+              style={{ scrollbarWidth: "none" }}
+            >
               {Array.isArray(conversations) && conversations.length > 0 ? (
                 conversations.map((conv) => {
                   // Use the first message to represent the conversation topic
@@ -640,17 +653,16 @@ const ChatBot = () => {
                   return (
                     <li
                       key={conv.conversation_id}
-                      className={`p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors ${conversation_id === conv.conversation_id
-                        ? "bg-secondary"
-                        : "bg-bglight"
-                        }`}
+                      className={`p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors ${
+                        conversation_id === conv.conversation_id
+                          ? "bg-secondary"
+                          : "bg-bglight"
+                      }`}
                       onClick={() =>
                         loadConversation(conv.conversation_id, conv.messages)
                       }
                     >
-                      <small>
-                        {truncatedMessage}
-                      </small>
+                      <small>{truncatedMessage}</small>
                     </li>
                   );
                 })
@@ -665,9 +677,7 @@ const ChatBot = () => {
       </div>
 
       {/* Main chat area */}
-      <div
-        className="flex justify-center h-full w-full"
-      >
+      <div className="flex justify-center h-full w-full">
         <div
           className={`
             max-w-[80rem] duration-300 ease-in-out
@@ -693,8 +703,7 @@ const ChatBot = () => {
           </div>
           {/* Chat container */}
           <div className="flex-grow flex flex-col overflow-hidden">
-            <div
-              className="w-full bg-innercontainer rounded-lg border flex flex-col flex-grow overflow-hidden">
+            <div className="w-full bg-innercontainer rounded-lg border flex flex-col flex-grow overflow-hidden">
               <div
                 ref={chatContainerRef}
                 className="p-8 overflow-y-auto space-y-2 flex flex-col items-center"
@@ -702,12 +711,8 @@ const ChatBot = () => {
                 {messages.length === 0 && !chatLoad && !generateSchedule ? (
                   // Case 1: Intro content
                   <div className="w-full max-w-2xl text-left mt-[5rem]">
-                    <h1>
-                      Hi, I’m Sage.
-                    </h1>
-                    <h3>
-                      What can I help with?
-                    </h3>
+                    <h1>Hi, I’m Sage.</h1>
+                    <h3>What can I help with?</h3>
                     <p className="text-textsecondary mt-8">
                       Here are some example questions that I can help you with:
                     </p>
@@ -715,12 +720,12 @@ const ChatBot = () => {
                       <li>What time is the CSMC open?</li>
                       <li>What are the requirements for graduation?</li>
                       <li>
-                        How can I enroll in classes I don't have prereqs for if I
-                        plan to take the prereqs over the summer?
+                        How can I enroll in classes I don't have prereqs for if
+                        I plan to take the prereqs over the summer?
                       </li>
                       <li>Tell me about ACM UTD and how I can get involved!</li>
                       <li>
-                        What classes should a first-year graphic design major
+                        What classes should a first-year neuroscience major
                         take?
                       </li>
                       <li>What do you know about Professor John Cole?</li>
@@ -729,12 +734,8 @@ const ChatBot = () => {
                 ) : messages.length === 0 && !chatLoad && generateSchedule ? (
                   // Case 2: Custom rendering for generateSchedule = true
                   <div className="w-full max-w-2xl text-left mt-[5rem]">
-                    <h1>
-                      Hi, I’m Sage.
-                    </h1>
-                    <h3>
-                      Let's start building your schedule!
-                    </h3>
+                    <h1>Hi, I’m Sage.</h1>
+                    <h3>Let's start building your schedule!</h3>
                     <p className="text-textsecondary mt-8">
                       Here are some example queries for the schedule generator
                       that I can help you with:
@@ -752,7 +753,9 @@ const ChatBot = () => {
                         My friend is in CS 2336.002, can we make sure to include
                         that class?
                       </li>
-                      <li>Swap CS 2336 for CS 3341.</li>
+                      <li>
+                        Swap CS 2336 for CS 3341, and no classes before 10am
+                      </li>
                       <li>
                         I want Professor John Cole for CS 2340. Can we only use
                         his sections?
@@ -782,7 +785,6 @@ const ChatBot = () => {
             </div>
             {/* Query Container */}
             <div className="w-full flex flex-row gap-4 items-center justify-center mt-4">
-
               {/* Mode Toggle */}
               <div className="flex flex-row gap-2 p-2 bg-innercontainer border rounded-full border-border">
                 {/* General Advising Button */}
@@ -793,10 +795,11 @@ const ChatBot = () => {
                   ref={buttonRefs.advising}
                 >
                   <button
-                    className={`p-2 rounded-full mr-2 transition-colors duration-200 ${!generateSchedule
-                      ? "bg-accent hover:bg-buttonhover"
-                      : "bg-secondary hover:bg-[#A9BFB4]"
-                      }`}
+                    className={`p-2 rounded-full mr-2 transition-colors duration-200 ${
+                      !generateSchedule
+                        ? "bg-accent hover:bg-buttonhover"
+                        : "bg-secondary hover:bg-[#A9BFB4]"
+                    }`}
                     onClick={() => setGenerateSchedule(false)}
                     aria-label="Ask a general advising question"
                   >
@@ -812,10 +815,11 @@ const ChatBot = () => {
                   ref={buttonRefs.schedule}
                 >
                   <button
-                    className={`p-2 rounded-full transition-colors duration-200 ${generateSchedule
-                      ? "bg-accent hover:bg-buttonhover"
-                      : "bg-secondary hover:bg-[#A9BFB4]"
-                      }`}
+                    className={`p-2 rounded-full transition-colors duration-200 ${
+                      generateSchedule
+                        ? "bg-accent hover:bg-buttonhover"
+                        : "bg-secondary hover:bg-[#A9BFB4]"
+                    }`}
                     onClick={() => setGenerateSchedule(true)}
                     aria-label="Generate your class schedule"
                   >
@@ -841,7 +845,6 @@ const ChatBot = () => {
                     <div className="absolute left-1/2 -bottom-2 transform -translate-x-3/4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-black"></div>
                   </div>
                 )}
-
               </div>
               <textarea
                 ref={textareaRef}
