@@ -9,11 +9,29 @@ export default {
         dmsans: ["DMSans", "cursive"],
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "42px",
+        md: "18px",
+        sm: "8px",
       },
       colors: {
+        accent: "#5AED86",
+        secondary: "D3E2D8",
+        destructive: "#DB0000",
+        
+        bglight: "#F9FBF9",
+        bgdark: "#101211",
+        border: "#CBD5E1",
+        innercontainer: "#F4F4F4",
+        
+        textlight: "#ECF8F0",
+        textdark: "#0F172A",
+        textsecondary: "#6C6C6C",
+        
+        buttonhover: "#4DCC73",
+        buttondisabled: "#DDDDDD",
+        
+        
+        // Default tailwind config colors that will stick around for now so I don't break any shadcn styling
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
