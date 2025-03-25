@@ -557,10 +557,9 @@ const ChatBot = () => {
       {/* Chat History Bar - Expanded or Skinny */}
       <div
         className={`
-          ${
-            sidebarCollapsed
-              ? "w-[5.25rem] rounded-md px-4 cursor-pointer"
-              : "w-[24rem] rounded-lg px-6"
+          ${sidebarCollapsed
+            ? "w-[5.25rem] rounded-md px-4 cursor-pointer"
+            : "w-[24rem] rounded-lg px-6"
           }
           transition-all duration-100
           py-8 gap-8 overflow-hidden
@@ -653,11 +652,10 @@ const ChatBot = () => {
                   return (
                     <li
                       key={conv.conversation_id}
-                      className={`p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors ${
-                        conversation_id === conv.conversation_id
+                      className={`p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors ${conversation_id === conv.conversation_id
                           ? "bg-secondary"
                           : "bg-bglight"
-                      }`}
+                        }`}
                       onClick={() =>
                         loadConversation(conv.conversation_id, conv.messages)
                       }
@@ -795,11 +793,10 @@ const ChatBot = () => {
                   ref={buttonRefs.advising}
                 >
                   <button
-                    className={`p-2 rounded-full mr-2 transition-colors duration-200 ${
-                      !generateSchedule
+                    className={`p-2 rounded-full mr-2 transition-colors duration-200 ${!generateSchedule
                         ? "bg-accent hover:bg-buttonhover"
                         : "bg-secondary hover:bg-[#A9BFB4]"
-                    }`}
+                      }`}
                     onClick={() => setGenerateSchedule(false)}
                     aria-label="Ask a general advising question"
                   >
@@ -815,11 +812,10 @@ const ChatBot = () => {
                   ref={buttonRefs.schedule}
                 >
                   <button
-                    className={`p-2 rounded-full transition-colors duration-200 ${
-                      generateSchedule
+                    className={`p-2 rounded-full transition-colors duration-200 ${generateSchedule
                         ? "bg-accent hover:bg-buttonhover"
                         : "bg-secondary hover:bg-[#A9BFB4]"
-                    }`}
+                      }`}
                     onClick={() => setGenerateSchedule(true)}
                     aria-label="Generate your class schedule"
                   >
