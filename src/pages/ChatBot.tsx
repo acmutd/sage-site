@@ -685,7 +685,7 @@ const ChatBot = () => {
                 href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-text-primary underline ml-1"
+                className="text-accent underline ml-1"
               >
                 please click here.
               </a>
