@@ -6,7 +6,7 @@ export default {
     extend: {
       fontFamily: {
         mermaid: ["Mermaid", "cursive"],
-        dmsans: ["DMSans", "cursive"],
+        dmsans: ["DM Sans", "cursive"]
       },
       borderRadius: {
         lg: "42px",
