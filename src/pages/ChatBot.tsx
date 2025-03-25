@@ -678,14 +678,14 @@ const ChatBot = () => {
           {/* Beta Disclaimer */}
           <div className="rounded-full bg-textdark w-full py-3 px-6 flex gap-2 items-center">
             <SquareAsterisk size={32} className="stroke-accent" />
-            <small className="text-white">
+            <small className="text-textlight">
               This app is still in development. If you have any issues or
               feedback,
               <a
                 href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#5AED86] underline ml-1"
+                className="text-text-primary underline ml-1"
               >
                 please click here.
               </a>
@@ -771,7 +771,7 @@ const ChatBot = () => {
                 )}
 
                 {chatLoad && !chatError && (
-                  <div className="p-3 rounded-lg bg-[#E5E4E4] text-black self-start mr-auto border border-[#CBD5E1] w-fit max-w-sm">
+                  <div className="p-3 rounded-lg bg-[#E5E4E4] text-black self-start mr-auto border border-border w-fit max-w-sm">
                     <span className="animate-pulse">Thinking...</span>
                   </div>
                 )}
@@ -813,8 +813,8 @@ const ChatBot = () => {
                 >
                   <button
                     className={`p-2 rounded-full transition-colors duration-200 ${generateSchedule
-                      ? "bg-[#5AED86] hover:bg-[#3CB765]"
-                      : "bg-[#D3E2D8] hover:bg-[#A9BFB4]"
+                      ? "bg-accent hover:bg-buttonhover"
+                      : "bg-secondary hover:bg-[#A9BFB4]"
                       }`}
                     onClick={() => setGenerateSchedule(true)}
                     aria-label="Generate your class schedule"
@@ -864,7 +864,7 @@ const ChatBot = () => {
                 onClick={() => handleSendQuery()}
                 disabled={chatHistoryLoad || !query.trim()}
               >
-                <CornerRightUpIcon size={24}/>
+                <CornerRightUpIcon size={24} />
               </button>
             </div>
           </div>
