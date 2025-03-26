@@ -5,11 +5,11 @@ import {
   ArrowRightToLineIcon,
   CornerRightUpIcon,
   MessageCirclePlusIcon,
-  RefreshCcwIcon,
   GraduationCapIcon,
   CalendarSearchIcon,
   MessagesSquare,
   SquareAsterisk,
+  PanelLeftDashed,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import MessageDisplay from "@/components/chatbot/MessageDisplay";
@@ -434,12 +434,12 @@ const ChatBot = () => {
   };
 
   // This is used for testing purposes
-  const clearCache = () => {
-    setMessages([]);
-    setconversation_id(null);
-    localStorage.removeItem("chatbot_conversation");
-    localStorage.removeItem("chatbot_conversations");
-  };
+  // const clearCache = () => {
+  //   setMessages([]);
+  //   setconversation_id(null);
+  //   localStorage.removeItem("chatbot_conversation");
+  //   localStorage.removeItem("chatbot_conversations");
+  // };
 
   useEffect(() => {
     const load = async () => {
@@ -558,7 +558,7 @@ const ChatBot = () => {
       <div
         className={`
           ${sidebarCollapsed
-            ? "w-[5.25rem] rounded-md px-4 cursor-pointer"
+            ? "w-[5.25rem] rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]"
             : "w-[24rem] rounded-lg px-6"
           }
           transition-all duration-100
@@ -572,7 +572,7 @@ const ChatBot = () => {
         {sidebarCollapsed && (
           <div className="flex flex-col gap-8 h-full">
             <button
-              className="transition-all p-2 rounded-sm text-textdark active:bg-border w-12 h-12 flex items-center justify-center"
+              className="transition-all p-2 rounded-sm text-textdark hover:bg-border w-12 h-12 flex items-center justify-center"
               onClick={toggleSidebar}
               aria-label="Expand sidebar"
             >
@@ -580,31 +580,29 @@ const ChatBot = () => {
             </button>
 
             <button
-              className="transition-all p-2 rounded-sm text-textdark border border-border active:bg-border w-12 h-12 flex items-center justify-center"
+              className="transition-all p-2 rounded-sm text-textdark border border-border hover:bg-border w-12 h-12 flex items-center justify-center"
               onClick={startNewChat}
               aria-label="Start new chat"
             >
-              <MessageCirclePlusIcon size={24} />
+              <MessageCirclePlusIcon size={24} className="stroke-textdark" />
             </button>
 
             <button
-              className="transition-all p-2 rounded-sm text-textdark border border-border active:bg-border w-12 h-12 flex items-center justify-center"
+              className="transition-all p-2 rounded-sm text-textdark border border-border hover:bg-border w-12 h-12 flex items-center justify-center"
               onClick={toggleSidebar}
               aria-label="Chat History"
             >
-              <MessagesSquare size={24} />
+              <MessagesSquare size={24} className="stroke-textdark" />
             </button>
 
             {/* Spacer */}
             <div className="flex flex-grow" />
 
-            <button
-              onClick={clearCache}
-              className="transition-all p-2 rounded-sm text-textdark border border-border active:bg-border w-12 h-12 flex items-center justify-center"
-              aria-label="Reset cache"
+            <div
+              className="w-12 h-12 flex items-center justify-center"
             >
-              <RefreshCcwIcon size={20} />
-            </button>
+              <PanelLeftDashed size={24} className="stroke-textdark" />
+            </div>
           </div>
         )}
 
@@ -679,7 +677,7 @@ const ChatBot = () => {
         <div
           className={`
             max-w-[80rem] duration-300 ease-in-out
-            flex flex-col flex-1 relative overflow-hidden
+            flex flex-col flex-1 relative overflow-visible
             gap-6
           `}
         >
@@ -705,6 +703,7 @@ const ChatBot = () => {
               <div
                 ref={chatContainerRef}
                 className="p-8 overflow-y-auto space-y-2 flex flex-col items-center"
+                style={{scrollbarWidth: "none"}}
               >
                 {messages.length === 0 && !chatLoad && !generateSchedule ? (
                   // Case 1: Intro content
@@ -867,6 +866,7 @@ const ChatBot = () => {
               </button>
             </div>
           </div>
+        <small className="absolute w-full flex justify-center bottom-[-2rem] text-textsecondary">SAGE does not replace official academic advising and may produce incorrect information.</small>
         </div>
       </div>
     </div>

@@ -81,11 +81,11 @@ const MessageDisplay = ({ message }: MessageDisplayProps) => {
     <div className="w-full flex">
       {
         message.role === "user"
-          ? <div className="flex flex-[1]" />
+          ? <div className="flex flex-[6]" />
           : undefined
       }
       <div
-        className={`flex flex-[2] flex-col p-4 gap-2 rounded-md border border-border max-w-fit ${message.role === "user"
+        className={`flex flex-[12] flex-col p-4 gap-2 rounded-md border border-border max-w-fit ${message.role === "user"
           ? "bg-bglight self-end ml-auto"
           : "bg-[#E5E4E4] self-start mr-auto"
           }`}

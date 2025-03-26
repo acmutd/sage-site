@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 const LandingPage = () => {
   return (
-    <div className="flex dark h-screen flex items-center -z-10">
+    <div className="flex dark h-screen items-center -z-10">
       <div className="absolute bg-[#0C2112] blur-[10rem] h-full w-1/3 rounded-full left-[-20rem] -z-1"></div>
       <img
         src="/landing-line1.svg"
@@ -15,8 +15,8 @@ const LandingPage = () => {
         className="absolute object-cover top-[47vh] left-[42vw] w-[45vw]"
       />
       <div className="pl-[10vw] z-10">
-        <h1 className="text-[#FFFFFF] text-[6vw] font-[Mermaid] font-bold text-left w-full">
-          Say hello to <span className="text-[#5AED87]">SAGE</span>, your <br />
+        <h1 className="text-[#FFFFFF] text-[6vw] text-left w-full">
+          Say hello to <span className="text-accent font-mermaid">SAGE</span>, your <br />
           personal Al-powered <br />
           student advisor.
         </h1>
