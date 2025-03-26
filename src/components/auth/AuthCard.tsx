@@ -1,11 +1,11 @@
 import { ReactNode } from "react";
 
-interface AuthPageProps {
-    title: string;
-    form: ReactNode;
+interface AuthCardProps {
+  title: string;
+  form: ReactNode;
 }
 
-const AuthPage = (props: AuthPageProps) => {
+const AuthCard = (props: AuthCardProps) => {
   return (
     <div className="flex min-h-screen h-max dark justify-center [@media(max-height:720px)]:items-start items-center [@media(max-height:720px)]:py-24">
       <div className="[@media(max-height:720px)]:block hidden fixed top-0 left-0 w-screen h-16 bg-black"></div>
@@ -30,4 +30,4 @@ const AuthPage = (props: AuthPageProps) => {
   );
 };
 
-export default AuthPage;
+export default AuthCard;
