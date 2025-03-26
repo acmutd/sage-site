@@ -9,14 +9,12 @@ const Navbar = () => {
 
   let location = useLocation().pathname;
   useEffect(() => {
-    console.log(location)
-    if (location !== "/") {
-      setIsInWebapp(true);
-    }
-    else {
+    if (location === "/" || location === "/login" || location === "/signup") {
       setIsInWebapp(false);
     }
-    console.log(isInWebapp)
+    else {
+      setIsInWebapp(true);
+    }
   }, [location]);
 
   return (
