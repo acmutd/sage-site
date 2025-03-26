@@ -1,6 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 
 @font-face {
   font-family: "Mermaid";
@@ -9,16 +11,25 @@
   font-style: normal;
 }
 
-@font-face {
-  font-family: "DMSans";
-  src: url("/fonts/DMSans.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
+* {
+  @apply font-dmsans font-medium text-textdark;
 }
+h1 {
+  @apply font-mermaid text-5xl;
+}
+h2 {
+  @apply font-dmsans text-4xl font-bold;
+}
+h3 {
+  @apply font-dmsans text-2xl font-semibold;
+}
+small {
+  @apply font-dmsans text-sm font-medium;
+}
+
 
 body {
   background-color: var(--black-color);
-  font-family: "DMSans", sans-serif;
 }
 :root {
   --accent-color: #5aed86;

@@ -1,41 +1,53 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "../context/AuthContext";
+import { MessageCirclePlus, Route } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const [isInWebapp, setIsInWebapp] = useState(false);
+
+  let location = useLocation().pathname;
+  useEffect(() => {
+    console.log(location)
+    if (location !== "/") {
+      setIsInWebapp(true);
+    }
+    else {
+      setIsInWebapp(false);
+    }
+    console.log(isInWebapp)
+  }, [location]);
 
   return (
     <AuthProvider>
-      <nav className="py-4 px-6 fixed w-full z-10">
+      <nav className={`
+        ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
+        py-4 px-6 fixed w-full z-10
+        `}>
         <div className="flex items-center justify-between w-full">
           <Link to="/" className="ml-0">
-            <img src="/Sage_Logo_Light.svg" alt="SAGE" className="h-8 w-auto" />
+            <img src={isInWebapp ? "/Sage_Logo_Dark.svg" : "/Sage_Logo_Light.svg"} alt="SAGE" className="h-8 w-auto" />
           </Link>
           <ul className="flex items-center space-x-6 mr-0">
             <li className="flex-row">
               <Link
                 to="/planner"
-                className="flex items-center space-x-2 text-white hover:text-gray-200 text-base font-semibold"
+                className={`${isInWebapp ? "text-textdark hover:text-gray-700" : "text-textlight hover:text-gray-200"}
+                flex items-center gap-2`}
               >
-                <img
-                  src="/PlannerIcon.png"
-                  alt="Planner"
-                  className="h-6 w-auto"
-                />
-                <span>Plan your degree</span>
+                <Route className="stroke-accent" />
+                Plan your degree
               </Link>
             </li>
             <li className="flex-row">
               <Link
                 to="/chatbot"
-                className="flex items-center space-x-2 text-white hover:text-gray-200 text-base font-semibold"
+                className={`${isInWebapp ? "text-textdark" : "text-textlight"}
+                flex items-center gap-2 hover:text-gray-200"`}
               >
-                <img
-                  src="/ChatbotIcon.png"
-                  alt="Chatbot"
-                  className="h-6 w-auto"
-                />
-                <span>Start a chat</span>
+                <MessageCirclePlus className="stroke-accent" />
+                Start a chat
               </Link>
             </li>
             <li>
