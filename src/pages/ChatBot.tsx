@@ -722,7 +722,7 @@ const ChatBot = () => {
                       </li>
                       <li>Tell me about ACM UTD and how I can get involved!</li>
                       <li>
-                        What classes should a first-year neuroscience major
+                        What classes should a first-year accounting major
                         take?
                       </li>
                       <li>What do you know about Professor John Cole?</li>
@@ -747,14 +747,14 @@ const ChatBot = () => {
                         classes during that time?
                       </li>
                       <li>
-                        My friend is in CS 2336.002, can we make sure to include
+                        My friend is in CS 2336.003, can we make sure to include
                         that class?
                       </li>
                       <li>
                         Swap CS 2336 for CS 3341, and no classes before 10am
                       </li>
                       <li>
-                        I want Professor John Cole for CS 2340. Can we only use
+                        I want Professor John Cole for CS 3162. Can we only use
                         his sections?
                       </li>
                       <li>
