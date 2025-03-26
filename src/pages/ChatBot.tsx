@@ -726,6 +726,7 @@ const ChatBot = () => {
                         take?
                       </li>
                       <li>What do you know about Professor John Cole?</li>
+                      <li>What are the GPA cutoffs for the benchmark classes of a prospective CS fast track student?</li>
                     </ul>
                   </div>
                 ) : messages.length === 0 && !chatLoad && generateSchedule ? (
@@ -760,6 +761,9 @@ const ChatBot = () => {
                       <li>
                         I need to enroll for summer classes, please generate a
                         schedule using summer sections.
+                      </li>
+                      <li>
+                      Can you rank the CS2340 classes by professor rating and compare their data?
                       </li>
                     </ul>
                   </div>
