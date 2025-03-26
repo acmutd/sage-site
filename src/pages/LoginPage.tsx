@@ -13,7 +13,7 @@ const LoginPage = () => {
         </div>
         <div className="flex-[6] w-auto bg-white font-[DMSans]">
           <div className="flex flex-col justify-center h-full w-full mx-auto px-[5rem]">
-            <h3 className="text-[24px] font-medium font-bold text-[#1A1A1A] mb-8">
+            <h3 className="text-[24px] font-bold text-[#1A1A1A] mb-8">
               Welcome back to Sage!
             </h3>
             {loginForm()}
