@@ -5,7 +5,6 @@ import {
   ArrowRightToLineIcon,
   CornerRightUpIcon,
   MessageCirclePlusIcon,
-  RefreshCcwIcon,
   GraduationCapIcon,
   CalendarSearchIcon,
   MessagesSquare,
@@ -435,12 +434,12 @@ const ChatBot = () => {
   };
 
   // This is used for testing purposes
-  const clearCache = () => {
-    setMessages([]);
-    setconversation_id(null);
-    localStorage.removeItem("chatbot_conversation");
-    localStorage.removeItem("chatbot_conversations");
-  };
+  // const clearCache = () => {
+  //   setMessages([]);
+  //   setconversation_id(null);
+  //   localStorage.removeItem("chatbot_conversation");
+  //   localStorage.removeItem("chatbot_conversations");
+  // };
 
   useEffect(() => {
     const load = async () => {
