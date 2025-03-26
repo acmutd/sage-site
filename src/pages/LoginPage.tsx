@@ -2,8 +2,8 @@ import loginForm from "../components/login-form";
 
 const LoginPage = () => {
   return (
-    <div className="flex h-screen dark justify-center items-center">
-      <div className="flex w-[75vw] h-[70vh] rounded-3xl overflow-hidden">
+    <div className="flex min-h-screen h-max dark justify-center [@media(max-height:720px)]:items-start items-center [@media(max-height:720px)]:py-24">
+      <div className="flex w-[75vw] h-[70vh] min-h-[600px] rounded-3xl overflow-hidden">
         <div className="flex-[4] w-auto bg-[#E4E4E4] flex justify-center items-center">
           <img
             src="/login_graphic.svg"
