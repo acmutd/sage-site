@@ -678,7 +678,7 @@ const ChatBot = () => {
         <div
           className={`
             max-w-[80rem] duration-300 ease-in-out
-            flex flex-col flex-1 relative overflow-hidden
+            flex flex-col flex-1 relative overflow-visible
             gap-6
           `}
         >
@@ -704,6 +704,7 @@ const ChatBot = () => {
               <div
                 ref={chatContainerRef}
                 className="p-8 overflow-y-auto space-y-2 flex flex-col items-center"
+                style={{scrollbarWidth: "none"}}
               >
                 {messages.length === 0 && !chatLoad && !generateSchedule ? (
                   // Case 1: Intro content
@@ -866,6 +867,7 @@ const ChatBot = () => {
               </button>
             </div>
           </div>
+        <small className="absolute w-full flex justify-center bottom-[-2rem] text-textsecondary">SAGE does not replace official academic advising and may produce incorrect information.</small>
         </div>
       </div>
     </div>
