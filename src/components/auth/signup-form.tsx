@@ -124,7 +124,7 @@ export default function SignupForm() {
   }
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6 pb-4">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
@@ -132,14 +132,14 @@ export default function SignupForm() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-[#1A1A1A] text-[15px]">
+                <FormLabel className="text-textdark text-[15px]">
                   Email
                 </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Enter email"
                     type="email"
-                    className="h-[2.5rem] px-4 rounded-full border border-[#E5E5E5] text-[15px] placeholder:text-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
+                    className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-[#10B981]"
                     {...field}
                   />
                 </FormControl>
@@ -152,14 +152,14 @@ export default function SignupForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-[#1A1A1A] text-[15px]">
+                <FormLabel className="text-textdark text-[15px]">
                   Password
                 </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Enter password"
                     type="password"
-                    className="h-[2.5rem] px-4 rounded-full border border-[#E5E5E5] text-[15px] placeholder:text-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
+                    className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-[#10B981]"
                     {...field}
                   />
                 </FormControl>
@@ -172,14 +172,14 @@ export default function SignupForm() {
             name="confirmPassword"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-[#1A1A1A] text-[15px]">
+                <FormLabel className="text-textdark text-[15px]">
                   Confirm Password
                 </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Confirm password"
                     type="password"
-                    className="h-[2.5rem] px-4 rounded-full border border-[#E5E5E5] text-[15px] placeholder:text-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
+                    className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-[#10B981]"
                     {...field}
                   />
                 </FormControl>
@@ -189,48 +189,46 @@ export default function SignupForm() {
           />
           <Button
             type="submit"
-            className="w-full h-[2.5rem] rounded-full bg-[#4ADE80] hover:bg-[#22c55e] text-[15px] font-medium text-[#1A1A1A]"
+            className="w-full h-[2.5rem] rounded-full bg-[#4ADE80] hover:bg-[#22c55e] text-[15px] font-medium text-textdark"
           >
             Sign up
           </Button>
         </form>
       </Form>
 
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <Separator className="w-full border-[#E5E5E5]" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-white px-2 text-[#6B7280]">or</span>
-        </div>
+      <div className="flex gap-2 justify-center items-center w-full">
+        <Separator className="flex-[1] border-border" />
+        <small className="bg-white text-xs text-textsecondary">OR</small>
+        <Separator className="flex-[1] border-border" />
       </div>
 
       <div className="flex flex-col items-center space-y-3">
         <Button
           variant="outline"
-          className="w-full h-[2.5rem] bg-light rounded-full border border-[#E5E5E5] hover:bg-gray-50 text-[15px] text-black hover:text-black"
+          className="w-full h-[2.5rem] bg-light rounded-full border border-border hover:bg-gray-50 text-[15px] text-black hover:text-black"
           onClick={handleGoogleSignup}
         >
           <img src="/GoogleIcon.png" alt="Google" className="w-5 h-5 mr-2" />
           Sign up with Google
         </Button>
 
-        <a href="/login" className="text-[15px] text-[#6B7280] hover:underline">
+        <a href="/login" className="text-[15px] text-textsecondary hover:underline">
           Already have an account?
         </a>
+        
+        <small className="text-center text-textsecondary mt-4 w-full">
+          By signing up, you agree to our{" "}
+          <a
+            href="/tos.pdf"
+            target="_blank"
+            className="text-buttonhover hover:underline"
+          >
+            Terms of Service
+          </a>
+          .
+        </small>
       </div>
 
-      <p className="text-center text-[14px] text-[#6B7280] mt-4">
-        By signing up, you agree to our{" "}
-        <a
-          href="/tos.pdf"
-          target="_blank"
-          className="text-[#10B981] hover:underline"
-        >
-          Terms of Service
-        </a>
-        .
-      </p>
     </div>
   );
 }
