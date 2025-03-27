@@ -15,28 +15,28 @@ const LandingPage = () => {
         className="absolute object-cover top-[47vh] left-[42vw] w-[45vw]"
       />
       <div className="pl-[10vw] z-10">
-        <h1 className="text-[#FFFFFF] text-[6vw] text-left w-full">
+        <h1 className="text-textlight text-[6vw] text-left w-full">
           Say hello to <span className="text-accent font-mermaid">SAGE</span>, your <br />
           personal Al-powered <br />
           student advisor.
         </h1>
-        <div className="flex bg-[#181818] gap-4 rounded-l-full pr-8 absolute top-[calc(45vh+20vw)] left-[10vw]">
+        <div className="flex bg-bgdark gap-4 rounded-l-full pr-8 absolute top-[calc(45vh+20vw)] left-[10vw]">
           <Link
             to="/planner"
-            className="bg-[#5AED86] border-[#5AED86] border-2 text-black text-[1.1vw] scale-[50vw] px-8 py-3 rounded-full font-semibold hover:bg-transparent hover:text-white transition duration-300"
+            className="bg-accent border-accent border-2 text-textdark text-[1.1vw] scale-[50vw] px-8 py-3 rounded-full font-semibold hover:bg-transparent hover:text-textlight transition duration-300"
           >
             Generate a degree plan
           </Link>
           <Link
             to="/chatbot"
-            className="border-[#5AED86] border-2 text-white text-[1.1vw] px-8 py-3 rounded-full font-semibold hover:bg-[#5AED86] hover:text-black transition duration-300"
+            className="border-accent border-2 text-white text-[1.1vw] px-8 py-3 rounded-full font-semibold hover:bg-accent hover:text-textdark transition duration-300"
           >
             Ask a question
           </Link>
         </div>
         <div className="absolute bottom-0 p-4 flex items-center gap-2">
           <img src="/asterisk.svg" alt="asterisk" className="h-4 w-auto" />
-          <p className="text-white text-md">Powered by the ACM Dev team</p>
+          <p className="text-textlight">Powered by the ACM Dev team</p>
         </div>
       </div>
     </div>

@@ -714,7 +714,7 @@ const ChatBot = () => {
                       Here are some example questions that I can help you with:
                     </p>
                     <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
-                      <li>What time is the CSMC open?</li>
+                      <li>What courses are supported by the CSMC?</li>
                       <li>What are the requirements for graduation?</li>
                       <li>
                         How can I enroll in classes I don't have prereqs for if
