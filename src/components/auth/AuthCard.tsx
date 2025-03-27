@@ -8,7 +8,7 @@ interface AuthCardProps {
 const AuthCard = (props: AuthCardProps) => {
   return (
     <div className="flex min-h-screen h-max dark justify-center [@media(max-height:720px)]:items-start items-center [@media(max-height:720px)]:py-24">
-      <div className="[@media(max-height:720px)]:block hidden fixed top-0 left-0 w-screen h-16 bg-black"></div>
+      <div className="[@media(max-height:720px)]:block hidden fixed top-0 left-0 w-screen h-16 bg-bgdark"></div>
       <div className="flex w-[75vw] h-[70vh] min-h-[600px] rounded-3xl overflow-hidden">
         <div className="flex-[4] w-auto bg-[#E4E4E4] flex justify-center items-center">
           <img
