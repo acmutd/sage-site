@@ -316,6 +316,15 @@ const ChatBot = () => {
       return;
     }
 
+    // Check if query is too long
+    if (query.trim().length > 500) {
+      setChatError(`Query uses ${query.trim().length}/500 characters. Please shorten your query.`);
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+      return;
+    }
+
     console.log("Sending query:", query);
 
     setChatLoad(true);
