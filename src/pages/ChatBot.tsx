@@ -59,9 +59,9 @@ const ChatBot = () => {
     if (sidebarCollapsed) {
       sidebarDelay = 80;
     }
-      setTimeout(() => {
-        setSidebarCollapsedDelayed(!sidebarCollapsed);
-      }, sidebarDelay)
+    setTimeout(() => {
+      setSidebarCollapsedDelayed(!sidebarCollapsed);
+    }, sidebarDelay)
   };
 
   // Check if the cached data is still valid
@@ -689,8 +689,8 @@ const ChatBot = () => {
         </div>
 
         {/* Beta Disclaimer */}
-        <div className={`${sidebarCollapsed ? "cursor-pointer" : undefined} rounded-full bg-textdark w-full py-3 px-6 flex gap-2 justify-center items-center`} 
-                  onClick={!sidebarCollapsed ? undefined : toggleSidebar}>
+        <div className={`${sidebarCollapsed ? "cursor-pointer rounded-md" : "rounded-full"}  bg-textdark w-full py-3 px-6 flex gap-2 justify-center items-center`}
+          onClick={!sidebarCollapsed ? undefined : toggleSidebar}>
           <SquareAsterisk size={32} className="stroke-accent" />
           <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-textlight text-xs`}>
             This app is in development. For issues or
