@@ -687,7 +687,10 @@ const ChatBot = () => {
             </div>
           )}
         </div>
-        <div className="rounded-full bg-textdark w-full py-3 px-6 flex gap-2 justify-center items-center">
+
+        {/* Beta Disclaimer */}
+        <div className={`${sidebarCollapsed ? "cursor-pointer" : undefined} rounded-full bg-textdark w-full py-3 px-6 flex gap-2 justify-center items-center`} 
+                  onClick={!sidebarCollapsed ? undefined : toggleSidebar}>
           <SquareAsterisk size={32} className="stroke-accent" />
           <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-textlight text-xs`}>
             This app is in development. For issues or
@@ -713,23 +716,6 @@ const ChatBot = () => {
             gap-6
           `}
         >
-          {/* Beta Disclaimer */}
-          {/* <div className="rounded-full bg-textdark w-full py-3 px-6 flex gap-2 items-center">
-            <SquareAsterisk size={32} className="stroke-accent" />
-            <small className="text-textlight">
-              This app is still in development. If you have any issues or
-              feedback,
-              <a
-                href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-accent underline ml-1"
-              >
-                please click here.
-              </a>
-            </small>
-          </div> */}
-          {/* Chat container */}
           <div className="flex-grow flex flex-col overflow-hidden">
             <div className="w-full bg-innercontainer rounded-lg border flex flex-col flex-grow overflow-hidden">
               <div
