@@ -91,7 +91,9 @@ const MessageDisplay = ({ message }: MessageDisplayProps) => {
           }`}
       >
         {message.content.split("\n").map((line, index) => (
-          <div key={index}>{renderMarkdown(line)}</div>
+          <div key={index}>
+            <small className="text-[15px]">{renderMarkdown(line)}</small>
+          </div>
         ))}
       </div>
       {

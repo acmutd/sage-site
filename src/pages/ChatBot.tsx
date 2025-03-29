@@ -29,6 +29,7 @@ const ChatBot = () => {
   const [chatError, setChatError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
   const [generateSchedule, setGenerateSchedule] = useState(false);
   const [hovered, setHovered] = useState<"advising" | "schedule" | null>(null);
@@ -53,7 +54,14 @@ const ChatBot = () => {
   };
 
   const toggleSidebar = () => {
+    let sidebarDelay = 0;
     setSidebarCollapsed(!sidebarCollapsed);
+    if (sidebarCollapsed) {
+      sidebarDelay = 80;
+    }
+    setTimeout(() => {
+      setSidebarCollapsedDelayed(!sidebarCollapsed);
+    }, sidebarDelay)
   };
 
   // Check if the cached data is still valid
@@ -564,121 +572,148 @@ const ChatBot = () => {
   return (
     <div className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]">
       {/* Chat History Bar - Expanded or Skinny */}
-      <div
-        className={`
-          ${sidebarCollapsed
-            ? "w-[5.25rem] rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]"
-            : "w-[24rem] rounded-lg px-6"
-          }
-          transition-all duration-100
-          py-8 gap-8 overflow-hidden
-          bg-bglight border border-border
-          flex flex-col items-center
-        `}
-        onClick={sidebarCollapsed ? toggleSidebar : undefined}
-      >
-        {/* Elements in the collapsed sidebar */}
-        {sidebarCollapsed && (
-          <div className="flex flex-col gap-8 h-full">
-            <button
-              className="transition-all p-2 rounded-sm text-textdark hover:bg-border w-12 h-12 flex items-center justify-center"
-              onClick={toggleSidebar}
-              aria-label="Expand sidebar"
-            >
-              <ArrowRightToLineIcon size={24} />
-            </button>
-
-            <button
-              className="transition-all p-2 rounded-sm text-textdark border border-border hover:bg-border w-12 h-12 flex items-center justify-center"
-              onClick={startNewChat}
-              aria-label="Start new chat"
-            >
-              <MessageCirclePlusIcon size={24} className="stroke-textdark" />
-            </button>
-
-            <button
-              className="transition-all p-2 rounded-sm text-textdark border border-border hover:bg-border w-12 h-12 flex items-center justify-center"
-              onClick={toggleSidebar}
-              aria-label="Chat History"
-            >
-              <MessagesSquare size={24} className="stroke-textdark" />
-            </button>
-
-            {/* Spacer */}
-            <div className="flex flex-grow" />
-
-            <div
-              className="w-12 h-12 flex items-center justify-center"
-            >
-              <PanelLeftDashed size={24} className="stroke-textdark" />
-            </div>
-          </div>
-        )}
-
-        {/* Elements in the expanded sidebar */}
-        {!sidebarCollapsed && (
-          <div className="flex flex-col overflow-hidden gap-8">
-            {/* Buttons at the top */}
-            <div className="flex gap-3 justify-between">
+      <div className={`
+        ${sidebarCollapsed
+          ? "w-[5.25rem]"
+          : "w-[24rem]"
+        }
+        h-full flex flex-col gap-3 transition-all duration-100`}>
+        <div
+          className={`
+            ${sidebarCollapsed
+              ? "w-full h-[100%] rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]"
+              : "w-full h-[100%] rounded-lg px-6"
+            }
+            transition-all duration-100
+            py-8 gap-8 overflow-hidden
+            bg-bglight border border-border
+            flex flex-col items-center
+          `}
+          onClick={sidebarCollapsed ? toggleSidebar : undefined}
+        >
+          {/* Elements in the collapsed sidebar */}
+          {sidebarCollapsed && (
+            <div className="flex flex-col gap-8 h-full">
               <button
-                className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700"
-                onClick={startNewChat}
-              >
-                <MessageCirclePlusIcon size={24} />
-                <span>Start new chat</span>
-              </button>
-              <button
-                className="p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center"
+                className="transition-all p-2 rounded-sm text-textdark hover:bg-border w-12 h-12 flex items-center justify-center"
                 onClick={toggleSidebar}
-                aria-label="Collapse sidebar"
+                aria-label="Expand sidebar"
               >
-                <ArrowLeftToLineIcon size={20} />
+                <ArrowRightToLineIcon size={24} />
               </button>
+
+              <button
+                className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
+                onClick={startNewChat}
+                aria-label="Start new chat"
+              >
+                <MessageCirclePlusIcon size={24} className="stroke-textdark" />
+              </button>
+
+              <button
+                className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
+                onClick={toggleSidebar}
+                aria-label="Chat History"
+              >
+                <MessagesSquare size={24} className="stroke-textdark" />
+              </button>
+
+              {/* Spacer */}
+              <div className="flex flex-grow" />
+
+              <div
+                className="w-12 h-12 flex items-center justify-center"
+              >
+                <PanelLeftDashed size={24} className="stroke-textdark" />
+              </div>
             </div>
+          )}
 
-            {/* Conversation list */}
-            {chatHistoryLoad && (
-              <p className="text-textsecondary">Loading conversations...</p>
-            )}
-            {error && <p className="text-destructive">{error}</p>}
+          {/* Elements in the expanded sidebar */}
+          {!sidebarCollapsed && (
+            // Both booleans are in this^ expression for quicker response whenever the navbar is collapsed, since
+            // sidebarCollapsedDelayed is changed after slightly more function overhead time
+            <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col overflow-hidden gap-8 transition-all duration-150`}>
+              {/* Buttons at the top */}
+              <div className="flex gap-3 justify-between">
+                <button
+                  className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700"
+                  onClick={startNewChat}
+                >
+                  <MessageCirclePlusIcon size={24} />
+                  <span>Start new chat</span>
+                </button>
+                <button
+                  className="p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center"
+                  onClick={toggleSidebar}
+                  aria-label="Collapse sidebar"
+                >
+                  <ArrowLeftToLineIcon size={20} />
+                </button>
+              </div>
 
-            <ul
-              className="space-y-2 overflow-y-scroll"
-              style={{ scrollbarWidth: "none" }}
-            >
-              {Array.isArray(conversations) && conversations.length > 0 ? (
-                conversations.map((conv) => {
-                  // Use the first message to represent the conversation topic
-                  const firstMessage =
-                    conv.messages?.[0]?.content || "No messages";
-                  const truncatedMessage =
-                    firstMessage.length > 50
-                      ? firstMessage.substring(0, 50) + "..."
-                      : firstMessage;
+              {/* Conversation list */}
+              {chatHistoryLoad && (
+                <p className="text-textsecondary">Loading conversations...</p>
+              )}
+              {error && <p className="text-destructive">{error}</p>}
 
-                  return (
-                    <li
-                      key={conv.conversation_id}
-                      className={`p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors ${conversation_id === conv.conversation_id
+              <ul
+                className="space-y-2 overflow-y-scroll"
+                style={{ scrollbarWidth: "none" }}
+              >
+                {Array.isArray(conversations) && conversations.length > 0 ? (
+                  conversations.map((conv) => {
+                    // Use the first message to represent the conversation topic
+                    const firstMessage =
+                      conv.messages?.[0]?.content || "No messages";
+                    const truncatedMessage =
+                      firstMessage.length > 50
+                        ? firstMessage.substring(0, 50) + "..."
+                        : firstMessage;
+
+                    return (
+                      <li
+                        key={conv.conversation_id}
+                        className={`p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors ${conversation_id === conv.conversation_id
                           ? "bg-secondary"
                           : "bg-bglight"
-                        }`}
-                      onClick={() =>
-                        loadConversation(conv.conversation_id, conv.messages)
-                      }
-                    >
-                      <small>{truncatedMessage}</small>
-                    </li>
-                  );
-                })
-              ) : (
-                <li className="p-2 text-gray-500">
-                  No conversations available
-                </li>
-              )}
-            </ul>
-          </div>
-        )}
+                          }`}
+                        onClick={() =>
+                          loadConversation(conv.conversation_id, conv.messages)
+                        }
+                      >
+                        <small>{truncatedMessage}</small>
+                      </li>
+                    );
+                  })
+                ) : (
+                  <li className="p-2 text-gray-500">
+                    No conversations available
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Beta Disclaimer */}
+        <div className={`${sidebarCollapsed ? "cursor-pointer rounded-md" : "rounded-full"}  bg-textdark w-full py-3 px-6 flex gap-2 justify-center items-center`}
+          onClick={!sidebarCollapsed ? undefined : toggleSidebar}>
+          <SquareAsterisk size={32} className="stroke-accent" />
+          <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-textlight text-xs`}>
+            This app is in development. For issues or
+            feedback,
+            <a
+              href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent underline ml-1"
+            >
+              click here.
+            </a>
+          </small>
+        </div>
       </div>
 
       {/* Main chat area */}
@@ -690,29 +725,12 @@ const ChatBot = () => {
             gap-6
           `}
         >
-          {/* Beta Disclaimer */}
-          <div className="rounded-full bg-textdark w-full py-3 px-6 flex gap-2 items-center">
-            <SquareAsterisk size={32} className="stroke-accent" />
-            <small className="text-textlight">
-              This app is still in development. If you have any issues or
-              feedback,
-              <a
-                href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-accent underline ml-1"
-              >
-                please click here.
-              </a>
-            </small>
-          </div>
-          {/* Chat container */}
           <div className="flex-grow flex flex-col overflow-hidden">
             <div className="w-full bg-innercontainer rounded-lg border flex flex-col flex-grow overflow-hidden">
               <div
                 ref={chatContainerRef}
                 className="p-8 overflow-y-auto space-y-2 flex flex-col items-center"
-                style={{scrollbarWidth: "none"}}
+                style={{ scrollbarWidth: "none" }}
               >
                 {messages.length === 0 && !chatLoad && !generateSchedule ? (
                   // Case 1: Intro content
@@ -772,7 +790,7 @@ const ChatBot = () => {
                         schedule using summer sections.
                       </li>
                       <li>
-                      Can you rank the CS2340 classes by professor rating and compare their data?
+                        Can you rank the CS2340 classes by professor rating and compare their data?
                       </li>
                     </ul>
                   </div>
@@ -806,8 +824,8 @@ const ChatBot = () => {
                 >
                   <button
                     className={`p-2 rounded-full mr-2 transition-colors duration-200 ${!generateSchedule
-                        ? "bg-accent hover:bg-buttonhover"
-                        : "bg-secondary hover:bg-[#A9BFB4]"
+                      ? "bg-accent hover:bg-buttonhover"
+                      : "bg-secondary hover:bg-[#A9BFB4]"
                       }`}
                     onClick={() => setGenerateSchedule(false)}
                     aria-label="Ask a general advising question"
@@ -825,8 +843,8 @@ const ChatBot = () => {
                 >
                   <button
                     className={`p-2 rounded-full transition-colors duration-200 ${generateSchedule
-                        ? "bg-accent hover:bg-buttonhover"
-                        : "bg-secondary hover:bg-[#A9BFB4]"
+                      ? "bg-accent hover:bg-buttonhover"
+                      : "bg-secondary hover:bg-[#A9BFB4]"
                       }`}
                     onClick={() => setGenerateSchedule(true)}
                     aria-label="Generate your class schedule"
@@ -859,7 +877,7 @@ const ChatBot = () => {
                 rows={1}
                 placeholder="Ask a question..."
                 aria-label="Chat input field"
-                className="w-full py-4 px-8 mr-2 border rounded-full resize-none overflow-auto-y focus:outline-none min-h-0 max-h-28"
+                className="w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-auto-y focus:outline-none min-h-0 max-h-28"
                 style={{ scrollbarWidth: "none" }}
                 onChange={(e) => {
                   setQuery(e.target.value);
@@ -879,7 +897,7 @@ const ChatBot = () => {
               </button>
             </div>
           </div>
-        <small className="absolute w-full flex justify-center bottom-[-2rem] text-textsecondary">SAGE does not replace official academic advising and may produce incorrect information.</small>
+          <small className="absolute w-full flex justify-center bottom-[-2rem] text-textsecondary">SAGE does not replace official academic advising and may produce incorrect information.</small>
         </div>
       </div>
     </div>
