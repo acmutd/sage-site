@@ -10,6 +10,7 @@ import {
   MessagesSquare,
   SquareAsterisk,
   PanelLeftDashed,
+  Trash2,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import MessageDisplay from "@/components/chatbot/MessageDisplay";
@@ -41,6 +42,15 @@ const ChatBot = () => {
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  const [moreOptionsOpenId, setMoreOptionsOpenId] = useState<string | null>(
+    null
+  );
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<
+    string | null
+  >(null);
+  const [deleting, setDeleting] = useState(false);
+  const conversationListRef = useRef<HTMLUListElement | null>(null);
 
   const CHAT_API = import.meta.env.VITE_CHAT_API;
   const CRUD_API = import.meta.env.VITE_CRUD_API;
@@ -72,6 +82,10 @@ const ChatBot = () => {
       currentTime - timestamp < CACHE_EXPIRATION_TIME &&
       user.uid === cacheUserId
     );
+  };
+
+  const handleOutsideClick = () => {
+    setMoreOptionsOpenId(null);
   };
 
   // Save conversation data with timestamp to localStorage
@@ -181,6 +195,106 @@ const ChatBot = () => {
     }
   };
 
+  // Delete conversation
+  const deleteConversation = async (conversationId: string) => {
+    if (!user?.uid) {
+      console.warn("User ID is missing. Cannot fetch conversations.");
+      return;
+    }
+    setError(null);
+
+    const conversationToDelete = conversationId;
+    console.log("conversationToDelete: ", conversationToDelete);
+
+    try {
+      const cachedConversationsString = localStorage.getItem(
+        "chatbot_conversations"
+      );
+
+      if (cachedConversationsString) {
+        const cachedConversation = JSON.parse(cachedConversationsString);
+
+        if (cachedConversation?.data) {
+          // Filter out the conversation
+          const updatedCache = {
+            ...cachedConversation,
+            data: cachedConversation.data.filter(
+              (item: { conversation_id: string }) =>
+                item.conversation_id !== conversationToDelete
+            ),
+          };
+          // Save it back
+          localStorage.setItem(
+            "chatbot_conversations",
+            JSON.stringify(updatedCache)
+          );
+        }
+      } else {
+        console.warn("Couldn't find conversation in cache");
+      }
+
+      if (!CRUD_API) {
+        throw new Error("CRUD_API environment variable is missing.");
+      }
+
+      const token = await user.getIdToken();
+      if (!token) {
+        throw new Error("Failed to retrieve authentication token.");
+      }
+
+      const response = await fetch(CRUD_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user?.uid,
+          action: "deleteConversation",
+          token,
+          conversationId: conversationId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to delete conversation: ${response.status} - ${errorText}`
+        );
+      }
+
+      const data = await response.json();
+
+      // Remove the deleted conversation from current state
+      setConversations((prev) =>
+        prev.filter((item) => item.conversation_id !== conversationToDelete)
+      );
+
+      // Update localStorage cache too
+      const updatedCacheString = localStorage.getItem("chatbot_conversations");
+      if (updatedCacheString) {
+        const updatedCache = JSON.parse(updatedCacheString);
+        const filtered = updatedCache.data.filter(
+          (item: { conversation_id: string }) =>
+            item.conversation_id !== conversationToDelete
+        );
+        saveConversationsToCache(filtered);
+      }
+
+      if (conversation_id === conversationToDelete) {
+        setconversation_id(null);
+        setMessages([]);
+        localStorage.removeItem("chatbot_conversation");
+      }
+
+      return data;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to delete conversation";
+      setError(errorMessage);
+      console.error("Error deleting conversation:", error);
+    }
+  };
+
   const startNewChat = () => {
     if (messages.length > 0 && conversation_id) {
       setConversations((prevConversations) => {
@@ -216,6 +330,10 @@ const ChatBot = () => {
         cacheUserId: user?.uid,
       })
     );
+
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
   };
 
   const loadConversation = async (id: string, messages: any[]) => {
@@ -570,7 +688,10 @@ const ChatBot = () => {
   }, [conversation_id]);
 
   return (
-    <div className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]">
+    <div
+      className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]"
+      onClick={handleOutsideClick}
+    >
       {/* Chat History Bar - Expanded or Skinny */}
       <div className={`
         ${sidebarCollapsed
@@ -659,11 +780,12 @@ const ChatBot = () => {
               {error && <p className="text-destructive">{error}</p>}
 
               <ul
-                className="space-y-2 overflow-y-scroll"
+                className="space-y-2 overflow-y-scroll h-full"
+                ref={conversationListRef}
                 style={{ scrollbarWidth: "none" }}
               >
                 {Array.isArray(conversations) && conversations.length > 0 ? (
-                  conversations.map((conv) => {
+                  conversations.map((conv, index) => {
                     // Use the first message to represent the conversation topic
                     const firstMessage =
                       conv.messages?.[0]?.content || "No messages";
@@ -672,10 +794,18 @@ const ChatBot = () => {
                         ? firstMessage.substring(0, 50) + "..."
                         : firstMessage;
 
+                    const listIsOverflowing =
+                      conversationListRef.current &&
+                      conversationListRef.current.scrollHeight >
+                      conversationListRef.current.clientHeight;
+
+                    const isNearBottom =
+                      listIsOverflowing && conversations.length - index <= 1;
+
                     return (
                       <li
                         key={conv.conversation_id}
-                        className={`p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors ${conversation_id === conv.conversation_id
+                        className={`relative p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors ${conversation_id === conv.conversation_id
                           ? "bg-secondary"
                           : "bg-bglight"
                           }`}
@@ -683,7 +813,60 @@ const ChatBot = () => {
                           loadConversation(conv.conversation_id, conv.messages)
                         }
                       >
-                        <small>{truncatedMessage}</small>
+                        <small className="truncate max-w-[80%]">
+                          {truncatedMessage}
+                        </small>
+
+                        <div className="relative">
+                          <button
+                            className="text-textsecondary hover:text-gray-700 px-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMoreOptionsOpenId((prev) =>
+                                prev === conv.conversation_id
+                                  ? null
+                                  : conv.conversation_id
+                              );
+                            }}
+                          >
+                            ⋯
+                          </button>
+
+                          {moreOptionsOpenId === conv.conversation_id && (
+                            <div
+                              className={`absolute right-0 z-[9999] w-48 bg-white border border-border shadow-lg rounded-md text-sm overflow-hidden ${isNearBottom ? "bottom-8" : "mt-1"
+                                }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                              }}
+                              onMouseEnter={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              <ul className="py-1">
+                                <li>
+                                  <button
+                                    onClick={() => {
+                                      setConversationToDelete(
+                                        conv.conversation_id
+                                      );
+                                      setShowDeleteModal(true);
+                                      setMoreOptionsOpenId(null);
+                                    }}
+                                    className="flex items-center gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
+                                  >
+                                    <Trash2
+                                      size={16}
+                                      className="stroke-red-500"
+                                    />
+                                    Delete conversation
+                                  </button>
+                                </li>
+                              </ul>
+                            </div>
+                          )}
+                        </div>
                       </li>
                     );
                   })
@@ -900,6 +1083,55 @@ const ChatBot = () => {
           <small className="absolute w-full flex justify-center bottom-[-2rem] text-textsecondary">SAGE does not replace official academic advising and may produce incorrect information.</small>
         </div>
       </div>
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={handleOutsideClick}
+        >
+          <div
+            className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold mb-4 text-textdark">
+              Are you sure you want to delete this conversation?
+            </h2>
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteModal(false);
+                  setConversationToDelete(null);
+                }}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!conversationToDelete) return;
+                  setDeleting(true);
+                  try {
+                    await deleteConversation(conversationToDelete);
+                    setShowDeleteModal(false);
+                    setConversationToDelete(null);
+                  } catch (err) {
+                    console.error("Failed to delete:", err);
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
