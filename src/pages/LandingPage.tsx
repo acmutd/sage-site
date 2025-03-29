@@ -7,12 +7,12 @@ const LandingPage = () => {
       <img
         src="/landing-line1.svg"
         alt="Landing"
-        className="absolute object-cover top-[38vh] left-[-1vw] w-[9vw] scale-[80%]"
+        className="absolute object-cover top-[calc(25vh+6vw)] left-[-1vw] w-[9vw]"
       />
       <img
         src="/landing-line2.svg"
         alt="Landing"
-        className="absolute object-cover top-[34vh] left-[42vw] w-[45vw] scale-[80%]"
+        className="absolute object-cover top-[calc(25vh+6vw)] left-[40vw] w-[45vw]"
       />
       <div className="pl-[10vw] z-10">
         <h1 className="absolute top-[23vh] text-textlight text-[6vw] text-left w-fit">
