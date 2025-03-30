@@ -40,7 +40,7 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function SignupForm() {
+export default function SignupForm(props: {setLoading: (loading: boolean) => void}) {
   const navigate = useNavigate();
 
   const form = useForm<FormValues>({
@@ -74,6 +74,8 @@ export default function SignupForm() {
       const token = await user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
 
+      props.setLoading(true); // Trigger loading animation for user
+
       await fetch(VITE_CRUD_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,16 +86,19 @@ export default function SignupForm() {
         }),
       });
 
+      props.setLoading(false); // Unrender loading animation for user
       toast.success("Successfully signed up with Google!");
       navigate("/chatbot", { replace: true });
     } catch (error) {
       console.error("Error during Google sign-up:", error);
       toast.error("Failed to sign up with Google. Please try again.");
+      props.setLoading(false); // Unrender loading animation for user
     }
   };
 
   async function onSubmit(data: FormValues) {
     try {
+      props.setLoading(true); // Trigger loading animation for user
       const result = await createUserWithEmailAndPassword(
         auth,
         data.email,
@@ -111,9 +116,11 @@ export default function SignupForm() {
         }),
       });
 
+      props.setLoading(false); // Unrender loading animation for user
       toast.success("Successfully signed up!");
       navigate("/chatbot", { replace: true });
     } catch (error: unknown) {
+      props.setLoading(false); // Unrender loading animation for user
       if (typeof error === "object" && error !== null && "code" in error) {
         const firebaseError = error as { code: string; message: string };
         toast.error(firebaseError.message);
