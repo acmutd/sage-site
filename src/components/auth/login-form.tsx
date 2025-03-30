@@ -6,7 +6,6 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
-  sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "@/firebase-config";
 import { useNavigate, useLocation, Link } from "react-router-dom";
@@ -36,7 +35,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function LoginForm(props: {setLoading: (loading: boolean) => void}) {
+export default function LoginForm(props: { setLoading: (loading: boolean) => void }) {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from || "/chatbot";
@@ -91,21 +90,6 @@ export default function LoginForm(props: {setLoading: (loading: boolean) => void
       console.error("Error during Google sign-in:", error);
       toast.error("Failed to sign in with Google. Please try again.");
       props.setLoading(false); // Unrender loading animation for user
-    }
-  };
-
-  const handlePasswordReset = async () => {
-    const email = form.getValues("email");
-    if (!email) {
-      toast.error("Please enter your email before resetting your password.");
-      return;
-    }
-
-    try {
-      await sendPasswordResetEmail(auth, email);
-      toast.success("Password reset link sent! Check your email.");
-    } catch (error) {
-      toast.error("Error sending password reset email. Try again.");
     }
   };
 
@@ -220,13 +204,12 @@ export default function LoginForm(props: {setLoading: (loading: boolean) => void
           Sign in with Google
         </Button>
 
-        <button
-          type="button"
-          onClick={handlePasswordReset}
+        <Link
+          to="/forgot-password"
           className="text-[15px] text-textsecondary hover:underline"
         >
           Forgot password?
-        </button>
+        </Link>
 
         <Link
           to="/signup"
