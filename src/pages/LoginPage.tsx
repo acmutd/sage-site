@@ -6,7 +6,6 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   function handleLoading(loading: boolean) {
-    console.log("called " + loading)
     setIsLoading(loading);
   }
 
