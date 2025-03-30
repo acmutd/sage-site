@@ -6,7 +6,6 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
-  sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "@/firebase-config";
 import { useNavigate, useLocation, Link } from "react-router-dom";
