@@ -11,6 +11,7 @@ import {
   SquareAsterisk,
   PanelLeftDashed,
   Trash2,
+  Ellipsis,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import MessageDisplay from "@/components/chatbot/MessageDisplay";
@@ -702,13 +703,14 @@ const ChatBot = () => {
         <div
           className={`
             ${sidebarCollapsed
-              ? "w-full h-[100%] rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]"
-              : "w-full h-[100%] rounded-lg px-6"
+              ? "rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]"
+              : "rounded-lg px-6"
             }
             transition-all duration-100
             py-8 gap-8 overflow-hidden
             bg-bglight border border-border
             flex flex-col items-center
+            w-full h-full
           `}
           onClick={sidebarCollapsed ? toggleSidebar : undefined}
         >
@@ -754,7 +756,7 @@ const ChatBot = () => {
           {!sidebarCollapsed && (
             // Both booleans are in this^ expression for quicker response whenever the navbar is collapsed, since
             // sidebarCollapsedDelayed is changed after slightly more function overhead time
-            <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col overflow-hidden gap-8 transition-all duration-150`}>
+            <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-hidden gap-8 transition-all duration-150`}>
               {/* Buttons at the top */}
               <div className="flex gap-3 justify-between">
                 <button
@@ -780,7 +782,7 @@ const ChatBot = () => {
               {error && <p className="text-destructive">{error}</p>}
 
               <ul
-                className="space-y-2 overflow-y-scroll h-full"
+                className="flex flex-col gap-2 overflow-y-scroll w-full"
                 ref={conversationListRef}
                 style={{ scrollbarWidth: "none" }}
               >
@@ -789,10 +791,6 @@ const ChatBot = () => {
                     // Use the first message to represent the conversation topic
                     const firstMessage =
                       conv.messages?.[0]?.content || "No messages";
-                    const truncatedMessage =
-                      firstMessage.length > 50
-                        ? firstMessage.substring(0, 50) + "..."
-                        : firstMessage;
 
                     const listIsOverflowing =
                       conversationListRef.current &&
@@ -805,7 +803,8 @@ const ChatBot = () => {
                     return (
                       <li
                         key={conv.conversation_id}
-                        className={`relative p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors ${conversation_id === conv.conversation_id
+                        className={`group/conversation flex flex-row gap-2 justify-between items-center w-full p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors overflow-visible
+                          ${conversation_id === conv.conversation_id
                           ? "bg-secondary"
                           : "bg-bglight"
                           }`}
@@ -813,13 +812,15 @@ const ChatBot = () => {
                           loadConversation(conv.conversation_id, conv.messages)
                         }
                       >
-                        <small className="truncate max-w-[80%]">
-                          {truncatedMessage}
-                        </small>
+                        <div className="flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
+                          <small className="truncate">
+                            {firstMessage}
+                          </small>
+                        </div>
 
-                        <div className="relative">
+                        <div className="relative group-hover/conversation:flex hidden h-full">
                           <button
-                            className="text-textsecondary hover:text-gray-700 px-2"
+                            className="group/menu px-2 h-full"
                             onClick={(e) => {
                               e.stopPropagation();
                               setMoreOptionsOpenId((prev) =>
@@ -829,12 +830,12 @@ const ChatBot = () => {
                               );
                             }}
                           >
-                            ⋯
+                            <Ellipsis className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary"/>
                           </button>
 
                           {moreOptionsOpenId === conv.conversation_id && (
                             <div
-                              className={`absolute right-0 z-[9999] w-48 bg-white border border-border shadow-lg rounded-md text-sm overflow-hidden ${isNearBottom ? "bottom-8" : "mt-1"
+                              className={`absolute right-0 z-[9999] w-48 bg-white border border-border shadow-lg rounded-md text-sm overflow-hidden ${isNearBottom ? "bottom-6" : "top-6"
                                 }`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -856,11 +857,11 @@ const ChatBot = () => {
                                     }}
                                     className="flex items-center gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
                                   >
+                                    Delete conversation
                                     <Trash2
                                       size={16}
                                       className="stroke-red-500"
                                     />
-                                    Delete conversation
                                   </button>
                                 </li>
                               </ul>
@@ -871,8 +872,8 @@ const ChatBot = () => {
                     );
                   })
                 ) : (
-                  <li className="p-2 text-gray-500">
-                    No conversations available
+                  <li className="p-2">
+                    <small className="text-textsecondary">No conversations available</small>
                   </li>
                 )}
               </ul>
@@ -985,7 +986,7 @@ const ChatBot = () => {
                 )}
 
                 {chatLoad && !chatError && (
-                  <div className="p-3 rounded-lg bg-[#E5E4E4] text-black self-start mr-auto border border-border w-fit max-w-sm">
+                  <div className="p-3 rounded-md bg-[#E5E4E4] text-black self-start mr-auto border border-border w-fit max-w-sm">
                     <span className="animate-pulse">Thinking...</span>
                   </div>
                 )}
@@ -1060,7 +1061,7 @@ const ChatBot = () => {
                 rows={1}
                 placeholder="Ask a question..."
                 aria-label="Chat input field"
-                className="w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-auto-y focus:outline-none min-h-0 max-h-28"
+                className="w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-auto-y focus:outline-none h-fit max-h-28"
                 style={{ scrollbarWidth: "none" }}
                 onChange={(e) => {
                   setQuery(e.target.value);
@@ -1089,12 +1090,12 @@ const ChatBot = () => {
           onClick={handleOutsideClick}
         >
           <div
-            className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md"
+            className="bg-white p-6 rounded-md shadow-lg w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold mb-4 text-textdark">
+            <h3 className="text-lg font-semibold mb-4 text-textdark">
               Are you sure you want to delete this conversation?
-            </h2>
+            </h3>
             <div className="flex justify-end gap-4">
               <button
                 className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
@@ -1109,7 +1110,7 @@ const ChatBot = () => {
               </button>
 
               <button
-                className="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
+                className="px-4 py-2 text-sm bg-destructive text-white rounded hover:bg-red-700 disabled:opacity-50"
                 onClick={async (e) => {
                   e.stopPropagation();
                   if (!conversationToDelete) return;
