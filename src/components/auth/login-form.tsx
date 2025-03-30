@@ -94,21 +94,6 @@ export default function LoginForm(props: { setLoading: (loading: boolean) => voi
     }
   };
 
-  const handlePasswordReset = async () => {
-    const email = form.getValues("email");
-    if (!email) {
-      toast.error("Please enter your email before resetting your password.");
-      return;
-    }
-
-    try {
-      await sendPasswordResetEmail(auth, email);
-      toast.success("Password reset link sent! Check your email.");
-    } catch (error) {
-      toast.error("Error sending password reset email. Try again.");
-    }
-  };
-
   async function onSubmit(data: FormValues) {
     try {
       props.setLoading(true); // Trigger loading animation for user
