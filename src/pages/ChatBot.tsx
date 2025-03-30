@@ -10,6 +10,8 @@ import {
   MessagesSquare,
   SquareAsterisk,
   PanelLeftDashed,
+  Trash2,
+  Ellipsis,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import MessageDisplay from "@/components/chatbot/MessageDisplay";
@@ -29,6 +31,7 @@ const ChatBot = () => {
   const [chatError, setChatError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
   const [generateSchedule, setGenerateSchedule] = useState(false);
   const [hovered, setHovered] = useState<"advising" | "schedule" | null>(null);
@@ -40,6 +43,15 @@ const ChatBot = () => {
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  const [moreOptionsOpenId, setMoreOptionsOpenId] = useState<string | null>(
+    null
+  );
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<
+    string | null
+  >(null);
+  const [deleting, setDeleting] = useState(false);
+  const conversationListRef = useRef<HTMLUListElement | null>(null);
 
   const CHAT_API = import.meta.env.VITE_CHAT_API;
   const CRUD_API = import.meta.env.VITE_CRUD_API;
@@ -53,7 +65,14 @@ const ChatBot = () => {
   };
 
   const toggleSidebar = () => {
+    let sidebarDelay = 0;
     setSidebarCollapsed(!sidebarCollapsed);
+    if (sidebarCollapsed) {
+      sidebarDelay = 80;
+    }
+    setTimeout(() => {
+      setSidebarCollapsedDelayed(!sidebarCollapsed);
+    }, sidebarDelay)
   };
 
   // Check if the cached data is still valid
@@ -64,6 +83,10 @@ const ChatBot = () => {
       currentTime - timestamp < CACHE_EXPIRATION_TIME &&
       user.uid === cacheUserId
     );
+  };
+
+  const handleOutsideClick = () => {
+    setMoreOptionsOpenId(null);
   };
 
   // Save conversation data with timestamp to localStorage
@@ -173,6 +196,106 @@ const ChatBot = () => {
     }
   };
 
+  // Delete conversation
+  const deleteConversation = async (conversationId: string) => {
+    if (!user?.uid) {
+      console.warn("User ID is missing. Cannot fetch conversations.");
+      return;
+    }
+    setError(null);
+
+    const conversationToDelete = conversationId;
+    console.log("conversationToDelete: ", conversationToDelete);
+
+    try {
+      const cachedConversationsString = localStorage.getItem(
+        "chatbot_conversations"
+      );
+
+      if (cachedConversationsString) {
+        const cachedConversation = JSON.parse(cachedConversationsString);
+
+        if (cachedConversation?.data) {
+          // Filter out the conversation
+          const updatedCache = {
+            ...cachedConversation,
+            data: cachedConversation.data.filter(
+              (item: { conversation_id: string }) =>
+                item.conversation_id !== conversationToDelete
+            ),
+          };
+          // Save it back
+          localStorage.setItem(
+            "chatbot_conversations",
+            JSON.stringify(updatedCache)
+          );
+        }
+      } else {
+        console.warn("Couldn't find conversation in cache");
+      }
+
+      if (!CRUD_API) {
+        throw new Error("CRUD_API environment variable is missing.");
+      }
+
+      const token = await user.getIdToken();
+      if (!token) {
+        throw new Error("Failed to retrieve authentication token.");
+      }
+
+      const response = await fetch(CRUD_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user?.uid,
+          action: "deleteConversation",
+          token,
+          conversationId: conversationId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to delete conversation: ${response.status} - ${errorText}`
+        );
+      }
+
+      const data = await response.json();
+
+      // Remove the deleted conversation from current state
+      setConversations((prev) =>
+        prev.filter((item) => item.conversation_id !== conversationToDelete)
+      );
+
+      // Update localStorage cache too
+      const updatedCacheString = localStorage.getItem("chatbot_conversations");
+      if (updatedCacheString) {
+        const updatedCache = JSON.parse(updatedCacheString);
+        const filtered = updatedCache.data.filter(
+          (item: { conversation_id: string }) =>
+            item.conversation_id !== conversationToDelete
+        );
+        saveConversationsToCache(filtered);
+      }
+
+      if (conversation_id === conversationToDelete) {
+        setconversation_id(null);
+        setMessages([]);
+        localStorage.removeItem("chatbot_conversation");
+      }
+
+      return data;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to delete conversation";
+      setError(errorMessage);
+      console.error("Error deleting conversation:", error);
+    }
+  };
+
   const startNewChat = () => {
     if (messages.length > 0 && conversation_id) {
       setConversations((prevConversations) => {
@@ -208,6 +331,10 @@ const ChatBot = () => {
         cacheUserId: user?.uid,
       })
     );
+
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
   };
 
   const loadConversation = async (id: string, messages: any[]) => {
@@ -313,6 +440,15 @@ const ChatBot = () => {
   const handleSendQuery = async () => {
     if (!query.trim()) {
       console.warn("Query is empty, aborting request.");
+      return;
+    }
+
+    // Check if query is too long
+    if (query.trim().length > 500) {
+      setChatError(`Query uses ${query.trim().length}/500 characters. Please shorten your query.`);
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
       return;
     }
 
@@ -553,123 +689,215 @@ const ChatBot = () => {
   }, [conversation_id]);
 
   return (
-    <div className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]">
+    <div
+      className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]"
+      onClick={handleOutsideClick}
+    >
       {/* Chat History Bar - Expanded or Skinny */}
-      <div
-        className={`
-          ${sidebarCollapsed
-            ? "w-[5.25rem] rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]"
-            : "w-[24rem] rounded-lg px-6"
-          }
-          transition-all duration-100
-          py-8 gap-8 overflow-hidden
-          bg-bglight border border-border
-          flex flex-col items-center
-        `}
-        onClick={sidebarCollapsed ? toggleSidebar : undefined}
-      >
-        {/* Elements in the collapsed sidebar */}
-        {sidebarCollapsed && (
-          <div className="flex flex-col gap-8 h-full">
-            <button
-              className="transition-all p-2 rounded-sm text-textdark hover:bg-border w-12 h-12 flex items-center justify-center"
-              onClick={toggleSidebar}
-              aria-label="Expand sidebar"
-            >
-              <ArrowRightToLineIcon size={24} />
-            </button>
-
-            <button
-              className="transition-all p-2 rounded-sm text-textdark border border-border hover:bg-border w-12 h-12 flex items-center justify-center"
-              onClick={startNewChat}
-              aria-label="Start new chat"
-            >
-              <MessageCirclePlusIcon size={24} className="stroke-textdark" />
-            </button>
-
-            <button
-              className="transition-all p-2 rounded-sm text-textdark border border-border hover:bg-border w-12 h-12 flex items-center justify-center"
-              onClick={toggleSidebar}
-              aria-label="Chat History"
-            >
-              <MessagesSquare size={24} className="stroke-textdark" />
-            </button>
-
-            {/* Spacer */}
-            <div className="flex flex-grow" />
-
-            <div
-              className="w-12 h-12 flex items-center justify-center"
-            >
-              <PanelLeftDashed size={24} className="stroke-textdark" />
-            </div>
-          </div>
-        )}
-
-        {/* Elements in the expanded sidebar */}
-        {!sidebarCollapsed && (
-          <div className="flex flex-col overflow-hidden gap-8">
-            {/* Buttons at the top */}
-            <div className="flex gap-3 justify-between">
+      <div className={`
+        ${sidebarCollapsed
+          ? "w-[5.25rem]"
+          : "w-[24rem]"
+        }
+        h-full flex flex-col gap-3 transition-all duration-100`}>
+        <div
+          className={`
+            ${sidebarCollapsed
+              ? "rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]"
+              : "rounded-lg px-6"
+            }
+            transition-all duration-100
+            py-8 gap-8 overflow-hidden
+            bg-bglight border border-border
+            flex flex-col items-center
+            w-full h-full
+          `}
+          onClick={sidebarCollapsed ? toggleSidebar : undefined}
+        >
+          {/* Elements in the collapsed sidebar */}
+          {sidebarCollapsed && (
+            <div className="flex flex-col gap-8 h-full">
               <button
-                className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700"
-                onClick={startNewChat}
-              >
-                <MessageCirclePlusIcon size={24} />
-                <span>Start new chat</span>
-              </button>
-              <button
-                className="p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center"
+                className="transition-all p-2 rounded-sm text-textdark hover:bg-border w-12 h-12 flex items-center justify-center"
                 onClick={toggleSidebar}
-                aria-label="Collapse sidebar"
+                aria-label="Expand sidebar"
               >
-                <ArrowLeftToLineIcon size={20} />
+                <ArrowRightToLineIcon size={24} />
               </button>
+
+              <button
+                className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
+                onClick={startNewChat}
+                aria-label="Start new chat"
+              >
+                <MessageCirclePlusIcon size={24} className="stroke-textdark" />
+              </button>
+
+              <button
+                className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
+                onClick={toggleSidebar}
+                aria-label="Chat History"
+              >
+                <MessagesSquare size={24} className="stroke-textdark" />
+              </button>
+
+              {/* Spacer */}
+              <div className="flex flex-grow" />
+
+              <div
+                className="w-12 h-12 flex items-center justify-center"
+              >
+                <PanelLeftDashed size={24} className="stroke-textdark" />
+              </div>
             </div>
+          )}
 
-            {/* Conversation list */}
-            {chatHistoryLoad && (
-              <p className="text-textsecondary">Loading conversations...</p>
-            )}
-            {error && <p className="text-destructive">{error}</p>}
+          {/* Elements in the expanded sidebar */}
+          {!sidebarCollapsed && (
+            // Both booleans are in this^ expression for quicker response whenever the navbar is collapsed, since
+            // sidebarCollapsedDelayed is changed after slightly more function overhead time
+            <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-hidden gap-8 transition-all duration-150`}>
+              {/* Buttons at the top */}
+              <div className="flex gap-3 justify-between">
+                <button
+                  className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700"
+                  onClick={startNewChat}
+                >
+                  <MessageCirclePlusIcon size={24} />
+                  <span>Start new chat</span>
+                </button>
+                <button
+                  className="p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center"
+                  onClick={toggleSidebar}
+                  aria-label="Collapse sidebar"
+                >
+                  <ArrowLeftToLineIcon size={20} />
+                </button>
+              </div>
 
-            <ul
-              className="space-y-2 overflow-y-scroll"
-              style={{ scrollbarWidth: "none" }}
-            >
-              {Array.isArray(conversations) && conversations.length > 0 ? (
-                conversations.map((conv) => {
-                  // Use the first message to represent the conversation topic
-                  const firstMessage =
-                    conv.messages?.[0]?.content || "No messages";
-                  const truncatedMessage =
-                    firstMessage.length > 50
-                      ? firstMessage.substring(0, 50) + "..."
-                      : firstMessage;
+              {/* Conversation list */}
+              {chatHistoryLoad && (
+                <p className="text-textsecondary">Loading conversations...</p>
+              )}
+              {error && <p className="text-destructive">{error}</p>}
 
-                  return (
-                    <li
-                      key={conv.conversation_id}
-                      className={`p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors ${conversation_id === conv.conversation_id
+              <ul
+                className="flex flex-col gap-2 overflow-y-scroll w-full"
+                ref={conversationListRef}
+                style={{ scrollbarWidth: "none" }}
+              >
+                {Array.isArray(conversations) && conversations.length > 0 ? (
+                  conversations.map((conv, index) => {
+                    // Use the first message to represent the conversation topic
+                    const firstMessage =
+                      conv.messages?.[0]?.content || "No messages";
+
+                    const listIsOverflowing =
+                      conversationListRef.current &&
+                      conversationListRef.current.scrollHeight >
+                      conversationListRef.current.clientHeight;
+
+                    const isNearBottom =
+                      listIsOverflowing && conversations.length - index <= 1;
+
+                    return (
+                      <li
+                        key={conv.conversation_id}
+                        className={`group/conversation flex flex-row gap-2 justify-between items-center w-full p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors overflow-visible
+                          ${conversation_id === conv.conversation_id
                           ? "bg-secondary"
                           : "bg-bglight"
-                        }`}
-                      onClick={() =>
-                        loadConversation(conv.conversation_id, conv.messages)
-                      }
-                    >
-                      <small>{truncatedMessage}</small>
-                    </li>
-                  );
-                })
-              ) : (
-                <li className="p-2 text-gray-500">
-                  No conversations available
-                </li>
-              )}
-            </ul>
-          </div>
-        )}
+                          }`}
+                        onClick={() =>
+                          loadConversation(conv.conversation_id, conv.messages)
+                        }
+                      >
+                        <div className="flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
+                          <small className="truncate">
+                            {firstMessage}
+                          </small>
+                        </div>
+
+                        <div className="relative group-hover/conversation:flex hidden h-full">
+                          <button
+                            className="group/menu px-2 h-full"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMoreOptionsOpenId((prev) =>
+                                prev === conv.conversation_id
+                                  ? null
+                                  : conv.conversation_id
+                              );
+                            }}
+                          >
+                            <Ellipsis className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary"/>
+                          </button>
+
+                          {moreOptionsOpenId === conv.conversation_id && (
+                            <div
+                              className={`absolute right-0 z-[9999] w-48 bg-white border border-border shadow-lg rounded-md text-sm overflow-hidden ${isNearBottom ? "bottom-6" : "top-6"
+                                }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                              }}
+                              onMouseEnter={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              <ul className="py-1">
+                                <li>
+                                  <button
+                                    onClick={() => {
+                                      setConversationToDelete(
+                                        conv.conversation_id
+                                      );
+                                      setShowDeleteModal(true);
+                                      setMoreOptionsOpenId(null);
+                                    }}
+                                    className="flex items-center gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
+                                  >
+                                    Delete conversation
+                                    <Trash2
+                                      size={16}
+                                      className="stroke-red-500"
+                                    />
+                                  </button>
+                                </li>
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })
+                ) : (
+                  <li className="p-2">
+                    <small className="text-textsecondary">No conversations available</small>
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Beta Disclaimer */}
+        <div className={`${sidebarCollapsed ? "cursor-pointer rounded-md" : "rounded-full"}  bg-textdark w-full py-3 px-6 flex gap-2 justify-center items-center`}
+          onClick={!sidebarCollapsed ? undefined : toggleSidebar}>
+          <SquareAsterisk size={32} className="stroke-accent" />
+          <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-textlight text-xs`}>
+            This app is in development. For issues or
+            feedback,
+            <a
+              href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent underline ml-1"
+            >
+              click here.
+            </a>
+          </small>
+        </div>
       </div>
 
       {/* Main chat area */}
@@ -681,29 +909,12 @@ const ChatBot = () => {
             gap-6
           `}
         >
-          {/* Beta Disclaimer */}
-          <div className="rounded-full bg-textdark w-full py-3 px-6 flex gap-2 items-center">
-            <SquareAsterisk size={32} className="stroke-accent" />
-            <small className="text-textlight">
-              This app is still in development. If you have any issues or
-              feedback,
-              <a
-                href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-accent underline ml-1"
-              >
-                please click here.
-              </a>
-            </small>
-          </div>
-          {/* Chat container */}
           <div className="flex-grow flex flex-col overflow-hidden">
             <div className="w-full bg-innercontainer rounded-lg border flex flex-col flex-grow overflow-hidden">
               <div
                 ref={chatContainerRef}
                 className="p-8 overflow-y-auto space-y-2 flex flex-col items-center"
-                style={{scrollbarWidth: "none"}}
+                style={{ scrollbarWidth: "none" }}
               >
                 {messages.length === 0 && !chatLoad && !generateSchedule ? (
                   // Case 1: Intro content
@@ -763,7 +974,7 @@ const ChatBot = () => {
                         schedule using summer sections.
                       </li>
                       <li>
-                      Can you rank the CS2340 classes by professor rating and compare their data?
+                        Can you rank the CS2340 classes by professor rating and compare their data?
                       </li>
                     </ul>
                   </div>
@@ -775,7 +986,7 @@ const ChatBot = () => {
                 )}
 
                 {chatLoad && !chatError && (
-                  <div className="p-3 rounded-lg bg-[#E5E4E4] text-black self-start mr-auto border border-border w-fit max-w-sm">
+                  <div className="p-3 rounded-md bg-[#E5E4E4] text-black self-start mr-auto border border-border w-fit max-w-sm">
                     <span className="animate-pulse">Thinking...</span>
                   </div>
                 )}
@@ -797,8 +1008,8 @@ const ChatBot = () => {
                 >
                   <button
                     className={`p-2 rounded-full mr-2 transition-colors duration-200 ${!generateSchedule
-                        ? "bg-accent hover:bg-buttonhover"
-                        : "bg-secondary hover:bg-[#A9BFB4]"
+                      ? "bg-accent hover:bg-buttonhover"
+                      : "bg-secondary hover:bg-[#A9BFB4]"
                       }`}
                     onClick={() => setGenerateSchedule(false)}
                     aria-label="Ask a general advising question"
@@ -816,8 +1027,8 @@ const ChatBot = () => {
                 >
                   <button
                     className={`p-2 rounded-full transition-colors duration-200 ${generateSchedule
-                        ? "bg-accent hover:bg-buttonhover"
-                        : "bg-secondary hover:bg-[#A9BFB4]"
+                      ? "bg-accent hover:bg-buttonhover"
+                      : "bg-secondary hover:bg-[#A9BFB4]"
                       }`}
                     onClick={() => setGenerateSchedule(true)}
                     aria-label="Generate your class schedule"
@@ -850,7 +1061,7 @@ const ChatBot = () => {
                 rows={1}
                 placeholder="Ask a question..."
                 aria-label="Chat input field"
-                className="w-full py-4 px-8 mr-2 border rounded-full resize-none overflow-auto-y focus:outline-none min-h-0 max-h-28"
+                className="w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-auto-y focus:outline-none h-fit max-h-28"
                 style={{ scrollbarWidth: "none" }}
                 onChange={(e) => {
                   setQuery(e.target.value);
@@ -870,9 +1081,58 @@ const ChatBot = () => {
               </button>
             </div>
           </div>
-        <small className="absolute w-full flex justify-center bottom-[-2rem] text-textsecondary">SAGE does not replace official academic advising and may produce incorrect information.</small>
+          <small className="absolute w-full flex justify-center bottom-[-2rem] text-textsecondary">SAGE does not replace official academic advising and may produce incorrect information.</small>
         </div>
       </div>
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={handleOutsideClick}
+        >
+          <div
+            className="bg-white p-6 rounded-md shadow-lg w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-4 text-textdark">
+              Are you sure you want to delete this conversation?
+            </h3>
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteModal(false);
+                  setConversationToDelete(null);
+                }}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="px-4 py-2 text-sm bg-destructive text-white rounded hover:bg-red-700 disabled:opacity-50"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!conversationToDelete) return;
+                  setDeleting(true);
+                  try {
+                    await deleteConversation(conversationToDelete);
+                    setShowDeleteModal(false);
+                    setConversationToDelete(null);
+                  } catch (err) {
+                    console.error("Failed to delete:", err);
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
