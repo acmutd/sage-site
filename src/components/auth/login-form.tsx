@@ -36,7 +36,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function LoginForm() {
+export default function LoginForm(props: {setLoading: (loading: boolean) => void}) {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from || "/chatbot";
@@ -72,6 +72,8 @@ export default function LoginForm() {
       const token = await user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
 
+      props.setLoading(true); // Trigger loading animation for user
+
       await fetch(VITE_CRUD_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,9 +86,11 @@ export default function LoginForm() {
 
       toast.success("Successfully signed in with Google!");
       navigate(from, { replace: true });
+      props.setLoading(false); // Unrender loading animation for user
     } catch (error) {
       console.error("Error during Google sign-in:", error);
       toast.error("Failed to sign in with Google. Please try again.");
+      props.setLoading(false); // Unrender loading animation for user
     }
   };
 
@@ -107,6 +111,7 @@ export default function LoginForm() {
 
   async function onSubmit(data: FormValues) {
     try {
+      props.setLoading(true); // Trigger loading animation for user
       const result = await signInWithEmailAndPassword(
         auth,
         data.email,
@@ -115,8 +120,10 @@ export default function LoginForm() {
       const token = await result.user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
       toast.success("Successfully logged in!");
+      props.setLoading(false); // Unrender loading animation for user
       navigate(from, { replace: true });
     } catch (error: unknown) {
+      props.setLoading(false); // Unrender loading animation for user
       if (typeof error === "object" && error !== null && "code" in error) {
         const firebaseError = error as { code: string; message: string };
         toast.error(firebaseError.message);
