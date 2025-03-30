@@ -36,7 +36,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function LoginForm(props: {setLoading: (loading: boolean) => void}) {
+export default function LoginForm(props: { setLoading: (loading: boolean) => void }) {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from || "/chatbot";
@@ -220,13 +220,12 @@ export default function LoginForm(props: {setLoading: (loading: boolean) => void
           Sign in with Google
         </Button>
 
-        <button
-          type="button"
-          onClick={handlePasswordReset}
+        <Link
+          to="/forgot-password"
           className="text-[15px] text-textsecondary hover:underline"
         >
           Forgot password?
-        </button>
+        </Link>
 
         <Link
           to="/signup"
