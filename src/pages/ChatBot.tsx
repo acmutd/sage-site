@@ -7,7 +7,6 @@ import {
   MessageCirclePlusIcon,
   GraduationCapIcon,
   CalendarSearchIcon,
-  MessagesSquare,
   SquareAsterisk,
   PanelLeftDashed,
   Trash2,
@@ -699,7 +698,7 @@ const ChatBot = () => {
           ? "w-[5.25rem]"
           : "w-[24rem]"
         }
-        h-full flex flex-col gap-3 transition-all duration-100`}>
+        h-full flex flex-col gap-4 transition-all duration-100`}>
         <div
           className={`
             ${sidebarCollapsed
@@ -727,18 +726,14 @@ const ChatBot = () => {
 
               <button
                 className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
-                onClick={startNewChat}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startNewChat();
+                }
+                }
                 aria-label="Start new chat"
               >
                 <MessageCirclePlusIcon size={24} className="stroke-textdark" />
-              </button>
-
-              <button
-                className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
-                onClick={toggleSidebar}
-                aria-label="Chat History"
-              >
-                <MessagesSquare size={24} className="stroke-textdark" />
               </button>
 
               {/* Spacer */}
@@ -754,11 +749,9 @@ const ChatBot = () => {
 
           {/* Elements in the expanded sidebar */}
           {!sidebarCollapsed && (
-            // Both booleans are in this^ expression for quicker response whenever the navbar is collapsed, since
-            // sidebarCollapsedDelayed is changed after slightly more function overhead time
             <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-hidden gap-8 transition-all duration-150`}>
               {/* Buttons at the top */}
-              <div className="flex gap-3 justify-between">
+              <div className="flex gap-3 justify-between items-center">
                 <button
                   className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700"
                   onClick={startNewChat}
@@ -767,11 +760,11 @@ const ChatBot = () => {
                   <span>Start new chat</span>
                 </button>
                 <button
-                  className="p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center"
+                  className="group p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center"
                   onClick={toggleSidebar}
                   aria-label="Collapse sidebar"
                 >
-                  <ArrowLeftToLineIcon size={20} />
+                  <ArrowLeftToLineIcon className="stroke-textdark group-hover:stroke-textsecondary transition-colors duration-150" size={20} />
                 </button>
               </div>
 
@@ -805,14 +798,15 @@ const ChatBot = () => {
                         key={conv.conversation_id}
                         className={`group/conversation flex flex-row gap-2 justify-between items-center w-full p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors overflow-visible
                           ${conversation_id === conv.conversation_id
-                          ? "bg-secondary"
-                          : "bg-bglight"
+                            ? "bg-secondary"
+                            : "bg-bglight"
                           }`}
                         onClick={() =>
                           loadConversation(conv.conversation_id, conv.messages)
                         }
                       >
-                        <div className="flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
+                        <div className="relative flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
+                          <div className="opacity-0 group-hover/conversation:opacity-100 absolute left-[calc(100%-2rem)] w-[2rem] h-full bg-gradient-to-r from-secondary/0 to-secondary transition-all duration-150"/>
                           <small className="truncate">
                             {firstMessage}
                           </small>
@@ -830,7 +824,7 @@ const ChatBot = () => {
                               );
                             }}
                           >
-                            <Ellipsis className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary"/>
+                            <Ellipsis className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary" />
                           </button>
 
                           {moreOptionsOpenId === conv.conversation_id && (
@@ -909,7 +903,7 @@ const ChatBot = () => {
             gap-6
           `}
         >
-          <div className="flex-grow flex flex-col overflow-hidden">
+          <div className="flex-grow flex flex-col overflow-hidden gap-4">
             <div className="w-full bg-innercontainer rounded-lg border flex flex-col flex-grow overflow-hidden">
               <div
                 ref={chatContainerRef}
@@ -996,7 +990,7 @@ const ChatBot = () => {
               </div>
             </div>
             {/* Query Container */}
-            <div className="w-full flex flex-row gap-4 items-center justify-center mt-4">
+            <div className="w-full flex flex-row gap-4 items-center justify-center">
               {/* Mode Toggle */}
               <div className="flex flex-row gap-2 p-2 bg-innercontainer border rounded-full border-border">
                 {/* General Advising Button */}
