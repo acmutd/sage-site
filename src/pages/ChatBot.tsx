@@ -591,6 +591,10 @@ const ChatBot = () => {
     }
   }, [messages]); // Runs when messages change
 
+  useEffect(() =>
+    adjustTextareaHeight,
+    [query]);
+
   useEffect(() => {
     const updateTooltipPosition = (
       buttonRef: React.RefObject<HTMLButtonElement>
@@ -1059,7 +1063,8 @@ const ChatBot = () => {
                 style={{ scrollbarWidth: "none" }}
                 onChange={(e) => {
                   setQuery(e.target.value);
-                  adjustTextareaHeight();
+                  // adjustTextareaHeight();
+                  // ^this has been commented out since this is now being handled by a useEffect to ensure that height is adjusted during non-user-made changes to query (like when query is cleared after submitting)
                 }}
                 onKeyDown={handleEnter}
                 value={query}
