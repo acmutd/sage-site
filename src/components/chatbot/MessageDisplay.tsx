@@ -79,28 +79,18 @@ const MessageDisplay = ({ message }: MessageDisplayProps) => {
 
   return (
     <div className="w-full flex">
-      {
-        message.role === "user"
-          ? <div className="flex flex-[6]" />
-          : undefined
-      }
       <div
-        className={`flex flex-[12] flex-col p-4 gap-2 rounded-md border border-border max-w-fit ${message.role === "user"
-          ? "bg-bglight self-end ml-auto"
-          : "bg-[#E5E4E4] self-start mr-auto"
+        className={`flex flex-col p-4 gap-2 rounded-md border border-border max-w-fit ${message.role === "user"
+          ? "bg-bglight self-end ml-auto w-2/3"
+          : "bg-[#E5E4E4] self-start mr-auto w-[92%]"
           }`}
       >
         {message.content.split("\n").map((line, index) => (
-          <div key={index}>
-            <small className="text-[15px]">{renderMarkdown(line)}</small>
+          <div key={index} className="flex w-full">
+            <small key={index} style={{ overflowWrap: 'break-word', wordWrap: 'break-word', wordBreak: 'break-word' }} className="text-[15px] w-full">{renderMarkdown(line)}</small>
           </div>
         ))}
       </div>
-      {
-        message.role !== "user"
-          ? <div className="flex flex-[1]" />
-          : undefined
-      }
     </div>
   );
 };
