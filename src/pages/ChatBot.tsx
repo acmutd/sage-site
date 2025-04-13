@@ -812,9 +812,9 @@ const ChatBot = () => {
                           </small>
                         </div>
 
-                        <div className="relative group-hover/conversation:flex hidden h-full">
+                        <div className="relative flex h-full">
                           <button
-                            className="group/menu px-2 h-full"
+                            className="group/menu px-2 h-full group-hover/conversation:opacity-100 opacity-0 "
                             onClick={(e) => {
                               e.stopPropagation();
                               setMoreOptionsOpenId((prev) =>
