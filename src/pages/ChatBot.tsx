@@ -35,6 +35,7 @@ const ChatBot = () => {
   const [generateSchedule, setGenerateSchedule] = useState(false);
 
   // Context menu helpers
+  const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ top: 0, left: 0 });
   const contextButtonRefs = useRef<(HTMLLIElement | null)[]>([]);
 
@@ -92,6 +93,7 @@ const ChatBot = () => {
 
   const handleOutsideClick = () => {
     setMoreOptionsOpenId(null);
+    setShowContextMenu(false);
   };
 
   // Save conversation data with timestamp to localStorage
@@ -634,6 +636,7 @@ const ChatBot = () => {
     if (activeContextRef) {
       const rect = activeContextRef.getBoundingClientRect();
       setContextMenuPosition({ top: rect.top, left: rect.left });
+      setShowContextMenu(true);
     }
   }
 
@@ -848,43 +851,46 @@ const ChatBot = () => {
                           </button>
 
                           {/* Context Menu */}
-                          {moreOptionsOpenId === conv.conversation_id && (
-                            <div
-                              className={`fixed translate-x-[150%] translate-y-[90%] z-[9999] w-48 bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden`}
-                              style={{
-                                top: contextMenuPosition.top,
-                                left: contextMenuPosition.left
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                              }}
-                              onMouseEnter={(e) => {
-                                e.stopPropagation();
-                              }}
-                            >
-                              <ul className="py-1">
-                                <li>
-                                  <button
-                                    onClick={() => {
-                                      setConversationToDelete(
-                                        conv.conversation_id
-                                      );
-                                      setShowDeleteModal(true);
-                                      setMoreOptionsOpenId(null);
-                                    }}
-                                    className="flex items-center gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
-                                  >
-                                    Delete conversation
-                                    <Trash2
-                                      size={16}
-                                      className="stroke-red-500"
-                                    />
-                                  </button>
-                                </li>
-                              </ul>
-                            </div>
-                          )}
+                          {
+                            moreOptionsOpenId === conv.conversation_id &&
+                            showContextMenu && // <-- This condition exists so the context menu doesn't show up for the short moment that the menu's position doesn't update
+                            (
+                              <div
+                                className={`fixed translate-x-[150%] translate-y-[90%] z-[9999] w-48 bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden transition-opacity duration-150`}
+                                style={{
+                                  top: contextMenuPosition.top,
+                                  left: contextMenuPosition.left
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.stopPropagation();
+                                }}
+                              >
+                                <ul className="py-1">
+                                  <li>
+                                    <button
+                                      onClick={() => {
+                                        setConversationToDelete(
+                                          conv.conversation_id
+                                        );
+                                        setShowDeleteModal(true);
+                                        setMoreOptionsOpenId(null);
+                                      }}
+                                      className="flex items-center gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
+                                    >
+                                      Delete conversation
+                                      <Trash2
+                                        size={16}
+                                        className="stroke-destructive"
+                                      />
+                                    </button>
+                                  </li>
+                                </ul>
+                              </div>
+                            )}
                         </div>
                       </li>
                     );
