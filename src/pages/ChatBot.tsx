@@ -33,6 +33,12 @@ const ChatBot = () => {
   const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
   const [generateSchedule, setGenerateSchedule] = useState(false);
+
+  // Context menu helpers
+  const [contextMenuPosition, setContextMenuPosition] = useState({ top: 0, left: 0 });
+  const contextButtonRefs = useRef<(HTMLLIElement | null)[]>([]);
+
+  // Tooltip helpers
   const [hovered, setHovered] = useState<"advising" | "schedule" | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const buttonRefs = {
@@ -616,6 +622,22 @@ const ChatBot = () => {
   }, [hovered]);
 
   useEffect(() => {
+    updateScrollPosition();
+  }, [moreOptionsOpenId])
+
+  function updateScrollPosition() {
+    const activeContextRef = contextButtonRefs.current.find((ref, index) => {
+      if (conversations[index].conversation_id === moreOptionsOpenId) {
+        return conversations[index];
+      }
+    });
+    if (activeContextRef) {
+      const rect = activeContextRef.getBoundingClientRect();
+      setContextMenuPosition({ top: rect.top, left: rect.left });
+    }
+  }
+
+  useEffect(() => {
     const reloadChatHistory = async () => {
       if (!conversation_id) return;
 
@@ -782,20 +804,13 @@ const ChatBot = () => {
                 className="flex flex-col gap-2 overflow-y-scroll w-full"
                 ref={conversationListRef}
                 style={{ scrollbarWidth: "none" }}
+                onScroll={updateScrollPosition}
               >
                 {Array.isArray(conversations) && conversations.length > 0 ? (
                   conversations.map((conv, index) => {
                     // Use the first message to represent the conversation topic
                     const firstMessage =
                       conv.messages?.[0]?.content || "No messages";
-
-                    const listIsOverflowing =
-                      conversationListRef.current &&
-                      conversationListRef.current.scrollHeight >
-                      conversationListRef.current.clientHeight;
-
-                    const isNearBottom =
-                      listIsOverflowing && conversations.length - index <= 1;
 
                     return (
                       <li
@@ -808,9 +823,10 @@ const ChatBot = () => {
                         onClick={() =>
                           loadConversation(conv.conversation_id, conv.messages)
                         }
+                        ref={(el: HTMLLIElement | null) => contextButtonRefs.current[index] = el}
                       >
                         <div className="relative flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
-                          <div className="opacity-0 group-hover/conversation:opacity-100 absolute left-[calc(100%-2rem)] w-[2rem] h-full bg-gradient-to-r from-secondary/0 to-secondary transition-all duration-150"/>
+                          <div className="opacity-0 group-hover/conversation:opacity-100 absolute left-[calc(100%-2rem)] w-[2rem] h-full bg-gradient-to-r from-secondary/0 to-secondary transition-all duration-150" />
                           <small className="truncate">
                             {firstMessage}
                           </small>
@@ -831,10 +847,14 @@ const ChatBot = () => {
                             <Ellipsis className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary" />
                           </button>
 
+                          {/* Context Menu */}
                           {moreOptionsOpenId === conv.conversation_id && (
                             <div
-                              className={`absolute right-0 z-[9999] w-48 bg-white border border-border shadow-lg rounded-md text-sm overflow-hidden ${isNearBottom ? "bottom-6" : "top-6"
-                                }`}
+                              className={`fixed translate-x-[150%] translate-y-[90%] z-[9999] w-48 bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden`}
+                              style={{
+                                top: contextMenuPosition.top,
+                                left: contextMenuPosition.left
+                              }}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
