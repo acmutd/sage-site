@@ -22,9 +22,7 @@ const ChatBot = () => {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversation_id, setconversation_id] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<
-    { conversation_id: string; user_id: string; messages: any[] }[]
-  >([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [chatHistoryLoad, setChatHistoryLoad] = useState(false);
   const [chatLoad, setChatLoad] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -184,6 +182,7 @@ const ChatBot = () => {
       // console.log("after response");
 
       const data = await response.json();
+      sortConversationsByDate(data);
       // console.log("data: ", data);
       setConversations(Array.isArray(data) ? data : []);
 
@@ -344,6 +343,19 @@ const ChatBot = () => {
     }, 0);
   };
 
+  // Sort the list of conversations by date instead of by the default conversation_id
+  const sortConversationsByDate = (convs: Conversation[]) => {
+    return convs.sort((a: Conversation, b: Conversation) => {
+      const aTime = new Date(
+        a.messages?.[a.messages.length - 1]?.timestamp || 0
+      ).getTime();
+      const bTime = new Date(
+        b.messages?.[b.messages.length - 1]?.timestamp || 0
+      ).getTime();
+      return bTime - aTime; // Most recent first
+    });
+  };
+
   const loadConversation = async (id: string, messages: any[]) => {
     setconversation_id(id);
     setMessages(messages);
@@ -362,11 +374,13 @@ const ChatBot = () => {
     if (!user?.uid) return;
 
     const cachedData = localStorage.getItem("chatbot_conversation");
-    console.log(user.uid);
+    console.log("user id: ", user.uid);
 
     if (cachedData) {
       const { messages, conversation_id, timestamp, cacheUserId } =
         JSON.parse(cachedData);
+
+      // console.log(JSON.parse(cachedData))
 
       // Check if the cached conversation is still valid
       if (timestamp && cacheUserId && isCacheValid(timestamp, cacheUserId)) {
@@ -380,6 +394,8 @@ const ChatBot = () => {
         );
         if (cachedConversationsString) {
           const cachedConversations = JSON.parse(cachedConversationsString);
+          // console.log("cached conversations: ", cachedConversations)
+          // console.log("cached conversation string: ", cachedConversationsString)
           if (
             cachedConversations.timestamp &&
             cachedConversations.userId &&
@@ -388,6 +404,8 @@ const ChatBot = () => {
               cachedConversations.userId
             )
           ) {
+
+            sortConversationsByDate(cachedConversations.data);
             setConversations(
               Array.isArray(cachedConversations.data)
                 ? cachedConversations.data
@@ -464,7 +482,7 @@ const ChatBot = () => {
     setChatLoad(true);
     setChatError(null);
 
-    const userMessage = { role: "user", content: query };
+    const userMessage = { role: "user", content: query, timestamp: Date.now() };
     const updatedMessagesWithUser = [...messages, userMessage];
     setMessages(updatedMessagesWithUser);
 
@@ -525,7 +543,7 @@ const ChatBot = () => {
         throw new Error("Chatbot API did not return a response.");
       }
 
-      const botMessage = { role: "bot", content: data.response };
+      const botMessage = { role: "bot", content: data.response, timestamp: Date.now() };
       const updatedMessagesWithBot = [...updatedMessagesWithUser, botMessage];
 
       setMessages(updatedMessagesWithBot);
