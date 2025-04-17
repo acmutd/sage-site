@@ -796,6 +796,7 @@ const ChatBot = () => {
   useEffect(() => {
     if (handleClickQueryFlag.current === true) {
       handleSendQuery();
+      handleClickQueryFlag.current = false;
     }
   }, [query])
 
