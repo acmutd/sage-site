@@ -34,7 +34,7 @@ const Navbar = () => {
             <li className="flex-row">
               <Link
                 to="/planner"
-                className={`${isInWebapp ? "text-textdark hover:text-gray-700" : "text-textlight hover:text-gray-200"}
+                className={`${isInWebapp ? "text-textdark hover:text-gray-500" : "text-textlight hover:text-gray-200"}
                 flex items-center gap-2`}
               >
                 <Route className="stroke-accent" />
@@ -44,7 +44,7 @@ const Navbar = () => {
             <li className="flex-row">
               <Link
                 to="/chatbot"
-                className={`${isInWebapp ? "text-textdark hover:text-gray-700" : "text-textlight hover:text-gray-200"}
+                className={`${isInWebapp ? "text-textdark hover:text-gray-500" : "text-textlight hover:text-gray-200"}
                 flex items-center gap-2 hover:text-gray-200"`}
               >
                 <MessageCirclePlus className="stroke-accent" />
