@@ -16,12 +16,13 @@ import { v4 as uuidv4 } from "uuid";
 import MessageDisplay from "@/components/chatbot/MessageDisplay";
 
 // These are in milliseconds
-const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60; 
+const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 const CONVERSATION_CACHE_EXPIRATION_TIME = 1000 * 60 * 3;
 
 const ChatBot = () => {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
+  const handleClickQueryFlag = useRef(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversation_id, setconversation_id] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -61,6 +62,54 @@ const ChatBot = () => {
 
   const CHAT_API = import.meta.env.VITE_CHAT_API;
   const CRUD_API = import.meta.env.VITE_CRUD_API;
+
+  const advisingExampleQuestions = [
+    {
+      question: "What courses are supported by the CSMC?"
+    },
+    {
+      question: "What are the requirements for graduation?"
+    },
+    {
+      question: "How can I enroll in classes I don't have prereqs for if I plan to take the prereqs over the summer?"
+    },
+    {
+      question: "Tell me about ACM UTD and how I can get involved!"
+    },
+    {
+      question: "What classes should a first-year accounting major take?"
+    },
+    {
+      question: "What do you know about Professor John Cole?"
+    },
+    {
+      question: "What are the GPA cutoffs for the benchmark classes of a prospective CS fast track student?"
+    },
+  ];
+
+  const scheduleExampleQuestions = [
+    {
+      question: "Generate a schedule with CS 2305, ECS 2390, CS 2336, CS 2340, and PHYS 2325."
+    },
+    {
+      question: "I work after 4pm on Tuesday and Thursday. Can you avoid classes during that time?"
+    },
+    {
+      question: "My friend is in CS 2336.003, can we make sure to include that class?"
+    },
+    {
+      question: "Swap CS 2336 for CS 3341, and no classes before 10am."
+    },
+    {
+      question: "I want Professor John Cole for CS 3162. Can we only use his sections?"
+    },
+    {
+      question: "I need to enroll for summer classes, please generate a schedule using summer sections."
+    },
+    {
+      question: "Can you rank the CS2340 classes by professor rating and compare their data?"
+    },
+  ];
 
   const adjustTextareaHeight = () => {
     const textarea = textareaRef.current;
@@ -445,7 +494,7 @@ const ChatBot = () => {
       The below code will load the latest conversation into cache from the lambda to display it. It's currently commented out as this is no longer intended functionality.
       Instead, if the cache has expired, the latest conversation will not be loaded so the user is just defaulted to the new chat screen.
     */
-    
+
     // const lastConversationData = sorted[0];
 
     // if (lastConversationData) {
@@ -563,7 +612,7 @@ const ChatBot = () => {
 
       // Only prepend the conversation to state/cache if it's new
       setConversations((prevConversations) => {
-        console.log("Inside update - prevConversations:", prevConversations);
+        // console.log("Inside update - prevConversations:", prevConversations);
         const filtered = prevConversations.filter(
           (conv) => conv.conversation_id !== currentConvId
         );
@@ -743,6 +792,12 @@ const ChatBot = () => {
 
     reloadChatHistory();
   }, [conversation_id]);
+
+  useEffect(() => {
+    if (handleClickQueryFlag.current === true) {
+      handleSendQuery();
+    }
+  }, [query])
 
   return (
     <div
@@ -969,7 +1024,7 @@ const ChatBot = () => {
                 style={{ scrollbarWidth: "none" }}
               >
                 {messages.length === 0 && !chatLoad && !generateSchedule ? (
-                  // Case 1: Intro content
+                  // Case 1: Intro content for advising option
                   <div className="w-full max-w-2xl text-left mt-[5rem]">
                     <h1>Hi, I’m Sage.</h1>
                     <h3>What can I help with?</h3>
@@ -977,23 +1032,20 @@ const ChatBot = () => {
                       Here are some example questions that I can help you with:
                     </p>
                     <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
-                      <li>What courses are supported by the CSMC?</li>
-                      <li>What are the requirements for graduation?</li>
-                      <li>
-                        How can I enroll in classes I don't have prereqs for if
-                        I plan to take the prereqs over the summer?
-                      </li>
-                      <li>Tell me about ACM UTD and how I can get involved!</li>
-                      <li>
-                        What classes should a first-year accounting major
-                        take?
-                      </li>
-                      <li>What do you know about Professor John Cole?</li>
-                      <li>What are the GPA cutoffs for the benchmark classes of a prospective CS fast track student?</li>
+                      {advisingExampleQuestions.map((example) =>
+                        <li
+                          className="text-textdark hover:text-textsecondary"
+                          onClick={() => {
+                            handleClickQueryFlag.current = true;
+                            setQuery(example.question);
+                          }}>
+                          {example.question}
+                        </li>
+                      )}
                     </ul>
                   </div>
                 ) : messages.length === 0 && !chatLoad && generateSchedule ? (
-                  // Case 2: Custom rendering for generateSchedule = true
+                  // Case 2: Intro content for schedule generation option
                   <div className="w-full max-w-2xl text-left mt-[5rem]">
                     <h1>Hi, I’m Sage.</h1>
                     <h3>Let's start building your schedule!</h3>
@@ -1002,32 +1054,16 @@ const ChatBot = () => {
                       that I can help you with:
                     </p>
                     <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
-                      <li>
-                        Generate a schedule with CS 2305, ECS 2390, CS 2336, CS
-                        2340, and PHYS 2325.
-                      </li>
-                      <li>
-                        I work after 4pm on Tuesday and Thursday. Can you avoid
-                        classes during that time?
-                      </li>
-                      <li>
-                        My friend is in CS 2336.003, can we make sure to include
-                        that class?
-                      </li>
-                      <li>
-                        Swap CS 2336 for CS 3341, and no classes before 10am
-                      </li>
-                      <li>
-                        I want Professor John Cole for CS 3162. Can we only use
-                        his sections?
-                      </li>
-                      <li>
-                        I need to enroll for summer classes, please generate a
-                        schedule using summer sections.
-                      </li>
-                      <li>
-                        Can you rank the CS2340 classes by professor rating and compare their data?
-                      </li>
+                    {scheduleExampleQuestions.map((example) =>
+                        <li
+                          className="text-textdark hover:text-textsecondary"
+                          onClick={() => {
+                            handleClickQueryFlag.current = true;
+                            setQuery(example.question);
+                          }}>
+                          {example.question}
+                        </li>
+                      )}
                     </ul>
                   </div>
                 ) : (
