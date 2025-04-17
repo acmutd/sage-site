@@ -15,7 +15,9 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import MessageDisplay from "@/components/chatbot/MessageDisplay";
 
-const CACHE_EXPIRATION_TIME = 60 * 60 * 1000;
+// These are in milliseconds
+const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60; 
+const CONVERSATION_CACHE_EXPIRATION_TIME = 1000 * 60 * 3;
 
 const ChatBot = () => {
   const { user } = useAuth();
@@ -80,11 +82,11 @@ const ChatBot = () => {
   };
 
   // Check if the cached data is still valid
-  const isCacheValid = (timestamp: number, cacheUserId: any): boolean => {
+  const isCacheValid = (timestamp: number, cacheUserId: any, cacheValidFor: number): boolean => {
     if (!user?.uid || !timestamp || !cacheUserId) return false;
     const currentTime = Date.now();
     return (
-      currentTime - timestamp < CACHE_EXPIRATION_TIME &&
+      currentTime - timestamp < cacheValidFor &&
       user.uid === cacheUserId
     );
   };
@@ -132,7 +134,8 @@ const ChatBot = () => {
           cachedConversations.userId &&
           isCacheValid(
             cachedConversations.timestamp,
-            cachedConversations.userId
+            cachedConversations.userId,
+            CONVERSATIONS_CACHE_EXPIRATION_TIME
           )
         ) {
           console.log("Using cached conversations data");
@@ -383,7 +386,7 @@ const ChatBot = () => {
       // console.log(JSON.parse(cachedData))
 
       // Check if the cached conversation is still valid
-      if (timestamp && cacheUserId && isCacheValid(timestamp, cacheUserId)) {
+      if (timestamp && cacheUserId && isCacheValid(timestamp, cacheUserId, CONVERSATION_CACHE_EXPIRATION_TIME)) {
         console.log("Using cached current conversation");
         setMessages(messages || []);
         setconversation_id(conversation_id || null);
@@ -401,7 +404,8 @@ const ChatBot = () => {
             cachedConversations.userId &&
             isCacheValid(
               cachedConversations.timestamp,
-              cachedConversations.userId
+              cachedConversations.userId,
+              CONVERSATIONS_CACHE_EXPIRATION_TIME
             )
           ) {
 
@@ -437,22 +441,27 @@ const ChatBot = () => {
       return bTime - aTime; // Most recent first
     });
 
-    const lastConversationData = sorted[0];
+    /* 
+      The below code will load the latest conversation into cache from the lambda to display it. It's currently commented out as this is no longer intended functionality.
+      Instead, if the cache has expired, the latest conversation will not be loaded so the user is just defaulted to the new chat screen.
+    */
+    
+    // const lastConversationData = sorted[0];
 
-    if (lastConversationData) {
-      setMessages(lastConversationData.messages || []);
-      setconversation_id(lastConversationData.conversation_id || null);
+    // if (lastConversationData) {
+    //   setMessages(lastConversationData.messages || []);
+    //   setconversation_id(lastConversationData.conversation_id || null);
 
-      localStorage.setItem(
-        "chatbot_conversation",
-        JSON.stringify({
-          messages: lastConversationData.messages || [],
-          conversation_id: lastConversationData.conversation_id,
-          timestamp: Date.now(),
-          cacheUserId: user?.uid,
-        })
-      );
-    }
+    //   localStorage.setItem(
+    //     "chatbot_conversation",
+    //     JSON.stringify({
+    //       messages: lastConversationData.messages || [],
+    //       conversation_id: lastConversationData.conversation_id,
+    //       timestamp: Date.now(),
+    //       cacheUserId: user?.uid,
+    //     })
+    //   );
+    // }
   };
 
   const handleEnter = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -678,7 +687,8 @@ const ChatBot = () => {
             cachedConversations.userId &&
             isCacheValid(
               cachedConversations.timestamp,
-              cachedConversations.userId
+              cachedConversations.userId,
+              CONVERSATIONS_CACHE_EXPIRATION_TIME
             )
           ) {
             console.log("Using cached conversations for history");
