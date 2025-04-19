@@ -17,7 +17,7 @@ import MessageDisplay from "@/components/chatbot/MessageDisplay";
 
 // These are in milliseconds
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
-const CONVERSATION_CACHE_EXPIRATION_TIME = 1000 * 60 * 3;
+const CONVERSATION_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
 const ChatBot = () => {
   const { user } = useAuth();
