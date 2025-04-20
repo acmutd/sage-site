@@ -41,12 +41,6 @@ const ChatBot = () => {
   const contextButtonRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   // Tooltip helpers
-  const [hovered, setHovered] = useState<"advising" | "schedule" | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
-  const buttonRefs = {
-    advising: useRef(null),
-    schedule: useRef(null),
-  };
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
@@ -680,26 +674,6 @@ const ChatBot = () => {
     [query]);
 
   useEffect(() => {
-    const updateTooltipPosition = (
-      buttonRef: React.RefObject<HTMLButtonElement>
-    ) => {
-      if (buttonRef && buttonRef.current) {
-        const rect = buttonRef.current.getBoundingClientRect();
-        setTooltipPosition({
-          top: rect.top - 50,
-          left: rect.left + rect.width / 2,
-        });
-      }
-    };
-
-    if (hovered === "advising") {
-      updateTooltipPosition(buttonRefs.advising);
-    } else if (hovered === "schedule") {
-      updateTooltipPosition(buttonRefs.schedule);
-    }
-  }, [hovered]);
-
-  useEffect(() => {
     updateScrollPosition();
   }, [moreOptionsOpenId])
 
@@ -1012,13 +986,13 @@ const ChatBot = () => {
       <div className="flex justify-center h-full w-full">
         <div
           className={`
-            max-w-[80rem] duration-300 ease-in-out
+            max-w-[80rem] h-full duration-300 ease-in-out
             flex flex-col flex-1 relative overflow-visible
             gap-6
           `}
         >
-          <div className="flex-grow flex flex-col overflow-hidden gap-4">
-            <div className="w-full bg-innercontainer rounded-lg border flex flex-col flex-grow overflow-hidden">
+          <div className="flex flex-col h-full gap-4">
+            <div className="flex flex-col flex-grow-[1] min-h-0 w-full bg-innercontainer rounded-lg border border-border">
               <div
                 ref={chatContainerRef}
                 className="p-8 overflow-y-auto space-y-2 flex flex-col items-center"
@@ -1055,7 +1029,7 @@ const ChatBot = () => {
                       that I can help you with:
                     </p>
                     <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
-                    {scheduleExampleQuestions.map((example) =>
+                      {scheduleExampleQuestions.map((example) =>
                         <li
                           className="text-textdark hover:text-textsecondary cursor-pointer"
                           onClick={() => {
@@ -1090,10 +1064,7 @@ const ChatBot = () => {
               <div className="flex flex-row gap-2 p-2 bg-innercontainer border rounded-full border-border">
                 {/* General Advising Button */}
                 <div
-                  className="relative"
-                  onMouseEnter={() => setHovered("advising")}
-                  onMouseLeave={() => setHovered(null)}
-                  ref={buttonRefs.advising}
+                  className="relative group/advising"
                 >
                   <button
                     className={`p-2 rounded-full mr-2 transition-colors duration-200 ${!generateSchedule
@@ -1103,16 +1074,23 @@ const ChatBot = () => {
                     onClick={() => setGenerateSchedule(false)}
                     aria-label="Ask a general advising question"
                   >
-                    <GraduationCapIcon size={24} className="text-black" />
+                    <GraduationCapIcon size={24} className="stroke-textdark" />
                   </button>
+
+                  {/* Tooltip */}
+                  <div className="group-hover/advising:opacity-100 opacity-0 flex flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-[42%]" /* Not really sure why left needs to be 42% here to be centered and not 50% like in the other tooltip but wtv*/> 
+                    <div
+                      className=" bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap"
+                    >
+                      Ask a general advising question
+                    </div>
+                    <div className="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-bgdark"></div>
+                  </div>
                 </div>
 
                 {/* Generate Schedule Button */}
                 <div
-                  className="relative"
-                  onMouseEnter={() => setHovered("schedule")}
-                  onMouseLeave={() => setHovered(null)}
-                  ref={buttonRefs.schedule}
+                  className="relative group/schedule"
                 >
                   <button
                     className={`p-2 rounded-full transition-colors duration-200 ${generateSchedule
@@ -1122,28 +1100,20 @@ const ChatBot = () => {
                     onClick={() => setGenerateSchedule(true)}
                     aria-label="Generate your class schedule"
                   >
-                    <CalendarSearchIcon size={24} className="text-black" />
+                    <CalendarSearchIcon size={24} className="stroke-textdark" />
                   </button>
+
+                  {/* Tooltip */}
+                  <div className="group-hover/schedule:opacity-100 opacity-0 flex flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-1/2">
+                    <div
+                      className=" bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap"
+                    >
+                      Generate your class schedule
+                    </div>
+                    <div className="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-bgdark"></div>
+                  </div>
                 </div>
 
-                {/* Tooltip popup */}
-                {hovered && (
-                  <div
-                    style={{
-                      position: "fixed",
-                      top: tooltipPosition.top,
-                      left: tooltipPosition.left,
-                      transform: "translateX(-50%)",
-                      zIndex: 1000,
-                    }}
-                    className="bg-black text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap"
-                  >
-                    {hovered === "advising"
-                      ? "Ask a general advising question"
-                      : "Generate your class schedule"}
-                    <div className="absolute left-1/2 -bottom-2 transform -translate-x-3/4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-black"></div>
-                  </div>
-                )}
               </div>
               <textarea
                 ref={textareaRef}
