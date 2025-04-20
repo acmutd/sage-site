@@ -1035,7 +1035,7 @@ const ChatBot = () => {
                     <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
                       {advisingExampleQuestions.map((example) =>
                         <li
-                          className="text-textdark hover:text-textsecondary"
+                          className="text-textdark hover:text-textsecondary cursor-pointer"
                           onClick={() => {
                             handleClickQueryFlag.current = true;
                             setQuery(example.question);
@@ -1057,7 +1057,7 @@ const ChatBot = () => {
                     <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
                     {scheduleExampleQuestions.map((example) =>
                         <li
-                          className="text-textdark hover:text-textsecondary"
+                          className="text-textdark hover:text-textsecondary cursor-pointer"
                           onClick={() => {
                             handleClickQueryFlag.current = true;
                             setQuery(example.question);
