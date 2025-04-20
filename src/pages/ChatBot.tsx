@@ -1078,9 +1078,9 @@ const ChatBot = () => {
                   </button>
 
                   {/* Tooltip */}
-                  <div className="group-hover/advising:opacity-100 opacity-0 flex flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-[42%]" /* Not really sure why left needs to be 42% here to be centered and not 50% like in the other tooltip but wtv*/> 
+                  <div className="group-hover/advising:flex hidden flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-[42%]" /* Not really sure why left needs to be 42% here to be centered and not 50% like in the other tooltip but wtv*/> 
                     <div
-                      className=" bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap"
+                      className="bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap"
                     >
                       Ask a general advising question
                     </div>
@@ -1104,7 +1104,7 @@ const ChatBot = () => {
                   </button>
 
                   {/* Tooltip */}
-                  <div className="group-hover/schedule:opacity-100 opacity-0 flex flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-1/2">
+                  <div className="group-hover/schedule:flex hidden flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-1/2">
                     <div
                       className=" bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap"
                     >
