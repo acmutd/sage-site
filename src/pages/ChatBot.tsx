@@ -40,8 +40,6 @@ const ChatBot = () => {
   const [contextMenuPosition, setContextMenuPosition] = useState({ top: 0, left: 0 });
   const contextButtonRefs = useRef<(HTMLLIElement | null)[]>([]);
 
-  // Tooltip helpers
-
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const [moreOptionsOpenId, setMoreOptionsOpenId] = useState<string | null>(
