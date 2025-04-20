@@ -818,8 +818,8 @@ const ChatBot = () => {
               ? "rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]"
               : "rounded-lg px-6"
             }
-            transition-all duration-100
-            py-8 gap-8 overflow-hidden
+            transition-all duration-100 group/sidebar
+            pt-8 pb-4 gap-8 overflow-hidden
             bg-bglight border border-border
             flex flex-col items-center
             w-full h-full
@@ -855,7 +855,7 @@ const ChatBot = () => {
               <div
                 className="w-12 h-12 flex items-center justify-center"
               >
-                <PanelLeftDashed size={24} className="stroke-textdark" />
+                <PanelLeftDashed size={24} className="stroke-[#bbbbbb] group-hover/sidebar:stroke-[#dddddd] transition-colors duration-150" />
               </div>
             </div>
           )}
