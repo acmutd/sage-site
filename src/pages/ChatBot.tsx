@@ -472,15 +472,15 @@ const ChatBot = () => {
       return;
     }
 
-    const sorted = [...data].sort((a, b) => {
-      const aTime = new Date(
-        a.messages?.[a.messages.length - 1]?.timestamp || 0
-      ).getTime();
-      const bTime = new Date(
-        b.messages?.[b.messages.length - 1]?.timestamp || 0
-      ).getTime();
-      return bTime - aTime; // Most recent first
-    });
+    // const sorted = [...data].sort((a, b) => {
+    //   const aTime = new Date(
+    //     a.messages?.[a.messages.length - 1]?.timestamp || 0
+    //   ).getTime();
+    //   const bTime = new Date(
+    //     b.messages?.[b.messages.length - 1]?.timestamp || 0
+    //   ).getTime();
+    //   return bTime - aTime; // Most recent first
+    // });
 
     /* 
       The below code will load the latest conversation into cache from the lambda to display it. It's currently commented out as this is no longer intended functionality.
@@ -676,7 +676,7 @@ const ChatBot = () => {
   }, [moreOptionsOpenId])
 
   function updateScrollPosition() {
-    const activeContextRef = contextButtonRefs.current.find((ref, index) => {
+    const activeContextRef = contextButtonRefs.current.find((_, index) => {
       if (conversations[index].conversation_id === moreOptionsOpenId) {
         return conversations[index];
       }
@@ -1076,7 +1076,7 @@ const ChatBot = () => {
                   </button>
 
                   {/* Tooltip */}
-                  <div className="group-hover/advising:flex hidden flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-[42%]" /* Not really sure why left needs to be 42% here to be centered and not 50% like in the other tooltip but wtv*/> 
+                  <div className="group-hover/advising:flex hidden flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-[42%]" /* Not really sure why left needs to be 42% here to be centered and not 50% like in the other tooltip but wtv*/>
                     <div
                       className="bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap"
                     >
