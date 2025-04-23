@@ -7,7 +7,6 @@ import {
   MessageCirclePlusIcon,
   GraduationCapIcon,
   CalendarSearchIcon,
-  MessagesSquare,
   SquareAsterisk,
   PanelLeftDashed,
   Trash2,
@@ -16,16 +15,17 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import MessageDisplay from "@/components/chatbot/MessageDisplay";
 
-const CACHE_EXPIRATION_TIME = 60 * 60 * 1000;
+// These are in milliseconds
+const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
+const CONVERSATION_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
 const ChatBot = () => {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
+  const handleClickQueryFlag = useRef(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversation_id, setconversation_id] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<
-    { conversation_id: string; user_id: string; messages: any[] }[]
-  >([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [chatHistoryLoad, setChatHistoryLoad] = useState(false);
   const [chatLoad, setChatLoad] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -34,12 +34,11 @@ const ChatBot = () => {
   const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
   const [generateSchedule, setGenerateSchedule] = useState(false);
-  const [hovered, setHovered] = useState<"advising" | "schedule" | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
-  const buttonRefs = {
-    advising: useRef(null),
-    schedule: useRef(null),
-  };
+
+  // Context menu helpers
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ top: 0, left: 0 });
+  const contextButtonRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
@@ -55,6 +54,54 @@ const ChatBot = () => {
 
   const CHAT_API = import.meta.env.VITE_CHAT_API;
   const CRUD_API = import.meta.env.VITE_CRUD_API;
+
+  const advisingExampleQuestions = [
+    {
+      question: "What courses are supported by the CSMC?"
+    },
+    {
+      question: "What are the requirements for graduation?"
+    },
+    {
+      question: "How can I enroll in classes I don't have prereqs for if I plan to take the prereqs over the summer?"
+    },
+    {
+      question: "Tell me about ACM UTD and how I can get involved!"
+    },
+    {
+      question: "What classes should a first-year accounting major take?"
+    },
+    {
+      question: "What do you know about Professor John Cole?"
+    },
+    {
+      question: "What are the GPA cutoffs for the benchmark classes of a prospective CS fast track student?"
+    },
+  ];
+
+  const scheduleExampleQuestions = [
+    {
+      question: "Generate a schedule with CS 2305, ECS 2390, CS 2336, CS 2340, and PHYS 2325."
+    },
+    {
+      question: "I work after 4pm on Tuesday and Thursday. Can you avoid classes during that time?"
+    },
+    {
+      question: "My friend is in CS 2336.003, can we make sure to include that class?"
+    },
+    {
+      question: "Swap CS 2336 for CS 3341, and no classes before 10am."
+    },
+    {
+      question: "I want Professor John Cole for CS 3162. Can we only use his sections?"
+    },
+    {
+      question: "I need to enroll for summer classes, please generate a schedule using summer sections."
+    },
+    {
+      question: "Can you rank the CS2340 classes by professor rating and compare their data?"
+    },
+  ];
 
   const adjustTextareaHeight = () => {
     const textarea = textareaRef.current;
@@ -76,17 +123,18 @@ const ChatBot = () => {
   };
 
   // Check if the cached data is still valid
-  const isCacheValid = (timestamp: number, cacheUserId: any): boolean => {
+  const isCacheValid = (timestamp: number, cacheUserId: any, cacheValidFor: number): boolean => {
     if (!user?.uid || !timestamp || !cacheUserId) return false;
     const currentTime = Date.now();
     return (
-      currentTime - timestamp < CACHE_EXPIRATION_TIME &&
+      currentTime - timestamp < cacheValidFor &&
       user.uid === cacheUserId
     );
   };
 
   const handleOutsideClick = () => {
     setMoreOptionsOpenId(null);
+    setShowContextMenu(false);
   };
 
   // Save conversation data with timestamp to localStorage
@@ -127,7 +175,8 @@ const ChatBot = () => {
           cachedConversations.userId &&
           isCacheValid(
             cachedConversations.timestamp,
-            cachedConversations.userId
+            cachedConversations.userId,
+            CONVERSATIONS_CACHE_EXPIRATION_TIME
           )
         ) {
           console.log("Using cached conversations data");
@@ -177,6 +226,7 @@ const ChatBot = () => {
       // console.log("after response");
 
       const data = await response.json();
+      sortConversationsByDate(data);
       // console.log("data: ", data);
       setConversations(Array.isArray(data) ? data : []);
 
@@ -337,6 +387,19 @@ const ChatBot = () => {
     }, 0);
   };
 
+  // Sort the list of conversations by date instead of by the default conversation_id
+  const sortConversationsByDate = (convs: Conversation[]) => {
+    return convs.sort((a: Conversation, b: Conversation) => {
+      const aTime = new Date(
+        a.messages?.[a.messages.length - 1]?.timestamp || 0
+      ).getTime();
+      const bTime = new Date(
+        b.messages?.[b.messages.length - 1]?.timestamp || 0
+      ).getTime();
+      return bTime - aTime; // Most recent first
+    });
+  };
+
   const loadConversation = async (id: string, messages: any[]) => {
     setconversation_id(id);
     setMessages(messages);
@@ -355,14 +418,16 @@ const ChatBot = () => {
     if (!user?.uid) return;
 
     const cachedData = localStorage.getItem("chatbot_conversation");
-    console.log(user.uid);
+    console.log("user id: ", user.uid);
 
     if (cachedData) {
       const { messages, conversation_id, timestamp, cacheUserId } =
         JSON.parse(cachedData);
 
+      // console.log(JSON.parse(cachedData))
+
       // Check if the cached conversation is still valid
-      if (timestamp && cacheUserId && isCacheValid(timestamp, cacheUserId)) {
+      if (timestamp && cacheUserId && isCacheValid(timestamp, cacheUserId, CONVERSATION_CACHE_EXPIRATION_TIME)) {
         console.log("Using cached current conversation");
         setMessages(messages || []);
         setconversation_id(conversation_id || null);
@@ -373,14 +438,19 @@ const ChatBot = () => {
         );
         if (cachedConversationsString) {
           const cachedConversations = JSON.parse(cachedConversationsString);
+          // console.log("cached conversations: ", cachedConversations)
+          // console.log("cached conversation string: ", cachedConversationsString)
           if (
             cachedConversations.timestamp &&
             cachedConversations.userId &&
             isCacheValid(
               cachedConversations.timestamp,
-              cachedConversations.userId
+              cachedConversations.userId,
+              CONVERSATIONS_CACHE_EXPIRATION_TIME
             )
           ) {
+
+            sortConversationsByDate(cachedConversations.data);
             setConversations(
               Array.isArray(cachedConversations.data)
                 ? cachedConversations.data
@@ -402,32 +472,37 @@ const ChatBot = () => {
       return;
     }
 
-    const sorted = [...data].sort((a, b) => {
-      const aTime = new Date(
-        a.messages?.[a.messages.length - 1]?.timestamp || 0
-      ).getTime();
-      const bTime = new Date(
-        b.messages?.[b.messages.length - 1]?.timestamp || 0
-      ).getTime();
-      return bTime - aTime; // Most recent first
-    });
+    // const sorted = [...data].sort((a, b) => {
+    //   const aTime = new Date(
+    //     a.messages?.[a.messages.length - 1]?.timestamp || 0
+    //   ).getTime();
+    //   const bTime = new Date(
+    //     b.messages?.[b.messages.length - 1]?.timestamp || 0
+    //   ).getTime();
+    //   return bTime - aTime; // Most recent first
+    // });
 
-    const lastConversationData = sorted[0];
+    /* 
+      The below code will load the latest conversation into cache from the lambda to display it. It's currently commented out as this is no longer intended functionality.
+      Instead, if the cache has expired, the latest conversation will not be loaded so the user is just defaulted to the new chat screen.
+    */
 
-    if (lastConversationData) {
-      setMessages(lastConversationData.messages || []);
-      setconversation_id(lastConversationData.conversation_id || null);
+    // const lastConversationData = sorted[0];
 
-      localStorage.setItem(
-        "chatbot_conversation",
-        JSON.stringify({
-          messages: lastConversationData.messages || [],
-          conversation_id: lastConversationData.conversation_id,
-          timestamp: Date.now(),
-          cacheUserId: user?.uid,
-        })
-      );
-    }
+    // if (lastConversationData) {
+    //   setMessages(lastConversationData.messages || []);
+    //   setconversation_id(lastConversationData.conversation_id || null);
+
+    //   localStorage.setItem(
+    //     "chatbot_conversation",
+    //     JSON.stringify({
+    //       messages: lastConversationData.messages || [],
+    //       conversation_id: lastConversationData.conversation_id,
+    //       timestamp: Date.now(),
+    //       cacheUserId: user?.uid,
+    //     })
+    //   );
+    // }
   };
 
   const handleEnter = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -457,7 +532,7 @@ const ChatBot = () => {
     setChatLoad(true);
     setChatError(null);
 
-    const userMessage = { role: "user", content: query };
+    const userMessage = { role: "user", content: query, timestamp: Date.now() };
     const updatedMessagesWithUser = [...messages, userMessage];
     setMessages(updatedMessagesWithUser);
 
@@ -518,7 +593,7 @@ const ChatBot = () => {
         throw new Error("Chatbot API did not return a response.");
       }
 
-      const botMessage = { role: "bot", content: data.response };
+      const botMessage = { role: "bot", content: data.response, timestamp: Date.now() };
       const updatedMessagesWithBot = [...updatedMessagesWithUser, botMessage];
 
       setMessages(updatedMessagesWithBot);
@@ -529,7 +604,7 @@ const ChatBot = () => {
 
       // Only prepend the conversation to state/cache if it's new
       setConversations((prevConversations) => {
-        console.log("Inside update - prevConversations:", prevConversations);
+        // console.log("Inside update - prevConversations:", prevConversations);
         const filtered = prevConversations.filter(
           (conv) => conv.conversation_id !== currentConvId
         );
@@ -592,25 +667,26 @@ const ChatBot = () => {
     }
   }, [messages]); // Runs when messages change
 
-  useEffect(() => {
-    const updateTooltipPosition = (
-      buttonRef: React.RefObject<HTMLButtonElement>
-    ) => {
-      if (buttonRef && buttonRef.current) {
-        const rect = buttonRef.current.getBoundingClientRect();
-        setTooltipPosition({
-          top: rect.top - 50,
-          left: rect.left + rect.width / 2,
-        });
-      }
-    };
+  useEffect(() =>
+    adjustTextareaHeight,
+    [query]);
 
-    if (hovered === "advising") {
-      updateTooltipPosition(buttonRefs.advising);
-    } else if (hovered === "schedule") {
-      updateTooltipPosition(buttonRefs.schedule);
+  useEffect(() => {
+    updateScrollPosition();
+  }, [moreOptionsOpenId])
+
+  function updateScrollPosition() {
+    const activeContextRef = contextButtonRefs.current.find((_, index) => {
+      if (conversations[index].conversation_id === moreOptionsOpenId) {
+        return conversations[index];
+      }
+    });
+    if (activeContextRef) {
+      const rect = activeContextRef.getBoundingClientRect();
+      setContextMenuPosition({ top: rect.top, left: rect.left });
+      setShowContextMenu(true);
     }
-  }, [hovered]);
+  }
 
   useEffect(() => {
     const reloadChatHistory = async () => {
@@ -632,7 +708,8 @@ const ChatBot = () => {
             cachedConversations.userId &&
             isCacheValid(
               cachedConversations.timestamp,
-              cachedConversations.userId
+              cachedConversations.userId,
+              CONVERSATIONS_CACHE_EXPIRATION_TIME
             )
           ) {
             console.log("Using cached conversations for history");
@@ -688,6 +765,13 @@ const ChatBot = () => {
     reloadChatHistory();
   }, [conversation_id]);
 
+  useEffect(() => {
+    if (handleClickQueryFlag.current === true) {
+      handleSendQuery();
+      handleClickQueryFlag.current = false;
+    }
+  }, [query])
+
   return (
     <div
       className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]"
@@ -699,15 +783,15 @@ const ChatBot = () => {
           ? "w-[5.25rem]"
           : "w-[24rem]"
         }
-        h-full flex flex-col gap-3 transition-all duration-100`}>
+        h-full flex flex-col gap-4 transition-all duration-100`}>
         <div
           className={`
             ${sidebarCollapsed
               ? "rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]"
               : "rounded-lg px-6"
             }
-            transition-all duration-100
-            py-8 gap-8 overflow-hidden
+            transition-all duration-100 group/sidebar
+            pt-8 pb-4 gap-8 overflow-hidden
             bg-bglight border border-border
             flex flex-col items-center
             w-full h-full
@@ -727,18 +811,14 @@ const ChatBot = () => {
 
               <button
                 className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
-                onClick={startNewChat}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startNewChat();
+                }
+                }
                 aria-label="Start new chat"
               >
                 <MessageCirclePlusIcon size={24} className="stroke-textdark" />
-              </button>
-
-              <button
-                className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
-                onClick={toggleSidebar}
-                aria-label="Chat History"
-              >
-                <MessagesSquare size={24} className="stroke-textdark" />
               </button>
 
               {/* Spacer */}
@@ -747,18 +827,16 @@ const ChatBot = () => {
               <div
                 className="w-12 h-12 flex items-center justify-center"
               >
-                <PanelLeftDashed size={24} className="stroke-textdark" />
+                <PanelLeftDashed size={24} className="stroke-[#bbbbbb] group-hover/sidebar:stroke-[#dddddd] transition-colors duration-150" />
               </div>
             </div>
           )}
 
           {/* Elements in the expanded sidebar */}
           {!sidebarCollapsed && (
-            // Both booleans are in this^ expression for quicker response whenever the navbar is collapsed, since
-            // sidebarCollapsedDelayed is changed after slightly more function overhead time
             <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-hidden gap-8 transition-all duration-150`}>
               {/* Buttons at the top */}
-              <div className="flex gap-3 justify-between">
+              <div className="flex gap-3 justify-between items-center">
                 <button
                   className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700"
                   onClick={startNewChat}
@@ -767,11 +845,11 @@ const ChatBot = () => {
                   <span>Start new chat</span>
                 </button>
                 <button
-                  className="p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center"
+                  className="group p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center"
                   onClick={toggleSidebar}
                   aria-label="Collapse sidebar"
                 >
-                  <ArrowLeftToLineIcon size={20} />
+                  <ArrowLeftToLineIcon className="stroke-textdark group-hover:stroke-textsecondary transition-colors duration-150" size={20} />
                 </button>
               </div>
 
@@ -785,6 +863,7 @@ const ChatBot = () => {
                 className="flex flex-col gap-2 overflow-y-scroll w-full"
                 ref={conversationListRef}
                 style={{ scrollbarWidth: "none" }}
+                onScroll={updateScrollPosition}
               >
                 {Array.isArray(conversations) && conversations.length > 0 ? (
                   conversations.map((conv, index) => {
@@ -792,35 +871,29 @@ const ChatBot = () => {
                     const firstMessage =
                       conv.messages?.[0]?.content || "No messages";
 
-                    const listIsOverflowing =
-                      conversationListRef.current &&
-                      conversationListRef.current.scrollHeight >
-                      conversationListRef.current.clientHeight;
-
-                    const isNearBottom =
-                      listIsOverflowing && conversations.length - index <= 1;
-
                     return (
                       <li
                         key={conv.conversation_id}
                         className={`group/conversation flex flex-row gap-2 justify-between items-center w-full p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors overflow-visible
                           ${conversation_id === conv.conversation_id
-                          ? "bg-secondary"
-                          : "bg-bglight"
+                            ? "bg-secondary"
+                            : "bg-bglight"
                           }`}
                         onClick={() =>
                           loadConversation(conv.conversation_id, conv.messages)
                         }
+                        ref={(el: HTMLLIElement | null) => contextButtonRefs.current[index] = el}
                       >
-                        <div className="flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
+                        <div className="relative flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
+                          <div className="opacity-0 group-hover/conversation:opacity-100 absolute left-[calc(100%-2rem)] w-[2rem] h-full bg-gradient-to-r from-secondary/0 to-secondary transition-all duration-150" />
                           <small className="truncate">
                             {firstMessage}
                           </small>
                         </div>
 
-                        <div className="relative group-hover/conversation:flex hidden h-full">
+                        <div className="relative flex h-full">
                           <button
-                            className="group/menu px-2 h-full"
+                            className="group/menu px-2 h-full group-hover/conversation:opacity-100 opacity-0 "
                             onClick={(e) => {
                               e.stopPropagation();
                               setMoreOptionsOpenId((prev) =>
@@ -830,43 +903,50 @@ const ChatBot = () => {
                               );
                             }}
                           >
-                            <Ellipsis className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary"/>
+                            <Ellipsis className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary" />
                           </button>
 
-                          {moreOptionsOpenId === conv.conversation_id && (
-                            <div
-                              className={`absolute right-0 z-[9999] w-48 bg-white border border-border shadow-lg rounded-md text-sm overflow-hidden ${isNearBottom ? "bottom-6" : "top-6"
-                                }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                              }}
-                              onMouseEnter={(e) => {
-                                e.stopPropagation();
-                              }}
-                            >
-                              <ul className="py-1">
-                                <li>
-                                  <button
-                                    onClick={() => {
-                                      setConversationToDelete(
-                                        conv.conversation_id
-                                      );
-                                      setShowDeleteModal(true);
-                                      setMoreOptionsOpenId(null);
-                                    }}
-                                    className="flex items-center gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
-                                  >
-                                    Delete conversation
-                                    <Trash2
-                                      size={16}
-                                      className="stroke-red-500"
-                                    />
-                                  </button>
-                                </li>
-                              </ul>
-                            </div>
-                          )}
+                          {/* Context Menu */}
+                          {
+                            moreOptionsOpenId === conv.conversation_id &&
+                            showContextMenu && // <-- This condition exists so the context menu doesn't show up for the short moment that the menu's position doesn't update
+                            (
+                              <div
+                                className={`fixed translate-x-[150%] translate-y-[90%] z-[9999] w-48 bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden transition-opacity duration-150`}
+                                style={{
+                                  top: contextMenuPosition.top,
+                                  left: contextMenuPosition.left
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.stopPropagation();
+                                }}
+                              >
+                                <ul className="py-1">
+                                  <li>
+                                    <button
+                                      onClick={() => {
+                                        setConversationToDelete(
+                                          conv.conversation_id
+                                        );
+                                        setShowDeleteModal(true);
+                                        setMoreOptionsOpenId(null);
+                                      }}
+                                      className="flex items-center gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
+                                    >
+                                      Delete conversation
+                                      <Trash2
+                                        size={16}
+                                        className="stroke-destructive"
+                                      />
+                                    </button>
+                                  </li>
+                                </ul>
+                              </div>
+                            )}
                         </div>
                       </li>
                     );
@@ -904,20 +984,20 @@ const ChatBot = () => {
       <div className="flex justify-center h-full w-full">
         <div
           className={`
-            max-w-[80rem] duration-300 ease-in-out
+            max-w-[80rem] h-full duration-300 ease-in-out
             flex flex-col flex-1 relative overflow-visible
             gap-6
           `}
         >
-          <div className="flex-grow flex flex-col overflow-hidden">
-            <div className="w-full bg-innercontainer rounded-lg border flex flex-col flex-grow overflow-hidden">
+          <div className="flex flex-col h-full gap-4">
+            <div className="flex flex-col flex-grow-[1] min-h-0 w-full bg-innercontainer rounded-lg border border-border">
               <div
                 ref={chatContainerRef}
                 className="p-8 overflow-y-auto space-y-2 flex flex-col items-center"
                 style={{ scrollbarWidth: "none" }}
               >
                 {messages.length === 0 && !chatLoad && !generateSchedule ? (
-                  // Case 1: Intro content
+                  // Case 1: Intro content for advising option
                   <div className="w-full max-w-2xl text-left mt-[5rem]">
                     <h1>Hi, I’m Sage.</h1>
                     <h3>What can I help with?</h3>
@@ -925,23 +1005,20 @@ const ChatBot = () => {
                       Here are some example questions that I can help you with:
                     </p>
                     <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
-                      <li>What courses are supported by the CSMC?</li>
-                      <li>What are the requirements for graduation?</li>
-                      <li>
-                        How can I enroll in classes I don't have prereqs for if
-                        I plan to take the prereqs over the summer?
-                      </li>
-                      <li>Tell me about ACM UTD and how I can get involved!</li>
-                      <li>
-                        What classes should a first-year accounting major
-                        take?
-                      </li>
-                      <li>What do you know about Professor John Cole?</li>
-                      <li>What are the GPA cutoffs for the benchmark classes of a prospective CS fast track student?</li>
+                      {advisingExampleQuestions.map((example) =>
+                        <li
+                          className="text-textdark hover:text-textsecondary cursor-pointer"
+                          onClick={() => {
+                            handleClickQueryFlag.current = true;
+                            setQuery(example.question);
+                          }}>
+                          {example.question}
+                        </li>
+                      )}
                     </ul>
                   </div>
                 ) : messages.length === 0 && !chatLoad && generateSchedule ? (
-                  // Case 2: Custom rendering for generateSchedule = true
+                  // Case 2: Intro content for schedule generation option
                   <div className="w-full max-w-2xl text-left mt-[5rem]">
                     <h1>Hi, I’m Sage.</h1>
                     <h3>Let's start building your schedule!</h3>
@@ -950,32 +1027,16 @@ const ChatBot = () => {
                       that I can help you with:
                     </p>
                     <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
-                      <li>
-                        Generate a schedule with CS 2305, ECS 2390, CS 2336, CS
-                        2340, and PHYS 2325.
-                      </li>
-                      <li>
-                        I work after 4pm on Tuesday and Thursday. Can you avoid
-                        classes during that time?
-                      </li>
-                      <li>
-                        My friend is in CS 2336.003, can we make sure to include
-                        that class?
-                      </li>
-                      <li>
-                        Swap CS 2336 for CS 3341, and no classes before 10am
-                      </li>
-                      <li>
-                        I want Professor John Cole for CS 3162. Can we only use
-                        his sections?
-                      </li>
-                      <li>
-                        I need to enroll for summer classes, please generate a
-                        schedule using summer sections.
-                      </li>
-                      <li>
-                        Can you rank the CS2340 classes by professor rating and compare their data?
-                      </li>
+                      {scheduleExampleQuestions.map((example) =>
+                        <li
+                          className="text-textdark hover:text-textsecondary cursor-pointer"
+                          onClick={() => {
+                            handleClickQueryFlag.current = true;
+                            setQuery(example.question);
+                          }}>
+                          {example.question}
+                        </li>
+                      )}
                     </ul>
                   </div>
                 ) : (
@@ -996,15 +1057,12 @@ const ChatBot = () => {
               </div>
             </div>
             {/* Query Container */}
-            <div className="w-full flex flex-row gap-4 items-center justify-center mt-4">
+            <div className="w-full flex flex-row gap-4 items-center justify-center">
               {/* Mode Toggle */}
               <div className="flex flex-row gap-2 p-2 bg-innercontainer border rounded-full border-border">
                 {/* General Advising Button */}
                 <div
-                  className="relative"
-                  onMouseEnter={() => setHovered("advising")}
-                  onMouseLeave={() => setHovered(null)}
-                  ref={buttonRefs.advising}
+                  className="relative group/advising"
                 >
                   <button
                     className={`p-2 rounded-full mr-2 transition-colors duration-200 ${!generateSchedule
@@ -1014,16 +1072,23 @@ const ChatBot = () => {
                     onClick={() => setGenerateSchedule(false)}
                     aria-label="Ask a general advising question"
                   >
-                    <GraduationCapIcon size={24} className="text-black" />
+                    <GraduationCapIcon size={24} className="stroke-textdark" />
                   </button>
+
+                  {/* Tooltip */}
+                  <div className="group-hover/advising:flex hidden flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-[42%]" /* Not really sure why left needs to be 42% here to be centered and not 50% like in the other tooltip but wtv*/>
+                    <div
+                      className="bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap"
+                    >
+                      Ask a general advising question
+                    </div>
+                    <div className="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-bgdark"></div>
+                  </div>
                 </div>
 
                 {/* Generate Schedule Button */}
                 <div
-                  className="relative"
-                  onMouseEnter={() => setHovered("schedule")}
-                  onMouseLeave={() => setHovered(null)}
-                  ref={buttonRefs.schedule}
+                  className="relative group/schedule"
                 >
                   <button
                     className={`p-2 rounded-full transition-colors duration-200 ${generateSchedule
@@ -1033,28 +1098,20 @@ const ChatBot = () => {
                     onClick={() => setGenerateSchedule(true)}
                     aria-label="Generate your class schedule"
                   >
-                    <CalendarSearchIcon size={24} className="text-black" />
+                    <CalendarSearchIcon size={24} className="stroke-textdark" />
                   </button>
+
+                  {/* Tooltip */}
+                  <div className="group-hover/schedule:flex hidden flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-1/2">
+                    <div
+                      className=" bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap"
+                    >
+                      Generate your class schedule
+                    </div>
+                    <div className="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-bgdark"></div>
+                  </div>
                 </div>
 
-                {/* Tooltip popup */}
-                {hovered && (
-                  <div
-                    style={{
-                      position: "fixed",
-                      top: tooltipPosition.top,
-                      left: tooltipPosition.left,
-                      transform: "translateX(-50%)",
-                      zIndex: 1000,
-                    }}
-                    className="bg-black text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap"
-                  >
-                    {hovered === "advising"
-                      ? "Ask a general advising question"
-                      : "Generate your class schedule"}
-                    <div className="absolute left-1/2 -bottom-2 transform -translate-x-3/4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-black"></div>
-                  </div>
-                )}
               </div>
               <textarea
                 ref={textareaRef}
@@ -1065,7 +1122,8 @@ const ChatBot = () => {
                 style={{ scrollbarWidth: "none" }}
                 onChange={(e) => {
                   setQuery(e.target.value);
-                  adjustTextareaHeight();
+                  // adjustTextareaHeight();
+                  // ^this has been commented out since this is now being handled by a useEffect to ensure that height is adjusted during non-user-made changes to query (like when query is cleared after submitting)
                 }}
                 onKeyDown={handleEnter}
                 value={query}
