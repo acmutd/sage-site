@@ -40,7 +40,9 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function SignupForm(props: {setLoading: (loading: boolean) => void}) {
+export default function SignupForm(props: {
+  setLoading: (loading: boolean) => void;
+}) {
   const navigate = useNavigate();
 
   const form = useForm<FormValues>({
@@ -76,6 +78,10 @@ export default function SignupForm(props: {setLoading: (loading: boolean) => voi
 
       props.setLoading(true); // Trigger loading animation for user
 
+      // Google users get profile 0 and their Google profile image
+      const profilePictureType = 0;
+      const photoUrl = user.photoURL || "";
+
       await fetch(VITE_CRUD_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,6 +89,8 @@ export default function SignupForm(props: {setLoading: (loading: boolean) => voi
           userId: result.user.uid,
           token: token,
           action: "createUser",
+          profile_picture_type: profilePictureType,
+          photo_url: photoUrl,
         }),
       });
 
@@ -106,6 +114,11 @@ export default function SignupForm(props: {setLoading: (loading: boolean) => voi
       );
       const token = await result.user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
+
+      // Email users get random profile_picture_type 1-6 and corresponding image URL
+      const profilePictureType = Math.floor(Math.random() * 6) + 1;
+      const photoUrl = `/assets/profile_pics/${profilePictureType}.png`;
+
       await fetch(VITE_CRUD_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,6 +126,8 @@ export default function SignupForm(props: {setLoading: (loading: boolean) => voi
           userId: result.user.uid,
           token: token,
           action: "createUser",
+          profile_picture_type: profilePictureType,
+          photo_url: photoUrl,
         }),
       });
 
@@ -219,10 +234,13 @@ export default function SignupForm(props: {setLoading: (loading: boolean) => voi
           Sign up with Google
         </Button>
 
-        <a href="/login" className="text-[15px] text-textsecondary hover:underline">
+        <a
+          href="/login"
+          className="text-[15px] text-textsecondary hover:underline"
+        >
           Already have an account?
         </a>
-        
+
         <small className="text-center text-textsecondary mt-4 w-full">
           By signing up, you agree to our{" "}
           <a
@@ -235,7 +253,6 @@ export default function SignupForm(props: {setLoading: (loading: boolean) => voi
           .
         </small>
       </div>
-
     </div>
   );
 }
