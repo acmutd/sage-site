@@ -72,6 +72,10 @@ export default function LoginForm(props: { setLoading: (loading: boolean) => voi
       Cookies.set("authToken", token, { expires: 7 });
 
       props.setLoading(true); // Trigger loading animation for user
+      
+      // Google users get profile 0 and their Google profile image
+      const profilePictureType = 0;
+      const photoUrl = user.photoURL || "";
 
       await fetch(VITE_CRUD_API, {
         method: "POST",
@@ -80,6 +84,8 @@ export default function LoginForm(props: { setLoading: (loading: boolean) => voi
           userId: result.user.uid,
           token: token,
           action: "createUser",
+          profile_picture_type: profilePictureType,
+          photo_url: photoUrl,
         }),
       });
 
@@ -103,6 +109,38 @@ export default function LoginForm(props: { setLoading: (loading: boolean) => voi
       );
       const token = await result.user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
+
+      // 1. Try to get the user profile
+      const profileRes = await fetch(VITE_CRUD_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: result.user.uid,
+          action: "getProfile",
+          token: token,
+        }),
+      });
+
+      const profileData = profileRes.ok ? await profileRes.json() : {};
+
+      // 2. If photoUrl is missing, make a POST to createUser
+      if (!profileData.photo_url) {
+        // Email users get random profile_picture_type 1-6 and corresponding image URL
+        const profilePictureType = Math.floor(Math.random() * 6) + 1;
+        const photoUrl = `/assets/profile_pics/${profilePictureType}.png`;
+        await fetch(VITE_CRUD_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: result.user.uid,
+            token: token,
+            action: "createUser",
+            profile_picture_type: profilePictureType,
+            photo_url: photoUrl,
+          }),
+        });
+      }
+
       toast.success("Successfully logged in!");
       props.setLoading(false); // Unrender loading animation for user
       navigate(from, { replace: true });
