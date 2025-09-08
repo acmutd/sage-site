@@ -209,9 +209,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onClose }) => {
             <h2 className="text-lg font-bold text-blue-700">
               📄 Transcript Parsed
             </h2>
-            <pre className="text-sm text-blue-900 whitespace-pre-wrap">
+            {/* <pre className="text-sm text-blue-900 whitespace-pre-wrap">
               {JSON.stringify(transcriptData, null, 2)}
-            </pre>
+            </pre> */}
           </div>
         )}
       </div>

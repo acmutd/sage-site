@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import FileUploader from "./FileUpload";
+//import FileUploader from "./FileUpload";
 
 interface OnboardingProps {
   onClose: () => void;
@@ -68,7 +68,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onClose }) => {
                 Next
               </button>
 
-              {uploadFile && <FileUploader />}
+              {/* {uploadFile && <FileUploader />} */}
             </>
           )}
         </div>

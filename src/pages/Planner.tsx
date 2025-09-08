@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 const Planner = () => {
   const { user } = useAuth();
   const [showUploader, setShowUploader] = useState(false);
-  const [tempScreen, setTempScreen] = useState(false);
+  //const [tempScreen, setTempScreen] = useState(false);
 
   const handleToggleUploader = () => {
     setShowUploader((prev) => !prev);
@@ -36,7 +36,7 @@ const Planner = () => {
 
   return (
     <div>
-      {tempScreen ? (
+      {false ? (
         <div className="flex items-center justify-center mt-[4.2rem] h-[calc(100vh-4.2rem)] bg-innercontainer">
           <div className="relative flex justify-center items-center aspect-[2/1] h-full">
             {/* Blurred Background Image */}
