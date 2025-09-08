@@ -16,24 +16,24 @@ const LandingPage = () => {
       <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-[#0C2112] blur-[10rem] rounded-full -translate-x-80" />
       }
       {mobileView ? 
-        <div className="mt-36">
-          <div>
+        <div className="flex flex-col z-10 space-y-4 justify-center">
+          <div className="flex flex-row justify-center items-center space-x-4">
               <img
                 src="/landing-line1.svg"
                 alt="Landing"
-                className="absolute object-cover top-[calc(41vh+6vw)] left-[-1vw] w-[9vw]"
+                className="object-cover left-[-1vw] w-[9vw]"
               />
-              <h1 className="relative top-[23vh] mx-11 text-textlight text-[8vw] text-left w-fit">
-              Say hello to <span className="text-accent font-mermaid">SAGE</span>, your <br />
-              personal Al-powered <br />
-              student advisor.
+              <h1 className="text-textlight text-[7vw] text-left w-fit">
+                Say hello to <span className="text-accent font-mermaid">SAGE</span>, your <br />
+                personal Al-powered <br />
+                student advisor.
             </h1>
           </div>
           <div className="absolute bottom-5 flex items-center gap-2 px-4">
            <img src="/asterisk.svg" alt="asterisk" className="h-4 w-auto" />
            <p className="text-textlight">Powered by the ACM Dev team</p>
          </div>
-         <div className="mt-36 flex flex-col bg-dark gap-4 rounded-l-full pr-8 absolute top-[calc(28vh+20vw)] left-[10vw]">
+         <div className="relative flex flex-col bg-dark gap-4 rounded-l-full pr-8 left-[10vw]">
             <Link
               to="/planner"
               className="w-fit bg-accent border-accent border-2 text-textdark text-[4vw] px-[5vw] py-[1.1vh] rounded-full font-semibold hover:bg-transparent hover:text-textlight transition duration-300"
