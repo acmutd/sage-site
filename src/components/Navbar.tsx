@@ -90,19 +90,19 @@ const Navbar = () => {
             <DropdownMenuContent className={`
               ${isInWebapp
                 ? "bg-bglight"
-                : "bg-bgdark border-textsecondary"} 
-              flex flex-col gap-2 mr-3 items-center rounded-sm`}>
+                : "bg-bglight"} 
+              flex flex-col mt- p-2 gap-2 mr-6 items-center rounded-sm`}>
               <DropdownMenuItem className="focus:bg-innercontainer w-full">
                 <Link
                   to="/planner"
                   className={`
                     ${isInWebapp
                       ? "text-textdark hover:text-gray-700"
-                      : "text-textlight hover:text-gray-200"}
-                  flex flex-row w-full justify-end items-center gap-2 hover:text-gray-200 `}
+                      : "text-textdark hover:text-gray-700"}
+                  flex flex-row w-full justify-start items-center gap-2 hover:text-gray-200 `}
                 >
-                  Plan your degree
                   <Route className="stroke-accent" />
+                  Plan your degree
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem className="focus:bg-innercontainer w-full">
@@ -111,14 +111,14 @@ const Navbar = () => {
                   className={`
                     ${isInWebapp
                       ? "text-textdark hover:text-gray-700"
-                      : "text-textlight hover:text-gray-200"}
-                flex flex-row w-full justify-end items-center gap-2 hover:text-gray-200 `}
+                      : "text-textdark hover:text-gray-700"}
+                flex flex-row w-full justify-start items-center gap-2 hover:text-gray-200 `}
                 >
-                  Start a chat
                   <MessageCirclePlus className="stroke-accent" />
+                  Start a chat
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem className="focus:bg-transparent w-full">
+              {/* <DropdownMenuItem className="focus:bg-transparent w-full">
                 {user ? (
                   // If user is logged in, show Sign Out button
                   <button
@@ -131,12 +131,13 @@ const Navbar = () => {
                   // If no user, show Login button
                   <Link
                     to="/login"
-                    className="bg-accent text-textdark text-base px-8 py-3 rounded-full font-semibold hover:bg-buttonhover transition duration-300"
+                    className="flex-1 text-center bg-accent text-textdark text-base px-8 py-3 rounded-full font-semibold hover:bg-buttonhover transition duration-300"
                   >
                     Login
                   </Link>
-                )}
-              </DropdownMenuItem>
+                )
+                }
+              </DropdownMenuItem> */}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
