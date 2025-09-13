@@ -226,7 +226,7 @@ const ChatBot = () => {
       // console.log("after response");
 
       const data = await response.json();
-      sortConversationsByDate(data);
+      sortConversationsByDate(Array.isArray(data) ? data : []);
       // console.log("data: ", data);
       setConversations(Array.isArray(data) ? data : []);
 
