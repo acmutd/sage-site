@@ -9,7 +9,7 @@ interface FileUploaderProps {
 const FileUploader: React.FC<FileUploaderProps> = ({ userId, onClose }) => {
   const { selectedFile, isUploading, handleFileChange, uploadFile } =
     useFileUpload(
-      import.meta.env.VITE_TRANSCRIPTPARSER_API;
+      import.meta.env.VITE_TRANSCRIPTPARSER_API
     );
 
   const [fileUrl, setFileUrl] = useState<string | null>(null);
