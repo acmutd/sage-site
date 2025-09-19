@@ -1,0 +1,160 @@
+//import { PlusIcon } from "lucide-react";
+import React, { useState } from "react";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../components/ui/select";
+
+const formFields = [
+    {
+        id: "type",
+        label: "Type of program",
+        placeholder: "Select type of program",
+        options: ["Major", "Minor", "Certificate"],
+    },
+    {
+        id: "title",
+        label: "Program name",
+        placeholder: "Select program name",
+        options: ["Computer Science", "Cyber Defense", "Data Science"],
+    },
+    {
+        id: "level",
+        label: "Level of Study",
+        placeholder: "Select level of study",
+        options: ["Undergraduate", "Graduate"],
+    },
+];
+
+interface ProgramValidationBProps {
+    program: any; // Add a prop to accept the program being edited
+    onNext: () => void;
+    onRemove: (id: number) => void; // Add onRemove prop
+    onSave: (updatedProgram: any) => void; // Add onSave prop
+}
+
+const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext, onRemove, onSave }) => {
+    const [selectedProgramId, setSelectedProgramId] = useState<number | null>(program?.id || null); // Set selectedProgramId from program.id
+    const [updatedProgram, setUpdatedProgram] = useState(program); // Local state for the program being edited
+
+    const handleFieldChange = (fieldId: string, value: string) => {
+        setUpdatedProgram((prev: any) => ({
+            ...prev,
+            [fieldId]: value,
+        })); // Update the local program state
+    };
+
+    return (
+        <div>
+            <div className="flex flex-col items-start mb-6">
+                <h3>Are these programs right?</h3>
+                <p>
+                    We detected these programs on your transcript — let us know which
+                    ones you&apos;re still working on.
+                </p>
+            </div>
+
+            <div className="flex flex-col gap-4 bg-gray-100 p-2 rounded-sm">
+                <Card className="flex items-center py-3 relative">
+                    <CardContent className="flex items-center">
+                        <div className="flex flex-col gap-4 w-full"> {/* Ensure all selects are in a column */}
+                            {formFields.map((field) => (
+                                <div
+                                    key={field.id}
+                                    className="flex flex-col items-start gap-2 w-full"
+                                    onMouseDown={(e) => e.stopPropagation()} // Prevent modal from closing
+                                >
+                                    <label className="font-body-regular text-redesign-stylesdark-text text-sm">
+                                        {field.label}
+                                    </label>
+
+                                    <Select onValueChange={(value) => handleFieldChange(field.id, value)}
+                                    >
+                                        <SelectTrigger className="w-full bg-redesign-stylesbg-light rounded-sm border border-slate-300 p-2">
+                                            <SelectValue
+                                                placeholder={
+                                                    field.id === "title"
+                                                        ? program.title
+                                                        : field.id === "level"
+                                                            ? program.level
+                                                            : field.id === "type"
+                                                                ? program.type
+                                                                : field.placeholder
+                                                }
+                                                className="text-redesign-stylesplaceholder-secondary-text text-sm"
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {field.options?.map((option, index) => (
+                                                <SelectItem key={index} value={option}>
+                                                    {option}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            ))}
+
+                            <div className="inline-flex items-start gap-4 relative flex-[0_0_auto]">
+                                <Button
+                                    variant="link"
+                                    className="inline-flex items-center justify-center relative flex-[0_0_auto] p-0 h-auto"
+                                    onClick={onNext} 
+                                >
+                                    <div className="relative w-fit mt-[-1.00px] [font-family:'DM_Sans',Helvetica] font-normal text-redesign-stylesdark-text text-base tracking-[0] leading-4 whitespace-nowrap">
+                                        <span 
+                                        className="font-[number:var(--body-regular-font-weight)] text-slate-900 leading-[var(--body-regular-line-height)] underline font-body-regular [font-style:var(--body-regular-font-style)] tracking-[var(--body-regular-letter-spacing)] text-[length:var(--body-regular-font-size)]"
+                                        onClick={() => onSave(updatedProgram)}
+                                        >
+                                            Save
+                                        </span>
+                                    </div>
+                                </Button>
+
+                                <Button
+                                    variant="link"
+                                    className="inline-flex items-center justify-center relative flex-[0_0_auto] p-0 h-auto"
+                                    onClick={() => {
+                                        if (selectedProgramId !== null) {
+                                            onRemove(selectedProgramId);
+                                        }
+                                    }}
+                                >
+                                    <div className="relative w-fit mt-[-1.00px] [font-family:'DM_Sans',Helvetica] font-normal text-transparent text-base tracking-[0] leading-4 whitespace-nowrap">
+                                        <span className="font-[number:var(--body-regular-font-weight)] text-[#da0000] leading-[var(--body-regular-line-height)] underline font-body-regular [font-style:var(--body-regular-font-style)] tracking-[var(--body-regular-letter-spacing)] text-[length:var(--body-regular-font-size)]">
+                                            Remove
+                                        </span>
+                                    </div>
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* <Button
+                    variant="outline"
+                    className="flex items-center gap-2 border-dashed border-gray-400 border w-full justify-start text-gray-600 rounded-sm"
+                >
+                    <PlusIcon size={16} />
+                    Add program
+                </Button> */}
+            </div>
+
+            {/* <div className="flex justify-end mt-8">
+                <button
+                    className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+                    onClick={onNext}
+                >
+                    Next
+                </button>
+            </div> */}
+        </div>
+    );
+};
+
+export default ProgramValidationB;

@@ -1,14 +1,12 @@
 import { useState } from "react";
-import FileUploader from "../components/FileUpload"; // Adjust path if needed
-import { useAuth } from "../context/AuthContext";
+import Onboarding from "@/components/Onboarding";
 
 const Planner = () => {
-  const { user } = useAuth();
-  const [showUploader, setShowUploader] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   //const [tempScreen, setTempScreen] = useState(false);
 
-  const handleToggleUploader = () => {
-    setShowUploader((prev) => !prev);
+  const handleToggleOnboarding = () => {
+    setShowOnboarding((prev) => !prev);
   };
 
   // const submitTranscript = async () => {
@@ -59,18 +57,17 @@ const Planner = () => {
 
           <div className="flex justify-center mb-4">
             <button
-              onClick={handleToggleUploader}
+              onClick={handleToggleOnboarding}
               className="p-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
             >
-              {showUploader ? "Hide File Upload" : "Show File Upload"}
+              {showOnboarding ? "Hide Onboarding" : "Show Onboarding"}
             </button>
           </div>
 
-          {showUploader && (
+          {showOnboarding && (
             <div className="max-w-md mx-auto">
-              <FileUploader
-                userId={user?.uid || "test-user-123"}
-                onClose={() => setShowUploader(false)}
+              <Onboarding
+                onClose={() => setShowOnboarding(false)}
               />
             </div>
           )}

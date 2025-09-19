@@ -3,10 +3,10 @@ import useFileUpload from "../hooks/useFileUpload";
 
 interface FileUploaderProps {
   userId: string;
-  onClose: () => void;
+  onNext: () => void;
 }
 
-const FileUploader: React.FC<FileUploaderProps> = ({ userId, onClose }) => {
+const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext }) => {
   const { selectedFile, isUploading, handleFileChange, uploadFile } =
     useFileUpload(
       "https://tdv6ry29ob.execute-api.us-east-2.amazonaws.com/sage-development/transcriptParser"
@@ -16,8 +16,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onClose }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
   const [transcriptData, setTranscriptData] = useState<any>(null);
+
 
   const handleUpload = async () => {
     try {
@@ -95,38 +95,17 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onClose }) => {
     };
   }, [handleFileChange]);
 
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [onClose]);
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div
-        ref={modalRef}
-        className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl relative"
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl font-bold"
-        >
-          ×
-        </button>
 
-        {isDragging && (
-          <div className="fixed inset-0 z-50 bg-blue-100 bg-opacity-60 flex items-center justify-center pointer-events-none">
-            <div className="text-blue-600 font-bold text-2xl">
-              Drop your file anywhere!
-            </div>
+    <div>
+      {isDragging && (
+        <div className="fixed inset-0 z-50 bg-blue-100 bg-opacity-60 flex items-center justify-center pointer-events-none">
+          <div className="text-blue-600 font-bold text-2xl">
+            Drop your file anywhere!
           </div>
-        )}
-
+        </div>
+      )}
+      <>
         <div className="pb-8">
           <h1 className="pb-12">Let's get started!</h1>
           <h3>Upload your unofficial transcript</h3>
@@ -140,9 +119,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onClose }) => {
           onClick={handleClick}
           onDrop={onDrop}
           onDragOver={(e) => e.preventDefault()}
-          className={`mb-4 p-6 border-2 border-dashed rounded-md transition cursor-pointer relative ${
-            isDragging ? "border-blue-400 bg-blue-50" : "border-gray-300"
-          }`}
+          className={`mb-4 p-6 border-2 border-dashed rounded-md transition cursor-pointer relative ${isDragging ? "border-blue-400 bg-blue-50" : "border-gray-300"
+            }`}
         >
           <div className="p-8">
             <img
@@ -170,15 +148,17 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onClose }) => {
           </p>
         )}
 
-        <div className="flex justify-end">
-          <button
-            onClick={handleUpload}
-            className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
-            disabled={isUploading || !selectedFile}
-          >
-            {isUploading ? "Uploading..." : "Finish"}
-          </button>
-        </div>
+        {!fileUrl && ( // Conditionally render the "Finish" button if no file is uploaded
+          <div className="flex justify-end">
+            <button
+              onClick={handleUpload}
+              className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+              disabled={isUploading || !selectedFile} // Disable if uploading or no file is selected
+            >
+              {isUploading ? "Uploading..." : "Finish"}
+            </button>
+          </div>
+        )}
 
         {fileUrl && (
           <div className="mt-4 p-4 border border-green-300 bg-green-50 rounded-md">
@@ -210,12 +190,36 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onClose }) => {
               📄 Transcript Parsed
             </h2>
             {/* <pre className="text-sm text-blue-900 whitespace-pre-wrap">
-              {JSON.stringify(transcriptData, null, 2)}
-            </pre> */}
+          {JSON.stringify(transcriptData, null, 2)}
+        </pre> */}
           </div>
         )}
-      </div>
+
+        {fileUrl && ( // Conditionally render buttons if a file is uploaded
+          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <button
+              className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+              onClick={() => {
+                setFileUrl(null); // Reset the file URL
+                setTranscriptData(null); // Reset the transcript data
+                setErrorMessage(null); // Reset any error messages
+              }}
+              style={{ marginRight: '10px' }} // Add spacing to the right of this button
+            >
+              Re-Upload
+            </button>
+            <button
+              className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+              onClick={onNext}
+
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </>
     </div>
+
   );
 };
 
