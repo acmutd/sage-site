@@ -699,10 +699,15 @@ const ChatBot = () => {
           (conv) => conv.conversation_id !== currentConvId
         );
 
+        const existingConv = prevConversations.find(
+          (conv) => conv.conversation_id === currentConvId
+        );
+
         const newConv = {
           conversation_id: currentConvId!,
           user_id: user?.uid || "test-user-123",
           messages: updatedMessagesWithBot,
+          title: existingConv?.title || updatedMessagesWithBot[0]?.content || "Untitled Conversation",
         };
 
         const updated = [newConv, ...filtered];
