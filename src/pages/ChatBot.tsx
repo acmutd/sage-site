@@ -10,6 +10,7 @@ import {
   SquareAsterisk,
   PanelLeftDashed,
   Trash2,
+  Pencil,
   Ellipsis,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
@@ -46,6 +47,10 @@ const ChatBot = () => {
     null
   );
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const [conversationToRename, setConversationToRename] = useState<string | null>(null);
   const [conversationToDelete, setConversationToDelete] = useState<
     string | null
   >(null);
@@ -343,6 +348,80 @@ const ChatBot = () => {
           : "Failed to delete conversation";
       setError(errorMessage);
       console.error("Error deleting conversation:", error);
+    }
+  };
+
+  // rename conversation 
+  const renameConversation = async (conversationId: string, newTitle: string) => {
+    if (!user?.uid) {
+      console.warn("User ID is missing. Cannot rename conversation.");
+      return;
+    }
+    setError(null);
+  
+    try {
+      // immediately update the local state
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.conversation_id === conversationId
+            ? { ...conv, title: newTitle }
+            : conv
+        )
+      );
+  
+      // Update local storage
+      const cachedConversationsString = localStorage.getItem("chatbot_conversations");
+      if (cachedConversationsString) {
+        const cachedConversation = JSON.parse(cachedConversationsString);
+        if (cachedConversation?.data) {
+          const updatedCache = {
+            ...cachedConversation,
+            data: cachedConversation.data.map((item: any) =>
+              item.conversation_id === conversationId
+                ? { ...item, title: newTitle }
+                : item
+            ),
+          };
+          localStorage.setItem("chatbot_conversations", JSON.stringify(updatedCache));
+        }
+      }
+
+      if (!CRUD_API) {
+        throw new Error("CRUD_API environment variable is missing.");
+      }
+  
+      const token = await user.getIdToken();
+      if (!token) {
+        throw new Error("Failed to retrieve authentication token.");
+      }
+  
+      const response = await fetch(CRUD_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user?.uid,
+          action: "renameConversation",
+          token,
+          conversationId: conversationId,
+          newName: newTitle,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to rename conversation: ${response.status} - ${errorText}`
+        );
+      }
+  
+      return await response.json();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to rename conversation";
+      setError(errorMessage);
+      console.error("Error renaming conversation:", error);
     }
   };
 
@@ -867,9 +946,8 @@ const ChatBot = () => {
               >
                 {Array.isArray(conversations) && conversations.length > 0 ? (
                   conversations.map((conv, index) => {
-                    // Use the first message to represent the conversation topic
-                    const firstMessage =
-                      conv.messages?.[0]?.content || "No messages";
+
+                    const displayName = conv.title || conv.messages?.[0]?.content || "No messages";
 
                     return (
                       <li
@@ -887,7 +965,7 @@ const ChatBot = () => {
                         <div className="relative flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
                           <div className="opacity-0 group-hover/conversation:opacity-100 absolute left-[calc(100%-2rem)] w-[2rem] h-full bg-gradient-to-r from-secondary/0 to-secondary transition-all duration-150" />
                           <small className="truncate">
-                            {firstMessage}
+                            {displayName}
                           </small>
                         </div>
 
@@ -912,7 +990,7 @@ const ChatBot = () => {
                             showContextMenu && // <-- This condition exists so the context menu doesn't show up for the short moment that the menu's position doesn't update
                             (
                               <div
-                                className={`fixed translate-x-[150%] translate-y-[90%] z-[9999] w-48 bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden transition-opacity duration-150`}
+                                className={`fixed translate-x-[160%] translate-y-[40%] z-[9999] w-50 bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden transition-opacity duration-150`}
                                 style={{
                                   top: contextMenuPosition.top,
                                   left: contextMenuPosition.left
@@ -926,6 +1004,23 @@ const ChatBot = () => {
                                 }}
                               >
                                 <ul className="py-1">
+                                <li>
+                                    <button
+                                      onClick={() => {
+                                        setConversationToRename(conv.conversation_id);
+                                        setNewName(conv.title || conv.messages?.[0]?.content || "");
+                                        setShowRenameModal(true);
+                                        setMoreOptionsOpenId(null);
+                                      }}
+                                      className="flex items-center justify-between gap-2 w-full px-4 py-2 text-left text-textdark hover:bg-gray-100"
+                                    >
+                                      Rename conversation
+                                      <Pencil
+                                        size={16}
+                                        className="stroke-textdark"
+                                      />
+                                    </button>
+                                  </li>
                                   <li>
                                     <button
                                       onClick={() => {
@@ -935,7 +1030,7 @@ const ChatBot = () => {
                                         setShowDeleteModal(true);
                                         setMoreOptionsOpenId(null);
                                       }}
-                                      className="flex items-center gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
+                                      className="flex items-center justify-between gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
                                     >
                                       Delete conversation
                                       <Trash2
@@ -1142,6 +1237,8 @@ const ChatBot = () => {
           <small className="absolute w-full flex justify-center bottom-[-2rem] text-textsecondary">SAGE does not replace official academic advising and may produce incorrect information.</small>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -1191,6 +1288,68 @@ const ChatBot = () => {
           </div>
         </div>
       )}
+
+      {/* Rename Confirmation Modal */}
+      {showRenameModal && (
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        onClick={handleOutsideClick}
+      >
+        <div
+          className="bg-white p-6 rounded-md shadow-lg w-full max-w-md"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 className="text-lg font-semibold mb-4 text-textdark">
+            Rename Chat
+          </h3>
+          
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Enter new name"
+            className="w-full px-3 py-2 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
+          />
+          
+          <div className="flex justify-end gap-4">
+            <button
+              className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowRenameModal(false);
+                setNewName(''); // Reset input
+              }}
+              disabled={renaming}
+            >
+              Cancel
+            </button>
+
+            <button
+              className="px-4 py-2 text-sm bg-accent text-textdark rounded hover:text-gray-700 disabled:opacity-50"
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!newName.trim()) return; // Validate input
+                if (!conversationToRename || !newName.trim()) return; // Add null check here
+                setRenaming(true);
+                try {
+                  await renameConversation(conversationToRename, newName);
+                  setShowRenameModal(false);
+                  setNewName('');
+                } catch (err) {
+                  console.error("Failed to rename:", err);
+                } finally {
+                  setRenaming(false);
+                }
+              }}
+              disabled={renaming || !newName.trim()}
+            >
+              {renaming ? "Renaming..." : "Rename"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 };
