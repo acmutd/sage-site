@@ -231,14 +231,22 @@ const ChatBot = () => {
       // console.log("after response");
 
       const data = await response.json();
-      sortConversationsByDate(Array.isArray(data) ? data : []);
+
+      const conversations = Array.isArray(data) 
+      ? data.map((conv: any) => ({
+          ...conv,
+          title: conv.conversation_name || conv.messages?.[0]?.content || "Untitled Conversation"
+        }))
+      : [];
+
+      sortConversationsByDate(conversations);
       // console.log("data: ", data);
-      setConversations(Array.isArray(data) ? data : []);
+      setConversations(conversations);
 
       // Cache the fetched conversations with a timestamp
-      saveConversationsToCache(data || []);
+      saveConversationsToCache(conversations);
 
-      return data;
+      return conversations;
     } catch (error) {
       const errorMessage =
         error instanceof Error
@@ -529,12 +537,15 @@ const ChatBot = () => {
             )
           ) {
 
-            sortConversationsByDate(cachedConversations.data);
-            setConversations(
-              Array.isArray(cachedConversations.data)
-                ? cachedConversations.data
-                : []
-            );
+            const conversations = Array.isArray(cachedConversations.data)
+            ? cachedConversations.data.map((conv: any) => ({
+                ...conv,
+                title: conv.conversation_name || conv.messages?.[0]?.content || "Untitled Conversation"
+              }))
+            : [];
+
+            sortConversationsByDate(conversations);
+            setConversations(conversations);
             return;
           }
         }
