@@ -11,6 +11,7 @@ interface Message {
 }
 
 interface Conversation {
+    title?: string;
     conversation_id: string;
     messages: Message[];
     user_id: string;
