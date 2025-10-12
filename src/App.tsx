@@ -15,7 +15,6 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Planner from "./pages/Planner";
 import ChatBot from "./pages/ChatBot";
-import { useState, useEffect } from "react";
 
 // Component to conditionally render navbar based on route
 const ConditionalNavbar = () => {
