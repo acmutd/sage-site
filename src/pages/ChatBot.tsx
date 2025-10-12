@@ -592,10 +592,15 @@ const ChatBot: React.FC = () => {
       updateConversations((prevConversations) => {
         const filtered = prevConversations.filter((conv) => conv.conversation_id !== currentConvId);
 
-        const newConv: Conversation = {
-          conversation_id: currentConvId,
+        const existingConv = prevConversations.find(
+          (conv) => conv.conversation_id === currentConvId
+        );
+
+        const newConv = {
+          conversation_id: currentConvId!,
           user_id: user?.uid || "test-user-123",
           messages: updatedMessagesWithBot,
+          title: existingConv?.title || updatedMessagesWithBot[0]?.content || "Untitled Conversation",
         };
 
         const updated = sortConversationsByDate([newConv, ...filtered]);
