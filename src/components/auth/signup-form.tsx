@@ -146,7 +146,7 @@ export default function SignupForm(props: {
   }
 
   return (
-    <div className="w-full space-y-6 pb-4">
+    <div className="w-full space-y-4">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
