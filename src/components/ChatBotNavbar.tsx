@@ -1,6 +1,6 @@
 import { Link, useLocation} from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Route, Menu, MessagesSquare, MessageCirclePlusIcon, ArrowLeftFromLine, Pencil, Trash, TrashIcon, Trash2Icon } from "lucide-react";
+import { Route, Menu, MessagesSquare, MessageCirclePlusIcon, ArrowLeftFromLine, Pencil, Trash2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   DropdownMenu,
