@@ -1,6 +1,6 @@
 import { Link, useLocation} from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Route, Menu, MessagesSquare, MessageCirclePlusIcon, ArrowLeftFromLine } from "lucide-react";
+import { Route, Menu, MessagesSquare, MessageCirclePlusIcon, ArrowLeftFromLine, Pencil, Trash, TrashIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   DropdownMenu,
@@ -44,6 +44,11 @@ const ChatBotNavbar = () => {
   const [renaming, setRenaming] = useState(false);
   const [conversationToRename, setConversationToRename] = useState<string | null>(null);
 
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Mobile navbar state
   const [conversation_id, setconversation_id] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -76,6 +81,75 @@ const ChatBotNavbar = () => {
     });
     
     return { todayChats, pastChats };
+  };
+
+  // Delete conversation function - copied from ChatBot.tsx
+  const deleteConversation = async (conversationId: string) => {
+    if (!user?.uid) {
+      console.warn("User ID is missing. Cannot delete conversation.");
+      return;
+    }
+    setError(null);
+
+    try {
+      // Optimistically update cache
+      const cachedConversationsString = localStorage.getItem("chatbot_conversations");
+      if (cachedConversationsString) {
+        const cached = JSON.parse(cachedConversationsString);
+        if (cached?.data) {
+          const updatedCache = {
+            ...cached,
+            data: cached.data.filter((item: Conversation) => item.conversation_id !== conversationId),
+          };
+          localStorage.setItem("chatbot_conversations", JSON.stringify(updatedCache));
+        }
+      }
+
+      if (!CRUD_API) throw new Error("CRUD_API environment variable is missing.");
+
+      const token = await user.getIdToken();
+      if (!token) throw new Error("Failed to retrieve authentication token.");
+
+      const response = await fetch(CRUD_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.uid,
+          action: "deleteConversation",
+          token,
+          conversationId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to delete conversation: ${response.status} - ${errorText}`);
+      }
+
+      // Remove in state
+      setConversations((prev) => prev.filter((item) => item.conversation_id !== conversationId));
+
+      // Update localStorage cache too
+      const updatedCacheString = localStorage.getItem("chatbot_conversations");
+      if (updatedCacheString) {
+        const updatedCache = JSON.parse(updatedCacheString);
+        if (updatedCache?.data) {
+          const filtered = updatedCache.data.filter(
+            (item: Conversation) => item.conversation_id !== conversationId
+          );
+          saveConversationsToCache(filtered);
+        }
+      }
+
+      if (conversation_id === conversationId) {
+        setconversation_id(null);
+        localStorage.removeItem("chatbot_conversation");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to delete conversation";
+      setError(msg);
+      console.error("Error deleting conversation:", err);
+    }
   };
 
   // Rename conversation function - matches desktop version exactly
@@ -159,7 +233,7 @@ const ChatBotNavbar = () => {
   const renderConversationItem = (conv: Conversation) => {
     const displayName = conv.title || conv.conversation_name || conv.messages?.[0]?.content || "No messages";
     const active = conversation_id === conv.conversation_id;
-    const displayText = truncateText(displayName, 32);
+    const displayText = truncateText(displayName, 20);
     
     return (
       <li key={conv.conversation_id}>
@@ -183,22 +257,35 @@ const ChatBotNavbar = () => {
             <small className="truncate block">{displayText}</small>
           </button>
           
-          {/* Rename button */}
-          <button
-            className="p-1 rounded text-textsecondary hover:text-textdark hover:bg-gray-100 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              setConversationToRename(conv.conversation_id);
-              setNewName(displayName);
-              setShowRenameModal(true);
-            }}
-            aria-label="Rename conversation"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          </button>
+          {/* Action buttons */}
+          <div className="flex gap-1">
+            {/* Rename button */}
+            <button
+              className="p-1 rounded text-textsecondary hover:text-textdark hover:bg-gray-100 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setConversationToRename(conv.conversation_id);
+                setNewName(displayName);
+                setShowRenameModal(true);
+              }}
+              aria-label="Rename conversation"
+            >
+              <Pencil/>
+            </button>
+            
+            {/* Delete button */}
+            <button
+              className="p-1 rounded text-textsecondary hover:text-red-600 hover:bg-red-50 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setConversationToDelete(conv.conversation_id);
+                setShowDeleteModal(true);
+              }}
+              aria-label="Delete conversation"
+            >
+              <Trash2Icon className="stroke-destructive"/>
+            </button>
+          </div>
         </div>
       </li>
     );
@@ -527,10 +614,15 @@ const ChatBotNavbar = () => {
               e.stopPropagation();
               // Create new conversation and add to mobile navbar's list
               const newConversationId = `conversation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              const currentTime = Date.now();
               const newConversation: Conversation = {
                 conversation_id: newConversationId,
                 user_id: user?.uid || "test-user-123",
-                messages: [],
+                messages: [{
+                  role: "user",
+                  content: "New Chat",
+                  timestamp: currentTime
+                }],
                 title: "New Chat"
               };
               
@@ -643,6 +735,54 @@ const ChatBotNavbar = () => {
                 disabled={renaming || !newName.trim()}
               >
                 {renaming ? "Renaming..." : "Rename"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setShowDeleteModal(false)}
+        >
+          <div
+            className="bg-white p-6 rounded-md shadow-lg w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-4 text-textdark">
+              Are you sure you want to delete this conversation?
+            </h3>
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setConversationToDelete(null);
+                }}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                onClick={async () => {
+                  if (!conversationToDelete) return;
+                  setDeleting(true);
+                  try {
+                    await deleteConversation(conversationToDelete);
+                    setShowDeleteModal(false);
+                    setConversationToDelete(null);
+                  } catch (err) {
+                    console.error("Failed to delete:", err);
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
