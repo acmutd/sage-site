@@ -51,7 +51,7 @@ interface SemesterBoxProps {
 
 const SemesterBox: React.FC<SemesterBoxProps> = ({
     title,
-    year,
+    //year,
     isLocked = false,
     courses = [],
     isEmpty = false,
