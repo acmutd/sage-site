@@ -3,7 +3,7 @@ import useFileUpload from "../hooks/useFileUpload";
 
 interface FileUploaderProps {
   userId: string;
-  onNext: () => void;
+  onNext: (data: any) => void;
 }
 
 const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext }) => {
@@ -210,7 +210,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext }) => {
             </button>
             <button
               className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
-              onClick={onNext}
+              onClick={() => onNext(transcriptData)}
 
             >
               Next

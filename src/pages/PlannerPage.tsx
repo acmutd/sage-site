@@ -1,12 +1,14 @@
 import { useState } from "react";
 import Onboarding from "@/components/Onboarding";
+import Planner from "@/components/Planner";
 
-const Planner = () => {
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  //const [tempScreen, setTempScreen] = useState(false);
+const PlannerPage = () => {
+  const [showOnboarding, setShowOnboarding] = useState(true); // Initially show onboarding
+  const [showPlanner, setShowPlanner] = useState(false); // Initially hide planner
 
-  const handleToggleOnboarding = () => {
-    setShowOnboarding((prev) => !prev);
+  const handleFinishOnboarding = () => {
+    setShowOnboarding(false); // Close the onboarding modal
+    setShowPlanner(true); // Show the Planner component
   };
 
   // const submitTranscript = async () => {
@@ -55,7 +57,7 @@ const Planner = () => {
         <div className="min-h-screen bg-gray-50 p-6">
           <h1 className="text-2xl font-bold mb-6 text-center">Planner Page</h1>
 
-          <div className="flex justify-center mb-4">
+          {/* <div className="flex justify-center mb-4">
             <button
               onClick={handleToggleOnboarding}
               className="p-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
@@ -70,11 +72,19 @@ const Planner = () => {
                 onClose={() => setShowOnboarding(false)}
               />
             </div>
-          )}
+          )} */}
+          {showOnboarding && (
+        <Onboarding
+          onClose={() => setShowOnboarding(false)}
+          onFinish={handleFinishOnboarding} // Pass the finish handler
+        />
+      )}
+
+      {showPlanner && <Planner />}
         </div>
       )}
     </div>
   );
 };
 
-export default Planner;
+export default PlannerPage;

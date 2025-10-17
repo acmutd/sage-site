@@ -36,12 +36,13 @@ interface ProgramValidationBProps {
     onNext: () => void;
     onRemove: (id: number) => void; // Add onRemove prop
     onSave: (updatedProgram: any) => void; // Add onSave prop
+    transcriptData: any;
 }
 
 const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext, onRemove, onSave }) => {
-    const [selectedProgramId, setSelectedProgramId] = useState<number | null>(program?.id || null); // Set selectedProgramId from program.id
+    const [selectedProgramId] = useState<number | null>(program?.id || null);
     const [updatedProgram, setUpdatedProgram] = useState(program); // Local state for the program being edited
-
+    
     const handleFieldChange = (fieldId: string, value: string) => {
         setUpdatedProgram((prev: any) => ({
             ...prev,
@@ -66,7 +67,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                             {formFields.map((field) => (
                                 <div
                                     key={field.id}
-                                    className="flex flex-col items-start gap-2 w-full"
+                                    className="dropdown-container flex flex-col items-start gap-2 w-full"
                                     onMouseDown={(e) => e.stopPropagation()} // Prevent modal from closing
                                 >
                                     <label className="font-body-regular text-redesign-stylesdark-text text-sm">

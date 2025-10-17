@@ -1,5 +1,5 @@
 import { Pencil, PlusIcon } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import ProgramValidationB from "./ProgramValidationB";
@@ -30,9 +30,10 @@ const initialProgramsData = [
 
 interface ProgramValidationAProps {
   onNext: () => void;
+  transcriptData: any;
 }
 
-const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ onNext }) => {
+const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext }) => {
   const [isEditing, setIsEditing] = useState(false); // State to toggle "Edit" mode
   const [programsData, setProgramsData] = useState(initialProgramsData); // State for program data
   const [editingProgram, setEditingProgram] = useState<{
@@ -42,6 +43,46 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ onNext }) => {
     level: string | null;
     status: string;
   } | null>(null);
+
+  useEffect(() => {
+    if (transcriptData) {
+      const formattedPrograms = [
+        ...transcriptData.majors.map((major: any) => ({
+          id: `${major.name}-${major.start_date}`, // Unique ID
+          title: major.name,
+          type: "Major",
+          level: major.program_level,
+          status: major.status,
+          school: major.school,
+          start_date: major.start_date,
+          concentration: major.concentration,
+        })),
+        ...transcriptData.minors.map((minor: any) => ({
+          id: `${minor.name}-${minor.start_date}`, // Unique ID
+          title: minor.name,
+          type: "Minor",
+          level: minor.program_level,
+          status: minor.status,
+          school: minor.school,
+          start_date: minor.start_date,
+          concentration: minor.concentration,
+        })),
+        ...transcriptData.certifications.map((certification: any) => ({
+          id: `${certification.name}-${certification.start_date}`, // Unique ID
+          title: certification.name,
+          type: "Certificate",
+          level: certification.program_level,
+          status: certification.status,
+          school: certification.school,
+          start_date: certification.start_date,
+          concentration: certification.concentration,
+        })),
+      ];
+      setProgramsData(formattedPrograms);
+    }
+  }, [transcriptData]);
+
+  console.log("transcriptData in ProgramValidationA: ", transcriptData);
 
   const handleRemove = (id: number) => {
     setProgramsData((prev) => prev.filter((program) => program.id !== id)); // Remove program by ID
@@ -109,7 +150,8 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ onNext }) => {
         program={editingProgram} // Pass the program being edited
         onNext={() => setIsEditing(false)}
         onRemove={handleRemove}
-        onSave={handleSave} // Pass the save handler
+        onSave={handleSave}
+        transcriptData = {transcriptData} // Pass the save handler
       />
     );
   }
@@ -130,7 +172,7 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ onNext }) => {
               <div className="flex flex-col">
                 <h4 className="mb-1">
                   {program.type === "Certificate"
-                    ? `Certificate of ${program.title}`
+                    ? `${program.title}`
                     : `${program.title} (${program.type})`}
                 </h4>
                 {program.level && <p className="text-sm mb-1">{program.level}</p>}

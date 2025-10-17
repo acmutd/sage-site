@@ -11,7 +11,7 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignUp";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Planner from "./pages/Planner";
+import Planner from "./pages/PlannerPage";
 import ChatBot from "./pages/ChatBot";
 import { useState, useEffect } from "react";
 

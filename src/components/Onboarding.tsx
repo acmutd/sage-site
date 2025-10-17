@@ -6,13 +6,22 @@ import ClassValidationA from "./ClassValidationA";
 
 interface OnboardingProps {
   onClose: () => void;
+  onFinish: () => void;
+
 }
 
-const Onboarding: React.FC<OnboardingProps> = ({ onClose }) => {
+const Onboarding: React.FC<OnboardingProps> = ({ onClose, onFinish }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
-  const [modalStep, setModalStep] = useState<"FileUpload" | "Programs" | "Classes">("Programs");
+  const [modalStep, setModalStep] = useState<"FileUpload" | "Programs" | "Classes">("FileUpload");
+  const [transcriptData, setTranscriptData] = useState(null);
+
+  const handleFileUploadNext = (data: any) => {
+    setTranscriptData(data);
+    setModalStep("Programs");
+  };
+
 
   const handleOutsideClick = (e: MouseEvent) => {
     if (
@@ -38,15 +47,16 @@ const Onboarding: React.FC<OnboardingProps> = ({ onClose }) => {
         {modalStep === "FileUpload" && (
           <FileUploader
             userId={user?.uid || "test-user-123"}
-            onNext={() => setModalStep("Programs")}
+            onNext={handleFileUploadNext}
+            
           />
         )}
 
         {modalStep === "Programs" && (
-          <ProgramValidationA onNext={() => setModalStep("Classes")} />
+          <ProgramValidationA transcriptData={transcriptData} onNext={() => setModalStep("Classes")} />
         )}
         {modalStep === "Classes" && (
-          <ClassValidationA onNext={() => setModalStep("Classes")} />
+          <ClassValidationA transcriptData={transcriptData} onNext={onFinish} />
         )}
       </div>
     </div>
