@@ -1,88 +1,223 @@
 import { useState } from "react";
 import Onboarding from "@/components/Onboarding";
 import Planner from "@/components/Planner";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 
 const PlannerPage = () => {
   const [showOnboarding, setShowOnboarding] = useState(true); // Initially show onboarding
   const [showPlanner, setShowPlanner] = useState(false); // Initially hide planner
+  const [transcriptData, setTranscriptData] = useState(null);
+
 
   const handleFinishOnboarding = () => {
     setShowOnboarding(false); // Close the onboarding modal
     setShowPlanner(true); // Show the Planner component
+
   };
 
-  // const submitTranscript = async () => {
-  //   if (!user?.uid) {
-  //     console.warn("User ID is missing. Cannot fetch conversations.");
-  //     return;
-  //   }
+  const rawSemesters: Record<string, any[]> = transcriptData?.['courses']?.['utd_classes'] || {};
 
-  //   const token = await user.getIdToken();
-  //   if (!token) {
-  //     throw new Error("Failed to retrieve authentication token.");
-  //   }
-
-  //   const response = await fetch(sumbitTranscriptAPI, {
-  //     method: "POST",
-  //     headers: { "Content-Type": "application/json" },
-  //     body: JSON.stringify({
-  //       userId: user?.uid,
-  //       // userId: "test-user-123",
-  //       action: "getConversations",
-  //       token,
-  //     }),
-  //   });
+  // const semesters = {
+  //   year1: [
+  //     { title: "Fall 2024", courses: [{ code: 'CS1200', status: 'default' }, { code: 'CS1100', status: 'default' }, { code: 'CS1200', status: 'default' },] },
+  //     { title: "Spring 2025", courses: [{ code: 'CS1200', status: 'default' }, { code: 'CS1200', status: 'default' }, { code: 'CS1200', status: 'default' },] },
+  //     { title: "Summer 2025", courses: [{ code: 'CS1200', status: 'default' },] },
+  //   ],
+  //   year2: [
+  //     { title: "Fall 2025", courses: [] },
+  //     { title: "Spring 2026", courses: [{ code: 'CS1200', status: 'default' },] },
+  //     { title: "Summer 2026", courses: [{ code: 'CS1200', status: 'default' },] },
+  //   ],
+  //   year3: [
+  //     { title: "Fall 2026", courses: [{ code: 'CS1200', status: 'default' },] },
+  //     { title: "Spring 2027", courses: [{ code: 'CS1200', status: 'default' }, { code: 'CS1200', status: 'default' }, { code: 'CS1200', status: 'default' },] },
+  //     { title: "Summer 2027", courses: [{ code: 'CS1200', status: 'default' },] },
+  //   ],
+  //   year4: [
+  //     { title: "Fall 2027", courses: [] },
+  //     { title: "Spring 2028", courses: [] },
+  //     { title: "Summer 2028", courses: [] },
+  //   ],
   // };
 
+  const transformSemesters = (semesters: Record<string, any[]>) => {
+    // Create a map to track academic years
+    const academicYears: Record<string, any[]> = {};
+    let yearCounter = 1;
+
+    // Extract and sort semesters chronologically
+    const sortedSemesters = Object.entries(semesters)
+      .map(([term, courses]) => {
+        const [year, season] = term.split(" ");
+        return {
+          year: parseInt(year),
+          season,
+          courses,
+          term // Keep the original term string
+        };
+      })
+      .sort((a, b) => {
+        // Sort by year first, then by season (Fall -> Spring -> Summer)
+        const seasonOrder = { Fall: 0, Spring: 1, Summer: 2 };
+        if (a.year === b.year) {
+          return seasonOrder[a.season as keyof typeof seasonOrder] - seasonOrder[b.season as keyof typeof seasonOrder];
+        }
+        return a.year - b.year;
+      });
+
+    // If no semesters, return empty object
+    if (sortedSemesters.length === 0) return {};
+
+    // Process Fall semesters first to establish academic years
+    let currentFallYear: number | null = null;
+    let currentYearKey = "";
+
+    // First pass: Process Fall semesters and assign them to academic years
+    for (const semester of sortedSemesters) {
+      if (semester.season === "Fall") {
+        currentFallYear = semester.year;
+        currentYearKey = `year${yearCounter}`;
+
+        if (!academicYears[currentYearKey]) {
+          academicYears[currentYearKey] = [];
+        }
+
+        academicYears[currentYearKey].push({
+          title: `${semester.season} ${semester.year}`,
+          courses: semester.courses
+        });
+
+        yearCounter++;
+      }
+    }
+
+    // Second pass: Assign Spring and Summer semesters to the appropriate academic year
+    for (const semester of sortedSemesters) {
+      if (semester.season !== "Fall") {
+        // Find the appropriate Fall semester for this Spring/Summer
+        let assigned = false;
+
+        for (let i = 1; i < yearCounter; i++) {
+          const yearKey = `year${i}`;
+          const fallSemester = academicYears[yearKey][0];
+
+          if (fallSemester) {
+            const fallYear = parseInt(fallSemester.title.split(" ")[1]);
+
+            // If this Spring/Summer follows the Fall semester
+            if (semester.year === fallYear + 1 &&
+              (semester.season === "Spring" || semester.season === "Summer")) {
+              academicYears[yearKey].push({
+                title: `${semester.season} ${semester.year}`,
+                courses: semester.courses
+              });
+              assigned = true;
+              break;
+            }
+          }
+        }
+
+        // If not assigned to any existing year, create a new year for it
+        if (!assigned) {
+          const newYearKey = `year${yearCounter}`;
+
+          if (!academicYears[newYearKey]) {
+            academicYears[newYearKey] = [];
+          }
+
+          academicYears[newYearKey].push({
+            title: `${semester.season} ${semester.year}`,
+            courses: semester.courses
+          });
+
+          yearCounter++;
+        }
+      }
+    }
+
+    // Add unique IDs to courses - ensure they're truly unique and stable
+    Object.keys(academicYears).forEach(yearKey => {
+      academicYears[yearKey].forEach((semester, semIdx) => {
+        semester.courses = semester.courses.map((course: any, index: number) => {
+          // Check if the course already has an ID
+          if (!course.id) {
+            const courseCode = course.course_code || course.code || 'unknown';
+            // Create a truly unique ID
+            course.id = `${yearKey}-${semester.title}-${courseCode}-${semIdx}-${index}-${Math.random().toString(36).substring(2, 9)}`;
+          }
+          return course;
+        });
+      });
+    });
+
+
+    return academicYears;
+  };
+
+  const transofmrmedSemesters = transformSemesters(rawSemesters);
+
+  console.log(transofmrmedSemesters);
+
+  const requirements = [
+    {
+      title: 'Core Requirements',
+      completed: 24,
+      total: 74,
+      courses: undefined
+    },
+    {
+      title: 'Major Preparatory Requirements',
+      completed: 24,
+      total: 74,
+      subcategories: [
+        {
+          title: 'Science',
+          completed: 2,
+          total: 3,
+          courses: [
+            { code: 'CS1200', status: 'completed', icon: 'check' },
+            { code: 'CS1200', status: 'completed', icon: 'check' },
+            { code: 'CS1200', status: 'default' }
+          ]
+        },
+        {
+          title: 'Science',
+          completed: 0,
+          total: 3,
+          courses: [
+            { code: 'CS1200', status: 'default' },
+            { code: 'CS1200', status: 'default' },
+            { code: 'CS1200', status: 'default' }
+          ]
+        }
+      ]
+    },
+    {
+      title: 'Major Preparatory Requirements',
+      completed: 24,
+      total: 74,
+      courses: undefined
+    }
+  ];
+
   return (
-    <div>
-      {false ? (
-        <div className="flex items-center justify-center mt-[4.2rem] h-[calc(100vh-4.2rem)] bg-innercontainer">
-          <div className="relative flex justify-center items-center aspect-[2/1] h-full">
-            {/* Blurred Background Image */}
-            <img
-              src="/PlannerDesign.png"
-              alt="Planner Preview"
-              className="absolute inset-0 h-[calc(100vh-4.2rem)] object-cover blur-sm z-0"
+    <div className="min-h-screen bg-gray-50 p-6">
+      <h1 className="text-2xl font-bold mb-6 text-center">Planner Page</h1>
+      <DndProvider backend={HTML5Backend}>
+        <div>
+          {showOnboarding && (
+            <Onboarding
+              onClose={() => setShowOnboarding(false)}
+              onFinish={handleFinishOnboarding}
+              setTranscriptData={setTranscriptData}
+
             />
+          )}
 
-            {/* Overlay Message */}
-            <div className="bg-bglight bg-opacity-40 border border-border px-8 py-6 rounded-2xl shadow-lg text-center z-10">
-              <h2>Degree Planner Coming Soon</h2>
-              <p>Not available in experimental release</p>
-            </div>
-          </div>
+          {showPlanner && <Planner semesters={transofmrmedSemesters} requirements={requirements} />}
         </div>
-      ) : (
-        <div className="min-h-screen bg-gray-50 p-6">
-          <h1 className="text-2xl font-bold mb-6 text-center">Planner Page</h1>
-
-          {/* <div className="flex justify-center mb-4">
-            <button
-              onClick={handleToggleOnboarding}
-              className="p-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-            >
-              {showOnboarding ? "Hide Onboarding" : "Show Onboarding"}
-            </button>
-          </div>
-
-          {showOnboarding && (
-            <div className="max-w-md mx-auto">
-              <Onboarding
-                onClose={() => setShowOnboarding(false)}
-              />
-            </div>
-          )} */}
-          {showOnboarding && (
-        <Onboarding
-          onClose={() => setShowOnboarding(false)}
-          onFinish={handleFinishOnboarding} // Pass the finish handler
-        />
-      )}
-
-      {showPlanner && <Planner />}
-        </div>
-      )}
+      </DndProvider>
     </div>
   );
 };

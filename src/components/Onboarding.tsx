@@ -7,21 +7,26 @@ import ClassValidationA from "./ClassValidationA";
 interface OnboardingProps {
   onClose: () => void;
   onFinish: () => void;
+  setTranscriptData: (data: any) => void;
 
 }
 
-const Onboarding: React.FC<OnboardingProps> = ({ onClose, onFinish }) => {
+const Onboarding: React.FC<OnboardingProps> = ({ setTranscriptData, onClose, onFinish }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
   const [modalStep, setModalStep] = useState<"FileUpload" | "Programs" | "Classes">("FileUpload");
-  const [transcriptData, setTranscriptData] = useState(null);
+  const [transcriptData, setLocalTranscriptData] = useState(null);
 
   const handleFileUploadNext = (data: any) => {
-    setTranscriptData(data);
+    setLocalTranscriptData(data);
     setModalStep("Programs");
   };
 
+  const handleFinish = () => {
+    setTranscriptData(transcriptData); // Pass data to the parent
+    onFinish();
+};
 
   const handleOutsideClick = (e: MouseEvent) => {
     if (
@@ -56,7 +61,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onClose, onFinish }) => {
           <ProgramValidationA transcriptData={transcriptData} onNext={() => setModalStep("Classes")} />
         )}
         {modalStep === "Classes" && (
-          <ClassValidationA transcriptData={transcriptData} onNext={onFinish} />
+          <ClassValidationA transcriptData={transcriptData} onNext={handleFinish} />
         )}
       </div>
     </div>
