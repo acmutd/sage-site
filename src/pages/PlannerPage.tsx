@@ -70,13 +70,11 @@ const PlannerPage = () => {
     if (sortedSemesters.length === 0) return {};
 
     // Process Fall semesters first to establish academic years
-    let currentFallYear: number | null = null;
     let currentYearKey = "";
 
     // First pass: Process Fall semesters and assign them to academic years
     for (const semester of sortedSemesters) {
       if (semester.season === "Fall") {
-        currentFallYear = semester.year;
         currentYearKey = `year${yearCounter}`;
 
         if (!academicYears[currentYearKey]) {
