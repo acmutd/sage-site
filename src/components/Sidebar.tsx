@@ -38,9 +38,25 @@ const Sidebar: React.FC<SidebarProps> = ({
     onToggleCategory,
 }) => {
     const [isExpanded, setIsExpanded] = useState(true); // Track sidebar expansion state
+    const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
 
     const handleToggleSidebar = () => {
         setIsExpanded((prev) => !prev); // Toggle sidebar state
+    };
+
+    const handleToggleSubcategory = (reqIdx: number, catIdx: number) => {
+        const key = `${reqIdx}-${catIdx}`;
+        setExpandedSubcategories(prev => ({
+            ...prev,
+            [key]: !prev[key]
+        }));
+    };
+
+    // Check if a subcategory is expanded
+    const isSubcategoryExpanded = (reqIdx: number, catIdx: number) => {
+        const key = `${reqIdx}-${catIdx}`;
+        // Default to true if not explicitly set
+        return expandedSubcategories[key] !== false;
     };
 
     return (
@@ -88,14 +104,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </h2>
 
                     <div className="space-y-3">
-                        {requirements.map((req, idx) => (
+                        {requirements.map((req, reqIdx) => (
                             <RequirementCategory
-                                key={idx}
-                                title={req.degree} // Changed from req.title
-                                completed={req.progress} // Changed from req.completed
+                                key={reqIdx}
+                                title={req.degree}
+                                completed={req.progress}
                                 total={req.total}
-                                isExpanded={expandedCategories[idx]}
-                                onToggle={() => onToggleCategory(idx)}
+                                isExpanded={expandedCategories[reqIdx]}
+                                onToggle={() => onToggleCategory(reqIdx)}
                                 hasSubcategories={req.categories && req.categories.length > 0}
                             >
                                 {req.categories && req.categories.length > 0 ? (
@@ -105,9 +121,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             key={catIdx}
                                             className="border border-gray-200 rounded-lg overflow-hidden"
                                         >
-                                            <div className="flex items-center justify-between p-2 bg-white">
+                                            <div
+                                                className="flex items-center justify-between p-2 bg-white cursor-pointer hover:bg-gray-50"
+                                                onClick={() => handleToggleSubcategory(reqIdx, catIdx)}
+                                            >
                                                 <div className="flex items-center gap-2">
-                                                    <ChevronDown className="w-3 h-3" />
+                                                    {isSubcategoryExpanded(reqIdx, catIdx) ? (
+                                                        <ChevronDown className="w-3 h-3" />
+                                                    ) : (
+                                                        <ChevronRight className="w-3 h-3" />
+                                                    )}
                                                     <span className="text-sm font-medium text-gray-700">
                                                         {category.name}
                                                     </span>
@@ -119,26 +142,50 @@ const Sidebar: React.FC<SidebarProps> = ({
                                                     <div className="w-2 h-2 bg-green-500 rounded-sm"></div>
                                                 </div>
                                             </div>
-                                            <div className="p-2 space-y-1">
-                                                {/* Map through classes array instead of courses */}
-                                                {category.classes && category.classes.map((course, courseIdx) => (
-                                                    <CourseBox
-                                                        key={courseIdx}
-                                                        course={course}
-                                                        status={
-                                                            course.status as
-                                                            | "default"
-                                                            | "completed"
-                                                            | "warning"
-                                                            | "info"
-                                                            | undefined
-                                                        }
-                                                        icon={
-                                                            course.status === "completed" ? "check" : null
-                                                        }
-                                                    />
-                                                ))}
-                                            </div>
+
+                                            {isSubcategoryExpanded(reqIdx, catIdx) && (
+                                                <div className="p-2 space-y-1">
+                                                    {/* Map through classes array */}
+                                                    {category.classes && category.classes.length > 0 ? (
+                                                        category.classes.map((course, courseIdx) => (
+                                                            <CourseBox
+                                                                key={courseIdx}
+                                                                course={course}
+                                                                status={
+                                                                    course.status as
+                                                                    | "default"
+                                                                    | "completed"
+                                                                    | "warning"
+                                                                    | "info"
+                                                                    | undefined
+                                                                }
+                                                                icon={
+                                                                    course.status === "completed" ? "check" : null
+                                                                }
+                                                            />
+                                                        ))
+                                                    ) : (
+                                                        <div className="text-sm text-gray-500">No courses in this category</div>
+                                                    )}
+
+                                                    {category.suggested && category.suggested.length > 0 && (
+                                                        <>
+                                                            <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
+                                                                <span className="text-xs text-gray-500 font-medium">Suggested Courses</span>
+                                                            </div>
+                                                            {category.suggested.map((courseCode, idx) => (
+                                                                <CourseBox
+                                                                    key={`suggested-${idx}`}
+                                                                    course={{ code: courseCode }}
+                                                                    status="warning"
+                                                                    icon="info"
+                                                                    isSuggested={true}
+                                                                />
+                                                            ))}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     ))
                                 ) : (
@@ -149,15 +196,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                 </>
             )}
-            {/* <div className="mt-6 p-3 bg-gray-800 text-white rounded-lg text-xs flex items-start gap-2">
-          <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-          </svg>
-          <p>
-            This app is still in development. If you have any issues or feedback,{' '}
-            <span className="text-green-400 underline cursor-pointer">please click here</span>.
-          </p>
-        </div> */}
         </div>
     );
 };

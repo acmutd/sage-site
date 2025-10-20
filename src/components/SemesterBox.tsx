@@ -18,7 +18,8 @@ interface SemesterBoxProps {
         course: any,
         sourceYear: string,
         sourceSemesterIndex: number,
-        courseId?: string
+        courseId?: string,
+        isSuggested?: boolean
     ) => void;
     yearKey: string;
     semesterIndex: number;
@@ -44,12 +45,13 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         drop: (item: any) => {
             // Log the exact item being dropped for debugging
             console.log("Dropping item:", item);
-            
+
             onDropCourse(
                 item.course,
                 item.sourceYear,
                 item.sourceSemesterIndex,
-                item.courseId // Use the explicit course ID from the drag item
+                item.courseId, // Use the explicit course ID from the drag item
+                item.isSuggested
             );
         },
         collect: (monitor) => ({

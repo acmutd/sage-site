@@ -2,7 +2,7 @@ import { AlertTriangle, Info, CheckCircle, GripVertical } from 'lucide-react';
 import { useDrag } from "react-dnd";
 
 interface CourseBoxProps {
-    course: string | { 
+    course: string | {
         code?: string;
         course_code?: string;
         name?: string;
@@ -15,6 +15,7 @@ interface CourseBoxProps {
     icon?: 'check' | 'warning' | 'info' | null;
     sourceYear?: string;
     sourceSemesterIndex?: number;
+    isSuggested?: boolean;
 }
 
 const CourseBox: React.FC<CourseBoxProps> = ({
@@ -22,11 +23,12 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     sourceYear,
     sourceSemesterIndex,
     status = 'default',
-    icon = null
+    icon = null,
+    isSuggested = false
 }) => {
 
-    const courseData = typeof course === 'string' 
-        ? { code: course } 
+    const courseData = typeof course === 'string'
+        ? { code: course }
         : course;
 
     const [{ isDragging }, drag] = useDrag(() => ({
@@ -43,6 +45,9 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     }));
 
     const getStatusStyles = () => {
+        if (isSuggested) {
+            return 'border-yellow-300 bg-yellow-50'; // Yellow style for suggested courses
+        }
         switch (status) {
             case 'completed':
                 return 'border-green-300 bg-white';
@@ -72,11 +77,16 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             <div className="flex items-center gap-2">
                 <GripVertical className="w-4 h-4 text-gray-400" />
                 <span className="text-sm font-medium text-gray-700 ml-1">
-                {courseData.code || courseData.course_code || "Unknown Course"}
+                    {courseData.code || courseData.course_code || "Unknown Course"}
                 </span>
             </div>
             <div className="flex items-center gap-2">
                 {getIcon()}
+                {isSuggested && (
+                    <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">
+                        Suggested
+                    </span>
+                )}
             </div>
         </div>
     );
