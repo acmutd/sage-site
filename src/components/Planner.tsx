@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Sidebar from "./Sidebar";
 import SemesterBox from "./SemesterBox";
 
@@ -11,6 +11,11 @@ interface PlannerProps {
 
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements }) => {
     const [allSemesters, setAllSemesters] = useState(semesters);
+
+    const adaptedRequirements = useMemo(() => {
+        // No transformation needed since we're updating the Sidebar component
+        return requirements;
+    }, [requirements]);
 
     const handleDropCourse = (
         targetYear: string,
@@ -118,7 +123,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements }) => {
     return (
         <div className="flex h-screen bg-gray-50">
             <Sidebar
-                requirements={requirements}
+                requirements={adaptedRequirements}
                 expandedCategories={expandedCategories}
                 onToggleCategory={toggleCategory}
             />

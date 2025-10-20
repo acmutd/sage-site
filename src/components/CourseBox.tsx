@@ -2,7 +2,15 @@ import { AlertTriangle, Info, CheckCircle, GripVertical } from 'lucide-react';
 import { useDrag } from "react-dnd";
 
 interface CourseBoxProps {
-    course: any;
+    course: string | { 
+        code?: string;
+        course_code?: string;
+        name?: string;
+        credits?: number;
+        status?: string;
+        semester?: string;
+        id?: string;
+    };
     status?: 'default' | 'completed' | 'warning' | 'info';
     icon?: 'check' | 'warning' | 'info' | null;
     sourceYear?: string;
@@ -16,13 +24,18 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     status = 'default',
     icon = null
 }) => {
+
+    const courseData = typeof course === 'string' 
+        ? { code: course } 
+        : course;
+
     const [{ isDragging }, drag] = useDrag(() => ({
         type: "COURSE",
         item: {
-            course,
+            course: courseData,
             sourceYear,
             sourceSemesterIndex,
-            courseId: course.id
+            courseId: courseData.id
         },
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
@@ -59,7 +72,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             <div className="flex items-center gap-2">
                 <GripVertical className="w-4 h-4 text-gray-400" />
                 <span className="text-sm font-medium text-gray-700 ml-1">
-                    {course.course_code || course.code || "Unknown Course"}
+                {courseData.code || courseData.course_code || "Unknown Course"}
                 </span>
             </div>
             <div className="flex items-center gap-2">

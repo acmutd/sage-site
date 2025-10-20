@@ -3,23 +3,23 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 
 // RequirementCategory Component
 interface RequirementCategoryProps {
-  title: string;
-  completed: number;
-  total: number;
-  isExpanded: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-  hasSubcategories?: boolean;
-}
-
-const RequirementCategory: React.FC<RequirementCategoryProps> = ({
+    title: string;
+    completed: number;
+    total: number;
+    isExpanded: boolean;
+    onToggle: () => void;
+    hasSubcategories: boolean;
+    children: React.ReactNode;
+  }
+  
+  const RequirementCategory: React.FC<RequirementCategoryProps> = ({
     title,
     completed,
     total,
     isExpanded,
     onToggle,
+    hasSubcategories,
     children,
-    hasSubcategories = false,
   }) => {
     return (
       <div className="border border-gray-200 rounded-lg overflow-hidden">

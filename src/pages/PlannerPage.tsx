@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Onboarding from "@/components/Onboarding";
 import Planner from "@/components/Planner";
 import { DndProvider } from "react-dnd";
@@ -138,11 +138,9 @@ const PlannerPage = () => {
     Object.keys(academicYears).forEach(yearKey => {
       academicYears[yearKey].forEach((semester, semIdx) => {
         semester.courses = semester.courses.map((course: any, index: number) => {
-          // Check if the course already has an ID
           if (!course.id) {
             const courseCode = course.course_code || course.code || 'unknown';
-            // Create a truly unique ID
-            course.id = `${yearKey}-${semester.title}-${courseCode}-${semIdx}-${index}-${Math.random().toString(36).substring(2, 9)}`;
+            course.id = `${yearKey}-${semester.title}-${courseCode}-${semIdx}-${index}`;
           }
           return course;
         });
@@ -153,51 +151,324 @@ const PlannerPage = () => {
     return academicYears;
   };
 
-  const transofmrmedSemesters = transformSemesters(rawSemesters);
+  const transformedSemesters = useMemo(() => {
+    return transformSemesters(rawSemesters);
+  }, [rawSemesters]);
 
-  console.log(transofmrmedSemesters);
+  console.log(transformedSemesters);
 
   const requirements = [
     {
-      title: 'Core Requirements',
-      completed: 24,
-      total: 74,
-      courses: undefined
-    },
-    {
-      title: 'Major Preparatory Requirements',
-      completed: 24,
-      total: 74,
-      subcategories: [
+      "degree": "Core Requirements",
+      "progress": 3,
+      "total": 9,
+      "credits_completed": 19,
+      "credits": 42,
+      "categories": [
         {
-          title: 'Science',
-          completed: 2,
-          total: 3,
-          courses: [
-            { code: 'CS1200', status: 'completed', icon: 'check' },
-            { code: 'CS1200', status: 'completed', icon: 'check' },
-            { code: 'CS1200', status: 'default' }
+          "name": "Communication: 6 semester credit hours",
+          "progress": 3,
+          "total": 6,
+          "credits_completed": 3,
+          "credits": 6,
+          "classes": [
+            {
+              "code": "RHET 1302",
+              "name": "RHETORIC",
+              "credits": 3.0,
+              "status": "completed",
+              "semester": "2024 Fall"
+            }
+          ],
+          "categories": [],
+          "suggested": [
+            "ECS 2390"
           ]
         },
         {
-          title: 'Science',
-          completed: 0,
-          total: 3,
-          courses: [
-            { code: 'CS1200', status: 'default' },
-            { code: 'CS1200', status: 'default' },
-            { code: 'CS1200', status: 'default' }
+          "name": "Mathematics: 3 semester credit hours",
+          "progress": 4,
+          "total": 3,
+          "credits_completed": 4,
+          "credits": 3,
+          "classes": [
+            {
+              "code": "MATH 2413",
+              "name": "DIFFERENTIAL CALCULUS",
+              "credits": 4.0,
+              "status": "completed",
+              "semester": "2024 Fall"
+            }
+          ],
+          "categories": []
+        },
+        {
+          "name": "Life and Physical Sciences: 6 semester credit hours",
+          "progress": 0,
+          "total": 6,
+          "credits_completed": 0,
+          "credits": 6,
+          "classes": [],
+          "categories": [],
+          "suggested": [
+            "PHYS 2325"
+          ]
+        },
+        {
+          "name": "Language, Philosophy and Culture: 3 semester credit hours",
+          "progress": 3,
+          "total": 3,
+          "credits_completed": 3,
+          "credits": 3,
+          "classes": [
+            {
+              "code": "PHIL 1301",
+              "name": "INTRODUCTION TO PHILOSOPHY",
+              "credits": 3.0,
+              "status": "completed",
+              "semester": "transfer_credits"
+            }
+          ],
+          "categories": []
+        },
+        {
+          "name": "Creative Arts: 3 semester credit hours",
+          "progress": 0,
+          "total": 3,
+          "credits_completed": 0,
+          "credits": 3,
+          "classes": [],
+          "categories": []
+        },
+        {
+          "name": "American History: 6 semester credit hours",
+          "progress": 3,
+          "total": 6,
+          "credits_completed": 3,
+          "credits": 6,
+          "classes": [
+            {
+              "code": "HIST 1301",
+              "name": "US HIST SURVEY TO CIVIL WAR",
+              "credits": 3.0,
+              "status": "completed",
+              "semester": "test_credits"
+            }
+          ],
+          "categories": []
+        },
+        {
+          "name": "Government/Political Science: 6 semester credit hours",
+          "progress": 3,
+          "total": 6,
+          "credits_completed": 3,
+          "credits": 6,
+          "classes": [
+            {
+              "code": "GOVT 2305",
+              "name": "AMERICAN NATIONAL GOVERNMENT",
+              "credits": 3.0,
+              "status": "completed",
+              "semester": "test_credits"
+            }
+          ],
+          "categories": []
+        },
+        {
+          "name": "Social and Behavioral Sciences: 3 semester credit hours",
+          "progress": 3,
+          "total": 3,
+          "credits_completed": 3,
+          "credits": 3,
+          "classes": [
+            {
+              "code": "GEOG 2303",
+              "name": "INTRO WORLD GEOGRAPHIC REGIONS",
+              "credits": 3.0,
+              "status": "completed",
+              "semester": "test_credits"
+            }
+          ],
+          "categories": []
+        },
+        {
+          "name": "Component Area Option: 6 semester credit hours",
+          "progress": 0,
+          "total": 6,
+          "credits_completed": 0,
+          "credits": 6,
+          "classes": [],
+          "categories": [],
+          "suggested": [
+            "MATH 2414",
+            "PHYS 2125"
           ]
         }
       ]
     },
     {
-      title: 'Major Preparatory Requirements',
-      completed: 24,
-      total: 74,
-      courses: undefined
+      "degree": "Bachelor of Science in Computer Science",
+      "progress": 0,
+      "total": 2,
+      "credits_completed": 26,
+      "credits": 106,
+      "categories": [
+        {
+          "name": "II. Major Requirements: 72 semester credit hours",
+          "progress": 0,
+          "total": 3,
+          "credits_completed": 17,
+          "credits": 96,
+          "classes": [],
+          "categories": [
+            {
+              "name": "Major Preparatory Courses: 24 semester credit hours beyond Core Curriculum",
+              "progress": 17,
+              "total": 45,
+              "credits_completed": 17,
+              "credits": 45,
+              "classes": [
+                {
+                  "code": "ECS 1100",
+                  "name": "INTRO TO ENGINEERING AND COMP",
+                  "credits": 1.0,
+                  "status": "completed",
+                  "semester": "2024 Fall"
+                },
+                {
+                  "code": "CS 1200",
+                  "name": "INTRO TO COMP SCI & SOFTWARE",
+                  "credits": 2.0,
+                  "status": "completed",
+                  "semester": "2024 Fall"
+                },
+                {
+                  "code": "CS 1436",
+                  "name": "PROGRAMMING FUNDAMENTALS",
+                  "credits": 4.0,
+                  "status": "completed",
+                  "semester": "2024 Fall"
+                },
+                {
+                  "code": "GOVT 2305",
+                  "name": "AMERICAN NATIONAL GOVERNMENT",
+                  "credits": 3.0,
+                  "status": "completed",
+                  "semester": "test_credits"
+                },
+                {
+                  "code": "RHET 1302",
+                  "name": "RHETORIC",
+                  "credits": 3.0,
+                  "status": "completed",
+                  "semester": "2024 Fall"
+                }
+              ],
+              "categories": [
+                {
+                  "name": "",
+                  "progress": 0,
+                  "total": 2,
+                  "credits_completed": 4,
+                  "credits": 8,
+                  "classes": [],
+                  "categories": [
+                    {
+                      "name": "",
+                      "progress": 4,
+                      "total": 8,
+                      "credits_completed": 4,
+                      "credits": 8,
+                      "classes": [
+                        {
+                          "code": "MATH 2413",
+                          "name": "DIFFERENTIAL CALCULUS",
+                          "credits": 4.0,
+                          "status": "completed",
+                          "semester": "2024 Fall"
+                        }
+                      ],
+                      "categories": []
+                    },
+                    {
+                      "name": "",
+                      "progress": 0,
+                      "total": 8,
+                      "credits_completed": 0,
+                      "credits": 8,
+                      "classes": [],
+                      "categories": []
+                    }
+                  ]
+                }
+              ],
+              "suggested": [
+                "CS 1337",
+                "CS 2305",
+                "MATH 2418"
+              ]
+            },
+            {
+              "name": "Major Core Courses: 36 semester credit hours beyond Core Curriculum",
+              "progress": 0,
+              "total": 39,
+              "credits_completed": 0,
+              "credits": 39,
+              "classes": [],
+              "categories": [],
+              "suggested": [
+                "ECS 2390"
+              ]
+            },
+            {
+              "name": "Major Technical Electives: 12 semester credit hours",
+              "progress": 0,
+              "total": 12,
+              "credits_completed": 0,
+              "credits": 12,
+              "classes": [],
+              "categories": [],
+              "suggested": [
+                "CS 4352"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "III. Elective Requirements: 10 semester credit hours | Free Electives: 10 semester credit hours",
+          "progress": 9,
+          "total": 10,
+          "credits_completed": 9,
+          "credits": 10,
+          "classes": [
+            {
+              "code": "ENGL 1---",
+              "name": "ENGL LWR LVL TRANSFER ELECTIVE",
+              "credits": 3.0,
+              "status": "completed",
+              "semester": "test_credits"
+            },
+            {
+              "code": "LIT 1---",
+              "name": "LIT LWR LVL TRANSFER ELECTIVE",
+              "credits": 3.0,
+              "status": "completed",
+              "semester": "test_credits"
+            },
+            {
+              "code": "STAT 1342",
+              "name": "STATISTICAL DECISION MAKING",
+              "credits": 3.0,
+              "status": "completed",
+              "semester": "test_credits"
+            }
+          ],
+          "categories": []
+        }
+      ]
     }
-  ];
+  ]
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -213,7 +484,7 @@ const PlannerPage = () => {
             />
           )}
 
-          {showPlanner && <Planner semesters={transofmrmedSemesters} requirements={requirements} />}
+          {showPlanner && <Planner semesters={transformedSemesters} requirements={requirements} />}
         </div>
       </DndProvider>
     </div>
