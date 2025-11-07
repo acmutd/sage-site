@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "../context/AuthContext";
-import { Menu, MessageCirclePlus, Route } from "lucide-react";
+import { Menu, MessageCirclePlus, Route, UserRound} from "lucide-react";
 import { useEffect, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 
@@ -24,7 +24,7 @@ const Navbar = () => {
       {/* Standard navbar */}
       <nav className={`
         ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
-        py-4 px-6 fixed w-full z-10 hidden md:block
+        py-2.5 px-6 fixed w-full z-10 hidden md:block
         `}>
         <div className="flex items-center justify-between w-full">
           <Link to="/" className="ml-0">
@@ -54,12 +54,43 @@ const Navbar = () => {
             <li>
               {user ? (
                 // If user is logged in, show Sign Out button
-                <button
-                  onClick={logout} // Calls logout function
-                  className="bg-destructive text-textlight text-base px-6 py-1.5 rounded-full font-semibold hover:bg-red-700 transition duration-300"
-                >
-                  Sign Out
-                </button>
+                // <button
+                //   onClick={logout} // Calls logout function
+                //   className="bg-destructive text-textlight text-base px-6 py-1.5 rounded-full font-semibold hover:bg-red-700 transition duration-300"
+                // >
+                //   Sign Out
+                // </button>
+                
+                //if user is loggin in, show menu icon
+                <DropdownMenu>
+                  <DropdownMenuTrigger>
+                    <div className="bg-secondary p-2 rounded-full">
+                      <UserRound className="stroke-textdark"/>
+                    </div>
+                  </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className={`bg-bglight flex flex-col p-2 gap-2 mr-6 items-center rounded-sm`}
+                    >
+                      <DropdownMenuItem className="focus:bg-innercontainer w-full">
+                      <Link
+                      to="/profile"
+                      className={`text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2`}
+                      >
+                      <UserRound className="stroke-accent" />
+                      Your Profile
+                    </Link>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem className="focus:bg-innercontainer w-full">
+                        <button
+                          onClick={logout} // Calls logout function
+                          className="bg-destructive text-textlight text-base px-6 py-1.5 rounded-full font-semibold hover:bg-red-700 transition duration-300"
+                        >
+                          Sign Out
+                        </button>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
                 // If no user, show Login button
                 <Link
@@ -118,7 +149,21 @@ const Navbar = () => {
                   Start a chat
                 </Link>
               </DropdownMenuItem>
-              {/* <DropdownMenuItem className="focus:bg-transparent w-full">
+
+              <DropdownMenuItem className="focus:bg-innercontainer w-full">
+                {user ? (
+                      <Link
+                      to="/profile"
+                      className={`text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2`}
+                      >
+                      <UserRound className="stroke-accent" />
+                      Your Profile
+                    </Link>
+                  ) : (
+                  <></>)}
+                </DropdownMenuItem>
+
+              <DropdownMenuItem className="focus:bg-transparent w-full">
                 {user ? (
                   // If user is logged in, show Sign Out button
                   <button
@@ -137,7 +182,7 @@ const Navbar = () => {
                   </Link>
                 )
                 }
-              </DropdownMenuItem> */}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
