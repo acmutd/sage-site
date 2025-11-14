@@ -9,11 +9,14 @@ const PlannerPage = () => {
   const [showPlanner, setShowPlanner] = useState(false); // Initially hide planner
   const [transcriptData, setTranscriptData] = useState<{ id: string; courses?: { utd_classes?: Record<string, any[]> } } | null>(null);
   const [requirements, setRequirements] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false); // Track loading state
 
   const handleFinishOnboarding = async (data: any) => {
     setShowOnboarding(false); // Close the onboarding modal
     setTranscriptData(data);
+    setLoading(true); // Start loading
     await fetchRequirements(data);
+    setLoading(false); // Stop loading
     setShowPlanner(true); // Show the Planner component
 
   };
@@ -150,8 +153,9 @@ const PlannerPage = () => {
             "Content-Type": "application/json",
           },
           //body: JSON.stringify({ id: transcriptData?.id || "student123" }),
-          body: JSON.stringify({ id: "student123" }),
-          //body: JSON.stringify({ id: "student123", action: overWriteTranscriptData, transcriptData: transcriptData }), // For testing with full transcript
+          //body: JSON.stringify({ id: "student123" }),
+          //body: JSON.stringify({ id: "student123", transcriptData: transcriptData }), // For testing with full transcript
+          body: JSON.stringify({ id: transcriptData?.id || "student123", transcriptData: transcriptData }), // For testing with full transcript
 
         }
       );
@@ -486,21 +490,31 @@ const PlannerPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <h1 className="text-2xl font-bold mb-6 text-center">Planner Page</h1>
-      <DndProvider backend={HTML5Backend}>
-        <div>
-          {showOnboarding && (
-            <Onboarding
-              onClose={() => setShowOnboarding(false)}
-              onFinish={handleFinishOnboarding}
-              setTranscriptData={setTranscriptData}
-
-            />
-          )}
-
-          {showPlanner && <Planner semesters={transformedSemesters} requirements={requirements} />}
+      {loading ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="flex flex-col items-center justify-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 border-solid"></div>
+            <p className="mt-4 text-blue-500 font-semibold">Loading...</p>
+          </div>
         </div>
-      </DndProvider>
+      ) : (
+        <>
+          <h1 className="text-2xl font-bold mb-6 text-center">Planner Page</h1>
+          <DndProvider backend={HTML5Backend}>
+            <div>
+              {showOnboarding && (
+                <Onboarding
+                  onClose={() => setShowOnboarding(false)}
+                  onFinish={handleFinishOnboarding}
+                  setTranscriptData={setTranscriptData}
+
+                />
+              )}
+              {showPlanner && <Planner semesters={transformedSemesters} requirements={requirements} />}
+            </div>
+          </DndProvider>
+        </>
+      )}
     </div>
   );
 };

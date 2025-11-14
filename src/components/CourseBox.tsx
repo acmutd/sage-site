@@ -1,15 +1,19 @@
 import { AlertTriangle, Info, CheckCircle, GripVertical } from 'lucide-react';
 import { useDrag } from "react-dnd";
+import { useState } from "react";
+import ReactDOM from "react-dom";
+
 
 interface CourseBoxProps {
-    course: string | {
-        code?: string;
-        course_code?: string;
-        name?: string;
-        credits?: number;
+    course: {
+        course_code: string;
+        course_name: string;
+        credits_attempted?: number;
+        credits_earned?: number;
+        grade?: string;
+        id?: string;
         status?: string;
         semester?: string;
-        id?: string;
         description?: string; // Add description as optional
     };
     status?: 'default' | 'completed' | 'warning' | 'info';
@@ -28,17 +32,21 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     isSuggested = false
 }) => {
 
-    const courseData = typeof course === 'string'
-        ? { code: course }
-        : course;
+    const [isHovered, setIsHovered] = useState(false); // Track hover state
+    const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({
+        top: 0,
+        left: 0,
+    });
+
+    // console.log(course)
 
     const [{ isDragging }, drag] = useDrag(() => ({
         type: "COURSE",
         item: {
-            course: courseData,
+            course: course,
             sourceYear,
             sourceSemesterIndex,
-            courseId: courseData.id
+            courseId: course.id
         },
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
@@ -68,28 +76,76 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         return null;
     };
 
+    const handleMouseEnter = (event: React.MouseEvent) => {
+        const rect = (event.target as HTMLElement).getBoundingClientRect();
+        setTooltipPosition({
+            top: rect.top + window.scrollY - 10, // Position above the box
+            left: rect.right + window.scrollX + 10, // Position slightly to the right
+        });
+        setIsHovered(true);
+    };
+
+    const handleMouseLeave = () => {
+        setIsHovered(false);
+    };
+
     return (
-        <div
-            ref={drag}
-            className={`flex items-center justify-between p-3 rounded-lg border-2 ${getStatusStyles()} 
+        <>
+            <div
+                ref={drag}
+                className={`flex items-center justify-between p-3 rounded-lg border-2 ${getStatusStyles()} 
                 transition-all hover:shadow-sm ${isDragging ? "opacity-50" : ""} 
-                cursor-grab relative z-10`} // Added relative positioning, z-index, and cursor
-        >
-            <div className="flex items-center gap-2">
-                <GripVertical className="w-4 h-4 text-gray-400" />
-                <span className="text-sm font-medium text-gray-700 ml-1">
-                    {courseData.code || courseData.course_code || "Unknown Course"}
-                </span>
-            </div>
-            <div className="flex items-center gap-2">
-                {getIcon()}
-                {isSuggested && (
-                    <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">
-                        Suggested
+                cursor-grab relative`} // Added relative positioning, z-index, and cursor
+                onMouseEnter={handleMouseEnter} // Show tooltip on hover
+                onMouseLeave={handleMouseLeave} // Hide tooltip when not hovering
+            >
+                <div className="flex items-center gap-2">
+                    <GripVertical className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-700 ml-1">
+                        {course.course_code || "Unknown Course"}
                     </span>
-                )}
+                </div>
+                <div className="flex items-center gap-2">
+                    {getIcon()}
+                    {isSuggested && (
+                        <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">
+                            Suggested
+                        </span>
+                    )}
+                </div>
             </div>
-        </div>
+
+            {isHovered &&
+                ReactDOM.createPortal(
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-64 bg-white border border-gray-300 shadow-lg rounded-lg p-4 z-50"
+                        style={{
+                            position: "absolute",
+                            top: tooltipPosition.top,
+                            left: tooltipPosition.left,
+                        }}
+                    >
+                        <h3 className="text-sm font-bold text-gray-800 mb-2">
+                            {course.course_name || "No Name Available"}
+                        </h3>
+                        <p className="text-xs text-gray-600 mb-1">
+                            <strong>Code:</strong> {course.course_code || course.course_code || "N/A"}
+                        </p>
+                        <p className="text-xs text-gray-600 mb-1">
+                            <strong>Semester:</strong> {course.semester || "N/A"}
+                        </p>
+                        <p className="text-xs text-gray-600 mb-1">
+                            <strong>Credits Earned:</strong> {course.credits_earned || "N/A"}
+                        </p>
+                        <p className="text-xs text-gray-600 mb-1">
+                            <strong>Status:</strong> {course.status || "N/A"}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                            <strong>Description:</strong> {course.description || "No description available."}
+                        </p>
+                    </div>,
+                    document.body
+                )}
+        </>
     );
 };
 

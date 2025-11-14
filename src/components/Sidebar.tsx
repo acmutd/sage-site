@@ -68,6 +68,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         return expandedSubcategories[key] !== false;
     };
 
+    console.log(requirements[0]?.categories?.[0]?.classes);
+
     // Recursive function to render categories and subcategories
     const renderCategories = (categories: any[], reqIdx: number, parentCatIdx: number = 0) => {
         return categories.map((category, catIdx) => {
@@ -106,7 +108,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 category.classes.map((course: any, courseIdx: number) => (
                                     <CourseBox
                                         key={courseIdx}
-                                        course={course}
+                                        course={{
+                                            course_code: course.code,
+                                            credits_earned: course.credits,
+                                            course_name: course.name,
+                                            semester: course.semester,
+                                            status: course.status,
+                                        }}
                                         status={
                                             course.status as
                                             | "default"
@@ -147,9 +155,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         <CourseBox
                                             key={`suggested-${idx}`}
                                             course={{
-                                                code: course.code,
-                                                name: course.name,
-                                                credits: course.repeatable_for_hours || 3, // Default to 3 credits if not specified
+                                                course_code: course.code,
+                                                course_name: course.name,
                                                 description: course.description,
                                             }}
                                             status="warning"

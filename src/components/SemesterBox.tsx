@@ -9,7 +9,11 @@ interface SemesterBoxProps {
     isLocked?: boolean;
     courses?: {
         course_code: string;
-        id?: string;
+        course_name: string;
+        credits_attempted: number;
+        credits_earned: number;
+        grade: string;
+        id: string;
         status?: string;
         icon?: string | null
     }[];
@@ -59,6 +63,8 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
             canDrop: monitor.canDrop(),
         }),
     }));
+
+    // console.log("SemesterBox courses:", courses);
 
     return (
         <div
