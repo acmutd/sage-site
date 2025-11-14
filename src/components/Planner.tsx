@@ -5,13 +5,23 @@ import { Plus, PlusCircle } from "lucide-react";
 
 interface PlannerProps {
     semesters: {
-        [key: string]: { title: string; courses: any[] }[];
+        [key: string]: { title: string; courses: any[]; isFromTranscript?: boolean }[];
     };
     requirements: any;
 }
 
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements }) => {
-    const [allSemesters, setAllSemesters] = useState(semesters);
+    const [allSemesters, setAllSemesters] = useState(() => {
+        const updatedSemesters = { ...semesters };
+        Object.keys(updatedSemesters).forEach((yearKey) => {
+            updatedSemesters[yearKey] = updatedSemesters[yearKey].map((semester) => ({
+                ...semester,
+                isFromTranscript: true, // Mark all semesters as from transcriptData
+            }));
+        });
+        return updatedSemesters;
+    });
+
 
     const [error, setError] = useState<string | null>(null);
 
@@ -68,11 +78,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements }) => {
                 const targetSemester = newState[targetYear][targetSemesterIndex];
                 if (targetSemester && Array.isArray(targetSemester.courses)) {
                     // Create a proper course object from the suggestion
+                    const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
+
                     const newCourse = {
                         course_code: course.code || course.course_code,
                         name: course.name || `${course.code || course.course_code} Course`,
                         credits: course.credits || 3, // Default credits if not specified
-                        id: `${targetYear}-${targetSemesterIndex}-${course.code || course.course_code}-${Date.now()}`,
+                        id: newCourseId,
                         status: 'default'
                     };
 
@@ -201,11 +213,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements }) => {
             // Determine the next semester based on the last one
             let nextSemester;
             if (lastSemester.title.includes('Fall')) {
-                nextSemester = { title: `Spring ${lastSemesterYear + 1}`, courses: [] };
+                nextSemester = { title: `Spring ${lastSemesterYear + 1}`, courses: [], isFromTranscript: false,
+            };
             } else if (lastSemester.title.includes('Spring')) {
-                nextSemester = { title: `Summer ${lastSemesterYear}`, courses: [] };
+                nextSemester = { title: `Summer ${lastSemesterYear}`, courses: [], isFromTranscript: false, };
             } else {
-                nextSemester = { title: `Fall ${lastSemesterYear}`, courses: [] };
+                nextSemester = { title: `Fall ${lastSemesterYear}`, courses: [], isFromTranscript: false, };
             }
 
             return {
@@ -214,6 +227,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements }) => {
             };
         });
     };
+
+    console.log(allSemesters)
 
 
     return (
@@ -280,8 +295,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements }) => {
                                         {...semester}
                                         yearKey={yearKey}
                                         semesterIndex={idx}
-                                        onDropCourse={(course, sourceYear, sourceSemesterIndex, courseId) =>
-                                            handleDropCourse(yearKey, idx, course, sourceYear, sourceSemesterIndex, courseId)
+                                        isFromTranscript={semester.isFromTranscript || false} // Dynamically set isFromTranscript
+                                        onDropCourse={(course, sourceYear, sourceSemesterIndex, courseId, isSuggested) =>
+                                            handleDropCourse(yearKey, idx, course, sourceYear, sourceSemesterIndex, courseId, isSuggested)
                                         }
                                     />
                                 ))}

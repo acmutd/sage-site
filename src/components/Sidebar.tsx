@@ -126,6 +126,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         icon={
                                             course.status === "completed" ? "check" : null
                                         }
+                                        isFromTranscript={true}
                                     />
                                 ))
                             ) : category.categories && category.categories.length > 0 ? null : (

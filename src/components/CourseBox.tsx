@@ -21,6 +21,7 @@ interface CourseBoxProps {
     sourceYear?: string;
     sourceSemesterIndex?: number;
     isSuggested?: boolean;
+    isFromTranscript?: boolean;
 }
 
 const CourseBox: React.FC<CourseBoxProps> = ({
@@ -29,7 +30,9 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     sourceSemesterIndex,
     status = 'default',
     icon = null,
-    isSuggested = false
+    isSuggested = false,
+    isFromTranscript = false,
+
 }) => {
 
     const [isHovered, setIsHovered] = useState(false); // Track hover state
@@ -40,18 +43,25 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
     // console.log(course)
 
-    const [{ isDragging }, drag] = useDrag(() => ({
-        type: "COURSE",
-        item: {
-            course: course,
-            sourceYear,
-            sourceSemesterIndex,
-            courseId: course.id
-        },
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
+    const [{ isDragging }, drag] = useDrag(
+        () => ({
+            type: "COURSE",
+            item: {
+                course: course,
+                sourceYear,
+                sourceSemesterIndex,
+                courseId: course.id,
+                isSuggested: isSuggested,
+            },
+            collect: (monitor) => ({
+                isDragging: monitor.isDragging(),
+            }),
         }),
-    }));
+        [course, sourceYear, sourceSemesterIndex]
+    );
+
+    // Only initialize the drag ref if `isFromTranscript` is false
+    const dragRef = !isFromTranscript ? drag : null;
 
     const getStatusStyles = () => {
         if (isSuggested) {
@@ -92,15 +102,17 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     return (
         <>
             <div
-                ref={drag}
+                ref={dragRef}
                 className={`flex items-center justify-between p-3 rounded-lg border-2 ${getStatusStyles()} 
                 transition-all hover:shadow-sm ${isDragging ? "opacity-50" : ""} 
-                cursor-grab relative`} // Added relative positioning, z-index, and cursor
+                ${isFromTranscript ? "cursor" : "cursor-grab"} relative`} // Change cursor style if dragging is disabled
                 onMouseEnter={handleMouseEnter} // Show tooltip on hover
                 onMouseLeave={handleMouseLeave} // Hide tooltip when not hovering
             >
                 <div className="flex items-center gap-2">
-                    <GripVertical className="w-4 h-4 text-gray-400" />
+                    {!isFromTranscript && (
+                        <GripVertical className="w-4 h-4 text-gray-400" />
+                    )}
                     <span className="text-sm font-medium text-gray-700 ml-1">
                         {course.course_code || "Unknown Course"}
                     </span>
@@ -112,6 +124,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                             Suggested
                         </span>
                     )}
+
                 </div>
             </div>
 
@@ -127,21 +140,36 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         <h3 className="text-sm font-bold text-gray-800 mb-2">
                             {course.course_name || "No Name Available"}
                         </h3>
-                        <p className="text-xs text-gray-600 mb-1">
-                            <strong>Code:</strong> {course.course_code || course.course_code || "N/A"}
-                        </p>
-                        <p className="text-xs text-gray-600 mb-1">
-                            <strong>Semester:</strong> {course.semester || "N/A"}
-                        </p>
-                        <p className="text-xs text-gray-600 mb-1">
-                            <strong>Credits Earned:</strong> {course.credits_earned || "N/A"}
-                        </p>
-                        <p className="text-xs text-gray-600 mb-1">
-                            <strong>Status:</strong> {course.status || "N/A"}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                            <strong>Description:</strong> {course.description || "No description available."}
-                        </p>
+                        {course.course_code && (
+                            <p className="text-xs text-gray-600 mb-1">
+                                <strong>Code:</strong> {course.course_code}
+                            </p>
+                        )}
+                        {course.semester && (
+                            <p className="text-xs text-gray-600 mb-1">
+                                <strong>Semester:</strong> {course.semester}
+                            </p>
+                        )}
+                        {course.credits_earned !== undefined && (
+                            <p className="text-xs text-gray-600 mb-1">
+                                <strong>Credits Earned:</strong> {course.credits_earned}
+                            </p>
+                        )}
+                        {course.grade && (
+                            <p className="text-xs text-gray-600 mb-1">
+                                <strong>Grade:</strong> {course.grade}
+                            </p>
+                        )}
+                        {course.status && (
+                            <p className="text-xs text-gray-600 mb-1">
+                                <strong>Status:</strong> {course.status}
+                            </p>
+                        )}
+                        {course.description && (
+                            <p className="text-xs text-gray-600">
+                                <strong>Description:</strong> {course.description}
+                            </p>
+                        )}
                     </div>,
                     document.body
                 )}
