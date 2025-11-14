@@ -25,7 +25,16 @@ interface SidebarProps {
                 semester?: string;
             }[];
             categories?: any[];
-            suggested?: string[];
+            suggested?: {
+                code: string;
+                name: string;
+                corequisites: string[];
+                excluded: string[];
+                required_core: boolean;
+                repeatable_for_hours: number;
+                notes: string;
+                description: string;
+            }[];
         }[];
     }[];
     expandedCategories: { [key: number]: boolean };
@@ -46,9 +55,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     const handleToggleSubcategory = (reqIdx: number, catIdx: number) => {
         const key = `${reqIdx}-${catIdx}`;
-        setExpandedSubcategories(prev => ({
+        setExpandedSubcategories((prev) => ({
             ...prev,
-            [key]: !prev[key]
+            [key]: !prev[key],
         }));
     };
 
@@ -57,6 +66,109 @@ const Sidebar: React.FC<SidebarProps> = ({
         const key = `${reqIdx}-${catIdx}`;
         // Default to true if not explicitly set
         return expandedSubcategories[key] !== false;
+    };
+
+    // Recursive function to render categories and subcategories
+    const renderCategories = (categories: any[], reqIdx: number, parentCatIdx: number = 0) => {
+        return categories.map((category, catIdx) => {
+            const currentCatIdx = `${parentCatIdx}-${catIdx}`;
+            return (
+                <div
+                    key={currentCatIdx}
+                    className="border border-gray-200 rounded-lg overflow-hidden"
+                >
+                    <div
+                        className="flex items-center justify-between p-2 bg-white cursor-pointer hover:bg-gray-50"
+                        onClick={() => handleToggleSubcategory(reqIdx, parseInt(currentCatIdx))}
+                    >
+                        <div className="flex items-center gap-2">
+                            {isSubcategoryExpanded(reqIdx, parseInt(currentCatIdx)) ? (
+                                <ChevronDown className="w-3 h-3" />
+                            ) : (
+                                <ChevronRight className="w-3 h-3" />
+                            )}
+                            <span className="text-sm font-medium text-gray-700">
+                                {category.name}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-600">
+                                {category.progress}/{category.total}
+                            </span>
+                            <div className="w-2 h-2 bg-green-500 rounded-sm"></div>
+                        </div>
+                    </div>
+
+                    {isSubcategoryExpanded(reqIdx, parseInt(currentCatIdx)) && (
+                        <div className="p-2 space-y-1">
+                            {/* Render classes */}
+                            {category.classes && category.classes.length > 0 ? (
+                                category.classes.map((course: any, courseIdx: number) => (
+                                    <CourseBox
+                                        key={courseIdx}
+                                        course={course}
+                                        status={
+                                            course.status as
+                                            | "default"
+                                            | "completed"
+                                            | "warning"
+                                            | "info"
+                                            | undefined
+                                        }
+                                        icon={
+                                            course.status === "completed" ? "check" : null
+                                        }
+                                    />
+                                ))
+                            ) : category.categories && category.categories.length > 0 ? null : (
+                                <div className="text-sm text-gray-500">
+                                    No courses in this category
+                                </div>
+                            )}
+
+                            {/* Render suggested courses */}
+                            {category.suggested && category.suggested.length > 0 && (
+                                <>
+                                    <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
+                                        <span className="text-xs text-gray-500 font-medium">
+                                            Suggested Courses
+                                        </span>
+                                    </div>
+                                    {category.suggested.map((course: {
+                                        code: string;
+                                        name: string;
+                                        corequisites: string[];
+                                        excluded: string[];
+                                        required_core: boolean;
+                                        repeatable_for_hours: number;
+                                        notes: string;
+                                        description: string;
+                                    }, idx: number) => (
+                                        <CourseBox
+                                            key={`suggested-${idx}`}
+                                            course={{
+                                                code: course.code,
+                                                name: course.name,
+                                                credits: course.repeatable_for_hours || 3, // Default to 3 credits if not specified
+                                                description: course.description,
+                                            }}
+                                            status="warning"
+                                            icon="info"
+                                            isSuggested={true}
+                                        />
+                                    ))}
+                                </>
+                            )}
+
+                            {/* Render subcategories recursively */}
+                            {category.categories &&
+                                category.categories.length > 0 &&
+                                renderCategories(category.categories, reqIdx, parseInt(currentCatIdx))}
+                        </div>
+                    )}
+                </div>
+            );
+        });
     };
 
     return (
@@ -115,81 +227,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 hasSubcategories={req.categories && req.categories.length > 0}
                             >
                                 {req.categories && req.categories.length > 0 ? (
-                                    // Map through categories instead of subcategories
-                                    req.categories.map((category, catIdx) => (
-                                        <div
-                                            key={catIdx}
-                                            className="border border-gray-200 rounded-lg overflow-hidden"
-                                        >
-                                            <div
-                                                className="flex items-center justify-between p-2 bg-white cursor-pointer hover:bg-gray-50"
-                                                onClick={() => handleToggleSubcategory(reqIdx, catIdx)}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    {isSubcategoryExpanded(reqIdx, catIdx) ? (
-                                                        <ChevronDown className="w-3 h-3" />
-                                                    ) : (
-                                                        <ChevronRight className="w-3 h-3" />
-                                                    )}
-                                                    <span className="text-sm font-medium text-gray-700">
-                                                        {category.name}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-gray-600">
-                                                        {category.progress}/{category.total}
-                                                    </span>
-                                                    <div className="w-2 h-2 bg-green-500 rounded-sm"></div>
-                                                </div>
-                                            </div>
-
-                                            {isSubcategoryExpanded(reqIdx, catIdx) && (
-                                                <div className="p-2 space-y-1">
-                                                    {/* Map through classes array */}
-                                                    {category.classes && category.classes.length > 0 ? (
-                                                        category.classes.map((course, courseIdx) => (
-                                                            <CourseBox
-                                                                key={courseIdx}
-                                                                course={course}
-                                                                status={
-                                                                    course.status as
-                                                                    | "default"
-                                                                    | "completed"
-                                                                    | "warning"
-                                                                    | "info"
-                                                                    | undefined
-                                                                }
-                                                                icon={
-                                                                    course.status === "completed" ? "check" : null
-                                                                }
-                                                            />
-                                                        ))
-                                                    ) : (
-                                                        <div className="text-sm text-gray-500">No courses in this category</div>
-                                                    )}
-
-                                                    {category.suggested && category.suggested.length > 0 && (
-                                                        <>
-                                                            <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
-                                                                <span className="text-xs text-gray-500 font-medium">Suggested Courses</span>
-                                                            </div>
-                                                            {category.suggested.map((courseCode, idx) => (
-                                                                <CourseBox
-                                                                    key={`suggested-${idx}`}
-                                                                    course={{ code: courseCode }}
-                                                                    status="warning"
-                                                                    icon="info"
-                                                                    isSuggested={true}
-                                                                />
-                                                            ))}
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))
+                                    renderCategories(req.categories, reqIdx)
                                 ) : (
-                                    <div className="text-sm text-gray-500">No courses in this category</div>
+                                    <div className="text-sm text-gray-500">
+                                        No categories available
+                                    </div>
                                 )}
                             </RequirementCategory>
                         ))}

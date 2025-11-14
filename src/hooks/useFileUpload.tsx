@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+
 const useFileUpload = (uploadUrl: string) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -12,7 +13,7 @@ const useFileUpload = (uploadUrl: string) => {
   };
 
   // Upload file function
-  const uploadFile = async (userId: string): Promise<any> => {
+  const uploadFile = async (userId: string, token: string | null): Promise<any> => {
     if (!selectedFile) return;
     // Read file as base64
     const toBase64 = (file: File) =>
@@ -32,9 +33,12 @@ const useFileUpload = (uploadUrl: string) => {
       setIsUploading(true);
       const base64_pdf = await toBase64(selectedFile);
 
+      // const token = user ? await user.getIdToken() : null;
+
       const payload = {
         id: userId,
         pdf_content: base64_pdf,
+        token: token,
       };
 
       console.log(

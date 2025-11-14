@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import useFileUpload from "../hooks/useFileUpload";
+import { useAuth } from "../context/AuthContext";
 
 interface FileUploaderProps {
   userId: string;
@@ -18,11 +19,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [transcriptData, setTranscriptData] = useState<any>(null);
 
+  const { user } = useAuth();
 
   const handleUpload = async () => {
     try {
       setErrorMessage(null);
-      const response = await uploadFile(userId);
+      const token = user ? await user.getIdToken() : null;
+      const response = await uploadFile(userId, token);
       if (response?.message === "Transcript processed successfully") {
         console.log("Transcript Data:", response.transcript_data);
         setFileUrl("Uploaded"); // Or use a real status/flag — no download link exists in current response

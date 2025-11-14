@@ -10,6 +10,7 @@ interface CourseBoxProps {
         status?: string;
         semester?: string;
         id?: string;
+        description?: string; // Add description as optional
     };
     status?: 'default' | 'completed' | 'warning' | 'info';
     icon?: 'check' | 'warning' | 'info' | null;

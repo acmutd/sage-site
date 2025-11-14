@@ -24,7 +24,7 @@ const Navbar = () => {
       {/* Standard navbar */}
       <nav className={`
         ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
-        py-4 px-6 fixed w-full z-10 hidden md:block
+        py-4 px-6 fixed w-full z-50 hidden md:block
         `}>
         <div className="flex items-center justify-between w-full">
           <Link to="/" className="ml-0">
@@ -77,7 +77,7 @@ const Navbar = () => {
       {/* Dropdown navbar when screen width < md (768px) */}
       <nav className={`
         ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
-        py-4 px-6 fixed w-full h-[4.2rem] z-10 md:hidden block
+        py-4 px-6 fixed w-full h-[4.2rem] z-50 md:hidden block
         `}>
         <div className="flex items-center justify-between w-full">
           <Link to="/" className="ml-0">

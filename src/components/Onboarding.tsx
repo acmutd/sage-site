@@ -6,7 +6,7 @@ import ClassValidationA from "./ClassValidationA";
 
 interface OnboardingProps {
   onClose: () => void;
-  onFinish: () => void;
+  onFinish: (data: any) => void;
   setTranscriptData: (data: any) => void;
 
 }
@@ -25,7 +25,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ setTranscriptData, onClose, onF
 
   const handleFinish = () => {
     setTranscriptData(transcriptData); // Pass data to the parent
-    onFinish();
+    onFinish(transcriptData);
 };
 
   const handleOutsideClick = (e: MouseEvent) => {
