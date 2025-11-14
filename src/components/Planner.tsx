@@ -273,7 +273,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements }) => {
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="flex flex-wrap gap-4">
                                 {allSemesters[yearKey].map((semester, idx) => (
                                     <SemesterBox
                                         key={idx}
