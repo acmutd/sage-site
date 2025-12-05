@@ -8,9 +8,10 @@ interface PlannerProps {
         [key: string]: { title: string; courses: any[]; isFromTranscript?: boolean }[];
     };
     requirements: any;
+    transcriptData: any;
 }
 
-const Planner: React.FC<PlannerProps> = ({ semesters, requirements }) => {
+const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData }) => {
     const [allSemesters, setAllSemesters] = useState(() => {
         const updatedSemesters = { ...semesters };
         Object.keys(updatedSemesters).forEach((yearKey) => {
@@ -237,6 +238,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements }) => {
                 requirements={adaptedRequirements}
                 expandedCategories={expandedCategories}
                 onToggleCategory={toggleCategory}
+                transcriptData={transcriptData}
             />
 
             <div className="flex-1 overflow-y-auto p-6">

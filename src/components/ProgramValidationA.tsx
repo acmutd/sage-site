@@ -29,7 +29,7 @@ const initialProgramsData = [
 ];
 
 interface ProgramValidationAProps {
-  onNext: () => void;
+  onNext?: (updatedPrograms: any[]) => void;
   transcriptData: any;
 }
 
@@ -43,6 +43,12 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
     level: string | null;
     status: string;
   } | null>(null);
+
+  const handleFinish = () => {
+    if (onNext) {
+      onNext(programsData); // Return the updated programs to the parent if onNext is provided
+    }
+  };
 
   useEffect(() => {
     if (transcriptData) {
@@ -151,7 +157,7 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
         onNext={() => setIsEditing(false)}
         onRemove={handleRemove}
         onSave={handleSave}
-        transcriptData = {transcriptData} // Pass the save handler
+        transcriptData={transcriptData} // Pass the save handler
       />
     );
   }
@@ -231,12 +237,14 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
         </Button>
       </div>
       <div className="flex justify-end mt-8">
-        <button
-          className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
-          onClick={onNext}
-        >
-          Next
-        </button>
+        {onNext && (
+          <button
+            className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+            onClick={handleFinish}
+          >
+            Next
+          </button>
+        )}
       </div>
     </div>
   );

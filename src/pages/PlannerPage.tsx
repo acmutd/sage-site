@@ -510,7 +510,7 @@ const PlannerPage = () => {
 
                 />
               )}
-              {showPlanner && <Planner semesters={transformedSemesters} requirements={requirements} />}
+              {showPlanner && <Planner semesters={transformedSemesters} requirements={requirements} transcriptData={transcriptData} />}
             </div>
           </DndProvider>
         </>

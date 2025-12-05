@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
 import RequirementCategory from "./RequirementCategory";
 import CourseBox from "./CourseBox";
+import ProgramValidationA from "./ProgramValidationA";
 
 // Sidebar Component
 interface SidebarProps {
@@ -39,18 +40,65 @@ interface SidebarProps {
     }[];
     expandedCategories: { [key: number]: boolean };
     onToggleCategory: (index: number) => void;
+    transcriptData: any;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
     requirements,
-    expandedCategories,
-    onToggleCategory,
+    //expandedCategories,
+    //onToggleCategory,
+    transcriptData
 }) => {
     const [isExpanded, setIsExpanded] = useState(true); // Track sidebar expansion state
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
+    const [isProgramValidationOpen, setIsProgramValidationOpen] = useState(false); // Track if ProgramValidationA is open
+    const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
 
     const handleToggleSidebar = () => {
         setIsExpanded((prev) => !prev); // Toggle sidebar state
+    };
+
+    useEffect(() => {
+        // Automatically collapse categories without suggested courses
+        const initialExpandedState: { [key: number]: boolean } = {};
+        requirements.forEach((req, reqIdx) => {
+          const hasSuggestedCourses = req.categories.some(
+            (category: any) => category.suggested && category.suggested.length > 0
+          );
+          initialExpandedState[reqIdx] = hasSuggestedCourses; // Expand only if there are suggested courses
+        });
+        setAutoExpandedCategories(initialExpandedState);
+      }, [requirements]);
+
+    const handleOpenProgramValidation = () => {
+        setIsProgramValidationOpen(true); // Open the ProgramValidationA modal
+    };
+
+    const handleCloseProgramValidation = () => {
+        setIsProgramValidationOpen(false); // Close the ProgramValidationA modal
+    };
+
+    // USED TO CALL LAMBDA TO UPDATE PROGRAMS LATER
+    const handleSavePrograms = (updatedPrograms: any[]) => {
+        console.log("Updated programs:", updatedPrograms);
+
+        // // Example: Call an API endpoint to update the programs
+        // fetch("/api/update-programs", {
+        //     method: "POST",
+        //     headers: {
+        //         "Content-Type": "application/json",
+        //     },
+        //     body: JSON.stringify(updatedPrograms),
+        // })
+        //     .then((response) => response.json())
+        //     .then((data) => {
+        //         console.log("Programs updated successfully:", data);
+        //     })
+        //     .catch((error) => {
+        //         console.error("Error updating programs:", error);
+        //     });
+
+        handleCloseProgramValidation(); // Close the modal
     };
 
     const handleToggleSubcategory = (reqIdx: number, catIdx: number) => {
@@ -180,73 +228,97 @@ const Sidebar: React.FC<SidebarProps> = ({
     };
 
     return (
-        <div
-            className={`${isExpanded ? "w-80" : "w-20"
-                } bg-gray-50 border-r border-gray-200 p-4 overflow-y-auto h-screen transition-all duration-300`}
-        >
-            {/* Sidebar Header */}
-            <div className="flex items-center justify-between mb-6">
-                {isExpanded && (
-                    <button className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full transition-colors">
-                        <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+        <>
+            <div
+                className={`${isExpanded ? "w-80" : "w-20"
+                    } bg-gray-50 border-r border-gray-200 p-4 overflow-y-auto h-screen transition-all duration-300`}
+            >
+                {/* Sidebar Header */}
+                <div className="flex items-center justify-between mb-6">
+                    {isExpanded && (
+                        <button className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full transition-colors"
+                            onClick={handleOpenProgramValidation}
                         >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                            />
-                        </svg>
-                        <span className="text-sm font-medium">Edit plans</span>
-                    </button>
-                )}
-                <button
-                    className="p-2 hover:bg-gray-200 rounded"
-                    onClick={handleToggleSidebar}
-                >
-                    {isExpanded ? (
-                        <ChevronLeft className="w-5 h-5 text-gray-500" />
-                    ) : (
-                        <ChevronRight className="w-5 h-5 text-gray-500" />
-                    )}
-                </button>
-            </div>
-
-            {/* Sidebar Content */}
-            {isExpanded && (
-                <>
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">
-                        Degree Requirements
-                    </h2>
-
-                    <div className="space-y-3">
-                        {requirements.map((req, reqIdx) => (
-                            <RequirementCategory
-                                key={reqIdx}
-                                title={req.degree}
-                                completed={req.progress}
-                                total={req.total}
-                                isExpanded={expandedCategories[reqIdx]}
-                                onToggle={() => onToggleCategory(reqIdx)}
-                                hasSubcategories={req.categories && req.categories.length > 0}
+                            <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
                             >
-                                {req.categories && req.categories.length > 0 ? (
-                                    renderCategories(req.categories, reqIdx)
-                                ) : (
-                                    <div className="text-sm text-gray-500">
-                                        No categories available
-                                    </div>
-                                )}
-                            </RequirementCategory>
-                        ))}
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                            </svg>
+                            <span className="text-sm font-medium">Edit plans</span>
+                        </button>
+                    )}
+                    <button
+                        className="p-2 hover:bg-gray-200 rounded"
+                        onClick={handleToggleSidebar}
+                    >
+                        {isExpanded ? (
+                            <ChevronLeft className="w-5 h-5 text-gray-500" />
+                        ) : (
+                            <ChevronRight className="w-5 h-5 text-gray-500" />
+                        )}
+                    </button>
+                </div>
+
+                {/* Sidebar Content */}
+                {isExpanded && (
+                    <>
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">
+                            Degree Requirements
+                        </h2>
+
+                        <div className="space-y-3">
+                            {requirements.map((req, reqIdx) => (
+                                <RequirementCategory
+                                    key={reqIdx}
+                                    title={req.degree}
+                                    completed={req.progress}
+                                    total={req.total}
+                                    isExpanded={autoExpandedCategories[reqIdx]}                                    onToggle={() => {
+                                        setAutoExpandedCategories((prev) => ({
+                                          ...prev,
+                                          [reqIdx]: !prev[reqIdx],
+                                        }));
+                                      }}
+                                    hasSubcategories={req.categories && req.categories.length > 0}
+                                >
+                                    {req.categories && req.categories.length > 0 ? (
+                                        renderCategories(req.categories, reqIdx)
+                                    ) : (
+                                        <div className="text-sm text-gray-500">
+                                            No categories available
+                                        </div>
+                                    )}
+                                </RequirementCategory>
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
+            {isProgramValidationOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                    <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl relative">
+                        <button
+                            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+                            onClick={handleCloseProgramValidation}
+                        >
+                            &times;
+                        </button>
+                        <ProgramValidationA
+                            onNext={(updatedPrograms) => handleSavePrograms(updatedPrograms)} // Save programs and close modal
+                            transcriptData={transcriptData} // Pass current programs data
+                        />
                     </div>
-                </>
+                </div>
             )}
-        </div>
+        </>
     );
 };
 

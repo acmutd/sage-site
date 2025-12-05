@@ -8,14 +8,14 @@ interface OnboardingProps {
   onClose: () => void;
   onFinish: (data: any) => void;
   setTranscriptData: (data: any) => void;
-
+  initialStep?: "FileUpload" | "Programs" | "Classes"; 
 }
 
-const Onboarding: React.FC<OnboardingProps> = ({ setTranscriptData, onClose, onFinish }) => {
+const Onboarding: React.FC<OnboardingProps> = ({ setTranscriptData, onClose, onFinish, initialStep = "FileUpload" }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
-  const [modalStep, setModalStep] = useState<"FileUpload" | "Programs" | "Classes">("FileUpload");
+  const [modalStep, setModalStep] = useState<"FileUpload" | "Programs" | "Classes">(initialStep);
   const [transcriptData, setLocalTranscriptData] = useState(null);
 
   const handleFileUploadNext = (data: any) => {
