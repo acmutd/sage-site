@@ -31,9 +31,11 @@ const initialProgramsData = [
 interface ProgramValidationAProps {
   onNext?: (updatedPrograms: any[]) => void;
   transcriptData: any;
+  dropdownRef: any;
 }
 
-const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext }) => {
+const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, dropdownRef,
+}) => {
   const [isEditing, setIsEditing] = useState(false); // State to toggle "Edit" mode
   const [programsData, setProgramsData] = useState(initialProgramsData); // State for program data
   const [editingProgram, setEditingProgram] = useState<{
@@ -198,16 +200,20 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
               </div>
               <div
                 className="dropdown-container absolute right-4 flex flex-col w-[248px] gap-2.5 p-[5px] bg-redesign-stylesbg-light rounded-sm border border-slate-300"
-                onMouseDown={(e) => e.stopPropagation()}
+                //onMouseDown={(e) => e.stopPropagation()}
+                //onClick={(e) => e.stopPropagation()}
+                ref={dropdownRef}
               >
-                <Select defaultValue={program.status.toLowerCase()}
+                <Select
+                  defaultValue={program.status.toLowerCase()}
                   onValueChange={(value) => {
                     const updatedProgram = { ...program, status: value.charAt(0).toUpperCase() + value.slice(1) }; // Capitalize the status
                     handleSave(updatedProgram); // Save the updated program
                   }}
-
                 >
-                  <SelectTrigger className="flex items-center gap-2 px-2 py-1.5 relative self-stretch w-full flex-[0_0_auto] bg-transparent border-none">
+                  <SelectTrigger
+                    className="dropdown-trigger flex items-center gap-2 px-2 py-1.5 relative self-stretch w-full flex-[0_0_auto] bg-transparent border-none"
+                  >
                     <SelectValue className="relative flex-1 font-body-regular font-[number:var(--body-regular-font-weight)] text-redesign-stylesdark-text text-[length:var(--body-regular-font-size)] tracking-[var(--body-regular-letter-spacing)] leading-[var(--body-regular-line-height)] [font-style:var(--body-regular-font-style)]" />
                   </SelectTrigger>
                   <SelectContent>

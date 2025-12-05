@@ -8,11 +8,12 @@ interface OnboardingProps {
   onClose: () => void;
   onFinish: (data: any) => void;
   setTranscriptData: (data: any) => void;
-  initialStep?: "FileUpload" | "Programs" | "Classes"; 
+  initialStep?: "FileUpload" | "Programs" | "Classes";
 }
 
 const Onboarding: React.FC<OnboardingProps> = ({ setTranscriptData, onClose, onFinish, initialStep = "FileUpload" }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null); // Ref for the dropdown
   const { user } = useAuth();
 
   const [modalStep, setModalStep] = useState<"FileUpload" | "Programs" | "Classes">(initialStep);
@@ -26,46 +27,49 @@ const Onboarding: React.FC<OnboardingProps> = ({ setTranscriptData, onClose, onF
   const handleFinish = () => {
     setTranscriptData(transcriptData); // Pass data to the parent
     onFinish(transcriptData);
-};
+  };
 
   const handleOutsideClick = (e: MouseEvent) => {
+    console.log("Clicked element:", e.target, (e.target as HTMLElement).className);
+
     if (
       modalRef.current &&
-      !modalRef.current.contains(e.target as Node) &&
-      !(e.target as HTMLElement).closest(".dropdown-container") // Ensure dropdown clicks are ignored
+      !modalRef.current.contains(e.target as Node) && // Check if the click is outside the modal
+      !(dropdownRef.current && dropdownRef.current.contains(e.target as Node)) // Check if the click is inside the dropdown
     ) {
       onClose();
     }
   };
-  
-  useEffect(() => {
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div
-        ref={modalRef}
-        className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl relative"
-      >
-        {modalStep === "FileUpload" && (
-          <FileUploader
-            userId={user?.uid || "test-user-123"}
-            onNext={handleFileUploadNext}
-            
-          />
-        )}
+useEffect(() => {
+  document.addEventListener("mousedown", handleOutsideClick);
+  return () => document.removeEventListener("mousedown", handleOutsideClick);
+}, []);
 
-        {modalStep === "Programs" && (
-          <ProgramValidationA transcriptData={transcriptData} onNext={() => setModalStep("Classes")} />
-        )}
-        {modalStep === "Classes" && (
-          <ClassValidationA transcriptData={transcriptData} onNext={handleFinish} />
-        )}
-      </div>
+return (
+  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div
+      ref={modalRef}
+      className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl relative"
+    >
+      {modalStep === "FileUpload" && (
+        <FileUploader
+          userId={user?.uid || "test-user-123"}
+          onNext={handleFileUploadNext}
+
+        />
+      )}
+
+      {modalStep === "Programs" && (
+        <ProgramValidationA transcriptData={transcriptData} onNext={() => setModalStep("Classes")} dropdownRef={dropdownRef}
+        />
+      )}
+      {modalStep === "Classes" && (
+        <ClassValidationA transcriptData={transcriptData} onNext={handleFinish} />
+      )}
     </div>
-  );
+  </div>
+);
 };
 
 export default Onboarding;

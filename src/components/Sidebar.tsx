@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
 import RequirementCategory from "./RequirementCategory";
 import CourseBox from "./CourseBox";
@@ -53,6 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
     const [isProgramValidationOpen, setIsProgramValidationOpen] = useState(false); // Track if ProgramValidationA is open
     const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
+    const dropdownRef = useRef<HTMLDivElement>(null); // Ref for the dropdown
 
     const handleToggleSidebar = () => {
         setIsExpanded((prev) => !prev); // Toggle sidebar state
@@ -70,13 +71,21 @@ const Sidebar: React.FC<SidebarProps> = ({
         setAutoExpandedCategories(initialExpandedState);
       }, [requirements]);
 
-    const handleOpenProgramValidation = () => {
+      const handleOpenProgramValidation = () => {
         setIsProgramValidationOpen(true); // Open the ProgramValidationA modal
-    };
-
-    const handleCloseProgramValidation = () => {
-        setIsProgramValidationOpen(false); // Close the ProgramValidationA modal
-    };
+      };
+    
+      const handleCloseProgramValidation = (e?: MouseEvent) => {
+        // Ensure clicks inside the dropdown do not close the modal
+        if (
+          e &&
+          dropdownRef.current &&
+          dropdownRef.current.contains(e.target as Node)
+        ) {
+          return;
+        }
+        setIsProgramValidationOpen(false); // Close the modal
+      };
 
     // USED TO CALL LAMBDA TO UPDATE PROGRAMS LATER
     const handleSavePrograms = (updatedPrograms: any[]) => {
@@ -307,11 +316,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl relative">
                         <button
                             className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-                            onClick={handleCloseProgramValidation}
+                            onClick={() => setIsProgramValidationOpen(false)}
                         >
                             &times;
                         </button>
                         <ProgramValidationA
+                            dropdownRef={dropdownRef}
                             onNext={(updatedPrograms) => handleSavePrograms(updatedPrograms)} // Save programs and close modal
                             transcriptData={transcriptData} // Pass current programs data
                         />
