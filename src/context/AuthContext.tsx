@@ -60,6 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     try {
       await signOut(auth);
+      localStorage.removeItem("chatbot_conversation");
       Cookies.remove("authToken");
       setUser(null);
     } catch (error) {

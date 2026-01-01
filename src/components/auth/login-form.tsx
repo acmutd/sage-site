@@ -35,7 +35,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function LoginForm(props: { setLoading: (loading: boolean) => void }) {
+export default function LoginForm(props: { isMobile: boolean, setLoading: (loading: boolean) => void}) {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from || "/chatbot";
@@ -72,6 +72,10 @@ export default function LoginForm(props: { setLoading: (loading: boolean) => voi
       Cookies.set("authToken", token, { expires: 7 });
 
       props.setLoading(true); // Trigger loading animation for user
+      
+      // Google users get profile 0 and their Google profile image
+      const profilePictureType = 0;
+      const photoUrl = user.photoURL || "";
 
       await fetch(VITE_CRUD_API, {
         method: "POST",
@@ -80,6 +84,8 @@ export default function LoginForm(props: { setLoading: (loading: boolean) => voi
           userId: result.user.uid,
           token: token,
           action: "createUser",
+          profile_picture_type: profilePictureType,
+          photo_url: photoUrl,
         }),
       });
 
@@ -103,6 +109,38 @@ export default function LoginForm(props: { setLoading: (loading: boolean) => voi
       );
       const token = await result.user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
+
+      // 1. Try to get the user profile
+      const profileRes = await fetch(VITE_CRUD_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: result.user.uid,
+          action: "getProfile",
+          token: token,
+        }),
+      });
+
+      const profileData = profileRes.ok ? await profileRes.json() : {};
+
+      // 2. If photoUrl is missing, make a POST to createUser
+      if (!profileData.photo_url) {
+        // Email users get random profile_picture_type 1-6 and corresponding image URL
+        const profilePictureType = Math.floor(Math.random() * 6) + 1;
+        const photoUrl = `/assets/profile_pics/${profilePictureType}.png`;
+        await fetch(VITE_CRUD_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: result.user.uid,
+            token: token,
+            action: "createUser",
+            profile_picture_type: profilePictureType,
+            photo_url: photoUrl,
+          }),
+        });
+      }
+
       toast.success("Successfully logged in!");
       props.setLoading(false); // Unrender loading animation for user
       navigate(from, { replace: true });
@@ -119,7 +157,110 @@ export default function LoginForm(props: { setLoading: (loading: boolean) => voi
   }
 
   return (
-    <div className="w-full space-y-6 pb-4">
+    <div>
+      {
+        props.isMobile ? <div className="w-full space-y-6 pb-4">
+        <Form {...form}>
+          {loginError && (
+            <small className="text-destructive">
+              Login failed. Please verify your credentials or{" "}
+              <Link to="/signup" className="underline font-bold">
+                sign up
+              </Link>{" "}
+              if you don’t have an account.
+            </small>
+          )}
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-textdark text-[15px]">
+                    Email
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter email"
+                      type="email"
+                      className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                      {...field}
+                      onChange={(e) => {
+                        setLoginError(false);
+                        field.onChange(e);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-textdark text-[15px]">
+                    Password
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter password"
+                      type="password"
+                      className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                      {...field}
+                      onChange={(e) => {
+                        setLoginError(false);
+                        field.onChange(e);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              type="submit"
+              className="w-full h-[2.5rem] rounded-full bg-accent hover:bg-buttonhover text-[15px] text-textdark"
+            >
+              Log in
+            </Button>
+          </form>
+        </Form>
+  
+        <div className="flex gap-2 justify-center items-center w-full">
+          <Separator className="flex-[1] border-border" />
+          <small className="bg-white text-xs text-textsecondary">OR</small>
+          <Separator className="flex-[1] border-border" />
+        </div>
+  
+        <div className="flex flex-col items-center space-y-3">
+          <Button
+            variant="outline"
+            className="w-full h-[2.5rem] bg-light rounded-full border border-border hover:bg-gray-50 text-[15px] text-black hover:text-black"
+            onClick={handleGoogleLogin}
+          >
+            <img src="/GoogleIcon.png" alt="Google" className="w-5 h-5 mr-2" />
+            Sign in with Google
+          </Button>
+  
+          <Link
+            to="/forgot-password"
+            className="text-[15px] text-textsecondary hover:underline"
+          >
+            Forgot password?
+          </Link>
+  
+          <Link
+            to="/signup"
+            className="text-[15px] text-textsecondary hover:underline"
+          >
+            Don't have an account?
+          </Link>
+        </div>
+          </div>
+        :
+        <div className="w-full space-y-6 pb-4">
       <Form {...form}>
         {loginError && (
           <small className="text-destructive">
@@ -218,6 +359,9 @@ export default function LoginForm(props: { setLoading: (loading: boolean) => voi
           Don't have an account?
         </Link>
       </div>
+        </div>
+      }
     </div>
+    
   );
 }
