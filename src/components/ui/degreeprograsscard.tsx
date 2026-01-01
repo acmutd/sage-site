@@ -23,35 +23,51 @@ const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
 }) => {
   return (
     <div
-      className={`flex flex-col md:flex-row justify-between items-center rounded-3xl p-8 shadow-sm transition-all duration-300
+      className={`flex flex-col md:flex-row justify-between items-center rounded-3xl py-6 px-6 shadow-sm transition-all duration-300 w-full h-full
         ${
           active
-            ? "bg-white border border-green-300"
-            : "bg-gray-50 border border-gray-200"
+            ? "bg-innercontainer border border-green-300"
+            : "bg-innercontainer border border-border"
         }
       `}
     >
       {/* Left side */}
-      <div className="flex flex-col gap-6">
-        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+      <div className="flex flex-row w-full space-x-4">
+        <div className="flex flex-col space-y-4">
+          <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
 
-        <div className="flex flex-col gap-3">
-          <Requirement label="Core Requirements" value={core} />
-          <Requirement label="Major Requirements" value={major} />
-          <Requirement label="Elective Requirements" value={elective} />
+          <div className="flex flex-col gap-3">
+            <Requirement label="Core Requirements" value={core} />
+            <Requirement label="Major Requirements" value={major} />
+            <Requirement label="Elective Requirements" value={elective} />
+          </div>
         </div>
+
+        {/* {inner container} */}
+
+        <div className="flex flex-1 flex-row items-center border p-2 px-10 space-x-4 border-border bg-white rounded-md justify-center">
+            <div className="text-center">
+              <p className="text-4xl font-semibold text-gray-900">{completed}</p>
+              {/* <p className="text-gray-700 font-medium">Credit Hours</p> */}
+              <p className="text-green-500 text-sm">of {total} Credit Hours</p>
+              <p className="text-green-500 text-sm"> Completed</p>
+            </div>
+
+            <ProgressCircle percentage={percentage} />
+          </div>
       </div>
 
       {/* Right side */}
-      <div className="flex flex-col items-center mt-6 md:mt-0">
-        <ProgressCircle percentage={percentage} />
+      {/* <div className="flex flex-row items-center mt-6 md:mt-0 border border-border bg-white">
 
         <div className="mt-4 text-center">
           <p className="text-4xl font-semibold text-gray-900">{completed}</p>
           <p className="text-gray-700 font-medium">Credit Hours</p>
           <p className="text-green-500 font-medium">of {total} Completed</p>
         </div>
-      </div>
+
+        <ProgressCircle percentage={percentage} />
+      </div> */}
     </div>
   );
 };
@@ -62,10 +78,10 @@ interface RequirementProps {
 }
 
 const Requirement: React.FC<RequirementProps> = ({ label, value }) => (
-  <div className="flex justify-between items-center bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-700">
+  <div className="flex justify-between items-center bg-white border border-border rounded-xl px-4 py-2 text-sm text-gray-700 gap-4">
     <span>{label}</span>
-    <span className="flex items-center gap-2 font-medium">
-      {value}
+    <span className="flex items-center gap-4 font-medium">
+      {value} / {value}
       <span className="w-2.5 h-2.5 bg-green-400 rounded-sm"></span>
     </span>
   </div>

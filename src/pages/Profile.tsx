@@ -1,14 +1,24 @@
 import { useState, useEffect, useRef} from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import DegreeProgressCard from "@/components/ui/degreeprograsscard";
+import { useAuth } from "../context/AuthContext";
 
 const Profile = () => {
+    const { user } = useAuth();
     const [mobileView, setMobileView] = useState(false);
     const [profilepic, setProfilePic] = useState("../../public/assets/profile_pics/1.png");
     const [isPopUpOpen, setIsPopUpOpen] = useState(false);
     const [program, setProgram] = useState("All");
     const [currentIndex, setCurrentIndex] = useState(0);
     const carouselRef = useRef<HTMLDivElement>(null);
+    const [name, setName] = useState("");
+    // const [gpa, setGPA] = useState(0);
+    // const [major, setMajor] = useState("");
+    const [undergraduateHours, setUndergraduateHours] = useState(0);
+    const [graduateHours, setGraduateHours] = useState(0);
+    const [startDate, setStartDate] = useState("");
+
+    const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
     // Sample data for the carousel cards
     const carouselData = [
@@ -94,16 +104,48 @@ const Profile = () => {
     function pickProgram(prog: string) {
         setProgram(prog);
     }
+    
+
+    async function getUserInfo() {
+        const token = await user?.getIdToken();
+
+        if (!token) throw new Error("Failed to retrieve authentication token.");
+        const response = await fetch(CRUD_API as string, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user?.uid,
+            action: "getProfile",
+            token,
+          }),
+        });
+      
+        if (!response.ok) {
+          throw new Error("Failed to fetch user info");
+        }
+      
+        const data = await response.json();
+        console.log(data);
+        setName(data.name);
+        // setGPA(data.gpa.undergraduate);
+        setUndergraduateHours(data.credit_hours.undergraduate);
+        // setMajor(data.majors[0].name);
+        setStartDate(data.majors[0].start_date);
+
+        //add feature so it checks if data.credit_hours contains graduate that its not 0
+        setGraduateHours(0);
+    }
 
     useEffect(() => {
         if(window.innerWidth < 768) {
         setMobileView(true);
         };
+        getUserInfo();
     }, []);
 
     return (
         <>
-            <div className="flex bg-bglight h-screen items-center justify-center">
+            <div className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]">
                 {
                     mobileView ? 
                     // in mobile view
@@ -113,43 +155,44 @@ const Profile = () => {
                     </div> 
                     : 
                     // desktop view
-                    <div className="text-textdark text-xl font-semibold flex-1 px-5 space-y-2 pt-10">
+                    <div className="text-textdark text-xl font-semibold flex-1 w-full">
                         {/* profile picture, user stats */}
-                        <div className="border border-card-bord rounded-2xl bg-innercontainer px-6 py-4 flex flex-row space-x-6">
-                            <button className="" onClick={()=> setIsPopUpOpen(true)}>
+                        <div className="border border-card-bord rounded-[3rem] bg-innercontainer px-4 py-6 sm:px-8 sm:py-8 md:px-12 md:py-10 flex flex-col sm:flex-row sm:space-x-6 md:space-x-12 space-y-6 sm:space-y-0">
+                            <button className="self-center sm:self-start" onClick={()=> setIsPopUpOpen(true)}>
                                 <img
                                  src={profilepic}
                                  draggable={false}
+                                 className="w-32 h-32 sm:w-40 sm:h-40 md:w-[200px] md:h-[200px] object-cover"
                                 />
                             </button>
                             <div className="flex-1 min-w-0 flex flex-col">
-                                <h2>Alex Huu Pham</h2>
+                                <h2 className="text-center sm:text-left">{name}</h2>
 
                                 <div className="flex-1 mt-4">
-                                    <div className="grid grid-cols-3 gap-4 h-full items-stretch">
-                                        <div className="h-full border border-card-bord bg-white rounded-xl
-                                                        px-3 py-2 flex flex-col items-center justify-center">
-                                            <h3>Credit Hours</h3>
-                                            <p className="text-[#6C6C6C]">Undergratuates</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 h-full items-stretch">
+                                        <div className="h-full border border-card-bord bg-white rounded-2xl
+                                                        px-3 py-4 sm:py-2 flex flex-col items-center justify-center">
+                                            <h3>{undergraduateHours} Credit Hours</h3>
+                                            <p className="text-[#6C6C6C]">Undergraduates</p>
                                         </div>
-                                        <div className="h-full border border-card-bord bg-white rounded-xl
-                                                        px-3 py-2 flex flex-col items-center justify-center">
-                                            <h3>GPA</h3>
-                                            <p className="text-[#6C6C6C]">Undergratuates</p>
+                                        <div className="h-full border border-card-bord bg-white rounded-2xl
+                                                        px-3 py-4 sm:py-2 flex flex-col items-center justify-center">
+                                            <h3>{graduateHours} Credit Hours</h3>
+                                            <p className="text-[#6C6C6C]">Graduates</p>
                                         </div>
-                                        <div className="h-full border border-card-bord bg-white rounded-xl
-                                                        px-3 py-2 flex flex-col items-center justify-center">
-                                            <h3>Projects</h3>
-                                            <p className="text-[#6C6C6C]">Undergratuates</p>
+                                        <div className="h-full border border-card-bord bg-white rounded-2xl
+                                                        px-3 py-4 sm:py-2 flex flex-col items-center justify-center sm:col-span-2 lg:col-span-1">
+                                            <h3>{startDate}</h3>
+                                            <p className="text-[#6C6C6C]">Start Date</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="py-2 flex flex-row justify-between">
-                            <h2>Program Status</h2>
-                            <div className="space-x-10">
+                        <div className="flex flex-row justify-between py-[1rem]">
+                            <h2 className="text-3xl">Program Status</h2>
+                            <div className="space-x-4">
                                 <button 
                                 className={`px-8 py-1.5 text-base rounded-lg transition-colors duration-200 ${
                                     program === "All" 
@@ -175,14 +218,14 @@ const Profile = () => {
                         </div>
 
                         {/* Carousel Section */}
-                        <div className="relative max-h-[280px] max-w-[75%]">
+                        <div className="relative w-full">
                             {/* Carousel Container */}
-                            <div className="relative overflow-hidden rounded-2xl w-full">
+                            <div className="relative w-full max-w-full overflow-hidden rounded-2xl">
                                 {/* Cards */}
                                 <div 
                                     ref={carouselRef}
                                     className="flex transition-transform duration-500 ease-in-out gap-4"
-                                    style={{ transform: `translateX(-${currentIndex * (100 / cardsPerView)}%)` }}
+                                    style={{ transform: `translateX(-${2 * currentIndex * (100 / cardsPerView)}%)` }}
                                 >
                                     {carouselData.map((card, index) => (
                                         <div 
@@ -208,7 +251,7 @@ const Profile = () => {
                                 {currentIndex > 0 && (
                                     <button
                                         onClick={goToPrevious}
-                                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors border border-gray-200 z-10"
+                                        className="absolute left-0 top-1/2 -translate-y-1/2 translate-x-3 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors border border-gray-200 z-10"
                                         aria-label="Previous cards"
                                     >
                                         <ChevronLeft className="w-5 h-5 text-gray-700" />
@@ -216,10 +259,10 @@ const Profile = () => {
                                 )}
 
                                 {/* Right Arrow */}
-                                {currentIndex < maxIndex && (
+                                {currentIndex < (maxIndex - 1) && (
                                     <button
                                         onClick={goToNext}
-                                        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors border border-gray-200 z-10"
+                                        className="absolute right-0 top-1/2 -translate-y-1/2 -translate-x-3 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors border border-gray-200 z-10"
                                         aria-label="Next cards"
                                     >
                                         <ChevronRight className="w-5 h-5 text-gray-700" />
@@ -229,7 +272,7 @@ const Profile = () => {
 
                             {/* Dots Indicator */}
                             <div className="flex justify-center gap-2 mt-3">
-                                {Array.from({ length: maxIndex + 1 }).map((_, index) => (
+                                {Array.from({ length: maxIndex }).map((_, index) => (
                                     <button
                                         key={index}
                                         onClick={() => goToSlide(index)}
