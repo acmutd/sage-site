@@ -15,6 +15,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Planner from "./pages/Planner";
 import ChatBot from "./pages/ChatBot";
+import Profile from "./pages/Profile";
 
 // Component to conditionally render navbar based on route
 const ConditionalNavbar = () => {
@@ -55,6 +56,14 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <ChatBot />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
                   </ProtectedRoute>
                 }
               />
