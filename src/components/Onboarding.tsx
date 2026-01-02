@@ -3,6 +3,7 @@ import FileUploader from "./FileUpload";
 import { useAuth } from "../context/AuthContext";
 import ProgramValidationA from "./ProgramValidationA";
 import ClassValidationA from "./ClassValidationA";
+import { SquareAsterisk } from "lucide-react";
 
 interface OnboardingProps {
   onClose: () => void;
@@ -50,34 +51,60 @@ useEffect(() => {
 return (
   <>
     <div 
-      className="fixed inset-0 z-[60] flex items-center justify-center"
+      className="fixed inset-0 z-[60] flex items-center justify-center px-4"
       style={{
         background: 'radial-gradient(circle at center, #111111 0%, #181818 100%)'
       }}
     >
+      {/* Modal with max height and internal scroll */}
       <div
         ref={modalRef}
-        className="bg-white p-10 rounded-[18px] shadow-2xl w-full max-w-3xl relative"
+        className="bg-white rounded-[18px] shadow-2xl w-full max-w-3xl relative max-h-[85vh] flex flex-col"
       >
-        {modalStep === "FileUpload" && (
-          <FileUploader
-            userId={user?.uid || "test-user-123"}
-            onNext={handleFileUploadNext}
+        {/* Scrollable content area */}
+        <div className="overflow-y-auto px-9 py-7" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {modalStep === "FileUpload" && (
+            <FileUploader
+              userId={user?.uid || "test-user-123"}
+              onNext={handleFileUploadNext}
+            />
+          )}
 
-          />
-        )}
+          {modalStep === "Programs" && (
+            <ProgramValidationA 
+              transcriptData={transcriptData} 
+              onNext={() => setModalStep("Classes")} 
+              dropdownRef={dropdownRef}
+            />
+          )}
+          
+          {modalStep === "Classes" && (
+            <ClassValidationA 
+              transcriptData={transcriptData} 
+              onNext={handleFinish} 
+            />
+          )}
+        </div>
+      </div>
 
-        {modalStep === "Programs" && (
-          <ProgramValidationA transcriptData={transcriptData} onNext={() => setModalStep("Classes")} dropdownRef={dropdownRef}
-          />
-        )}
-        {modalStep === "Classes" && (
-          <ClassValidationA transcriptData={transcriptData} onNext={handleFinish} />
-        )}
+      {/* Beta Disclaimer at bottom of page */}
+      <div className="absolute bottom-8 left-0 right-0 flex gap-3 items-center justify-center">
+        <SquareAsterisk size={24} className="stroke-accent" />
+        <small className="text-gray-300 text-sm text-center">
+            This app is in development. For issues or feedback,
+            <a
+              href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent underline ml-1"
+            >
+              click here.
+              </a>
+        </small>
       </div>
     </div>
     </>
-);
+  );
 };
 
 export default Onboarding;

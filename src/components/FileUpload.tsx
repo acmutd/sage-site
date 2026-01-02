@@ -109,8 +109,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext }) => {
         </div>
       )}
       <>
-        <div className="pb-8">
-          <h1 className="pb-12">Let's get started!</h1>
+        <div className="pb-6">
+          <h1 className="pb-9">Let's get started!</h1>
           <h3>Upload your unofficial transcript</h3>
           <small className="text-gray-500 ">
             This will allow us to automatically fill in your past classes,
@@ -160,15 +160,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext }) => {
             >
               {isUploading ? "Uploading..." : "Finish"}
             </button>
-          </div>
-        )}
-
-        {fileUrl && (
-          <div className="mt-4 p-3 border border-green-300 bg-green-50 rounded-md flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-green-600 text-xl">✅</span>
-              <span className="text-sm text-green-800">{selectedFile?.name}</span>
-            </div>
           </div>
         )}
 
