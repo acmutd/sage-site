@@ -13,13 +13,17 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   logout: () => void;
+  profilePicture: string | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   logout: () => {},
+  profilePicture: null,
 });
+
+const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
 export const useAuth = () => {
   return useContext(AuthContext);
@@ -27,6 +31,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [profilePicture, setProfilePicture] = useState(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -38,9 +43,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (user) {
             setUser(user);
             const token = await user.getIdToken();
+
+            // add in pfp globally to navbar
+            const response = await fetch(CRUD_API as string, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: user?.uid,
+                action: "getProfile",
+                token,
+              }),
+            });
+          
+            if (!response.ok) {
+              throw new Error("Failed to fetch user info");
+            }
+
+            const data = await response.json();
+            setProfilePicture(
+              data.photo_url || `/assets/profile_pics/${data.profile_picture_type}.png`
+            );
             Cookies.set("authToken", token, { expires: 7 });
           } else {
             setUser(null);
+            setProfilePicture(null);
             Cookies.remove("authToken");
           }
 
@@ -69,7 +95,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, loading, logout, profilePicture }}>
       {!loading && children}
     </AuthContext.Provider>
   );

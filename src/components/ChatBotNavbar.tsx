@@ -29,7 +29,7 @@ const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 const CONVERSATION_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
 const ChatBotNavbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, profilePicture } = useAuth();
   const location = useLocation();
 
   const [isInWebapp, setIsInWebapp] = useState(false);
@@ -511,8 +511,16 @@ const ChatBotNavbar = () => {
                 //if user is loggin in, show menu icon
                 <DropdownMenu>
                   <DropdownMenuTrigger>
-                    <div className="bg-secondary p-2 rounded-full">
+                    <div className="${!profilePicture ? 'bg-secondary' : ''} p-2 rounded-full">
+                    {profilePicture ? (
+                      <img 
+                        src={profilePicture} 
+                        alt="Profile" 
+                        className="w-9 h-9 rounded-full object-cover justify-center"
+                      />
+                    ) : (
                       <UserRound className="stroke-textdark"/>
+                    )}
                     </div>
                   </DropdownMenuTrigger>
                     <DropdownMenuContent
