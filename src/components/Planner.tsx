@@ -233,7 +233,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
 
     return (
-        <div className="flex h-screen bg-gray-50">
+        <div className="flex h-[calc(100vh-4.2rem)] mt-[4.2rem] bg-gray-50">
             <Sidebar
                 requirements={adaptedRequirements}
                 expandedCategories={expandedCategories}

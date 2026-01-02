@@ -48,28 +48,35 @@ useEffect(() => {
 }, []);
 
 return (
-  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-    <div
-      ref={modalRef}
-      className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl relative"
+  <>
+    <div 
+      className="fixed inset-0 z-[60] flex items-center justify-center"
+      style={{
+        background: 'radial-gradient(circle at center, #111111 0%, #181818 100%)'
+      }}
     >
-      {modalStep === "FileUpload" && (
-        <FileUploader
-          userId={user?.uid || "test-user-123"}
-          onNext={handleFileUploadNext}
+      <div
+        ref={modalRef}
+        className="bg-white p-10 rounded-[18px] shadow-2xl w-full max-w-3xl relative"
+      >
+        {modalStep === "FileUpload" && (
+          <FileUploader
+            userId={user?.uid || "test-user-123"}
+            onNext={handleFileUploadNext}
 
-        />
-      )}
+          />
+        )}
 
-      {modalStep === "Programs" && (
-        <ProgramValidationA transcriptData={transcriptData} onNext={() => setModalStep("Classes")} dropdownRef={dropdownRef}
-        />
-      )}
-      {modalStep === "Classes" && (
-        <ClassValidationA transcriptData={transcriptData} onNext={handleFinish} />
-      )}
+        {modalStep === "Programs" && (
+          <ProgramValidationA transcriptData={transcriptData} onNext={() => setModalStep("Classes")} dropdownRef={dropdownRef}
+          />
+        )}
+        {modalStep === "Classes" && (
+          <ClassValidationA transcriptData={transcriptData} onNext={handleFinish} />
+        )}
+      </div>
     </div>
-  </div>
+    </>
 );
 };
 
