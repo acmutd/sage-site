@@ -199,10 +199,9 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
                 </div>
               </div>
               <div
-                className="dropdown-container absolute right-4 flex flex-col w-[248px] gap-2.5 p-[5px] bg-redesign-stylesbg-light rounded-sm border border-slate-300"
-                //onMouseDown={(e) => e.stopPropagation()}
-                //onClick={(e) => e.stopPropagation()}
+                className="dropdown-container absolute right-4 flex flex-col w-[248px] gap-2.5 p-[5px] bg-redesign-stylesbg-light rounded-sm border border-slate-300 z-[70]"
                 ref={dropdownRef}
+                onClick={(e) => e.stopPropagation()}
               >
                 <Select
                   defaultValue={program.status.toLowerCase()}
@@ -216,7 +215,7 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
                   >
                     <SelectValue className="relative flex-1 font-body-regular font-[number:var(--body-regular-font-weight)] text-redesign-stylesdark-text text-[length:var(--body-regular-font-size)] tracking-[var(--body-regular-letter-spacing)] leading-[var(--body-regular-line-height)] [font-style:var(--body-regular-font-style)]" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[80] p-1">
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>

@@ -68,8 +68,10 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                                 <div
                                     key={field.id}
                                     className="dropdown-container flex flex-col items-start gap-2 w-full"
-                                    onMouseDown={(e) => e.stopPropagation()} // Prevent modal from closing
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => e.stopPropagation()}
                                 >
+                                    
                                     <label className="font-body-regular text-redesign-stylesdark-text text-sm">
                                         {field.label}
                                     </label>
@@ -90,7 +92,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                                                 className="text-redesign-stylesplaceholder-secondary-text text-sm"
                                             />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="z-[80] bg-white p-1">
                                             {field.options?.map((option, index) => (
                                                 <SelectItem key={index} value={option}>
                                                     {option}
