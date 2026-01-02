@@ -164,37 +164,17 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext }) => {
         )}
 
         {fileUrl && (
-          <div className="mt-4 p-4 border border-green-300 bg-green-50 rounded-md">
-            <h2 className="text-lg font-bold text-green-700">
-              ✅ File Uploaded Successfully!
-            </h2>
-            <p className="text-sm text-green-800 mb-2">
-              File: {selectedFile?.name}
-            </p>
-            <a
-              href={fileUrl}
-              download={selectedFile?.name ?? "file"}
-              className="text-blue-500 underline"
-            >
-              Download File
-            </a>
+          <div className="mt-4 p-3 border border-green-300 bg-green-50 rounded-md flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-green-600 text-xl">✅</span>
+              <span className="text-sm text-green-800">{selectedFile?.name}</span>
+            </div>
           </div>
         )}
 
         {errorMessage && (
           <div className="mt-4 p-4 border border-red-300 bg-red-50 rounded-md">
             <p className="text-sm text-red-800">{errorMessage}</p>
-          </div>
-        )}
-
-        {transcriptData && (
-          <div className="mt-4 p-4 border border-blue-300 bg-blue-50 rounded-md">
-            <h2 className="text-lg font-bold text-blue-700">
-              📄 Transcript Parsed
-            </h2>
-            {/* <pre className="text-sm text-blue-900 whitespace-pre-wrap">
-          {JSON.stringify(transcriptData, null, 2)}
-        </pre> */}
           </div>
         )}
 
