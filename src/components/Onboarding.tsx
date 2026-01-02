@@ -30,7 +30,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ setTranscriptData, onClose, onF
   };
 
   const handleOutsideClick = (e: MouseEvent) => {
-    console.log("Clicked element:", e.target, (e.target as HTMLElement).className);
+    // prevent outside click
+    if (modalStep == "FileUpload") return;
 
     if (
       modalRef.current &&
