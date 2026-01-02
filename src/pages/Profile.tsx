@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 const Profile = () => {
     const { user } = useAuth();
     const [mobileView, setMobileView] = useState(false);
-    const [profilepic, setProfilePic] = useState("../../public/assets/profile_pics/1.png");
+    const [profilepic, setProfilePic] = useState("/assets/profile_pics/1.png");
     const [isPopUpOpen, setIsPopUpOpen] = useState(false);
     const [program, setProgram] = useState("All");
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -17,48 +17,28 @@ const Profile = () => {
     const [undergraduateHours, setUndergraduateHours] = useState(0);
     const [graduateHours, setGraduateHours] = useState(0);
     const [startDate, setStartDate] = useState("");
+    const [carouselData, setCarouselData] = useState<Array<{
+        title: string;
+        core: number;
+        major: number;
+        elective: number;
+        completed: number;
+        total: number;
+        percentage: number;
+    }>>([]);
 
+    type EvaluatorData = Array<{
+        degree: string;
+        credits: number;
+        credits_completed: number;
+        categories: Array<{
+          name: string;
+          credits: number;
+          credits_completed: number;
+        }>;
+      }>;
+    
     const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
-
-    // Sample data for the carousel cards
-    const carouselData = [
-        {
-            title: "Computer Science BS",
-            core: 45,
-            major: 60,
-            elective: 15,
-            completed: 75,
-            total: 120,
-            percentage: 63
-        },
-        {
-            title: "Business Administration BA",
-            core: 42,
-            major: 54,
-            elective: 24,
-            completed: 67,
-            total: 120,
-            percentage: 56
-        },
-        {
-            title: "Mathematics BS",
-            core: 39,
-            major: 63,
-            elective: 18,
-            completed: 82,
-            total: 120,
-            percentage: 68
-        },
-        {
-            title: "Engineering BS",
-            core: 48,
-            major: 66,
-            elective: 6,
-            completed: 90,
-            total: 120,
-            percentage: 75
-        }
-    ];
 
     const cardsPerView = 2; // Number of cards visible at once
     const maxIndex = carouselData.length - cardsPerView;
@@ -75,28 +55,59 @@ const Profile = () => {
         setCurrentIndex(index);
     };
 
+    function formatCarouselData(evaluatorResponse: EvaluatorData) {
+        const core = evaluatorResponse.find(d => d.degree === "Core Requirements");
+        const degrees = evaluatorResponse.filter(d => d.degree !== "Core Requirements");
+        
+        if (!core || degrees.length === 0) {
+          throw new Error("Invalid evaluator data");
+        }
+        
+        return degrees.map(degree => {
+          const majorReq = degree.categories.find(c => c.name.includes("Major Requirements"));
+          const electiveReq = degree.categories.find(c => c.name.includes("Elective Requirements"));
+          
+          if (!majorReq || !electiveReq) {
+            throw new Error("Missing major or elective requirements");
+          }
+      
+          return {
+            title: degree.degree,
+            core: core.credits,
+            major: majorReq.credits,
+            elective: electiveReq.credits,
+            completed: core.credits_completed + degree.credits_completed,
+            total: core.credits + degree.credits,
+            percentage: Math.round(
+              ((core.credits_completed + degree.credits_completed) / 
+               (core.credits + degree.credits)) * 100
+            )
+          };
+        });
+    }
+
     function pickProfile(picNumber: number) {
         switch (picNumber) {
             case 1:
-                setProfilePic("../../assets/profile_pics/1.png");
+                setProfilePic("/assets/profile_pics/1.png");
                 break;
             case 2:
-                setProfilePic("../../assets/profile_pics/2.png");
+                setProfilePic("/assets/profile_pics/2.png");
                 break;
             case 3:
-                setProfilePic("../../assets/profile_pics/3.png");
+                setProfilePic("/assets/profile_pics/3.png");
                 break;
             case 4:
-                setProfilePic("../../assets/profile_pics/4.png");
+                setProfilePic("/assets/profile_pics/4.png");
                 break;
             case 5:
-                setProfilePic("../../assets/profile_pics/5.png");
+                setProfilePic("/assets/profile_pics/5.png");
                 break;
             case 6:
-                setProfilePic("../../assets/profile_pics/6.png");
+                setProfilePic("/assets/profile_pics/6.png");
                 break;
             default:
-                setProfilePic("../../assets/profile_pics/1.png");
+                setProfilePic("/assets/profile_pics/1.png");
         }
         setIsPopUpOpen(false);
     }
@@ -134,6 +145,22 @@ const Profile = () => {
 
         //add feature so it checks if data.credit_hours contains graduate that its not 0
         setGraduateHours(0);
+
+        // populate carousel
+        const evalResponse = await fetch(CRUD_API as string, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user?.uid,
+              action: "getEvaluation",
+              token,
+            }),
+          });
+      
+          if (evalResponse.ok) {
+            const evalData = await evalResponse.json();
+            setCarouselData(formatCarouselData(evalData.evaluation));
+          }
     }
 
     useEffect(() => {
@@ -173,12 +200,12 @@ const Profile = () => {
                                         <div className="h-full border border-card-bord bg-white rounded-2xl
                                                         px-3 py-4 sm:py-2 flex flex-col items-center justify-center">
                                             <h3>{undergraduateHours} Credit Hours</h3>
-                                            <p className="text-[#6C6C6C]">Undergraduates</p>
+                                            <p className="text-[#6C6C6C]">Undergraduate</p>
                                         </div>
                                         <div className="h-full border border-card-bord bg-white rounded-2xl
                                                         px-3 py-4 sm:py-2 flex flex-col items-center justify-center">
                                             <h3>{graduateHours} Credit Hours</h3>
-                                            <p className="text-[#6C6C6C]">Graduates</p>
+                                            <p className="text-[#6C6C6C]">Graduate</p>
                                         </div>
                                         <div className="h-full border border-card-bord bg-white rounded-2xl
                                                         px-3 py-4 sm:py-2 flex flex-col items-center justify-center sm:col-span-2 lg:col-span-1">
@@ -295,21 +322,21 @@ const Profile = () => {
                                         <div className="flex flex-row space-x-10">
                                             <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(1)}>
                                                 <img
-                                                src={"../../public/assets/profile_pics/1.png"}
+                                                src={"/assets/profile_pics/1.png"}
                                                 className="w-40 h-40 object-cover"
                                                 draggable={false}
                                                 />
                                             </button>
                                             <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(2)}>
                                                 <img
-                                                src={"../../public/assets/profile_pics/2.png"}
+                                                src={"/assets/profile_pics/2.png"}
                                                 className="w-40 h-40 object-cover"
                                                 draggable={false}
                                                 />
                                             </button>
                                             <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(3)}>
                                                 <img
-                                                src={"../../public/assets/profile_pics/3.png"}
+                                                src={"/assets/profile_pics/3.png"}
                                                 className="w-40 h-40 object-cover"
                                                 draggable={false}
                                                 />
@@ -318,21 +345,21 @@ const Profile = () => {
                                         <div className="flex flex-row space-x-10">
                                             <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(4)}>
                                                 <img
-                                                src={"../../public/assets/profile_pics/4.png"}
+                                                src={"/assets/profile_pics/4.png"}
                                                 className="w-40 h-40 object-cover"
                                                 draggable={false}
                                                 />
                                             </button>
                                             <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(5)}>
                                                 <img
-                                                src={"../../public/assets/profile_pics/5.png"}
+                                                src={"/assets/profile_pics/5.png"}
                                                 className="w-40 h-40 object-cover"
                                                 draggable={false}
                                                 />
                                             </button>
                                             <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(6)}>
                                                 <img
-                                                src={"../../public/assets/profile_pics/6.png"}
+                                                src={"/assets/profile_pics/6.png"}
                                                 className="w-40 h-40 object-cover"
                                                 draggable={false}
                                                 />
