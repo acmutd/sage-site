@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, profilePicture } = useAuth();
   const [isInWebapp, setIsInWebapp] = useState(false);
 
   let location = useLocation().pathname;
@@ -64,8 +64,16 @@ const Navbar = () => {
                 //if user is loggin in, show menu icon
                 <DropdownMenu>
                   <DropdownMenuTrigger>
-                    <div className="bg-secondary p-2 rounded-full">
+                    <div className="${!profilePicture ? 'bg-secondary' : ''} p-2 rounded-full">
+                    {profilePicture ? (
+                      <img 
+                        src={profilePicture} 
+                        alt="Profile" 
+                        className="w-9 h-9 rounded-full object-cover justify-center"
+                      />
+                    ) : (
                       <UserRound className="stroke-textdark"/>
+                    )}
                     </div>
                   </DropdownMenuTrigger>
                     <DropdownMenuContent
