@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronDown, ChevronRight, ChevronLeft, NotebookPen } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronLeft, NotebookPen, SquareAsterisk } from "lucide-react";
 import RequirementCategory from "./RequirementCategory";
 import CourseBox from "./CourseBox";
 import ProgramValidationA from "./ProgramValidationA";
@@ -240,67 +240,103 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     return (
         <>
-            <div
-                className={`${isExpanded ? "w-80" : "w-20"
-                    } bg-gray-50 border-r border-gray-200 p-4 overflow-y-auto h-screen transition-all duration-300`}
-            >
-                {/* Sidebar Header */}
-                <div className="flex items-center justify-between mb-6">
-                    {isExpanded && (
-                        <button className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full transition-colors"
-                            onClick={handleOpenProgramValidation}
-                        >
-                            <NotebookPen className="w-4 h-4" strokeWidth={2} />
-                            <span className="text-sm font-medium">Edit plans</span>
-                        </button>
-                    )}
-                    <button
-                        className="p-2 hover:bg-gray-200 rounded"
-                        onClick={handleToggleSidebar}
-                    >
-                        {isExpanded ? (
-                            <ChevronLeft className="w-5 h-5 text-gray-500" />
-                        ) : (
-                            <ChevronRight className="w-5 h-5 text-gray-500" />
-                        )}
-                    </button>
-                </div>
-
-                {/* Sidebar Content */}
-                {isExpanded && (
-                    <>
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">
-                            Degree Requirements
-                        </h2>
-
-                        <div className="space-y-3">
-                            {requirements.map((req, reqIdx) => (
-                                <RequirementCategory
-                                    key={reqIdx}
-                                    title={req.degree}
-                                    completed={req.progress}
-                                    total={req.total}
-                                    isExpanded={autoExpandedCategories[reqIdx]}                                    onToggle={() => {
-                                        setAutoExpandedCategories((prev) => ({
-                                          ...prev,
-                                          [reqIdx]: !prev[reqIdx],
-                                        }));
-                                      }}
-                                    hasSubcategories={req.categories && req.categories.length > 0}
+            <div className={`${isExpanded ? "w-80" : "w-20"} bg-gray-50 border-r border-gray-200 h-screen transition-all duration-300 flex flex-col`}>
+                
+                {/* Scrollable content - full height */}
+                <div className="flex-1 overflow-y-auto">
+                    {isExpanded ? (
+                        <div className="p-4">
+                            {/* Sidebar Header */}
+                            <div className="flex items-center justify-between mb-6">
+                                <button className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full transition-colors"
+                                    onClick={handleOpenProgramValidation}
                                 >
-                                    {req.categories && req.categories.length > 0 ? (
-                                        renderCategories(req.categories, reqIdx)
-                                    ) : (
-                                        <div className="text-sm text-gray-500">
-                                            No categories available
-                                        </div>
-                                    )}
-                                </RequirementCategory>
-                            ))}
+                                    <NotebookPen className="w-4 h-4" strokeWidth={2} />
+                                    <span className="text-sm font-medium">Edit plans</span>
+                                </button>
+                                <button
+                                    className="p-2 hover:bg-gray-200 rounded"
+                                    onClick={handleToggleSidebar}
+                                >
+                                    <ChevronLeft className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+
+                            {/* Sidebar Content */}
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">
+                                Degree Requirements
+                            </h2>
+
+                            <div className="space-y-3 pb-24">
+                                {requirements.map((req, reqIdx) => (
+                                    <RequirementCategory
+                                        key={reqIdx}
+                                        title={req.degree}
+                                        completed={req.progress}
+                                        total={req.total}
+                                        isExpanded={autoExpandedCategories[reqIdx]}
+                                        onToggle={() => {
+                                            setAutoExpandedCategories((prev) => ({
+                                            ...prev,
+                                            [reqIdx]: !prev[reqIdx],
+                                            }));
+                                        }}
+                                        hasSubcategories={req.categories && req.categories.length > 0}
+                                    >
+                                        {req.categories && req.categories.length > 0 ? (
+                                            renderCategories(req.categories, reqIdx)
+                                        ) : (
+                                            <div className="text-sm text-gray-500">
+                                                No categories available
+                                            </div>
+                                        )}
+                                    </RequirementCategory>
+                                ))}
+                            </div>
                         </div>
-                    </>
-                )}
+                    ) : (
+                        <div className="flex flex-col items-center gap-8 pt-8">
+                            <button
+                                className="p-2 hover:bg-gray-200 rounded"
+                                onClick={handleToggleSidebar}
+                            >
+                                <ChevronRight className="w-5 h-5 text-gray-500" />
+                            </button>
+                            <button 
+                                className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
+                                onClick={handleOpenProgramValidation}
+                            >
+                                <NotebookPen className="w-5 h-5" strokeWidth={2} />
+                            </button>
+                        </div>
+                    )}
+                </div>
+    
+                {/* Sticky Banner at bottom */}
+                <div className="sticky bottom-0 p-4 bg-gray-50">
+                    <div 
+                        className={`${isExpanded ? "rounded-full" : "cursor-pointer rounded-md"} bg-gray-900 py-3 px-6 flex gap-2 justify-center items-center`}
+                        onClick={isExpanded ? undefined : handleToggleSidebar}
+                    >
+                        <SquareAsterisk size={isExpanded ? 32 : 24} className="stroke-green-400 flex-shrink-0" />
+                        {isExpanded && (
+                            <small className="text-white text-xs">
+                                This app is in development. For issues or feedback,
+                                <a
+                                    href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-accent underline ml-1"
+                                >
+                                    click here.
+                                </a>
+                            </small>
+                        )}
+                    </div>
+                </div>
             </div>
+    
+            {/* Modal - unchanged */}
             {isProgramValidationOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl relative">
@@ -315,7 +351,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
-
+    
                         {showUploadView ? (
                             <FileUploader
                                 userId={transcriptData?.student_id || ""}
@@ -324,16 +360,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     setShowUploadView(false);
                                     setIsProgramValidationOpen(false);
                                 }}
-                                showManualOption={true}  // Add this
-                                onManualFill={() => setShowUploadView(false)}  // Add this
+                                showManualOption={true}
+                                onManualFill={() => setShowUploadView(false)}
                             />
                         ) : (
                             <ProgramValidationA
                                 dropdownRef={dropdownRef}
                                 onNext={(updatedPrograms) => handleSavePrograms(updatedPrograms)}
                                 transcriptData={transcriptData}
-                                showUploadOption={true}  // Add this
-                                onUploadClick={() => setShowUploadView(true)}  // Add this
+                                showUploadOption={true}
+                                onUploadClick={() => setShowUploadView(true)}
                             />
                         )}
                     </div>
