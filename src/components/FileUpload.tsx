@@ -9,37 +9,38 @@ interface FileUploaderProps {
   onManualFill?: () => void;
 }
 
-const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext, showManualOption = false, onManualFill }) => {
+const FileUploader: React.FC<FileUploaderProps> = ({ onNext, showManualOption = false, onManualFill }) => {
   const { selectedFile, isUploading, handleFileChange, uploadFile } =
     useFileUpload(
       import.meta.env.VITE_TRANSCRIPTPARSER_API
     );
 
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [fileUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [transcriptData, setTranscriptData] = useState<any>(null);
 
   const { user } = useAuth();
 
   const handleUpload = async () => {
     try {
       setErrorMessage(null);
+
+      if (!user?.uid) {
+        setErrorMessage("User not authenticated");
+        return;
+      }
+
       const token = user ? await user.getIdToken() : null;
-      const response = await uploadFile(userId, token);
+      const response = await uploadFile(user.uid, token);
       if (response?.message === "Transcript processed successfully") {
-        console.log("Transcript Data:", response.transcript_data);
-        setFileUrl("Uploaded"); // Or use a real status/flag — no download link exists in current response
-        setTranscriptData(response.transcript_data);
-        console.log("response: ", response);
+        localStorage.removeItem('evaluation');
+        localStorage.removeItem('transcriptData');
+        onNext(response.transcript_data); 
       } else {
         setErrorMessage("Upload failed. Unexpected response format.");
       }
-
-      console.log("Upload success:", response);
     } catch (error) {
-      console.error("Upload failed:", error);
       setErrorMessage("Upload failed. Please try again.");
     }
   };
@@ -171,7 +172,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext, showManualO
               className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
               disabled={isUploading || !selectedFile}
             >
-              {isUploading ? "Uploading..." : "Finish"}
+              {isUploading ? "Uploading..." : "Upload"}
             </button>
           </div>
         )}
@@ -179,29 +180,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext, showManualO
         {errorMessage && (
           <div className="mt-4 p-4 border border-red-300 bg-red-50 rounded-md">
             <p className="text-sm text-red-800">{errorMessage}</p>
-          </div>
-        )}
-
-        {fileUrl && ( // Conditionally render buttons if a file is uploaded
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
-            <button
-              className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
-              onClick={() => {
-                setFileUrl(null); // Reset the file URL
-                setTranscriptData(null); // Reset the transcript data
-                setErrorMessage(null); // Reset any error messages
-              }}
-              style={{ marginRight: '10px' }} // Add spacing to the right of this button
-            >
-              Re-Upload
-            </button>
-            <button
-              className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
-              onClick={() => onNext(transcriptData)}
-
-            >
-              Next
-            </button>
           </div>
         )}
       </>

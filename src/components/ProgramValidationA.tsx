@@ -90,7 +90,7 @@ const initialProgramsData = [
     title: "Computer Science",
     type: "Major",
     level: "Undergraduate",
-    status: "Active",
+    status: "In Progress",
   },
   {
     id: 2,
@@ -103,13 +103,15 @@ const initialProgramsData = [
 
 interface ProgramValidationAProps {
   onNext?: (updatedPrograms: any[]) => void;
+  onBack?: () => void;
   transcriptData: any;
   dropdownRef: any;
   showUploadOption?: boolean;
   onUploadClick?: () => void;
+  isFirstTime?: boolean;
 }
 
-const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, dropdownRef, showUploadOption = false, onUploadClick
+const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, onBack, dropdownRef, showUploadOption = false, onUploadClick, isFirstTime = true
 }) => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false); // State to toggle "Edit" mode
@@ -125,12 +127,12 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
   
   // mount degree catalog
   useEffect(() => {
-    if (transcriptData) {
+    if (transcriptData && user?.uid) {
       retrieveDegreeCatalog(transcriptData, user).then(catalog => {
         setDegreeCatalog(catalog);
       });
     }
-  }, [transcriptData]);
+  }, [transcriptData, user]);
 
   const handleFinish = () => {
     if (onNext) {
@@ -176,8 +178,6 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
     }
   }, [transcriptData]);
 
-  console.log("transcriptData in ProgramValidationA: ", transcriptData);
-
   const handleRemove = (id: number) => {
     setProgramsData((prev) => prev.filter((program) => program.id !== id)); // Remove program by ID
     setIsEditing(false); // Exit "Edit" mode
@@ -210,8 +210,27 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
     setIsEditing(false); // Exit "Edit" mode
   };
 
+  const mapStatusToDropdown = (status: string) => {
+    const mapping: Record<string, string> = {
+      "Active": "in-progress",
+      "In Progress": "in-progress",
+      "Completed": "complete",
+      "Withdrawn": "withdrawn"
+    };
+    return mapping[status] || "in-progress";
+  };
+
+  const mapDropdownToStatus = (value: string) => {
+    const mapping: Record<string, string> = {
+      "in-progress": "In Progress",
+      "complete": "Completed",
+      "withdrawn": "Withdrawn"
+    };
+    return mapping[value] || "In Progress";
+  };
+
   // Define the sorting order for types
-  const statusOrder = ["Active", "Inactive"];
+  const statusOrder = ["In Progress", "Completed", "Withdrawn"];
   const levelOrder = ["Undergraduate", "Graduate", null];
   const typeOrder = ["Major", "Minor", "Certificate"];
 
@@ -253,7 +272,7 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
 
   return (
     <div>
-      <div className="flex flex-col items-start mb-6">
+      <div className="flex flex-col items-start mb-6 z-[80]">
         <h3>Are these programs right?</h3>
         <p>
           We detected these programs on your transcript — let us know which
@@ -291,10 +310,10 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
                 onClick={(e) => e.stopPropagation()}
               >
                 <Select
-                  defaultValue={program.status.toLowerCase()}
+                  defaultValue={mapStatusToDropdown(program.status)}
                   onValueChange={(value) => {
-                    const updatedProgram = { ...program, status: value.charAt(0).toUpperCase() + value.slice(1) }; // Capitalize the status
-                    handleSave(updatedProgram); // Save the updated program
+                    const updatedProgram = { ...program, status: mapDropdownToStatus(value) };
+                    handleSave(updatedProgram);
                   }}
                 >
                   <SelectTrigger
@@ -303,8 +322,9 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
                     <SelectValue className="relative flex-1 font-body-regular font-[number:var(--body-regular-font-weight)] text-redesign-stylesdark-text text-[length:var(--body-regular-font-size)] tracking-[var(--body-regular-letter-spacing)] leading-[var(--body-regular-line-height)] [font-style:var(--body-regular-font-style)]" />
                   </SelectTrigger>
                   <SelectContent className="z-[80] p-1">
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="complete">Completed</SelectItem>
+                    <SelectItem value="withdrawn">Withdrawn</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -328,25 +348,31 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
           Add program
         </Button>
       </div>
-      <div className="flex justify-between items-center mt-8">
-        {showUploadOption && onUploadClick && (
+      <div className={`flex items-center mt-8 ${isFirstTime ? 'justify-between' : 'justify-between'}`}>
+        {isFirstTime ? (
+          <button
+            onClick={onBack}
+            className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+          >
+            Back
+          </button>
+        ) : showUploadOption && onUploadClick ? (
           <button
             onClick={onUploadClick}
             className="text-sm text-gray-500 hover:text-gray-700 underline"
           >
             Alternatively, reupload your transcript
           </button>
+        ) : (
+          <div></div>
         )}
-        <div className={showUploadOption ? "" : "w-full flex justify-end"}>
-          {onNext && (
-            <button
-              className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
-              onClick={handleFinish}
-            >
-              Next
-            </button>
-          )}
-        </div>
+        
+        <button
+          className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+          onClick={handleFinish}
+        >
+          Next
+        </button>
       </div>
     </div>
   );

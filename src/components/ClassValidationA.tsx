@@ -6,10 +6,11 @@ import { Separator } from "../components/ui/separator";
 
 interface ClassValidationAProps {
   onNext: () => void;
+  onBack: () => void;
   transcriptData: any;
 }
 
-const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, transcriptData }) => {
+const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, transcriptData }) => {
   const courses = transcriptData?.courses || {};
   const [editingSemester, setEditingSemester] = useState<string | null>(null);
   const [editedCourses, setEditedCourses] = useState<any>({});
@@ -235,7 +236,14 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, transcriptD
           )
         )}
 
-        <div className="flex justify-end mt-8">
+        <div className="flex justify-between items-center mt-8">
+          <button
+            onClick={onBack}
+            className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+          >
+            Back
+          </button>
+
           <button
             className="px-8 py-2 bg-green-400 text-gray-900 font-medium rounded-lg hover:bg-green-500 transition"
             onClick={onNext}

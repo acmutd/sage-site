@@ -30,6 +30,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ setTranscriptData, onClose, onF
     onFinish(transcriptData);
   };
 
+  const handleBack = () => {
+    if (modalStep === "Programs") {
+      setModalStep("FileUpload");
+    } else if (modalStep === "Classes") {
+      setModalStep("Programs");
+    }
+  };
+  
+
   const handleOutsideClick = (e: MouseEvent) => {
     // prevent outside click
     if (modalStep == "FileUpload") return;
@@ -74,6 +83,7 @@ return (
             <ProgramValidationA 
               transcriptData={transcriptData} 
               onNext={() => setModalStep("Classes")} 
+              onBack={handleBack}
               dropdownRef={dropdownRef}
             />
           )}
@@ -82,6 +92,7 @@ return (
             <ClassValidationA 
               transcriptData={transcriptData} 
               onNext={handleFinish} 
+              onBack={handleBack}
             />
           )}
         </div>

@@ -338,7 +338,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     
             {/* Modal - unchanged */}
             {isProgramValidationOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
+                <div className="fixed inset-0 bg-black bg-opacity-70 z-[80] flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl relative">
                         <button
                             className="absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition"
@@ -355,8 +355,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         {showUploadView ? (
                             <FileUploader
                                 userId={transcriptData?.student_id || ""}
-                                onNext={(data) => {
-                                    console.log("Uploaded data:", data);
+                                onNext={() => {
                                     setShowUploadView(false);
                                     setIsProgramValidationOpen(false);
                                 }}
@@ -370,6 +369,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 transcriptData={transcriptData}
                                 showUploadOption={true}
                                 onUploadClick={() => setShowUploadView(true)}
+                                isFirstTime={false}
                             />
                         )}
                     </div>

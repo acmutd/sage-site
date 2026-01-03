@@ -3,6 +3,7 @@ import Onboarding from "@/components/Onboarding";
 import Planner from "@/components/Planner";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { useAuth } from "@/context/AuthContext";
 
 const PlannerPage = () => {
   const [showOnboarding, setShowOnboarding] = useState(true); // Initially show onboarding
@@ -11,6 +12,7 @@ const PlannerPage = () => {
   const [requirements, setRequirements] = useState<any[]>([]);
   const [loading, setLoading] = useState(false); // Track loading state
   const VITE_EVALUATOR_API = import.meta.env.VITE_EVALUATOR_API;
+  const { user } = useAuth();
 
   // prevent global scroll
   useEffect(() => {
@@ -29,6 +31,53 @@ const PlannerPage = () => {
     }
   }, [showOnboarding]);
   
+  useEffect(() => {
+    checkExistingEvaluation();
+  }, []);
+  
+  const checkExistingEvaluation = async () => {
+    const cachedEvaluation = localStorage.getItem('evaluation');
+    const cachedTranscript = localStorage.getItem('transcriptData');
+  
+    if (cachedEvaluation && cachedTranscript) {
+      const evalData = JSON.parse(cachedEvaluation);
+      const transcript = JSON.parse(cachedTranscript);
+
+      setRequirements(evalData.results || []);
+      setTranscriptData(transcript);
+      setShowOnboarding(false);
+      setShowPlanner(true);
+      return;
+    }
+    
+    if (!user?.uid) {
+      console.warn("User ID is missing; cannot proceed further!");
+      return;
+    }
+
+    const token = await user.getIdToken();
+    if (!token) throw new Error("Failed to retrieve authentication token.");
+
+    try {
+      const response = await fetch(VITE_EVALUATOR_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.uid, action: "getEvaluation", token })
+      });
+  
+      const data = await response.json();
+      
+      if (data.status === 'complete' && data.evaluation) {
+        localStorage.setItem('evaluation', JSON.stringify(data.evaluation));
+        setRequirements(data.evaluation.results || []);
+        setShowOnboarding(false);
+        setShowPlanner(true);
+      }
+    } catch (error) {
+      console.error('Failed to check existing evaluation:', error);
+    }
+  };
+
   const handleFinishOnboarding = async (data: any) => {
     setShowOnboarding(false); // Close the onboarding modal
     setTranscriptData(data);
@@ -40,8 +89,6 @@ const PlannerPage = () => {
   };
 
   const rawSemesters: Record<string, any[]> = transcriptData?.courses?.utd_classes || {};
-  console.log(rawSemesters)
-  const user_id = transcriptData?.['id'] || 'unknown_student';
 
   const transformSemesters = (semesters: Record<string, any[]>) => {
     // Create a map to track academic years
@@ -157,35 +204,28 @@ const PlannerPage = () => {
     return transformSemesters(rawSemesters);
   }, [rawSemesters]);
 
-  console.log(transformedSemesters);
-  console.log(user_id);
-  console.log(transcriptData)
-
   const fetchRequirements = async (transcriptData: any) => {
     try {
-      const response = await fetch(
-        VITE_EVALUATOR_API,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          //body: JSON.stringify({ id: transcriptData?.id || "student123" }),
-          //body: JSON.stringify({ id: "student123" }),
-          //body: JSON.stringify({ id: "student123", transcriptData: transcriptData }), // For testing with full transcript
-          body: JSON.stringify({ id: transcriptData?.id || "student123", transcriptData: transcriptData }), // For testing with full transcript
-
-        }
-      );
-
+      const response = await fetch(VITE_EVALUATOR_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          id: transcriptData?.id || "student123", 
+          transcriptData: transcriptData 
+        }),
+      });
+  
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
       }
-
+  
       const fetchedData = await response.json();
       console.log("Requirements fetched:", fetchedData);
-      const degrees = fetchedData.results || []; // Ensure it's an array
+      const degrees = fetchedData.results || [];
       setRequirements(degrees);
+
+      localStorage.setItem('evaluation', JSON.stringify(fetchedData));
+      localStorage.setItem('transcriptData', JSON.stringify(transcriptData));
     } catch (error) {
       console.error("Failed to fetch requirements:", error);
     }

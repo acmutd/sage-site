@@ -24,7 +24,6 @@ const Navbar = () => {
   useEffect(() => {
     const checkOnboarding = () => {
       const onboardingActive = document.body.hasAttribute('data-onboarding-active');
-      console.log('Checking onboarding:', onboardingActive);
       setIsOnboardingActive(onboardingActive);
     };
   
