@@ -1,5 +1,5 @@
-import { EditIcon, Trash2Icon, SaveIcon } from "lucide-react";
-import React, { useState } from "react";
+import { EditIcon, Trash2Icon, SaveIcon, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Separator } from "../components/ui/separator";
@@ -11,23 +11,52 @@ interface ClassValidationAProps {
 
 const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, transcriptData }) => {
   const courses = transcriptData?.courses || {};
-  const [editingSemester, setEditingSemester] = useState<string | null>(null); // Track which semester is being edited
-  const [editedCourses, setEditedCourses] = useState<any>({}); // Track changes to courses
+  const [editingSemester, setEditingSemester] = useState<string | null>(null);
+  const [editedCourses, setEditedCourses] = useState<any>({});
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollUp, setScrollUp] = useState(false);
+  
+  useEffect(() => {
+    const div = scrollRef.current;
+    if (!div) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = div;
+      
+      // At absolute top -> show down arrow, and at absolute bottom -> show up arrow
+      if (scrollTop === 0) {
+        setScrollUp(false);
+      } else if (scrollTop + clientHeight >= scrollHeight - 1) {
+        setScrollUp(true);
+      }
+    };
+
+    div.addEventListener("scroll", handleScroll);
+    return () => div.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleEdit = (semester: string) => {
     setEditingSemester(semester);
-    setEditedCourses(courses.utd_classes[semester] || []); // Initialize edited courses for the semester
+    if (semester === "Transferred Credits") {
+      setEditedCourses(courses.transfer_credits || []);
+    } else if (semester === "Test Credits") {
+      setEditedCourses(courses.test_credits || []);
+    } else {
+      setEditedCourses(courses.utd_classes[semester] || []);
+    }
   };
 
   const handleSave = () => {
     if (editingSemester) {
-      // Update the respective semester in transcriptData
-      transcriptData.courses.utd_classes[editingSemester] = editedCourses;
+      if (editingSemester === "Transferred Credits") {
+        transcriptData.courses.transfer_credits = editedCourses;
+      } else if (editingSemester === "Test Credits") {
+        transcriptData.courses.test_credits = editedCourses;
+      } else {
+        transcriptData.courses.utd_classes[editingSemester] = editedCourses;
+      }
 
-      // Log the updated transcriptData for debugging
       console.log("Updated transcriptData:", transcriptData);
-
-      // Exit editing mode
       setEditingSemester(null);
     }
   };
@@ -53,11 +82,10 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, transcriptD
   };
 
   const renderDropdownOptions = () => {
-    // Combine all courses into dropdown options
     const allCourses = [
       ...(courses.transfer_credits || []),
       ...(courses.test_credits || []),
-      ...Object.values(courses.utd_classes).flat(),
+      ...Object.values(courses.utd_classes || {}).flat(),
     ];
 
     return allCourses.map((course: any, index: number) => (
@@ -67,120 +95,162 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, transcriptD
     ));
   };
 
-  const renderUTDClasses = (utdClasses: any) => (
-    Object.keys(utdClasses).length > 0 ? (
-      (Object.entries(utdClasses) as [string, any[]][]).map(([semester, courses]) => (
-        <Card
-          key={semester}
-          className="flex flex-col items-start justify-center gap-2 px-4 py-5 relative self-stretch w-full bg-redesign-stylesbg-light rounded-lg overflow-hidden border border-solid border-slate-300 mb-4"
-        >
-          <CardContent className="p-0 w-full">
-            <div className="flex items-center justify-between relative self-stretch w-full flex-[0_0_auto] mb-2">
-              <h2 className="relative w-fit mt-[-1.00px] font-body-semibold font-[number:var(--body-semibold-font-weight)] text-redesign-stylesdark-text text-[length:var(--body-semibold-font-size)] tracking-[var(--body-semibold-letter-spacing)] leading-[var(--body-semibold-line-height)] [font-style:var(--body-semibold-font-style)]">
-                {semester}
-              </h2>
-              {editingSemester === semester ? (
+  const renderCourseSection = (title: string, coursesArray: any[]) => (
+    <Card
+      key={title}
+      className="flex flex-col items-start justify-center gap-2 px-4 py-5 relative self-stretch w-full bg-white rounded-lg overflow-hidden border border-solid border-slate-300 mb-4"
+    >
+      <CardContent className="p-0 w-full">
+        <div className="flex items-center justify-between relative self-stretch w-full flex-[0_0_auto] mb-2">
+          <h2 className="relative w-fit mt-[-1.00px] font-semibold text-gray-900 text-base">
+            {title}
+          </h2>
+          {editingSemester === title ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="inline-flex items-center gap-1.5 relative flex-[0_0_auto] h-auto p-0 hover:bg-transparent"
+              onClick={handleSave}
+            >
+              <SaveIcon className="relative w-4 h-4" />
+              <span className="relative w-fit font-normal text-gray-900 text-sm">
+                Save
+              </span>
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="inline-flex items-center gap-1.5 relative flex-[0_0_auto] h-auto p-0 hover:bg-transparent"
+              onClick={() => handleEdit(title)}
+            >
+              <EditIcon className="relative w-4 h-4" />
+              <span className="relative w-fit font-normal text-gray-900 text-sm">
+                Edit
+              </span>
+            </Button>
+          )}
+        </div>
+        <Separator className="relative w-full h-px bg-gray-200 mb-3" />
+        {editingSemester === title ? (
+          <>
+            {editedCourses.map((course: any, index: number) => (
+              <div
+                key={index}
+                className="flex items-center gap-4 mb-4"
+              >
+                <select
+                  value={`${course.course_code} - ${course.course_name}`}
+                  onChange={(e) => handleCourseChange(index, e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 flex-1"
+                >
+                  <option value="">Select a course</option>
+                  {renderDropdownOptions()}
+                </select>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="inline-flex items-center gap-1.5 relative flex-[0_0_auto] h-auto p-0 hover:bg-transparent"
-                  onClick={handleSave}
+                  className="text-red-500"
+                  onClick={() => handleRemoveCourse(index)}
                 >
-                  <SaveIcon className="relative w-4 h-4" />
-                  <span className="relative w-fit [font-family:'DM_Sans',Helvetica] font-normal text-redesign-stylesdark-text text-base tracking-[0] leading-4 whitespace-nowrap">
-                    Save
-                  </span>
+                  <Trash2Icon className="w-4 h-4" />
                 </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="inline-flex items-center gap-1.5 relative flex-[0_0_auto] h-auto p-0 hover:bg-transparent"
-                  onClick={() => handleEdit(semester)}
-                >
-                  <EditIcon className="relative w-4 h-4" />
-                  <span className="relative w-fit [font-family:'DM_Sans',Helvetica] font-normal text-redesign-stylesdark-text text-base tracking-[0] leading-4 whitespace-nowrap">
-                    Edit
-                  </span>
-                </Button>
-              )}
+              </div>
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-blue-500"
+              onClick={handleAddCourse}
+            >
+              Add Course
+            </Button>
+          </>
+        ) : (
+          coursesArray.map((course, index) => (
+            <div
+              key={index}
+              className="flex items-start gap-8 relative self-stretch w-full flex-[0_0_auto] mb-2 last:mb-0"
+            >
+              <div className="relative w-20 mt-[-1.00px] font-normal text-gray-900 text-sm whitespace-nowrap flex-shrink-0">
+                {course.course_code}
+              </div>
+              <div className="relative flex-1 mt-[-1.00px] font-normal text-gray-600 text-sm">
+                {course.course_name}
+              </div>
             </div>
-            <Separator className="relative w-[87px] h-px bg-redesign-stylescard-border mb-2" />
-            {editingSemester === semester ? (
-              <>
-                {editedCourses.map((course: any, index: number) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-4 mb-4"
-                  >
-                    <select
-                      value={`${course.course_code} - ${course.course_name}`}
-                      onChange={(e) => handleCourseChange(index, e.target.value)}
-                      className="border border-gray-300 rounded px-2 py-1 flex-1"
-                    >
-                      <option value="">Select a course</option>
-                      {renderDropdownOptions()}
-                    </select>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-500"
-                      onClick={() => handleRemoveCourse(index)}
-                    >
-                      <Trash2Icon className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-blue-500"
-                  onClick={handleAddCourse}
-                >
-                  Add Course
-                </Button>
-              </>
-            ) : (
-              courses.map((course, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-8 relative self-stretch w-full flex-[0_0_auto] mb-1 last:mb-0"
-                >
-                  <div className="relative w-fit mt-[-1.00px] font-body-regular font-[number:var(--body-regular-font-weight)] text-redesign-stylesdark-text text-[length:var(--body-regular-font-size)] tracking-[var(--body-regular-letter-spacing)] leading-[var(--body-regular-line-height)] whitespace-nowrap [font-style:var(--body-regular-font-style)]">
-                    {course.course_code}
-                  </div>
-                  <div className="relative flex-1 mt-[-1.00px] font-body-regular font-[number:var(--body-regular-font-weight)] text-redesign-stylesplaceholder-secondary-text text-[length:var(--body-regular-font-size)] tracking-[var(--body-regular-letter-spacing)] leading-[var(--body-regular-line-height)] [font-style:var(--body-regular-font-style)]">
-                    {course.course_name}
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      ))
-    ) : (
-      <p className="text-gray-500">No UTD classes available.</p>
-    )
+          ))
+        )}
+      </CardContent>
+    </Card>
   );
 
   return (
-    <div
-      className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl relative overflow-y-auto max-h-[90vh]"
-    >
-      <div className="flex flex-col items-start mb-6">
-        <h3>Are these classes right?</h3>
-        <p>
-          We detected these classes on your transcript — do these look right?
-        </p>
+    <div className="relative w-full max-w-4xl">
+      <div
+        ref={scrollRef}
+        className="bg-white p-6 rounded-lg shadow-lg w-full relative overflow-y-auto max-h-[90vh]"
+        style={{
+          scrollbarWidth: 'none', /* Firefox */
+          msOverflowStyle: 'none', /* IE and Edge */
+        }}
+      >
+        <style>{`
+          div::-webkit-scrollbar {
+            display: none;
+          }
+          @keyframes bounce {
+            0%, 100% {
+              transform: translateY(0);
+            }
+            50% {
+              transform: translateY(8px);
+            }
+          }
+          .bounce-arrow {
+            animation: bounce 2s infinite;
+          }
+        `}</style>
+        <div className="flex flex-col items-start mb-6">
+          <h3 className="text-xl font-semibold text-gray-900 mb-1">Are these classes right?</h3>
+          <p className="text-gray-600 text-sm">
+            We detected these classes on your transcript — do these look right?
+          </p>
+        </div>
+
+        {/* Transferred Credits Container */}
+        {courses.transfer_credits && courses.transfer_credits.length > 0 && 
+          renderCourseSection("Transferred Credits", courses.transfer_credits)
+        }
+
+        {/* Test Credits Container */}
+        {courses.test_credits && courses.test_credits.length > 0 && 
+          renderCourseSection("Test Credits", courses.test_credits)
+        }
+
+        {/* UTD Classes by Semester */}
+        {courses.utd_classes && Object.keys(courses.utd_classes).length > 0 && (
+          Object.entries(courses.utd_classes).map(([semester, semesterCourses]) => 
+            renderCourseSection(semester, semesterCourses as any[])
+          )
+        )}
+
+        <div className="flex justify-end mt-8">
+          <button
+            className="px-8 py-2 bg-green-400 text-gray-900 font-medium rounded-lg hover:bg-green-500 transition"
+            onClick={onNext}
+          >
+            Finish
+          </button>
+        </div>
       </div>
-      {renderUTDClasses(courses.utd_classes || {})}
-      <div className="flex justify-end mt-8">
-        <button
-          className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
-          onClick={onNext}
-        >
-          Finish
-        </button>
+
+      <div className="absolute -right-7 top-3/4 -translate-y-1/2 pointer-events-none bounce-arrow">
+        {scrollUp ? (
+          <ChevronUp className="w-6 h-6 text-gray-400" />
+        ) : (
+          <ChevronDown className="w-6 h-6 text-gray-400" />
+        )}
       </div>
     </div>
   );
