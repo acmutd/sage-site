@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Lock, Unlock, MoreVertical } from "lucide-react";
+import { Lock, Unlock, MoreVertical, Trash2 } from "lucide-react";
 import CourseBox from "./CourseBox";
 import { useDrop } from "react-dnd";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // SemesterBox Component
 interface SemesterBoxProps {
@@ -25,6 +26,7 @@ interface SemesterBoxProps {
         courseId?: string,
         isSuggested?: boolean
     ) => void;
+    onRemoveSemester: () => void;
     yearKey: string;
     semesterIndex: number;
     isFromTranscript?: boolean
@@ -36,6 +38,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     courses = [],
     isEmpty = false,
     onDropCourse,
+    onRemoveSemester,
     yearKey,
     semesterIndex,
     isFromTranscript = false
@@ -90,9 +93,22 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                 <Lock className="w-4 h-4 text-gray-400" />
                             )}
                         </button>
-                        <button className="hover:bg-gray-100 p-1 rounded">
-                            <MoreVertical className="w-4 h-4 text-gray-600" />
-                        </button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button className="hover:bg-gray-100 p-1 rounded">
+                                    <MoreVertical className="w-4 h-4 text-gray-600" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                    className="text-destructive focus:text-destructive hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-destructive"
+                                    onClick={onRemoveSemester}
+                                >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Remove Semester
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 )}
             </div>

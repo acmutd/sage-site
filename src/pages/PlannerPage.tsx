@@ -196,8 +196,12 @@ const PlannerPage = () => {
       {loading ? (
         <div className="flex items-center justify-center min-h-screen">
           <div className="flex flex-col items-center justify-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 border-solid"></div>
-            <p className="mt-4 text-blue-500 font-semibold">Loading...</p>
+            <img 
+              src="sage-icon.png" 
+              alt="Loading" 
+              className="h-16 w-16 animate-spin"
+            />
+            <p className="mt-4 text-[#85EA90] opacity-80 font-semibold">Loading...</p>
           </div>
         </div>
       ) : (

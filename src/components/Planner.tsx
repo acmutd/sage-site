@@ -25,6 +25,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
 
     const [error, setError] = useState<string | null>(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [semesterToDelete, setSemesterToDelete] = useState<{
+        yearKey: string;
+        semesterIndex: number;
+        isLastSemester: boolean;
+    } | null>(null);
 
     const errorRef = useRef<HTMLDivElement>(null);
 
@@ -229,6 +235,39 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         });
     };
 
+    const handleRemoveSemester = (yearKey: string, semesterIndex: number) => {
+        if (!semesterToDelete) return;
+        
+        setAllSemesters(prev => {
+            const yearSemesters = [...prev[yearKey]];
+            
+            if (yearSemesters.length === 1) {
+                const newState = { ...prev };
+                delete newState[yearKey];
+                return newState;
+            }
+            
+            yearSemesters.splice(semesterIndex, 1);
+            
+            return {
+                ...prev,
+                [yearKey]: yearSemesters
+            };
+        });
+        
+        // Close modal and reset state
+        setShowDeleteModal(false);
+        setSemesterToDelete(null);
+    };
+
+    const openDeleteModal = (yearKey: string, semesterIndex: number) => {
+        const yearSemesters = allSemesters[yearKey];
+        const isLastSemester = yearSemesters.length === 1;
+        
+        setSemesterToDelete({ yearKey, semesterIndex, isLastSemester });
+        setShowDeleteModal(true);
+    };
+
     console.log(allSemesters)
 
 
@@ -301,6 +340,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                         onDropCourse={(course, sourceYear, sourceSemesterIndex, courseId, isSuggested) =>
                                             handleDropCourse(yearKey, idx, course, sourceYear, sourceSemesterIndex, courseId, isSuggested)
                                         }
+                                        onRemoveSemester={() => openDeleteModal(yearKey, idx)}
                                     />
                                 ))}
                             </div>
@@ -308,7 +348,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     ))}
                 </div>
                 {Object.keys(allSemesters).length > 0 && (
-                    <div className="mt-8 flex justify-end">
+                    <div className="mt-8 mb-16 flex justify-end">  {/* mb-16 = 4rem spacing */}
                         <button
                             onClick={handleAddYear}
                             className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full text-sm font-medium transition-colors"
@@ -316,6 +356,57 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             <PlusCircle className="w-4 h-4" />
                             <span>Add Another Year</span>
                         </button>
+                    </div>
+                )}
+
+                {/* Delete Modal */}
+                {showDeleteModal && semesterToDelete && (
+                    <div 
+                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80]"
+                        onClick={() => {
+                            setShowDeleteModal(false);
+                            setSemesterToDelete(null);
+                        }}
+                    >
+                        <div 
+                            className="bg-white p-6 rounded-md shadow-lg w-full max-w-md"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                                {semesterToDelete.isLastSemester 
+                                    ? `Remove ${semesterToDelete.yearKey.replace("year", "Year ")}?`
+                                    : `Remove ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex].title}?`
+                                }
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-6">
+                                {semesterToDelete.isLastSemester
+                                    ? "This will delete the entire year since it's the only semester."
+                                    : "This semester and all its courses will be removed from your plan."
+                                }
+                            </p>
+                            
+                            <div className="flex justify-end gap-4">
+                                <button
+                                    className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                                    onClick={() => {
+                                        setShowDeleteModal(false);
+                                        setSemesterToDelete(null);
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                
+                                <button
+                                    className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                                    onClick={() => handleRemoveSemester(
+                                        semesterToDelete.yearKey, 
+                                        semesterToDelete.semesterIndex
+                                    )}
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

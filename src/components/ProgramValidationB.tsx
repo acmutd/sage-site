@@ -10,36 +10,16 @@ import {
     SelectValue,
 } from "../components/ui/select";
 
-const formFields = [
-    {
-        id: "type",
-        label: "Type of program",
-        placeholder: "Select type of program",
-        options: ["Major", "Minor", "Certificate"],
-    },
-    {
-        id: "title",
-        label: "Program name",
-        placeholder: "Select program name",
-        options: ["Computer Science", "Cyber Defense", "Data Science"],
-    },
-    {
-        id: "level",
-        label: "Level of Study",
-        placeholder: "Select level of study",
-        options: ["Undergraduate", "Graduate"],
-    },
-];
-
 interface ProgramValidationBProps {
     program: any; // Add a prop to accept the program being edited
     onNext: () => void;
     onRemove: (id: number) => void; // Add onRemove prop
     onSave: (updatedProgram: any) => void; // Add onSave prop
     transcriptData: any;
+    degreeCatalog: any;
 }
 
-const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext, onRemove, onSave }) => {
+const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext, onRemove, onSave, degreeCatalog }) => {
     const [selectedProgramId] = useState<number | null>(program?.id || null);
     const [updatedProgram, setUpdatedProgram] = useState(program); // Local state for the program being edited
     
@@ -49,6 +29,77 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
             [fieldId]: value,
         })); // Update the local program state
     };
+
+    const getLevelOptions = () => {
+        if (!degreeCatalog) return [];
+        const levels = [];
+        if (degreeCatalog.undergraduate) levels.push("Undergraduate");
+        if (degreeCatalog.graduate) levels.push("Graduate");
+        return levels;
+    };
+    
+    const getTypeOptions = () => {
+        if (!degreeCatalog) return [];
+        
+        const level = updatedProgram?.level?.toLowerCase();
+        const types = [];
+        
+        if (level === "undergraduate") {
+          if (degreeCatalog.undergraduate?.bachelor) types.push("Major");
+          if (degreeCatalog.undergraduate?.minor) types.push("Minor");
+          if (degreeCatalog.undergraduate?.certificate) types.push("Certificate");
+        } else if (level === "graduate") {
+          if (degreeCatalog.graduate?.masters || degreeCatalog.graduate?.doctorate) types.push("Major");
+          if (degreeCatalog.graduate?.certificate) types.push("Certificate");
+        }
+        
+        return types;
+    };
+    
+    const getTitleOptions = () => {
+        if (!degreeCatalog) return [];
+        
+        const level = updatedProgram?.level?.toLowerCase(); // "undergraduate" or "graduate"
+        const type = updatedProgram?.type?.toLowerCase(); // "major", "minor", "certificate"
+        
+        if (level === "undergraduate") {
+          if (type === "major") return degreeCatalog.undergraduate?.bachelor || [];
+          if (type === "minor") return degreeCatalog.undergraduate?.minor || [];
+          if (type === "certificate") return degreeCatalog.undergraduate?.certificate || [];
+        } else if (level === "graduate") {
+          if (type === "major") 
+          {
+            return [
+                ...(degreeCatalog.graduate?.masters || []),
+                ...(degreeCatalog.graduate?.doctorate || [])
+            ];
+          }
+          if (type === "certificate") return degreeCatalog.graduate?.certificate || [];
+        }
+        
+        return [];
+    };
+    
+    const formFields = [
+        {
+          id: "level",
+          label: "Level of Study",
+          placeholder: "Select level of study",
+          options: getLevelOptions(),
+        },
+        {
+          id: "type",
+          label: "Type of program",
+          placeholder: "Select type of program",
+          options: getTypeOptions(),
+        },
+        {
+          id: "title",
+          label: "Program name",
+          placeholder: "Select program name",
+          options: getTitleOptions(),
+        },
+    ];
 
     return (
         <div>
@@ -93,7 +144,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                                             />
                                         </SelectTrigger>
                                         <SelectContent className="z-[80] bg-white p-1">
-                                            {field.options?.map((option, index) => (
+                                            {field.options?.map((option: string, index: number) => (
                                                 <SelectItem key={index} value={option}>
                                                     {option}
                                                 </SelectItem>

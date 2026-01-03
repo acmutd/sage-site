@@ -10,6 +10,79 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { useAuth } from "@/context/AuthContext";
+
+const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
+
+const calculateCatalogYear = (semester: string): string => {
+  const [year, season] = semester.split(" ");
+  return season === "Fall" ? year : (parseInt(year) - 1).toString();
+};
+
+const getCurrentCatalogYear = (): string => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-11
+  
+  return currentMonth >= 8 ? currentYear.toString() : (currentYear - 1).toString();
+};
+async function retrieveDegreeCatalog(transcriptData: any, user: any)
+{
+  const activeMajor = transcriptData?.majors?.find((m: any) => m.status === "Active");
+  const semesterString = activeMajor?.start_date;
+  
+  if (!semesterString) {
+    console.error("No active major with start date found");
+    return null;
+  }
+
+  let catalogYear = calculateCatalogYear(semesterString);
+  const currentCatalogYear = getCurrentCatalogYear();
+  const catalogAge = parseInt(currentCatalogYear) - parseInt(catalogYear);
+  
+  if (catalogAge > 6) {
+    console.log(
+      `Catalog ${catalogYear} expired (${catalogAge} years old). ` +
+      `Using current catalog ${currentCatalogYear}. ` +
+      `Consult with academic advisor.`
+    );
+    catalogYear = currentCatalogYear;
+  }
+  const cachedDegreeCatalog = localStorage.getItem(`degree_catalog_${catalogYear}`)
+  if (cachedDegreeCatalog)
+  {
+    return JSON.parse(cachedDegreeCatalog);
+  }
+
+  try 
+  {
+    const token = await user?.getIdToken();
+    if (!token) throw new Error("Failed to retrieve authentication token.");
+
+    const degreeCatalogResponse = await fetch(CRUD_API as string, 
+      {
+        "method": "POST",
+        "headers": { "Content-Type": "application/json" },
+        "body": JSON.stringify({
+          userId: user?.uid,
+          action: "getDegreeCatalog",
+          year: catalogYear,
+          token
+        })
+      });
+    
+    if (degreeCatalogResponse.ok)
+    {
+      const degreeCatalogData = await degreeCatalogResponse.json();
+      localStorage.setItem(`degree_catalog_${catalogYear}`, JSON.stringify(degreeCatalogData));
+      return degreeCatalogData;
+    }
+  } catch (error) {
+    console.error("Error fetching degree catalog:", error);
+    return null;
+  }
+}
+
 
 const initialProgramsData = [
   {
@@ -36,6 +109,7 @@ interface ProgramValidationAProps {
 
 const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, dropdownRef,
 }) => {
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false); // State to toggle "Edit" mode
   const [programsData, setProgramsData] = useState(initialProgramsData); // State for program data
   const [editingProgram, setEditingProgram] = useState<{
@@ -45,6 +119,16 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
     level: string | null;
     status: string;
   } | null>(null);
+  const [degreeCatalog, setDegreeCatalog] = useState<any>(null); // Add this
+  
+  // mount degree catalog
+  useEffect(() => {
+    if (transcriptData) {
+      retrieveDegreeCatalog(transcriptData, user).then(catalog => {
+        setDegreeCatalog(catalog);
+      });
+    }
+  }, [transcriptData]);
 
   const handleFinish = () => {
     if (onNext) {
@@ -160,6 +244,7 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
         onRemove={handleRemove}
         onSave={handleSave}
         transcriptData={transcriptData} // Pass the save handler
+        degreeCatalog={degreeCatalog}
       />
     );
   }
