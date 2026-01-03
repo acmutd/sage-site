@@ -5,9 +5,11 @@ import { useAuth } from "../context/AuthContext";
 interface FileUploaderProps {
   userId: string;
   onNext: (data: any) => void;
+  showManualOption?: boolean;
+  onManualFill?: () => void;
 }
 
-const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext }) => {
+const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext, showManualOption = false, onManualFill }) => {
   const { selectedFile, isUploading, handleFileChange, uploadFile } =
     useFileUpload(
       import.meta.env.VITE_TRANSCRIPTPARSER_API
@@ -151,12 +153,23 @@ const FileUploader: React.FC<FileUploaderProps> = ({ userId, onNext }) => {
           </p>
         )}
 
-        {!fileUrl && ( // Conditionally render the "Finish" button if no file is uploaded
-          <div className="flex justify-end">
+        {!fileUrl && (
+          <div className="flex justify-between items-center mt-4">
+            {showManualOption && onManualFill ? (
+              <button
+                onClick={onManualFill}
+                className="text-sm text-gray-500 hover:text-gray-700 underline"
+              >
+                Or click here to fill manually
+              </button>
+            ) : (
+              <div></div>
+            )}
+            
             <button
               onClick={handleUpload}
               className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
-              disabled={isUploading || !selectedFile} // Disable if uploading or no file is selected
+              disabled={isUploading || !selectedFile}
             >
               {isUploading ? "Uploading..." : "Finish"}
             </button>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronLeft, NotebookPen } from "lucide-react";
 import RequirementCategory from "./RequirementCategory";
 import CourseBox from "./CourseBox";
 import ProgramValidationA from "./ProgramValidationA";
+import FileUploader from "./FileUpload";
 
 // Sidebar Component
 interface SidebarProps {
@@ -52,6 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     const [isExpanded, setIsExpanded] = useState(true); // Track sidebar expansion state
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
     const [isProgramValidationOpen, setIsProgramValidationOpen] = useState(false); // Track if ProgramValidationA is open
+    const [showUploadView, setShowUploadView] = useState(false); // transcript upload
     const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
     const dropdownRef = useRef<HTMLDivElement>(null); // Ref for the dropdown
 
@@ -248,19 +250,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         <button className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full transition-colors"
                             onClick={handleOpenProgramValidation}
                         >
-                            <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                />
-                            </svg>
+                            <NotebookPen className="w-4 h-4" strokeWidth={2} />
                             <span className="text-sm font-medium">Edit plans</span>
                         </button>
                     )}
@@ -312,22 +302,43 @@ const Sidebar: React.FC<SidebarProps> = ({
                 )}
             </div>
             {isProgramValidationOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl relative">
                         <button
-                            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-                            onClick={() => setIsProgramValidationOpen(false)}
+                            className="absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition"
+                            onClick={() => {
+                                setIsProgramValidationOpen(false);
+                                setShowUploadView(false);
+                            }}
                         >
-                            &times;
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                         </button>
-                        <ProgramValidationA
-                            dropdownRef={dropdownRef}
-                            onNext={(updatedPrograms) => handleSavePrograms(updatedPrograms)} // Save programs and close modal
-                            transcriptData={transcriptData} // Pass current programs data
-                        />
+
+                        {showUploadView ? (
+                            <FileUploader
+                                userId={transcriptData?.student_id || ""}
+                                onNext={(data) => {
+                                    console.log("Uploaded data:", data);
+                                    setShowUploadView(false);
+                                    setIsProgramValidationOpen(false);
+                                }}
+                                showManualOption={true}  // Add this
+                                onManualFill={() => setShowUploadView(false)}  // Add this
+                            />
+                        ) : (
+                            <ProgramValidationA
+                                dropdownRef={dropdownRef}
+                                onNext={(updatedPrograms) => handleSavePrograms(updatedPrograms)}
+                                transcriptData={transcriptData}
+                                showUploadOption={true}  // Add this
+                                onUploadClick={() => setShowUploadView(true)}  // Add this
+                            />
+                        )}
                     </div>
                 </div>
-            )}
+            )}       
         </>
     );
 };

@@ -105,9 +105,11 @@ interface ProgramValidationAProps {
   onNext?: (updatedPrograms: any[]) => void;
   transcriptData: any;
   dropdownRef: any;
+  showUploadOption?: boolean;
+  onUploadClick?: () => void;
 }
 
-const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, dropdownRef,
+const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, dropdownRef, showUploadOption = false, onUploadClick
 }) => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false); // State to toggle "Edit" mode
@@ -326,15 +328,25 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
           Add program
         </Button>
       </div>
-      <div className="flex justify-end mt-8">
-        {onNext && (
+      <div className="flex justify-between items-center mt-8">
+        {showUploadOption && onUploadClick && (
           <button
-            className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
-            onClick={handleFinish}
+            onClick={onUploadClick}
+            className="text-sm text-gray-500 hover:text-gray-700 underline"
           >
-            Next
+            Alternatively, reupload your transcript
           </button>
         )}
+        <div className={showUploadOption ? "" : "w-full flex justify-end"}>
+          {onNext && (
+            <button
+              className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+              onClick={handleFinish}
+            >
+              Next
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
