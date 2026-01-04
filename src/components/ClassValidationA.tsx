@@ -1,5 +1,5 @@
-import { EditIcon, Trash2Icon, SaveIcon, ChevronDown, ChevronUp } from "lucide-react";
-import React, { useState, useEffect, useRef } from "react";
+import { EditIcon, Trash2Icon, SaveIcon } from "lucide-react";
+import React, { useState, useRef } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Separator } from "../components/ui/separator";
@@ -15,27 +15,7 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
   const [editingSemester, setEditingSemester] = useState<string | null>(null);
   const [editedCourses, setEditedCourses] = useState<any>({});
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [scrollUp, setScrollUp] = useState(false);
   
-  useEffect(() => {
-    const div = scrollRef.current;
-    if (!div) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = div;
-      
-      // At absolute top -> show down arrow, and at absolute bottom -> show up arrow
-      if (scrollTop === 0) {
-        setScrollUp(false);
-      } else if (scrollTop + clientHeight >= scrollHeight - 1) {
-        setScrollUp(true);
-      }
-    };
-
-    div.addEventListener("scroll", handleScroll);
-    return () => div.removeEventListener("scroll", handleScroll);
-  }, []);
-
   const handleEdit = (semester: string) => {
     setEditingSemester(semester);
     if (semester === "Transferred Credits") {
@@ -188,77 +168,63 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
 
   return (
     <div className="relative w-full max-w-4xl">
-      <div
-        ref={scrollRef}
-        className="bg-white p-6 rounded-lg shadow-lg w-full relative overflow-y-auto max-h-[90vh]"
-        style={{
-          scrollbarWidth: 'none', /* Firefox */
-          msOverflowStyle: 'none', /* IE and Edge */
-        }}
-      >
+      <div ref={scrollRef} className="overflow-y-auto max-h-[90vh] custom-scrollbar rounded-lg bg-gray-50" style={{ paddingRight: '20px' }}>
         <style>{`
-          div::-webkit-scrollbar {
-            display: none;
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
           }
-          @keyframes bounce {
-            0%, 100% {
-              transform: translateY(0);
-            }
-            50% {
-              transform: translateY(8px);
-            }
+
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
           }
-          .bounce-arrow {
-            animation: bounce 2s infinite;
+
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #86efac, #4ade80);
+            border-radius: 999px;
           }
         `}</style>
-        <div className="flex flex-col items-start mb-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-1">Are these classes right?</h3>
-          <p className="text-gray-600 text-sm">
-            We detected these classes on your transcript — do these look right?
-          </p>
+
+        <div className="bg-gray-50 p-6 rounded-lg shadow-lg">
+          <div className="flex flex-col items-start mb-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-1">Are these classes right?</h3>
+            <p className="text-gray-600 text-sm">
+              We detected these classes on your transcript — do these look right?
+            </p>
+          </div>
+    
+          {/* Transferred Credits Container */}
+          {courses.transfer_credits && courses.transfer_credits.length > 0 && 
+            renderCourseSection("Transferred Credits", courses.transfer_credits)
+          }
+    
+          {/* Test Credits Container */}
+          {courses.test_credits && courses.test_credits.length > 0 && 
+            renderCourseSection("Test Credits", courses.test_credits)
+          }
+    
+          {/* UTD Classes by Semester */}
+          {courses.utd_classes && Object.keys(courses.utd_classes).length > 0 && (
+            Object.entries(courses.utd_classes).map(([semester, semesterCourses]) => 
+              renderCourseSection(semester, semesterCourses as any[])
+            )
+          )}
+    
+          <div className="flex justify-between items-center mt-8">
+            <button
+              onClick={onBack}
+              className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+            >
+              Back
+            </button>
+    
+            <button
+              className="px-8 py-2 bg-green-400 text-gray-900 font-medium rounded-lg hover:bg-green-500 transition"
+              onClick={onNext}
+            >
+              Finish
+            </button>
+          </div>
         </div>
-
-        {/* Transferred Credits Container */}
-        {courses.transfer_credits && courses.transfer_credits.length > 0 && 
-          renderCourseSection("Transferred Credits", courses.transfer_credits)
-        }
-
-        {/* Test Credits Container */}
-        {courses.test_credits && courses.test_credits.length > 0 && 
-          renderCourseSection("Test Credits", courses.test_credits)
-        }
-
-        {/* UTD Classes by Semester */}
-        {courses.utd_classes && Object.keys(courses.utd_classes).length > 0 && (
-          Object.entries(courses.utd_classes).map(([semester, semesterCourses]) => 
-            renderCourseSection(semester, semesterCourses as any[])
-          )
-        )}
-
-        <div className="flex justify-between items-center mt-8">
-          <button
-            onClick={onBack}
-            className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
-          >
-            Back
-          </button>
-
-          <button
-            className="px-8 py-2 bg-green-400 text-gray-900 font-medium rounded-lg hover:bg-green-500 transition"
-            onClick={onNext}
-          >
-            Finish
-          </button>
-        </div>
-      </div>
-
-      <div className="absolute -right-7 top-3/4 -translate-y-1/2 pointer-events-none bounce-arrow">
-        {scrollUp ? (
-          <ChevronUp className="w-6 h-6 text-gray-400" />
-        ) : (
-          <ChevronDown className="w-6 h-6 text-gray-400" />
-        )}
       </div>
     </div>
   );
