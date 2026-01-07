@@ -6,7 +6,18 @@ import { useAuth } from "../context/AuthContext";
 const Profile = () => {
     const { user } = useAuth();
     const [mobileView, setMobileView] = useState(false);
-    const [profilepic, setProfilePic] = useState("/assets/profile_pics/1.png");
+    const [profilepic, setProfilePic] = useState(() => {
+        const cached = localStorage.getItem('profilePictureType');
+        if (cached) {
+            const type = parseInt(cached);
+            return type === 0 && user?.photoURL 
+                ? user.photoURL 
+                : `/assets/profile_pics/${type}.png`;
+        }
+        return "/assets/profile_pics/1.png";
+    });
+    const [profilePictureType, setProfilePictureType] = useState(1);
+    const [googlePhotoURL, setGooglePhotoURL] = useState<string | null>(null);
     const [isPopUpOpen, setIsPopUpOpen] = useState(false);
     const [program, setProgram] = useState("All");
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -37,6 +48,17 @@ const Profile = () => {
           credits_completed: number;
         }>;
       }>;
+
+    // check if google pic changed
+    useEffect(() => {
+        if (user?.photoURL) {
+            setGooglePhotoURL(user.photoURL);
+            if (profilePictureType === 0) {
+                setProfilePic(user.photoURL);
+            }
+        }
+        getUserInfo();
+    }, [user?.photoURL]);
     
     const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
@@ -86,28 +108,34 @@ const Profile = () => {
         });
     }
 
-    function pickProfile(picNumber: number) {
-        switch (picNumber) {
-            case 1:
-                setProfilePic("/assets/profile_pics/1.png");
-                break;
-            case 2:
-                setProfilePic("/assets/profile_pics/2.png");
-                break;
-            case 3:
-                setProfilePic("/assets/profile_pics/3.png");
-                break;
-            case 4:
-                setProfilePic("/assets/profile_pics/4.png");
-                break;
-            case 5:
-                setProfilePic("/assets/profile_pics/5.png");
-                break;
-            case 6:
-                setProfilePic("/assets/profile_pics/6.png");
-                break;
-            default:
-                setProfilePic("/assets/profile_pics/1.png");
+    async function pickProfile(picNumber: number) {
+        const token = await user?.getIdToken();
+
+        const newType = profilePictureType === picNumber ? 0 : picNumber; // if going for Google tile, switch to 0 or we do 1-6
+
+        await fetch(CRUD_API as string,
+            { 
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify
+                (
+                    {
+                        userId: user?.uid,
+                        action: "updateProfile",
+                        token,
+                        profile_picture_type: newType
+                    }
+                )
+            }
+        );
+
+        setProfilePictureType(newType);
+        localStorage.setItem('profilePictureType', newType.toString()); // cache in regular stores if not changing PFP 
+        window.dispatchEvent(new Event('storage'));
+        if (newType === 0 && googlePhotoURL) {
+            setProfilePic(googlePhotoURL);
+        } else {
+            setProfilePic(`/assets/profile_pics/${newType}.png`);
         }
         setIsPopUpOpen(false);
     }
@@ -145,6 +173,22 @@ const Profile = () => {
 
         //add feature so it checks if data.credit_hours contains graduate that its not 0
         setGraduateHours(0);
+
+        // profile pic type and URL 
+        const picType = data.profile_picture_type ?? 1;
+        setProfilePictureType(picType);
+
+        localStorage.setItem('profilePictureType', picType.toString());
+
+        if (user?.photoURL) {
+            setGooglePhotoURL(user.photoURL);
+        }
+        
+        if (picType === 0 && user?.photoURL) {
+            setProfilePic(user.photoURL);
+        } else {
+            setProfilePic(`/assets/profile_pics/${picType}.png`);
+        }
 
         // populate carousel
         const evalResponse = await fetch(CRUD_API as string, {
@@ -189,7 +233,7 @@ const Profile = () => {
                                 <img
                                  src={profilepic}
                                  draggable={false}
-                                 className="w-32 h-32 sm:w-40 sm:h-40 md:w-[200px] md:h-[200px] object-cover"
+                                 className="w-32 h-32 sm:w-40 sm:h-40 md:w-[200px] md:h-[200px] object-cover rounded-3xl"
                                 />
                             </button>
                             <div className="flex-1 min-w-0 flex flex-col">
@@ -319,51 +363,43 @@ const Profile = () => {
                                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setIsPopUpOpen(false)}>
                                     <div className="bg-white rounded-2xl p-10 shadow-lg relative items-center text-center space-y-10">
                                         <h2>Pick Your Favorite Peechi</h2>
+                                        
                                         <div className="flex flex-row space-x-10">
-                                            <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(1)}>
-                                                <img
-                                                src={"/assets/profile_pics/1.png"}
-                                                className="w-40 h-40 object-cover"
-                                                draggable={false}
-                                                />
-                                            </button>
-                                            <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(2)}>
-                                                <img
-                                                src={"/assets/profile_pics/2.png"}
-                                                className="w-40 h-40 object-cover"
-                                                draggable={false}
-                                                />
-                                            </button>
-                                            <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(3)}>
-                                                <img
-                                                src={"/assets/profile_pics/3.png"}
-                                                className="w-40 h-40 object-cover"
-                                                draggable={false}
-                                                />
-                                            </button>
+                                            {[1, 2, 3].map(num => (
+                                                <button key={num} className="hover:scale-105 transition-transform" 
+                                                        onClick={() => pickProfile(num)}>
+                                                    {profilePictureType === num && googlePhotoURL ? (
+                                                        <div className="relative">
+                                                            <img src={googlePhotoURL}
+                                                                className="w-40 h-40 object-cover rounded-3xl" 
+                                                                draggable={false} />
+                                                        </div>
+                                                    ) : (
+                                                        <img src={`/assets/profile_pics/${num}.png`}
+                                                            className="w-40 h-40 object-cover" 
+                                                            draggable={false} />
+                                                    )}
+                                                </button>
+                                            ))}
                                         </div>
+            
                                         <div className="flex flex-row space-x-10">
-                                            <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(4)}>
-                                                <img
-                                                src={"/assets/profile_pics/4.png"}
-                                                className="w-40 h-40 object-cover"
-                                                draggable={false}
-                                                />
-                                            </button>
-                                            <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(5)}>
-                                                <img
-                                                src={"/assets/profile_pics/5.png"}
-                                                className="w-40 h-40 object-cover"
-                                                draggable={false}
-                                                />
-                                            </button>
-                                            <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(6)}>
-                                                <img
-                                                src={"/assets/profile_pics/6.png"}
-                                                className="w-40 h-40 object-cover"
-                                                draggable={false}
-                                                />
-                                            </button>
+                                            {[4, 5, 6].map(num => (
+                                                <button key={num} className="hover:scale-105 transition-transform" 
+                                                        onClick={() => pickProfile(num)}>
+                                                    {profilePictureType === num && googlePhotoURL ? (
+                                                        <div className="relative">
+                                                            <img src={googlePhotoURL}
+                                                                className="w-40 h-40 object-cover rounded-3xl" 
+                                                                draggable={false} />
+                                                        </div>
+                                                    ) : (
+                                                        <img src={`/assets/profile_pics/${num}.png`}
+                                                            className="w-40 h-40 object-cover" 
+                                                            draggable={false} />
+                                                    )}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>

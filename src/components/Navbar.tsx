@@ -5,8 +5,9 @@ import { useEffect, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 
 const Navbar = () => {
-  const { user, logout, profilePicture } = useAuth();
+  const { user, logout } = useAuth();
   const [isInWebapp, setIsInWebapp] = useState(false);
+  const [profilePicture, setProfilePicture] = useState<string>("");
 
   let location = useLocation().pathname;
   useEffect(() => {
@@ -17,6 +18,29 @@ const Navbar = () => {
       setIsInWebapp(true);
     }
   }, [location]);
+
+  // check for an pfp 
+  useEffect(() => {
+    const updateProfilePicture = () => {
+      const cachedType = localStorage.getItem('profilePictureType');
+      if (cachedType) {
+        const type = parseInt(cachedType);
+        if (type === 0 && user?.photoURL) {
+          setProfilePicture(user.photoURL);
+        } else {
+          setProfilePicture(`/assets/profile_pics/${type}.png`);
+        }
+      } else if (user?.photoURL) {
+        setProfilePicture(user.photoURL);
+      }
+    };
+  
+    updateProfilePicture();
+
+    window.addEventListener('storage', updateProfilePicture);
+    
+    return () => window.removeEventListener('storage', updateProfilePicture);
+  }, [user?.photoURL])
 
   return (
     <AuthProvider>
