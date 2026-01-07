@@ -29,10 +29,11 @@ const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 const CONVERSATION_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
 const ChatBotNavbar = () => {
-  const { user, logout, profilePicture } = useAuth();
+  const { user, logout  } = useAuth();
   const location = useLocation();
 
   const [isInWebapp, setIsInWebapp] = useState(false);
+  const [profilePicture, setProfilePicture] = useState<string>("");
 
   // Mobile sidebar
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -57,6 +58,28 @@ const ChatBotNavbar = () => {
 
   const CRUD_API = import.meta.env.VITE_CRUD_API;
 
+  // check pfp 
+  useEffect(() => {
+    const updateProfilePicture = () => {
+      const cachedType = localStorage.getItem('profilePictureType');
+      if (cachedType) {
+        const type = parseInt(cachedType);
+        if (type === 0 && user?.photoURL) {
+          setProfilePicture(user.photoURL);
+        } else {
+          setProfilePicture(`/assets/profile_pics/${type}.png`);
+        }
+      } else if (user?.photoURL) {
+        setProfilePicture(user.photoURL);
+      }
+    };
+  
+    updateProfilePicture();
+    window.addEventListener('storage', updateProfilePicture);
+    
+    return () => window.removeEventListener('storage', updateProfilePicture);
+  }, [user?.photoURL]);
+  
   // Helper function to group conversations by date
   const groupConversationsByDate = (convs: Conversation[]) => {
     const today = new Date();
