@@ -15,9 +15,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const [allSemesters, setAllSemesters] = useState(() => {
         const updatedSemesters = { ...semesters };
         Object.keys(updatedSemesters).forEach((yearKey) => {
-            updatedSemesters[yearKey] = updatedSemesters[yearKey].map((semester) => ({
+            updatedSemesters[yearKey] = updatedSemesters[yearKey].map((semester, semIdx) => ({
                 ...semester,
                 isFromTranscript: true, // Mark all semesters as from transcriptData
+                courses: semester.courses.map(course => ({
+                    ...course,
+                    originalLocation: { yearKey, semesterIndex: semIdx } // dragging to origin
+                }))
             }));
         });
         return updatedSemesters;
@@ -75,6 +79,35 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             console.log("Source year/semester:", sourceYear, sourceSemesterIndex);
             console.log("Target year/semester:", targetYear, targetSemesterIndex);
             console.log("Is suggested course:", isSuggested);
+
+            const courseCode = course.code || course.course_code;
+            if (!isSuggested && course.originalLocation) {
+                const isOriginalLocation = 
+                    targetYear === course.originalLocation.yearKey && 
+                    targetSemesterIndex === course.originalLocation.semesterIndex;
+                
+                if (!isOriginalLocation) {
+                    setError(`${courseCode} can only be moved back to ${prev[course.originalLocation.yearKey][course.originalLocation.semesterIndex].title}`);
+                    return prev;
+                }
+            }
+            
+            // Check if course exists anywhere else in the plan
+            for (const yearKey in prev) {
+                for (let idx = 0; idx < prev[yearKey].length; idx++) {
+                    const semester = prev[yearKey][idx];
+                    // Skip the source semester
+                    if (yearKey === sourceYear && idx === sourceSemesterIndex) continue;
+                    
+                    const exists = semester.courses.some(c => c.course_code === courseCode);
+                    if (exists) {
+                        setError(`${courseCode} is already in ${semester.title}`);
+                        return prev;
+                    }
+                }
+            }
+
+            if (error) return prev;
 
             // Create deep copies to avoid mutation
             const newState = JSON.parse(JSON.stringify(prev));
