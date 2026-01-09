@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronRight, ChevronLeft, NotebookPen, SquareAsterisk } from "lucide-react";
+import { useDrop } from "react-dnd";
 import RequirementCategory from "./RequirementCategory";
 import CourseBox from "./CourseBox";
 import ProgramValidationA from "./ProgramValidationA";
 import FileUploader from "./FileUpload";
 
-// Sidebar Component
 interface SidebarProps {
     requirements: {
         degree: string;
@@ -42,43 +42,57 @@ interface SidebarProps {
     expandedCategories: { [key: number]: boolean };
     onToggleCategory: (index: number) => void;
     transcriptData: any;
+    onDropCourse?: (courseId: string, sourceYear: string, sourceSemesterIndex: number) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
     requirements,
-    //expandedCategories,
-    //onToggleCategory,
-    transcriptData
+    transcriptData,
+    onDropCourse
 }) => {
-    const [isExpanded, setIsExpanded] = useState(true); // Track sidebar expansion state
+    const [isExpanded, setIsExpanded] = useState(true);
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
-    const [isProgramValidationOpen, setIsProgramValidationOpen] = useState(false); // Track if ProgramValidationA is open
-    const [showUploadView, setShowUploadView] = useState(false); // transcript upload
+    const [isProgramValidationOpen, setIsProgramValidationOpen] = useState(false);
+    const [showUploadView, setShowUploadView] = useState(false);
     const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
-    const dropdownRef = useRef<HTMLDivElement>(null); // Ref for the dropdown
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const [{ isOver }, drop] = useDrop(
+        () => ({
+            accept: "COURSE",
+            drop: (item: any) => {
+                console.log("Dropped on sidebar:", item);
+                if (item.courseId && item.sourceYear !== undefined && item.sourceSemesterIndex !== undefined && onDropCourse) {
+                    onDropCourse(item.courseId, item.sourceYear, item.sourceSemesterIndex);
+                }
+            },
+            collect: (monitor) => ({
+                isOver: monitor.isOver(),
+            }),
+        }),
+        [onDropCourse]
+    );
 
     const handleToggleSidebar = () => {
-        setIsExpanded((prev) => !prev); // Toggle sidebar state
+        setIsExpanded((prev) => !prev);
     };
 
     useEffect(() => {
-        // Automatically collapse categories without suggested courses
         const initialExpandedState: { [key: number]: boolean } = {};
         requirements.forEach((req, reqIdx) => {
           const hasSuggestedCourses = req.categories.some(
             (category: any) => category.suggested && category.suggested.length > 0
           );
-          initialExpandedState[reqIdx] = hasSuggestedCourses; // Expand only if there are suggested courses
+          initialExpandedState[reqIdx] = hasSuggestedCourses;
         });
         setAutoExpandedCategories(initialExpandedState);
       }, [requirements]);
 
       const handleOpenProgramValidation = () => {
-        setIsProgramValidationOpen(true); // Open the ProgramValidationA modal
+        setIsProgramValidationOpen(true);
       };
     
       const handleCloseProgramValidation = (e?: MouseEvent) => {
-        // Ensure clicks inside the dropdown do not close the modal
         if (
           e &&
           dropdownRef.current &&
@@ -86,30 +100,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         ) {
           return;
         }
-        setIsProgramValidationOpen(false); // Close the modal
+        setIsProgramValidationOpen(false);
       };
 
-    // USED TO CALL LAMBDA TO UPDATE PROGRAMS LATER
     const handleSavePrograms = (updatedPrograms: any[]) => {
         console.log("Updated programs:", updatedPrograms);
-
-        // // Example: Call an API endpoint to update the programs
-        // fetch("/api/update-programs", {
-        //     method: "POST",
-        //     headers: {
-        //         "Content-Type": "application/json",
-        //     },
-        //     body: JSON.stringify(updatedPrograms),
-        // })
-        //     .then((response) => response.json())
-        //     .then((data) => {
-        //         console.log("Programs updated successfully:", data);
-        //     })
-        //     .catch((error) => {
-        //         console.error("Error updating programs:", error);
-        //     });
-
-        handleCloseProgramValidation(); // Close the modal
+        handleCloseProgramValidation();
     };
 
     const handleToggleSubcategory = (reqIdx: number, catIdx: number) => {
@@ -120,16 +116,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         }));
     };
 
-    // Check if a subcategory is expanded
     const isSubcategoryExpanded = (reqIdx: number, catIdx: number) => {
         const key = `${reqIdx}-${catIdx}`;
-        // Default to true if not explicitly set
         return expandedSubcategories[key] !== false;
     };
 
     console.log(requirements[0]?.categories?.[0]?.classes);
 
-    // Recursive function to render categories and subcategories
     const renderCategories = (categories: any[], reqIdx: number, parentCatIdx: number = 0) => {
         return categories.map((category, catIdx) => {
             const currentCatIdx = `${parentCatIdx}-${catIdx}`;
@@ -162,7 +155,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                     {isSubcategoryExpanded(reqIdx, parseInt(currentCatIdx)) && (
                         <div className="p-2 space-y-1">
-                            {/* Render classes */}
                             {category.classes && category.classes.length > 0 ? (
                                 category.classes.map((course: any, courseIdx: number) => (
                                     <CourseBox
@@ -194,7 +186,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 </div>
                             )}
 
-                            {/* Render suggested courses */}
                             {category.suggested && category.suggested.length > 0 && (
                                 <>
                                     <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
@@ -227,7 +218,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 </>
                             )}
 
-                            {/* Render subcategories recursively */}
                             {category.categories &&
                                 category.categories.length > 0 &&
                                 renderCategories(category.categories, reqIdx, parseInt(currentCatIdx))}
@@ -242,11 +232,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         <>
             <div className={`${isExpanded ? "w-80" : "w-20"} bg-gray-50 border-r border-gray-200 h-screen transition-all duration-300 flex flex-col`}>
                 
-                {/* Scrollable content - full height */}
-                <div className="flex-1 overflow-y-auto">
+                <div 
+                    ref={drop}
+                    className={`flex-1 overflow-y-auto ${isOver ? 'bg-gray-100' : ''}`}
+                >
                     {isExpanded ? (
                         <div className="p-4">
-                            {/* Sidebar Header */}
                             <div className="flex items-center justify-between mb-6">
                                 <button className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full transition-colors"
                                     onClick={handleOpenProgramValidation}
@@ -262,7 +253,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 </button>
                             </div>
 
-                            {/* Sidebar Content */}
                             <h2 className="text-xl font-bold text-gray-900 mb-4">
                                 Degree Requirements
                             </h2>
@@ -312,7 +302,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                     )}
                 </div>
     
-                {/* Sticky Banner at bottom */}
                 <div className="sticky bottom-0 p-4 bg-gray-50">
                     <div 
                         className={`${isExpanded ? "rounded-full" : "cursor-pointer rounded-md"} bg-gray-900 py-3 px-6 flex gap-2 justify-center items-center`}
@@ -336,7 +325,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
             </div>
     
-            {/* Modal - unchanged */}
             {isProgramValidationOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-70 z-[80] flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl relative">
