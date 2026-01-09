@@ -15,9 +15,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const [allSemesters, setAllSemesters] = useState(() => {
         const updatedSemesters = { ...semesters };
         Object.keys(updatedSemesters).forEach((yearKey) => {
-            updatedSemesters[yearKey] = updatedSemesters[yearKey].map((semester) => ({
+            updatedSemesters[yearKey] = updatedSemesters[yearKey].map((semester, semIdx) => ({
                 ...semester,
                 isFromTranscript: true, // Mark all semesters as from transcriptData
+                courses: semester.courses.map(course => ({
+                    ...course,
+                    originalLocation: { yearKey, semesterIndex: semIdx } // dragging to origin
+                }))
             }));
         });
         return updatedSemesters;
@@ -75,6 +79,54 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             console.log("Source year/semester:", sourceYear, sourceSemesterIndex);
             console.log("Target year/semester:", targetYear, targetSemesterIndex);
             console.log("Is suggested course:", isSuggested);
+                        
+            // removal logic
+            const isRemoval = !targetYear || 
+                targetYear === '' || 
+                targetSemesterIndex === undefined || 
+                targetSemesterIndex === null ||
+                targetSemesterIndex < 0; 
+
+            if (isRemoval) {
+                const newState = JSON.parse(JSON.stringify(prev));
+                const sourceSemester = newState[sourceYear]?.[sourceSemesterIndex];
+                if (sourceSemester?.courses) {
+                    const courseIndex = sourceSemester.courses.findIndex(
+                        (c: any) => c.id === courseId
+                    );
+                    if (courseIndex !== -1) {
+                        sourceSemester.courses.splice(courseIndex, 1);
+                    }
+                }
+                return newState;
+            }
+
+            const courseCode = course.code || course.course_code;
+            if (!isSuggested && course.originalLocation) {
+                const isOriginalLocation = 
+                    targetYear === course.originalLocation.yearKey && 
+                    targetSemesterIndex === course.originalLocation.semesterIndex;
+                
+                if (!isOriginalLocation) {
+                    setError(`${courseCode} can only be moved back to ${prev[course.originalLocation.yearKey][course.originalLocation.semesterIndex].title}`);
+                    return prev;
+                }
+            }
+            
+            // Check if course exists anywhere else in the plan
+            for (const yearKey in prev) {
+                for (let idx = 0; idx < prev[yearKey].length; idx++) {
+                    const semester = prev[yearKey][idx];
+                    // Skip the source semester
+                    if (yearKey === sourceYear && idx === sourceSemesterIndex) continue;
+                    
+                    const exists = semester.courses.some(c => c.course_code === courseCode);
+                    if (exists) {
+                        setError(`${courseCode} is already in ${semester.title}`);
+                        return prev;
+                    }
+                }
+            }
 
             // Create deep copies to avoid mutation
             const newState = JSON.parse(JSON.stringify(prev));
@@ -278,6 +330,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 expandedCategories={expandedCategories}
                 onToggleCategory={toggleCategory}
                 transcriptData={transcriptData}
+                onDropCourse={(courseId, sourceYear, sourceSemesterIndex) => 
+                    handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
+                }
             />
 
             <div className="flex-1 overflow-y-auto p-6">
