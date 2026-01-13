@@ -255,34 +255,44 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         setAllSemesters(prev => {
             const yearSemesters = [...prev[yearKey]];
 
-            // Check if we already have all three semesters
+            // prevent adding more than three semesters
             if (yearSemesters.length >= 3) {
-                // Set an error message
                 setError(`Cannot add more than 3 semesters (Fall, Spring, Summer) to ${yearKey.replace("year", "Year ")}`);
-                // Return the unchanged state
                 return prev;
             }
 
-            // Clear any previous errors
             setError(null);
 
-            const lastSemester = yearSemesters[yearSemesters.length - 1];
-            const lastSemesterYear = parseInt(lastSemester.title.split(' ')[1]);
+            const firstSemester = yearSemesters[0];
+            const baseYear = parseInt(firstSemester.title.split(' ')[1]);
 
-            // Determine the next semester based on the last one
-            let nextSemester;
-            if (lastSemester.title.includes('Fall')) {
-                nextSemester = { title: `Spring ${lastSemesterYear + 1}`, courses: [], isFromTranscript: false,
-            };
-            } else if (lastSemester.title.includes('Spring')) {
-                nextSemester = { title: `Summer ${lastSemesterYear}`, courses: [], isFromTranscript: false, };
-            } else {
-                nextSemester = { title: `Fall ${lastSemesterYear}`, courses: [], isFromTranscript: false, };
+            const allPossibleSemesters = [
+                { title: `Fall ${baseYear}`, courses: [], isFromTranscript: false },
+                { title: `Spring ${baseYear + 1}`, courses: [], isFromTranscript: false },
+                { title: `Summer ${baseYear + 1}`, courses: [], isFromTranscript: false }
+            ];
+
+            // find missing semester 
+            const existingTitles = yearSemesters.map(s => s.title);
+            const missingSemesters = allPossibleSemesters.filter(
+                sem => !existingTitles.includes(sem.title)
+            );
+    
+            if (missingSemesters.length === 0) {
+                return prev;
             }
-
+            
+            const updatedSemesters = [...yearSemesters, missingSemesters[0]];
+            updatedSemesters.sort((a, b) => {
+                const order: Record<string, number> = { 'Fall': 0, 'Spring': 1, 'Summer': 2 };
+                const seasonA = a.title.split(' ')[0];
+                const seasonB = b.title.split(' ')[0];
+                return order[seasonA] - order[seasonB];
+            });
+    
             return {
                 ...prev,
-                [yearKey]: [...yearSemesters, nextSemester]
+                [yearKey]: updatedSemesters
             };
         });
     };
