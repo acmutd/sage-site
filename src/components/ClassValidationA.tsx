@@ -170,6 +170,11 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
     <div className="relative w-full max-w-4xl">
       <div ref={scrollRef} className="overflow-y-auto max-h-[90vh] custom-scrollbar rounded-lg bg-gray-50" style={{ paddingRight: '20px' }}>
         <style>{`
+          .custom-scrollbar {
+            scrollbar-width: auto;
+            scrollbar-color: #4ade80 transparent;
+          }
+            
           .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
           }
