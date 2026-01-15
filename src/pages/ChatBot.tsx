@@ -536,6 +536,9 @@ const ChatBot: React.FC = () => {
       })
     );
 
+    const token = await user?.getIdToken();
+    if (!token) throw new Error("Failed to retrieve authentication token.");
+
     if (!CHAT_API) {
       console.error("CHAT_API is missing. Check your .env file.");
       setChatLoad(false);
@@ -546,6 +549,7 @@ const ChatBot: React.FC = () => {
       id: user?.uid,
       query: query,
       generate_schedule: generateSchedule,
+      token: token
     };
 
     if (conversation_id) requestBody.conversation_id = conversation_id;
