@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronDown, ChevronRight, ChevronLeft, NotebookPen, SquareAsterisk } from "lucide-react";
+import { ChevronDown, ChevronRight, NotebookPen, ArrowLeftFromLine, ArrowRightFromLine } from "lucide-react";
 import { useDrop } from "react-dnd";
 import RequirementCategory from "./RequirementCategory";
 import CourseBox from "./CourseBox";
@@ -43,14 +43,19 @@ interface SidebarProps {
     onToggleCategory: (index: number) => void;
     transcriptData: any;
     onDropCourse?: (courseId: string, sourceYear: string, sourceSemesterIndex: number) => void;
+    isExpanded?: boolean;
+    onToggleExpanded?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
     requirements,
     transcriptData,
-    onDropCourse
+    onDropCourse,
+    isExpanded: externalIsExpanded,
+    onToggleExpanded
 }) => {
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [internalIsExpanded, setInternalIsExpanded] = useState(true);
+    const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
     const [isProgramValidationOpen, setIsProgramValidationOpen] = useState(false);
     const [showUploadView, setShowUploadView] = useState(false);
@@ -74,7 +79,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     );
 
     const handleToggleSidebar = () => {
-        setIsExpanded((prev) => !prev);
+        if (onToggleExpanded) {
+            onToggleExpanded();
+        } else {
+            setInternalIsExpanded(!internalIsExpanded);
+        }
     };
 
     useEffect(() => {
@@ -230,26 +239,24 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     return (
         <>
-            <div className={`${isExpanded ? "w-80" : "w-20"} bg-gray-50 border-r border-gray-200 h-screen transition-all duration-300 flex flex-col`}>
-                
+            <div className={`${isExpanded ? "w-80" : "w-20"} bg-bglight rounded-lg border border-border transition-all duration-300 flex flex-col h-full overflow-hidden`}>
                 <div 
                     ref={drop}
                     className={`flex-1 overflow-y-auto ${isOver ? 'bg-gray-100' : ''}`}
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                     {isExpanded ? (
-                        <div className="p-4">
+                        <div className="p-6 pt-8">
                             <div className="flex items-center justify-between mb-6">
-                                <button className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full transition-colors"
-                                    onClick={handleOpenProgramValidation}
-                                >
-                                    <NotebookPen className="w-4 h-4" strokeWidth={2} />
-                                    <span className="text-sm font-medium">Edit plans</span>
+                                <button className="flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700" onClick={handleOpenProgramValidation}>
+                                    <NotebookPen size={20} strokeWidth={2} />
+                                    <span>Edit plans</span>
                                 </button>
                                 <button
                                     className="p-2 hover:bg-gray-200 rounded"
                                     onClick={handleToggleSidebar}
                                 >
-                                    <ChevronLeft className="w-5 h-5 text-gray-500" />
+                                    <ArrowLeftFromLine className="w-5 h-5 text-gray-500" />
                                 </button>
                             </div>
 
@@ -290,7 +297,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 className="p-2 hover:bg-gray-200 rounded"
                                 onClick={handleToggleSidebar}
                             >
-                                <ChevronRight className="w-5 h-5 text-gray-500" />
+                                <ArrowRightFromLine className="w-5 h-5 text-gray-500" />
                             </button>
                             <button 
                                 className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
@@ -300,28 +307,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </button>
                         </div>
                     )}
-                </div>
-    
-                <div className="sticky bottom-0 p-4 bg-gray-50">
-                    <div 
-                        className={`${isExpanded ? "rounded-full" : "cursor-pointer rounded-md"} bg-gray-900 py-3 px-6 flex gap-2 justify-center items-center`}
-                        onClick={isExpanded ? undefined : handleToggleSidebar}
-                    >
-                        <SquareAsterisk size={isExpanded ? 32 : 24} className="stroke-green-400 flex-shrink-0" />
-                        {isExpanded && (
-                            <small className="text-white text-xs">
-                                This app is in development. For issues or feedback,
-                                <a
-                                    href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-accent underline ml-1"
-                                >
-                                    click here.
-                                </a>
-                            </small>
-                        )}
-                    </div>
                 </div>
             </div>
     

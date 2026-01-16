@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Sidebar from "./Sidebar";
 import SemesterBox from "./SemesterBox";
-import { Plus, PlusCircle } from "lucide-react";
+import { Plus, PlusCircle, SquareAsterisk } from "lucide-react";
 
 interface PlannerProps {
     semesters: {
@@ -12,6 +12,17 @@ interface PlannerProps {
 }
 
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData }) => {
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
+
+    useEffect(() => {
+        if (sidebarCollapsed) {
+            setTimeout(() => setSidebarCollapsedDelayed(true), 150);
+        } else {
+            setSidebarCollapsedDelayed(false);
+        }
+    }, [sidebarCollapsed]);
+    
     const [allSemesters, setAllSemesters] = useState(() => {
         const updatedSemesters = { ...semesters };
         Object.keys(updatedSemesters).forEach((yearKey) => {
@@ -334,16 +345,38 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
 
     return (
-        <div className="flex h-[calc(100vh-4.2rem)] mt-[4.2rem] bg-gray-50">
-            <Sidebar
-                requirements={adaptedRequirements}
-                expandedCategories={expandedCategories}
-                onToggleCategory={toggleCategory}
-                transcriptData={transcriptData}
-                onDropCourse={(courseId, sourceYear, sourceSemesterIndex) => 
-                    handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
-                }
-            />
+        <div className="flex h-[calc(100vh-4.1rem)] mt-[4.2rem] bg-gray-50">
+            <div className="h-[calc(100%-2rem)] p-6 flex flex-col gap-4">
+                <Sidebar
+                    requirements={adaptedRequirements}
+                    expandedCategories={expandedCategories}
+                    onToggleCategory={toggleCategory}
+                    transcriptData={transcriptData}
+                    onDropCourse={(courseId, sourceYear, sourceSemesterIndex) => 
+                        handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
+                    }
+                    isExpanded={!sidebarCollapsed}
+                    onToggleExpanded={() => setSidebarCollapsed(!sidebarCollapsed)}
+                />
+                
+                <div 
+                    className={`${sidebarCollapsed ? "cursor-pointer rounded-md w-20" : "rounded-full w-80"} bg-gray-900 py-3 px-6 flex gap-2 justify-center items-center transition-all duration-300`}
+                    onClick={sidebarCollapsed ? () => setSidebarCollapsed(false) : undefined}
+                >
+                    <SquareAsterisk size={32} className="stroke-green-400 flex-shrink-0" />
+                        <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-white text-xs`}>
+                            This app is in development. For issues or feedback,
+                            <a
+                                href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-accent underline ml-1"
+                            >
+                            click here.
+                        </a>
+                    </small>
+                </div>
+            </div>
 
             <div className="flex-1 overflow-y-auto p-6">
                 {/* <div className="flex justify-between items-center mb-6">
