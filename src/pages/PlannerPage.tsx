@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 const PlannerPage = () => {
   const [showOnboarding, setShowOnboarding] = useState(true); // Initially show onboarding
   const [showPlanner, setShowPlanner] = useState(false); // Initially hide planner
+  const [isFirstTime, setFirstTime] = useState(true);
   const [transcriptData, setTranscriptData] = useState<{ id: string; courses?: { utd_classes?: Record<string, any[]> } } | null>(null);
   const [requirements, setRequirements] = useState<any[]>([]);
   const [loading, setLoading] = useState(false); // Track loading state
@@ -87,6 +88,17 @@ const PlannerPage = () => {
     setShowPlanner(true); // Show the Planner component
 
   };
+
+  const handleRestartOnboarding = async () => {
+    setShowPlanner(false);
+    setShowOnboarding(true);
+    setFirstTime(false);
+  }
+
+  const handleOnboardingCancel = async () => {
+    setShowPlanner(true);
+    setShowOnboarding(false);
+  }
 
   const rawSemesters: Record<string, any[]> = transcriptData?.courses?.utd_classes || {};
 
@@ -250,13 +262,22 @@ const PlannerPage = () => {
             <div>
               {showOnboarding && (
                 <Onboarding
-                  onClose={() => setShowOnboarding(false)}
+                  onClose={handleOnboardingCancel}
                   onFinish={handleFinishOnboarding}
                   setTranscriptData={setTranscriptData}
-
+                  isFirstTime={isFirstTime}
+                  initialStep={isFirstTime ? "FileUpload" : "Programs"}
+                  transcriptData={transcriptData}
                 />
               )}
-              {showPlanner && <Planner semesters={transformedSemesters} requirements={requirements} transcriptData={transcriptData} />}
+              {showPlanner && (
+                <Planner 
+                  semesters={transformedSemesters} 
+                  requirements={requirements} 
+                  transcriptData={transcriptData}
+                  onRestartOnboarding={handleRestartOnboarding}
+                />
+              )}
             </div>
           </DndProvider>
         </>

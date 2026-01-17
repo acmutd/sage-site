@@ -10,9 +10,10 @@ interface PlannerProps {
     };
     requirements: any;
     transcriptData: any;
+    onRestartOnboarding?: () => void;
 }
 
-const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData }) => {
+const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding }) => {
     // main planner scroll ref
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     
@@ -425,6 +426,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     }
                     isExpanded={!sidebarCollapsed}
                     onToggleExpanded={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    onRestartOnboarding={onRestartOnboarding}
                 />
                 
                 <div 
