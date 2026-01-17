@@ -43,7 +43,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const steps: Step[] = [
         {
           target: '[data-tour="sidebar"]',
-          content: "This sidebar shows your degree requirements and suggested courses.",
+          content: "This sidebar shows your degree requirements and suggested courses (when you expand the categories).",
           placement: "right",
           disableScrolling: true
         },
@@ -54,12 +54,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         },
         {
           target: '[data-tour="add-semester"]',
-          content: "Add a new semester to the selected year.",
+          content: "Add a new semester to the selected year. You can have up to three semester per year (Fall, Spring, Summer). You also have three dots on each semester box to remove it and clear courses. You can also lock semesters to prevent dragging things into them.",
           placement: "bottom"
         },
         {
           target: '[data-tour="add-year"]',
-          content: "Add another academic year to your plan.",
+          content: "Add another academic year to your plan. When deleting the last semester in a year, the entire year will be removed.",
           placement: "top",
           disableScrolling: true
         }
