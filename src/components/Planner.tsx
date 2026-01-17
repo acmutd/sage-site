@@ -409,7 +409,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         showSkipButton
                         styles={{
                             options: {
-                                primaryColor: '#4ade80', // matches your green-400
+                                primaryColor: '#4ade80',
                                 zIndex: 10000,
                             }
                         }}
