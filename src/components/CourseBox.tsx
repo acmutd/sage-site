@@ -22,6 +22,7 @@ interface CourseBoxProps {
     sourceSemesterIndex?: number;
     isSuggested?: boolean;
     isFromTranscript?: boolean;
+    isLocked?: boolean;
 }
 
 const CourseBox: React.FC<CourseBoxProps> = ({
@@ -32,7 +33,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     icon = null,
     isSuggested = false,
     isFromTranscript = false,
-
+    isLocked = false,
 }) => {
 
     const [isHovered, setIsHovered] = useState(false); // Track hover state
@@ -46,18 +47,23 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const [{ isDragging }, drag] = useDrag(
         () => ({
             type: "COURSE",
-            item: {
-                course: course,
-                sourceYear,
-                sourceSemesterIndex,
-                courseId: course.id,
-                isSuggested: isSuggested,
+            item: () => 
+            {
+                if (isFromTranscript || isLocked) return null;
+                return {
+                    course: course,
+                    sourceYear,
+                    sourceSemesterIndex,
+                    courseId: course.id,
+                    isSuggested: isSuggested,
+                }
             },
+            canDrag: () => !isFromTranscript && !isLocked,
             collect: (monitor) => ({
                 isDragging: monitor.isDragging(),
             }),
         }),
-        [course, sourceYear, sourceSemesterIndex]
+        [course, sourceYear, sourceSemesterIndex, isFromTranscript, isLocked]
     );
 
     // Only initialize the drag ref if `isFromTranscript` is false

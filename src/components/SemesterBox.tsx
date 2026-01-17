@@ -52,9 +52,8 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     const [{ isOver, canDrop }, drop] = useDrop(() => ({
         accept: "COURSE",
         drop: (item: any) => {
-            if (isFromTranscript) return; // Prevent dropping if it's from transcriptData
-            // Log the exact item being dropped for debugging
-            console.log("Dropping item:", item);
+            if (isFromTranscript || locked) return; // Prevent dropping if it's from transcriptData (or if user chose to lock semester)
+            console.log("Dropping item:", item); // Log the exact item being dropped for debugging
 
             onDropCourse(
                 item.course,
@@ -64,19 +63,21 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                 item.isSuggested
             );
         },
+        canDrop: () => !isFromTranscript && !locked,
         collect: (monitor) => ({
             isOver: monitor.isOver(),
             canDrop: monitor.canDrop(),
         }),
-    }));
+    }), [locked, isFromTranscript, onDropCourse]);
 
     // console.log("SemesterBox courses:", courses);
 
     return (
         <div
             ref={!isFromTranscript ? drop : null}
-            className={`bg-white rounded-lg border border-gray-200 shadow-sm p-4 w-[317px] ${isOver && canDrop ? "bg-blue-50" : ""
-                }`}
+            className={`bg-white rounded-lg border border-gray-200 shadow-sm p-4 w-[317px] ${
+                locked ? "opacity-75 bg-gray-50" : ""
+            } ${isOver && canDrop ? "bg-blue-50" : ""}`}
         >
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold text-gray-800">{title}</h3>
@@ -85,12 +86,15 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleLockToggle}
-                            className="hover:bg-gray-100 p-1 rounded"
+                            className={`hover:bg-gray-100 p-1 rounded ${
+                                locked ? "text-gray-700" : "text-gray-400"
+                            }`}
+                            title={locked ? "Unlock semester" : "Lock semester"}
                         >
                             {locked ? (
-                                <Unlock className="w-4 h-4 text-gray-400" />
+                                <Lock className="w-4 h-4" />
                             ) : (
-                                <Lock className="w-4 h-4 text-gray-400" />
+                                <Unlock className="w-4 h-4" /> 
                             )}
                         </button>
                         <DropdownMenu>
@@ -130,6 +134,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                             sourceYear={yearKey}
                             sourceSemesterIndex={semesterIndex}
                             isFromTranscript={isFromTranscript}
+                            isLocked={locked}
                             status={
                                 course.status as
                                 | "default"
