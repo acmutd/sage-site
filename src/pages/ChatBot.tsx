@@ -49,9 +49,14 @@ const steps: Step[] = [
       disableScrolling: true
   },
   {
-      target: '[data-tour="new-chat"]',
+      target: '[data-tour="new-chat-expanded"]',
       content: "Start a fresh conversation with Sage anytime.",
       placement: "bottom"
+  },
+  {
+    target: '[data-tour="sidebar-collapse"]',
+    content: "You can collapse the sidebar to expand your chat view. Click again to reopen it.",
+    placement: "bottom"
   },
   {
       target: '[data-tour="chat-input"]',
@@ -1007,7 +1012,6 @@ const ChatBot: React.FC = () => {
                   </button>
 
                   <button
-                    data-tour="new-chat"
                     className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1030,11 +1034,11 @@ const ChatBot: React.FC = () => {
               {!sidebarCollapsed && (
                 <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-hidden gap-8 transition-all duration-150`}>
                   <div className="flex gap-3 justify-between items-center">
-                    <button className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
+                    <button data-tour="new-chat-expanded" className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
                       <MessageCirclePlusIcon size={24} />
                       <span>Start new chat</span>
                     </button>
-                    <button className="group p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center" onClick={toggleSidebar} aria-label="Collapse sidebar">
+                    <button data-tour="sidebar-collapse" className="group p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center" onClick={toggleSidebar} aria-label="Collapse sidebar">
                       <ArrowLeftToLineIcon className="stroke-textdark group-hover:stroke-textsecondary transition-colors duration-150" size={20} />
                     </button>
                   </div>
