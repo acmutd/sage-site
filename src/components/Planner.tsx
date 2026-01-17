@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Joyride, { Step } from "react-joyride";
 import Sidebar from "./Sidebar";
 import SemesterBox from "./SemesterBox";
 import { Plus, PlusCircle, SquareAsterisk } from "lucide-react";
@@ -12,6 +13,60 @@ interface PlannerProps {
 }
 
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData }) => {
+    // main planner scroll ref
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    
+    // tutorial screen
+    const [runTour, setRunTour] = useState(() => {
+        const hasSeenTutorial = localStorage.getItem('hasSeenPlannerTutorial');
+        console.log('hasSeenTutorial:', hasSeenTutorial);
+        console.log('runTour will be:', !hasSeenTutorial);
+        return !hasSeenTutorial; // Only run if user has not seen it
+    });
+
+    const handleJoyrideCallback = (data: any) => {
+        const { status, index, type } = data;
+
+        if (type === 'step:after' && index === 2) { // Before the "add-year" step
+            scrollContainerRef.current?.scrollTo({
+                top: scrollContainerRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        if (status === 'finished' || status === 'skipped') {
+            localStorage.setItem('hasSeenPlannerTutorial', 'true');
+            setRunTour(false);
+        }
+    };
+
+    const steps: Step[] = [
+        {
+          target: '[data-tour="sidebar"]',
+          content: "This sidebar shows your degree requirements and suggested courses.",
+          placement: "right",
+          disableScrolling: true
+        },
+        {
+          target: '[data-tour="semester-area"]',
+          content: "This is your academic plan. Drag courses here to build your schedule.",
+          placement: "top"
+        },
+        {
+          target: '[data-tour="add-semester"]',
+          content: "Add a new semester to the selected year.",
+          placement: "bottom"
+        },
+        {
+          target: '[data-tour="add-year"]',
+          content: "Add another academic year to your plan.",
+          placement: "top",
+          disableScrolling: true
+        }
+      ];
+
+
+
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
 
@@ -343,9 +398,22 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
     console.log(allSemesters)
 
-
     return (
         <div className="flex h-[calc(100vh-4.1rem)] mt-[4.2rem] bg-gray-50">
+            <Joyride
+                        steps={steps}
+                        run={runTour}
+                        callback={handleJoyrideCallback}
+                        continuous
+                        showProgress
+                        showSkipButton
+                        styles={{
+                            options: {
+                                primaryColor: '#4ade80', // matches your green-400
+                                zIndex: 10000,
+                            }
+                        }}
+            />
             <div className="h-[calc(100%-2rem)] p-6 flex flex-col gap-4">
                 <Sidebar
                     requirements={adaptedRequirements}
@@ -378,7 +446,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
+            
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6" style={{ scrollBehavior: 'smooth' }}>
                 {/* <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-gray-800">Academic Plan</h1>
                     <button
@@ -419,6 +488,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                     {yearKey.replace("year", "Year ")} {/* Optional formatting */}
                                 </h2>
                                 <button
+                                    data-tour="add-semester"
                                     onClick={() => handleAddSemester(yearKey)}
                                     className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full text-sm font-medium transition-colors"
                                 >
@@ -427,7 +497,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 </button>
                             </div>
 
-                            <div className="flex flex-wrap gap-4">
+                            <div className="flex flex-wrap gap-4" data-tour="semester-area">
                                 {allSemesters[yearKey].map((semester, idx) => (
                                     <SemesterBox
                                         key={idx}
@@ -448,6 +518,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 {Object.keys(allSemesters).length > 0 && (
                     <div className="mt-8 mb-16 flex justify-end">  {/* mb-16 = 4rem spacing */}
                         <button
+                            data-tour="add-year"
                             onClick={handleAddYear}
                             className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full text-sm font-medium transition-colors"
                         >
