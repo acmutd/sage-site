@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Joyride, { Step } from "react-joyride";
 import Sidebar from "./Sidebar";
 import SemesterBox from "./SemesterBox";
-import { Plus, PlusCircle, SquareAsterisk } from "lucide-react";
+import { HelpCircle, Plus, PlusCircle, SquareAsterisk } from "lucide-react";
 
 interface PlannerProps {
     semesters: {
@@ -41,6 +41,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
     };
 
+    const startTutorial = () => { setRunTour(true); };
+
     const steps: Step[] = [
         {
           target: '[data-tour="sidebar"]',
@@ -65,8 +67,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
           disableScrolling: true
         }
       ];
-
-
 
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
@@ -401,21 +401,28 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
     return (
         <div className="flex h-[calc(100vh-4.1rem)] mt-[4.2rem] bg-gray-50">
-            <Joyride
-                        steps={steps}
-                        run={runTour}
-                        callback={handleJoyrideCallback}
-                        continuous
-                        showProgress
-                        showSkipButton
-                        styles={{
-                            options: {
-                                primaryColor: '#4ade80',
-                                zIndex: 10000,
-                            }
-                        }}
-            />
-            <div className="h-[calc(100%-2rem)] p-6 flex flex-col gap-4">
+            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10000 }}>
+                <Joyride
+                    steps={steps}
+                    run={runTour}
+                    callback={handleJoyrideCallback}
+                    continuous
+                    showProgress
+                    showSkipButton
+                    styles={{
+                        options: {
+                            primaryColor: '#4ade80',
+                            zIndex: 10000,
+                        }
+                    }}
+                />
+            </div>
+
+            <button onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
+                    <HelpCircle size={18} className="text-white" />
+            </button>
+
+            <div className="h-[calc(100%-2rem)] pl-2 pr-6 py-6 flex flex-col gap-4">
                 <Sidebar
                     requirements={adaptedRequirements}
                     expandedCategories={expandedCategories}

@@ -215,7 +215,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     return (
         <>
-            <div data-tour="sidebar" className={`${isExpanded ? "w-80" : "w-20"} bg-bglight rounded-lg border border-border transition-all duration-300 flex flex-col h-full overflow-hidden`}>
+            <div data-tour="sidebar" className={`${isExpanded ? "w-80 rounded-lg" : "w-20 rounded-md"} bg-bglight rounded-lg border border-border transition-all duration-300 flex flex-col h-full overflow-hidden`}>
                 <div 
                     ref={drop}
                     className={`flex-1 overflow-y-auto ${isOver ? 'bg-gray-100' : ''}`}
