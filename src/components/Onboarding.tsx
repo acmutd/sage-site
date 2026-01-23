@@ -34,8 +34,28 @@ const Onboarding: React.FC<OnboardingProps> = ({
     setModalStep("Programs");
   };
 
-  const handleFinish = () => {
-    setTranscriptData(transcriptData); // Pass data to the parent
+  const handleProgramsNext = (updatedPrograms: any[]) => {
+    const transformToTranscriptData = (program: any) => ({
+      name: program.title,
+      program_level: program.level,
+      status: program.status,
+      school: program.school,
+      start_date: program.start_date,
+      concentration: program.concentration
+    });
+    const updatedTranscript = {
+      ...transcriptData,
+      majors: updatedPrograms.filter(p => p.type === "Major").map(transformToTranscriptData),
+      minors: updatedPrograms.filter(p => p.type === "Minor").map(transformToTranscriptData),
+      certifications: updatedPrograms.filter(p => p.type === "Certificate").map(transformToTranscriptData)
+    };
+
+    setLocalTranscriptData(updatedTranscript);
+    setModalStep("Classes");
+  };
+
+  const handleFinish = (updatedTranscript: any) => {
+    setTranscriptData(updatedTranscript); // Pass data to the parent
     onFinish(transcriptData);
   };
 
@@ -105,7 +125,7 @@ return (
           {modalStep === "Programs" && (
             <ProgramValidationA 
               transcriptData={transcriptData} 
-              onNext={() => setModalStep("Classes")} 
+              onNext={handleProgramsNext} 
               onBack={handleBack}
               dropdownRef={dropdownRef}
               isFirstTime={isFirstTime}

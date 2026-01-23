@@ -214,7 +214,7 @@ const PlannerPage = () => {
 
   const transformedSemesters = useMemo(() => {
     return transformSemesters(rawSemesters);
-  }, [rawSemesters]);
+  }, [rawSemesters, transcriptData]);
 
   const fetchRequirements = async (transcriptData: any) => {
     try {

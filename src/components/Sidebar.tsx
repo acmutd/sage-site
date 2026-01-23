@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight, NotebookPen, ArrowLeftFromLine, ArrowRightFromLine } from "lucide-react";
 import { useDrop } from "react-dnd";
 import RequirementCategory from "./RequirementCategory";
@@ -57,7 +57,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
     const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
-    const dropdownRef = useRef<HTMLDivElement>(null);
 
     const [{ isOver }, drop] = useDrop(
         () => ({
@@ -93,12 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         });
         setAutoExpandedCategories(initialExpandedState);
       }, [requirements]);
-    
-
-    const handleSavePrograms = (updatedPrograms: any[]) => {
-        console.log("Updated programs:", updatedPrograms);
-    };
-
+      
     const handleToggleSubcategory = (reqIdx: number, catIdx: number) => {
         const key = `${reqIdx}-${catIdx}`;
         setExpandedSubcategories((prev) => ({

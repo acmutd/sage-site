@@ -111,7 +111,7 @@ interface ProgramValidationAProps {
   isFirstTime?: boolean;
 }
 
-const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, onBack, dropdownRef, showUploadOption = false, onUploadClick, isFirstTime = true
+const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, onBack, dropdownRef, isFirstTime = true
 }) => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false); // State to toggle "Edit" mode
