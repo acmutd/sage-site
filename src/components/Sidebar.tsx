@@ -260,6 +260,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             course.status === "completed" ? "check" : null
                                         }
                                         isFromTranscript={true}
+                                        inSidebar={true}
                                     />
                                 ))
                             ) : subCategoriesToRender.length > 0 ? null : (
@@ -295,6 +296,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             status="warning"
                                             icon="info"
                                             isSuggested={true}
+                                            inSidebar={true}
                                         />
                                     ))}
                                 </>
