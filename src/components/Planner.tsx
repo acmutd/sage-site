@@ -207,10 +207,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                     const newCourse = {
                         course_code: course.code || course.course_code,
-                        name: course.name || `${course.code || course.course_code} Course`,
+                        course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
                         credits: course.credits || 3, // Default credits if not specified
                         id: newCourseId,
-                        status: 'default'
+                        status: 'planned'
                     };
 
                     targetSemester.courses.push(newCourse);
