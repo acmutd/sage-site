@@ -45,6 +45,7 @@ interface SidebarProps {
     onDropCourse?: (courseId: string, sourceYear: string, sourceSemesterIndex: number) => void;
     isExpanded?: boolean;
     onToggleExpanded?: () => void;
+    placedSuggestedCourses?: Set<string>;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -52,7 +53,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     transcriptData,
     onDropCourse,
     isExpanded: externalIsExpanded,
-    onToggleExpanded
+    onToggleExpanded,
+    placedSuggestedCourses = new Set()
 }) => {
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
     const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -297,6 +299,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             icon="info"
                                             isSuggested={true}
                                             inSidebar={true}
+                                            isPlaced={placedSuggestedCourses.has(course.code)}
                                         />
                                     ))}
                                 </>
