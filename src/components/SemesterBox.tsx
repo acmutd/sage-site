@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Lock, Unlock, MoreVertical, Trash2 } from "lucide-react";
+import { Lock, Unlock, MoreVertical, Trash2, Eraser } from "lucide-react";
 import CourseBox from "./CourseBox";
 import { useDrop } from "react-dnd";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -26,7 +26,9 @@ interface SemesterBoxProps {
         courseId?: string,
         isSuggested?: boolean
     ) => void;
+    onClearSemester: () => void;
     onRemoveSemester: () => void;
+    onShowError: (message: string) => void;
     yearKey: string;
     semesterIndex: number;
     isFromTranscript?: boolean
@@ -38,7 +40,9 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     courses = [],
     isEmpty = false,
     onDropCourse,
+    onClearSemester,
     onRemoveSemester,
+    onShowError,
     yearKey,
     semesterIndex,
     isFromTranscript = false
@@ -48,6 +52,14 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     const handleLockToggle = () => {
         setLocked((prev) => !prev);
     };
+
+    const handleClearClick = () => {
+        if (locked) {
+            onShowError?.(`${title} needs to be unlocked to clear courses.`);
+            return;
+        }
+        onClearSemester();
+    }
 
     const [{ isOver, canDrop }, drop] = useDrop(() => ({
         accept: "COURSE",
@@ -104,6 +116,13 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                    className="text-amber-600 focus:text-amber-600 hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-amber-600"
+                                    onClick={handleClearClick}
+                                >
+                                    <Eraser className="w-4 h-4 mr-2" />
+                                    Clear Semester
+                                </DropdownMenuItem>
                                 <DropdownMenuItem 
                                     className="text-destructive focus:text-destructive hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-destructive"
                                     onClick={onRemoveSemester}
