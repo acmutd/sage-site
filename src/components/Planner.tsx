@@ -103,27 +103,19 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         yearKey: string;
         semesterIndex: number;
         isLastSemester: boolean;
+        action: 'clear' | 'delete';
     } | null>(null);
 
     const errorRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (error && errorRef.current) {
+        if (error && scrollContainerRef.current) {
             setTimeout(() => {
-                // Get the scrollable container (which is the parent of the error div)
-                const scrollContainer = errorRef.current?.closest('.overflow-y-auto');
-
-                if (scrollContainer) {
-                    // Calculate the navbar height (adjust this value to match your navbar height)
-                    const navbarHeight = 64; // Example: 64px - adjust this based on your actual navbar height
-
-                    // Scroll within the container, accounting for navbar height
-                    scrollContainer.scrollTo({
-                        top: errorRef.current ? (errorRef.current.offsetTop - navbarHeight - 20) : 0,
+                scrollContainerRef.current?.scrollTo({
+                        top: 0,
                         behavior: 'smooth'
-                    });
-                }
-            }, 100);
+                });
+            }, 200);
         }
     }, [error]);
 
@@ -218,10 +210,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     // Create a proper course object from the suggestion
                     const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
 
-                    const courseCode = course.code || course.course_code;
                     const newCourse = {
-                        course_code: courseCode,
-                        course_name: course.name || course.course_name || `${courseCode} Course`,
+                        course_code: course.code || course.course_code,
+                        course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
                         credits: course.credits || 3, // Default credits if not specified
                         id: newCourseId,
                         status: 'planned'
@@ -380,6 +371,20 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         });
     };
 
+    const handleClearSemester = (yearKey: string, semesterIndex: number) => {
+        if (!semesterToDelete) return;
+
+        setAllSemesters(prev => {
+            const newState = JSON.parse(JSON.stringify(prev));
+            newState[yearKey][semesterIndex].courses = [];
+            return newState;
+        });
+       
+        //Close modal and reset state
+        setShowDeleteModal(false);
+        setSemesterToDelete(null);
+    }
+
     const handleRemoveSemester = (yearKey: string, semesterIndex: number) => {
         if (!semesterToDelete) return;
         
@@ -429,11 +434,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         setSemesterToDelete(null);
     };
 
-    const openDeleteModal = (yearKey: string, semesterIndex: number) => {
+    const openClearDeleteModal = (yearKey: string, semesterIndex: number, action: 'clear' | 'delete') => {
         const yearSemesters = allSemesters[yearKey];
         const isLastSemester = yearSemesters.length === 1;
         
-        setSemesterToDelete({ yearKey, semesterIndex, isLastSemester });
+        setSemesterToDelete({ yearKey, semesterIndex, isLastSemester, action});
         setShowDeleteModal(true);
     };
 
@@ -557,7 +562,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                         onDropCourse={(course, sourceYear, sourceSemesterIndex, courseId, isSuggested) =>
                                             handleDropCourse(yearKey, idx, course, sourceYear, sourceSemesterIndex, courseId, isSuggested)
                                         }
-                                        onRemoveSemester={() => openDeleteModal(yearKey, idx)}
+                                        onClearSemester={() => openClearDeleteModal(yearKey, idx, 'clear')}
+                                        onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
+                                        onShowError={setError}
                                     />
                                 ))}
                             </div>
@@ -591,15 +598,20 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             onClick={(e) => e.stopPropagation()}
                         >
                             <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                                {semesterToDelete.isLastSemester 
-                                    ? `Remove ${semesterToDelete.yearKey.replace("year", "Year ")}?`
-                                    : `Remove ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex].title}?`
+                                {semesterToDelete.action === 'clear'
+                                    ? `Clear ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex].title}?`
+                                    : semesterToDelete.isLastSemester 
+                                        ? `Remove ${semesterToDelete.yearKey.replace("year", "Year ")}?`
+                                        : `Remove ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex].title}?`
+                                
                                 }
                             </h3>
                             <p className="text-sm text-gray-600 mb-6">
-                                {semesterToDelete.isLastSemester
-                                    ? "This will delete the entire year since it's the only semester."
-                                    : "This semester and all its courses will be removed from your plan."
+                                {semesterToDelete.action === 'clear'
+                                    ? "All courses in this semester will be cleared."
+                                    : semesterToDelete.isLastSemester
+                                        ? "This will delete the entire year since it's the only semester."
+                                        : "This semester and all its courses will be removed from your plan."
                                 }
                             </p>
                             
@@ -616,12 +628,16 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 
                                 <button
                                     className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                                    onClick={() => handleRemoveSemester(
-                                        semesterToDelete.yearKey, 
-                                        semesterToDelete.semesterIndex
-                                    )}
+                                    onClick={() => {
+                                        if (semesterToDelete.action === 'clear') {
+                                            handleClearSemester(semesterToDelete.yearKey, semesterToDelete.semesterIndex);
+                                        }
+                                        else {
+                                            handleRemoveSemester(semesterToDelete.yearKey, semesterToDelete.semesterIndex);
+                                        }
+                                    }}
                                 >
-                                    Remove
+                                    {semesterToDelete.action === 'clear' ? 'Clear' : 'Remove'}
                                 </button>
                             </div>
                         </div>
