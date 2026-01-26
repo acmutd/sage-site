@@ -132,9 +132,82 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     console.log(requirements[0]?.categories?.[0]?.classes);
 
-    const renderCategories = (categories: any[], reqIdx: number, parentCatIdx: number = 0) => {
-        return categories.map((category, catIdx) => {
+    // Helper function to check if a category has any completion/progress
+    const hasCompletion = (category: any): boolean => {
+        // Check if the category itself has progress
+        if (category.progress > 0) return true;
+        
+        // Check if any classes are completed
+        if (category.classes && category.classes.length > 0) {
+            const hasCompletedClasses = category.classes.some((course: any) => 
+                course.status === "completed" || course.status === "in progress"
+            );
+            if (hasCompletedClasses) return true;
+        }
+        
+        // Recursively check subcategories
+        if (category.categories && category.categories.length > 0) {
+            return category.categories.some((subcat: any) => hasCompletion(subcat));
+        }
+        
+        return false;
+    };
+
+    // Helper function to filter categories based on OR/AND logic
+    const filterCategories = (categories: any[]): any[] => {
+        return categories.filter(category => {
+            const categoryName = category.name?.toUpperCase() || '';
+            const isOR = categoryName === 'OR';
+            const isAND = categoryName === 'AND';
+            
+            // If it's an AND with no completion, don't show it
+            if (isAND && !hasCompletion(category)) {
+                return false;
+            }
+            
+            // If it's an OR, filter its children
+            if (isOR && category.categories && category.categories.length > 0) {
+                // Filter children to only show ANDs with completion
+                const childrenWithCompletion = category.categories.filter((child: any) => {
+                    return hasCompletion(child);
+                });
+                
+                // If OR has no children with completion, don't show it
+                if (childrenWithCompletion.length === 0) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+    };
+
+    const renderCategories = (categories: any[], reqIdx: number, parentCatIdx: number = 0, parentIsOR: boolean = false) => {
+        // Filter categories based on OR/AND logic
+        const filteredCategories = filterCategories(categories);
+        
+        return filteredCategories.map((category, catIdx) => {
             const currentCatIdx = `${parentCatIdx}-${catIdx}`;
+            const categoryName = category.name?.toUpperCase() || '';
+            const isOR = categoryName === 'OR';
+            const isAND = categoryName === 'AND';
+            
+            // Determine display name
+            let displayName = category.name;
+            if (isOR) {
+                displayName = "Track Options";
+            } else if (isAND && parentIsOR) {
+                displayName = `Track ${catIdx + 1}`;
+            }
+            
+            // For OR categories, filter subcategories to only show those with completion
+            let subCategoriesToRender = category.categories || [];
+            if (isOR && subCategoriesToRender.length > 0) {
+                subCategoriesToRender = subCategoriesToRender.filter((child: any) => 
+                    hasCompletion(child)
+                );
+            }
+            
             return (
                 <div
                     key={currentCatIdx}
@@ -151,7 +224,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 <ChevronRight className="w-3 h-3" />
                             )}
                             <span className="text-sm font-medium text-gray-700">
-                                {category.name}
+                                {displayName}
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -187,9 +260,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             course.status === "completed" ? "check" : null
                                         }
                                         isFromTranscript={true}
+                                        inSidebar={true}
                                     />
                                 ))
-                            ) : category.categories && category.categories.length > 0 ? null : (
+                            ) : subCategoriesToRender.length > 0 ? null : (
                                 <div className="text-sm text-gray-500">
                                     No courses in this category
                                 </div>
@@ -222,14 +296,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             status="warning"
                                             icon="info"
                                             isSuggested={true}
+                                            inSidebar={true}
                                         />
                                     ))}
                                 </>
                             )}
 
-                            {category.categories &&
-                                category.categories.length > 0 &&
-                                renderCategories(category.categories, reqIdx, parseInt(currentCatIdx))}
+                            {subCategoriesToRender.length > 0 &&
+                                renderCategories(subCategoriesToRender, reqIdx, parseInt(currentCatIdx), isOR)}
                         </div>
                     )}
                 </div>

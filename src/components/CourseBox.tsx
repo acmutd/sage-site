@@ -3,7 +3,6 @@ import { useDrag } from "react-dnd";
 import { useState } from "react";
 import ReactDOM from "react-dom";
 
-
 interface CourseBoxProps {
     course: {
         course_code: string;
@@ -14,7 +13,7 @@ interface CourseBoxProps {
         id?: string;
         status?: string;
         semester?: string;
-        description?: string; // Add description as optional
+        description?: string;
     };
     status?: 'default' | 'completed' | 'warning' | 'info';
     icon?: 'check' | 'warning' | 'info' | null;
@@ -23,6 +22,7 @@ interface CourseBoxProps {
     isSuggested?: boolean;
     isFromTranscript?: boolean;
     isLocked?: boolean;
+    inSidebar?: boolean;
 }
 
 const CourseBox: React.FC<CourseBoxProps> = ({
@@ -34,15 +34,10 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     isSuggested = false,
     isFromTranscript = false,
     isLocked = false,
+    inSidebar = false,
 }) => {
-
-    const [isHovered, setIsHovered] = useState(false); // Track hover state
-    const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({
-        top: 0,
-        left: 0,
-    });
-
-    // console.log(course)
+    const [showTooltip, setShowTooltip] = useState(false);
+    const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
     const [{ isDragging }, drag] = useDrag(
         () => ({
@@ -66,12 +61,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         [course, sourceYear, sourceSemesterIndex, isFromTranscript, isLocked]
     );
 
-    // Only initialize the drag ref if `isFromTranscript` is false
     const dragRef = !isFromTranscript ? drag : null;
 
     const getStatusStyles = () => {
         if (isSuggested) {
-            return 'border-yellow-300 bg-yellow-50'; // Yellow style for suggested courses
+            return 'border-yellow-300 bg-yellow-50';
         }
         switch (status) {
             case 'completed':
@@ -92,93 +86,119 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         return null;
     };
 
-    const handleMouseEnter = (event: React.MouseEvent) => {
-        const rect = (event.target as HTMLElement).getBoundingClientRect();
-        setTooltipPosition({
-            top: rect.top + window.scrollY - 10, // Position above the box
-            left: rect.right + window.scrollX + 10, // Position slightly to the right
-        });
-        setIsHovered(true);
+    const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (inSidebar) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            setTooltipPosition({
+                top: rect.top,
+                left: rect.right + 10,
+            });
+            setShowTooltip(true);
+        }
     };
 
     const handleMouseLeave = () => {
-        setIsHovered(false);
+        if (inSidebar) {
+            setShowTooltip(false);
+        }
     };
+
+    const tooltipContent = (
+        <div className="bg-white text-black rounded-lg p-4 shadow-xl w-72 border border-gray-300">
+            <h3 className="font-semibold mb-2 text-sm text-gray-900">
+                {course.course_name || "No Name Available"}
+            </h3>
+            <div className="space-y-0.5 text-xs">
+                {course.course_code && (
+                    <div className="flex gap-2">
+                        <span className="text-gray-600 font-medium">Code:</span>
+                        <span className="text-gray-900">{course.course_code}</span>
+                    </div>
+                )}
+                {course.semester && (
+                    <div className="flex gap-2">
+                        <span className="text-gray-600 font-medium">Semester:</span>
+                        <span className="text-gray-900">{course.semester}</span>
+                    </div>
+                )}
+                {course.credits_earned !== undefined && (
+                    <div className="flex gap-2">
+                        <span className="text-gray-600 font-medium">Credits:</span>
+                        <span className="text-gray-900">{course.credits_earned}</span>
+                    </div>
+                )}
+                {course.grade && (
+                    <div className="flex gap-2">
+                        <span className="text-gray-600 font-medium">Grade:</span>
+                        <span className="text-gray-900">{course.grade}</span>
+                    </div>
+                )}
+                {course.status && (
+                    <div className="flex gap-2">
+                        <span className="text-gray-600 font-medium">Status:</span>
+                        <span className="text-gray-900">{course.status}</span>
+                    </div>
+                )}
+                {course.description && (
+                    <div className="mt-2 pt-2 border-t border-gray-300">
+                        <p className="text-gray-700">{course.description}</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 
     return (
         <>
-            <div
-                ref={dragRef}
-                className={`flex items-center justify-between p-3 rounded-lg border-2 ${getStatusStyles()} 
-                transition-all hover:shadow-sm ${isDragging ? "opacity-50" : ""} 
-                ${isFromTranscript ? "cursor" : "cursor-grab"} relative`} // Change cursor style if dragging is disabled
-                onMouseEnter={handleMouseEnter} // Show tooltip on hover
-                onMouseLeave={handleMouseLeave} // Hide tooltip when not hovering
-            >
-                <div className="flex items-center gap-2">
-                    {!isFromTranscript && (
-                        <GripVertical className="w-4 h-4 text-gray-400" />
-                    )}
-                    <span className="text-sm font-medium text-gray-700 ml-1">
-                        {course.course_code || "Unknown Course"}
-                    </span>
-                </div>
-                <div className="flex items-center gap-2">
-                    {getIcon()}
-                    {isSuggested && (
-                        <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">
-                            Suggested
+            <div className={inSidebar ? "relative" : "group relative"}>
+                <div
+                    ref={dragRef}
+                    className={`flex items-center justify-between p-3 rounded-lg border-2 ${getStatusStyles()} 
+                    transition-all hover:shadow-sm ${isDragging ? "opacity-50" : ""} 
+                    ${isFromTranscript ? "cursor-default" : "cursor-grab"}`}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                >
+                    <div className="flex items-center gap-2">
+                        {!isFromTranscript && (
+                            <GripVertical className="w-4 h-4 text-gray-400" />
+                        )}
+                        <span className="text-sm font-medium text-gray-700 ml-1">
+                            {course.course_code || "Unknown Course"}
                         </span>
-                    )}
-
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {getIcon()}
+                        {isSuggested && (
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">
+                                Suggested
+                            </span>
+                        )}
+                    </div>
                 </div>
+
+                {/* Tooltip for non-sidebar (inline CSS hover) */}
+                {!inSidebar && (
+                    <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none">
+                        {tooltipContent}
+                    </div>
+                )}
             </div>
 
-            {isHovered &&
-                ReactDOM.createPortal(
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-64 bg-white border border-gray-300 shadow-lg rounded-lg p-4 z-50"
-                        style={{
-                            position: "absolute",
-                            top: tooltipPosition.top,
-                            left: tooltipPosition.left,
-                        }}
-                    >
-                        <h3 className="text-sm font-bold text-gray-800 mb-2">
-                            {course.course_name || "No Name Available"}
-                        </h3>
-                        {course.course_code && (
-                            <p className="text-xs text-gray-600 mb-1">
-                                <strong>Code:</strong> {course.course_code}
-                            </p>
-                        )}
-                        {course.semester && (
-                            <p className="text-xs text-gray-600 mb-1">
-                                <strong>Semester:</strong> {course.semester}
-                            </p>
-                        )}
-                        {course.credits_earned !== undefined && (
-                            <p className="text-xs text-gray-600 mb-1">
-                                <strong>Credits Earned:</strong> {course.credits_earned}
-                            </p>
-                        )}
-                        {course.grade && (
-                            <p className="text-xs text-gray-600 mb-1">
-                                <strong>Grade:</strong> {course.grade}
-                            </p>
-                        )}
-                        {course.status && (
-                            <p className="text-xs text-gray-600 mb-1">
-                                <strong>Status:</strong> {course.status}
-                            </p>
-                        )}
-                        {course.description && (
-                            <p className="text-xs text-gray-600">
-                                <strong>Description:</strong> {course.description}
-                            </p>
-                        )}
-                    </div>,
-                    document.body
-                )}
+            {/* Tooltip for sidebar (portal) */}
+            {inSidebar && showTooltip && ReactDOM.createPortal(
+                <div
+                    className="fixed z-[9999] pointer-events-none"
+                    style={{
+                        top: `${tooltipPosition.top}px`,
+                        left: `${tooltipPosition.left}px`,
+                        transform: 'translateY(-50%)'
+                    }}
+                >
+                    {tooltipContent}
+                </div>,
+                document.body
+            )}
         </>
     );
 };
