@@ -10,7 +10,7 @@ import {
 import { auth } from "@/firebase-config";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import Cookies from "js-cookie";
-import { toast } from "sonner";
+import { Toaster, toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,12 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
 const VITE_CRUD_API = import.meta.env.VITE_CRUD_API;
+
+const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
+const isAllowedInDev = (email: string | null): boolean => {
+  if (ENVIRONMENT !== 'development') return true; // prod env automatically falls through dev env check
+  return email?.toLowerCase().endsWith('@acmutd.co') || false;
+};
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -68,6 +74,12 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
         return;
       }
 
+      if (!isAllowedInDev(email)) {
+        toast.error("Development access restricted to @acmutd.co emails only.");
+        await user.delete();
+        return;
+      }
+
       const token = await user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
 
@@ -100,6 +112,11 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
   };
 
   async function onSubmit(data: FormValues) {
+    if (!isAllowedInDev(data.email)) {
+      toast.error("Development access restricted to @acmutd.co emails only.");
+      return;
+    }
+
     try {
       props.setLoading(true); // Trigger loading animation for user
       const result = await signInWithEmailAndPassword(
@@ -157,211 +174,220 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
   }
 
   return (
-    <div>
-      {
-        props.isMobile ? <div className="w-full space-y-6 pb-4">
-        <Form {...form}>
-          {loginError && (
-            <small className="text-destructive">
-              Login failed. Please verify your credentials or{" "}
-              <Link to="/signup" className="underline font-bold">
-                sign up
-              </Link>{" "}
-              if you don’t have an account.
-            </small>
-          )}
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-textdark text-[15px]">
-                    Email
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter email"
-                      type="email"
-                      className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-                      {...field}
-                      onChange={(e) => {
-                        setLoginError(false);
-                        field.onChange(e);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-textdark text-[15px]">
-                    Password
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter password"
-                      type="password"
-                      className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-                      {...field}
-                      onChange={(e) => {
-                        setLoginError(false);
-                        field.onChange(e);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button
-              type="submit"
-              className="w-full h-[2.5rem] rounded-full bg-accent hover:bg-buttonhover text-[15px] text-textdark"
-            >
-              Log in
-            </Button>
-          </form>
-        </Form>
-  
-        <div className="flex gap-2 justify-center items-center w-full">
-          <Separator className="flex-[1] border-border" />
-          <small className="bg-white text-xs text-textsecondary">OR</small>
-          <Separator className="flex-[1] border-border" />
-        </div>
-  
-        <div className="flex flex-col items-center space-y-3">
-          <Button
-            variant="outline"
-            className="w-full h-[2.5rem] bg-light rounded-full border border-border hover:bg-gray-50 text-[15px] text-black hover:text-black"
-            onClick={handleGoogleLogin}
-          >
-            <img src="/GoogleIcon.png" alt="Google" className="w-5 h-5 mr-2" />
-            Sign in with Google
-          </Button>
-  
-          <Link
-            to="/forgot-password"
-            className="text-[15px] text-textsecondary hover:underline"
-          >
-            Forgot password?
-          </Link>
-  
-          <Link
-            to="/signup"
-            className="text-[15px] text-textsecondary hover:underline"
-          >
-            Don't have an account?
-          </Link>
-        </div>
-          </div>
-        :
-        <div className="w-full space-y-6 pb-4">
-      <Form {...form}>
-        {loginError && (
-          <small className="text-destructive">
-            Login failed. Please verify your credentials or{" "}
-            <Link to="/signup" className="underline font-bold">
-              sign up
-            </Link>{" "}
-            if you don’t have an account.
-          </small>
-        )}
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-textdark text-[15px]">
-                  Email
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter email"
-                    type="email"
-                    className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-                    {...field}
-                    onChange={(e) => {
-                      setLoginError(false);
-                      field.onChange(e);
-                    }}
+    <>
+      <Toaster position="top-center" richColors />
+      <div>
+            {
+              props.isMobile ? <div className="w-full space-y-6 pb-4">
+              <Form {...form}>
+                {loginError && (
+                  <small className="text-destructive">
+                    Login failed. Please verify your credentials or{" "}
+                    <Link to="/signup" className="underline font-bold">
+                      sign up
+                    </Link>{" "}
+                    if you don’t have an account.
+                  </small>
+                )}
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-textdark text-[15px]">
+                          Email
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter email"
+                            type="email"
+                            className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                            {...field}
+                            disabled={ENVIRONMENT === 'development'}
+                            onChange={(e) => {
+                              setLoginError(false);
+                              field.onChange(e);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-textdark text-[15px]">
-                  Password
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter password"
-                    type="password"
-                    className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-                    {...field}
-                    onChange={(e) => {
-                      setLoginError(false);
-                      field.onChange(e);
-                    }}
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-textdark text-[15px]">
+                          Password
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="Enter password"
+                            type="password"
+                            className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"                          
+                            disabled={ENVIRONMENT === 'development'}
+                            onChange={(e) => {
+                              setLoginError(false);
+                              field.onChange(e);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button
-            type="submit"
-            className="w-full h-[2.5rem] rounded-full bg-accent hover:bg-buttonhover text-[15px] text-textdark"
-          >
-            Log in
-          </Button>
-        </form>
-      </Form>
+                  <Button
+                    type="submit"
+                    disabled={ENVIRONMENT === 'development'}
+                    className="w-full h-[2.5rem] rounded-full bg-accent hover:bg-buttonhover text-[15px] text-textdark"
+                  >
+                    Log in
+                  </Button>
+                </form>
+              </Form>
+        
+              <div className="flex gap-2 justify-center items-center w-full">
+                <Separator className="flex-[1] border-border" />
+                <small className="bg-white text-xs text-textsecondary">OR</small>
+                <Separator className="flex-[1] border-border" />
+              </div>
+        
+              <div className="flex flex-col items-center space-y-3">
+                <Button
+                  variant="outline"
+                  className="w-full h-[2.5rem] bg-light rounded-full border border-border hover:bg-gray-50 text-[15px] text-black hover:text-black"
+                  onClick={handleGoogleLogin}
+                >
+                  <img src="/GoogleIcon.png" alt="Google" className="w-5 h-5 mr-2" />
+                  Sign in with Google
+                </Button>
+        
+                <Link
+                  to="/forgot-password"
+                  className="text-[15px] text-textsecondary hover:underline"
+                >
+                  Forgot password?
+                </Link>
+        
+                <Link
+                  to="/signup"
+                  className="text-[15px] text-textsecondary hover:underline"
+                >
+                  Don't have an account?
+                </Link>
+              </div>
+                </div>
+              :
+              <div className="w-full space-y-6 pb-4">
+            <Form {...form}>
+              {loginError && (
+                <small className="text-destructive">
+                  Login failed. Please verify your credentials or{" "}
+                  <Link to="/signup" className="underline font-bold">
+                    sign up
+                  </Link>{" "}
+                  if you don’t have an account.
+                </small>
+              )}
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-textdark text-[15px]">
+                        Email
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter email"
+                          type="email"
+                          className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                          {...field}
+                          disabled={ENVIRONMENT === 'development'}
+                          onChange={(e) => {
+                            setLoginError(false);
+                            field.onChange(e);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-textdark text-[15px]">
+                        Password
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter password"
+                          type="password"
+                          className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                          {...field}
+                          disabled={ENVIRONMENT === 'development'}
+                          onChange={(e) => {
+                            setLoginError(false);
+                            field.onChange(e);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="submit"
+                  disabled={ENVIRONMENT === 'development'}
+                  className="w-full h-[2.5rem] rounded-full bg-accent hover:bg-buttonhover text-[15px] text-textdark"
+                >
+                  Log in
+                </Button>
+              </form>
+            </Form>
 
-      <div className="flex gap-2 justify-center items-center w-full">
-        <Separator className="flex-[1] border-border" />
-        <small className="bg-white text-xs text-textsecondary">OR</small>
-        <Separator className="flex-[1] border-border" />
+            <div className="flex gap-2 justify-center items-center w-full">
+              <Separator className="flex-[1] border-border" />
+              <small className="bg-white text-xs text-textsecondary">OR</small>
+              <Separator className="flex-[1] border-border" />
+            </div>
+
+            <div className="flex flex-col items-center space-y-3">
+              <Button
+                variant="outline"
+                className="w-full h-[2.5rem] bg-light rounded-full border border-border hover:bg-gray-50 text-[15px] text-black hover:text-black"
+                onClick={handleGoogleLogin}
+              >
+                <img src="/GoogleIcon.png" alt="Google" className="w-5 h-5 mr-2" />
+                Sign in with Google
+              </Button>
+
+              <Link
+                to="/forgot-password"
+                className="text-[15px] text-textsecondary hover:underline"
+              >
+                Forgot password?
+              </Link>
+
+              <Link
+                to="/signup"
+                className="text-[15px] text-textsecondary hover:underline"
+              >
+                Don't have an account?
+              </Link>
+            </div>
+              </div>
+            }
       </div>
-
-      <div className="flex flex-col items-center space-y-3">
-        <Button
-          variant="outline"
-          className="w-full h-[2.5rem] bg-light rounded-full border border-border hover:bg-gray-50 text-[15px] text-black hover:text-black"
-          onClick={handleGoogleLogin}
-        >
-          <img src="/GoogleIcon.png" alt="Google" className="w-5 h-5 mr-2" />
-          Sign in with Google
-        </Button>
-
-        <Link
-          to="/forgot-password"
-          className="text-[15px] text-textsecondary hover:underline"
-        >
-          Forgot password?
-        </Link>
-
-        <Link
-          to="/signup"
-          className="text-[15px] text-textsecondary hover:underline"
-        >
-          Don't have an account?
-        </Link>
-      </div>
-        </div>
-      }
-    </div>
+    </>
     
   );
 }

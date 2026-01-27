@@ -6,7 +6,18 @@ import { useAuth } from "../context/AuthContext";
 const Profile = () => {
     const { user } = useAuth();
     const [mobileView, setMobileView] = useState(false);
-    const [profilepic, setProfilePic] = useState("../../public/assets/profile_pics/1.png");
+    const [profilepic, setProfilePic] = useState(() => {
+        const cached = localStorage.getItem('profilePictureType');
+        if (cached) {
+            const type = parseInt(cached);
+            return type === 0 && user?.photoURL 
+                ? user.photoURL 
+                : `/assets/profile_pics/${type}.png`;
+        }
+        return "/assets/profile_pics/1.png";
+    });
+    const [profilePictureType, setProfilePictureType] = useState(1);
+    const [googlePhotoURL, setGooglePhotoURL] = useState<string | null>(null);
     const [isPopUpOpen, setIsPopUpOpen] = useState(false);
     const [program, setProgram] = useState("All");
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -17,48 +28,39 @@ const Profile = () => {
     const [undergraduateHours, setUndergraduateHours] = useState(0);
     const [graduateHours, setGraduateHours] = useState(0);
     const [startDate, setStartDate] = useState("");
+    const [carouselData, setCarouselData] = useState<Array<{
+        title: string;
+        core: number;
+        major: number;
+        elective: number;
+        completed: number;
+        total: number;
+        percentage: number;
+    }>>([]);
 
-    const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
+    type EvaluatorData = Array<{
+        degree: string;
+        credits: number;
+        credits_completed: number;
+        categories: Array<{
+          name: string;
+          credits: number;
+          credits_completed: number;
+        }>;
+      }>;
 
-    // Sample data for the carousel cards
-    const carouselData = [
-        {
-            title: "Computer Science BS",
-            core: 45,
-            major: 60,
-            elective: 15,
-            completed: 75,
-            total: 120,
-            percentage: 63
-        },
-        {
-            title: "Business Administration BA",
-            core: 42,
-            major: 54,
-            elective: 24,
-            completed: 67,
-            total: 120,
-            percentage: 56
-        },
-        {
-            title: "Mathematics BS",
-            core: 39,
-            major: 63,
-            elective: 18,
-            completed: 82,
-            total: 120,
-            percentage: 68
-        },
-        {
-            title: "Engineering BS",
-            core: 48,
-            major: 66,
-            elective: 6,
-            completed: 90,
-            total: 120,
-            percentage: 75
+    // check if google pic changed
+    useEffect(() => {
+        if (user?.photoURL) {
+            setGooglePhotoURL(user.photoURL);
+            if (profilePictureType === 0) {
+                setProfilePic(user.photoURL);
+            }
         }
-    ];
+        getUserInfo();
+    }, [user?.photoURL]);
+    
+    const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
     const cardsPerView = 2; // Number of cards visible at once
     const maxIndex = carouselData.length - cardsPerView;
@@ -75,28 +77,65 @@ const Profile = () => {
         setCurrentIndex(index);
     };
 
-    function pickProfile(picNumber: number) {
-        switch (picNumber) {
-            case 1:
-                setProfilePic("../../assets/profile_pics/1.png");
-                break;
-            case 2:
-                setProfilePic("../../assets/profile_pics/2.png");
-                break;
-            case 3:
-                setProfilePic("../../assets/profile_pics/3.png");
-                break;
-            case 4:
-                setProfilePic("../../assets/profile_pics/4.png");
-                break;
-            case 5:
-                setProfilePic("../../assets/profile_pics/5.png");
-                break;
-            case 6:
-                setProfilePic("../../assets/profile_pics/6.png");
-                break;
-            default:
-                setProfilePic("../../assets/profile_pics/1.png");
+    function formatCarouselData(evaluatorResponse: EvaluatorData) {
+        const core = evaluatorResponse.find(d => d.degree === "Core Requirements");
+        const degrees = evaluatorResponse.filter(d => d.degree !== "Core Requirements");
+        
+        if (!core || degrees.length === 0) {
+          throw new Error("Invalid evaluator data");
+        }
+        
+        return degrees.map(degree => {
+          const majorReq = degree.categories.find(c => c.name.includes("Major Requirements"));
+          const electiveReq = degree.categories.find(c => c.name.includes("Elective Requirements"));
+          
+          if (!majorReq || !electiveReq) {
+            throw new Error("Missing major or elective requirements");
+          }
+      
+          return {
+            title: degree.degree,
+            core: core.credits,
+            major: majorReq.credits,
+            elective: electiveReq.credits,
+            completed: core.credits_completed + degree.credits_completed,
+            total: core.credits + degree.credits,
+            percentage: Math.round(
+              ((core.credits_completed + degree.credits_completed) / 
+               (core.credits + degree.credits)) * 100
+            )
+          };
+        });
+    }
+
+    async function pickProfile(picNumber: number) {
+        const token = await user?.getIdToken();
+
+        const newType = profilePictureType === picNumber ? 0 : picNumber; // if going for Google tile, switch to 0 or we do 1-6
+
+        await fetch(CRUD_API as string,
+            { 
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify
+                (
+                    {
+                        userId: user?.uid,
+                        action: "updateProfile",
+                        token,
+                        profile_picture_type: newType
+                    }
+                )
+            }
+        );
+
+        setProfilePictureType(newType);
+        localStorage.setItem('profilePictureType', newType.toString()); // cache in regular stores if not changing PFP 
+        window.dispatchEvent(new Event('storage'));
+        if (newType === 0 && googlePhotoURL) {
+            setProfilePic(googlePhotoURL);
+        } else {
+            setProfilePic(`/assets/profile_pics/${newType}.png`);
         }
         setIsPopUpOpen(false);
     }
@@ -134,6 +173,38 @@ const Profile = () => {
 
         //add feature so it checks if data.credit_hours contains graduate that its not 0
         setGraduateHours(0);
+
+        // profile pic type and URL 
+        const picType = data.profile_picture_type ?? 1;
+        setProfilePictureType(picType);
+
+        localStorage.setItem('profilePictureType', picType.toString());
+
+        if (user?.photoURL) {
+            setGooglePhotoURL(user.photoURL);
+        }
+        
+        if (picType === 0 && user?.photoURL) {
+            setProfilePic(user.photoURL);
+        } else {
+            setProfilePic(`/assets/profile_pics/${picType}.png`);
+        }
+
+        // populate carousel
+        const evalResponse = await fetch(CRUD_API as string, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user?.uid,
+              action: "getEvaluation",
+              token,
+            }),
+          });
+      
+          if (evalResponse.ok) {
+            const evalData = await evalResponse.json();
+            setCarouselData(formatCarouselData(evalData.evaluation));
+          }
     }
 
     useEffect(() => {
@@ -162,7 +233,7 @@ const Profile = () => {
                                 <img
                                  src={profilepic}
                                  draggable={false}
-                                 className="w-32 h-32 sm:w-40 sm:h-40 md:w-[200px] md:h-[200px] object-cover"
+                                 className="w-32 h-32 sm:w-40 sm:h-40 md:w-[200px] md:h-[200px] object-cover rounded-3xl"
                                 />
                             </button>
                             <div className="flex-1 min-w-0 flex flex-col">
@@ -173,12 +244,12 @@ const Profile = () => {
                                         <div className="h-full border border-card-bord bg-white rounded-2xl
                                                         px-3 py-4 sm:py-2 flex flex-col items-center justify-center">
                                             <h3>{undergraduateHours} Credit Hours</h3>
-                                            <p className="text-[#6C6C6C]">Undergraduates</p>
+                                            <p className="text-[#6C6C6C]">Undergraduate</p>
                                         </div>
                                         <div className="h-full border border-card-bord bg-white rounded-2xl
                                                         px-3 py-4 sm:py-2 flex flex-col items-center justify-center">
                                             <h3>{graduateHours} Credit Hours</h3>
-                                            <p className="text-[#6C6C6C]">Graduates</p>
+                                            <p className="text-[#6C6C6C]">Graduate</p>
                                         </div>
                                         <div className="h-full border border-card-bord bg-white rounded-2xl
                                                         px-3 py-4 sm:py-2 flex flex-col items-center justify-center sm:col-span-2 lg:col-span-1">
@@ -292,51 +363,43 @@ const Profile = () => {
                                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setIsPopUpOpen(false)}>
                                     <div className="bg-white rounded-2xl p-10 shadow-lg relative items-center text-center space-y-10">
                                         <h2>Pick Your Favorite Peechi</h2>
+                                        
                                         <div className="flex flex-row space-x-10">
-                                            <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(1)}>
-                                                <img
-                                                src={"../../public/assets/profile_pics/1.png"}
-                                                className="w-40 h-40 object-cover"
-                                                draggable={false}
-                                                />
-                                            </button>
-                                            <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(2)}>
-                                                <img
-                                                src={"../../public/assets/profile_pics/2.png"}
-                                                className="w-40 h-40 object-cover"
-                                                draggable={false}
-                                                />
-                                            </button>
-                                            <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(3)}>
-                                                <img
-                                                src={"../../public/assets/profile_pics/3.png"}
-                                                className="w-40 h-40 object-cover"
-                                                draggable={false}
-                                                />
-                                            </button>
+                                            {[1, 2, 3].map(num => (
+                                                <button key={num} className="hover:scale-105 transition-transform" 
+                                                        onClick={() => pickProfile(num)}>
+                                                    {profilePictureType === num && googlePhotoURL ? (
+                                                        <div className="relative">
+                                                            <img src={googlePhotoURL}
+                                                                className="w-40 h-40 object-cover rounded-3xl" 
+                                                                draggable={false} />
+                                                        </div>
+                                                    ) : (
+                                                        <img src={`/assets/profile_pics/${num}.png`}
+                                                            className="w-40 h-40 object-cover" 
+                                                            draggable={false} />
+                                                    )}
+                                                </button>
+                                            ))}
                                         </div>
+            
                                         <div className="flex flex-row space-x-10">
-                                            <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(4)}>
-                                                <img
-                                                src={"../../public/assets/profile_pics/4.png"}
-                                                className="w-40 h-40 object-cover"
-                                                draggable={false}
-                                                />
-                                            </button>
-                                            <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(5)}>
-                                                <img
-                                                src={"../../public/assets/profile_pics/5.png"}
-                                                className="w-40 h-40 object-cover"
-                                                draggable={false}
-                                                />
-                                            </button>
-                                            <button className="hover:scale-105 transition-transform" onClick={()=> pickProfile(6)}>
-                                                <img
-                                                src={"../../public/assets/profile_pics/6.png"}
-                                                className="w-40 h-40 object-cover"
-                                                draggable={false}
-                                                />
-                                            </button>
+                                            {[4, 5, 6].map(num => (
+                                                <button key={num} className="hover:scale-105 transition-transform" 
+                                                        onClick={() => pickProfile(num)}>
+                                                    {profilePictureType === num && googlePhotoURL ? (
+                                                        <div className="relative">
+                                                            <img src={googlePhotoURL}
+                                                                className="w-40 h-40 object-cover rounded-3xl" 
+                                                                draggable={false} />
+                                                        </div>
+                                                    ) : (
+                                                        <img src={`/assets/profile_pics/${num}.png`}
+                                                            className="w-40 h-40 object-cover" 
+                                                            draggable={false} />
+                                                    )}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
