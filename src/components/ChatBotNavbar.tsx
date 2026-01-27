@@ -37,6 +37,7 @@ const ChatBotNavbar = () => {
 
   const [isInWebapp, setIsInWebapp] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string>("");
+  const [isOnboardingActive, setIsOnboardingActive] = useState(false);  
 
   // Mobile sidebar
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -60,6 +61,21 @@ const ChatBotNavbar = () => {
   const [error, setError] = useState<string | null>(null);
 
   const CRUD_API = import.meta.env.VITE_CRUD_API;
+
+  // onboarding modal active check
+  useEffect(() => {
+    const checkOnboarding = () => {
+      const onboardingActive = document.body.hasAttribute('data-onboarding-active');
+      setIsOnboardingActive(onboardingActive);
+    };
+  
+    checkOnboarding();
+    
+    const observer = new MutationObserver(checkOnboarding);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-onboarding-active'] });
+  
+    return () => observer.disconnect();
+  }, []);
 
   // check pfp 
   useEffect(() => {
@@ -503,19 +519,19 @@ const ChatBotNavbar = () => {
         )}
 
         <nav className={`
-                  ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
+                  ${isInWebapp && !isOnboardingActive ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
                   py-2.5 px-6 fixed w-full z-10 hidden md:block
                   ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
         `}>
                 <div className="flex items-center justify-between w-full">
                   <Link to="/" className="ml-0">
-                    <img src={isInWebapp ? "/Sage_Logo_Dark.svg" : "/Sage_Logo_Light.svg"} alt="SAGE" className="h-8 w-auto" />
+                    <img src={isInWebapp && !isOnboardingActive ? "/Sage_Logo_Dark.svg" : "/Sage_Logo_Light.svg"} alt="SAGE" className="h-8 w-auto" />
                   </Link>
                   <ul className="flex items-center space-x-6 mr-0">
                     <li className="flex-row">
                       <Link
                         to="/planner"
-                        className={`${isInWebapp ? "text-textdark hover:text-gray-500" : "text-textlight hover:text-gray-200"}
+                        className={`${isInWebapp && !isOnboardingActive ? "text-textdark hover:text-gray-500" : "text-textlight hover:text-gray-200"}
                         flex items-center gap-2`}
                       >
                         <Route className="stroke-accent" />
@@ -525,7 +541,7 @@ const ChatBotNavbar = () => {
                     <li className="flex-row">
                       <Link
                         to="/chatbot"
-                        className={`${isInWebapp ? "text-textdark hover:text-gray-500" : "text-textlight hover:text-gray-200"}
+                        className={`${isInWebapp && !isOnboardingActive ? "text-textdark hover:text-gray-500" : "text-textlight hover:text-gray-200"}
                         flex items-center gap-2 hover:text-gray-200"`}
                       >
                         <MessageCirclePlus className="stroke-accent" />
@@ -597,7 +613,7 @@ const ChatBotNavbar = () => {
 
       {/* Mobile navbar */}
       <nav className={`
-        ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
+        ${isInWebapp && !isOnboardingActive ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
         py-4 px-6 fixed w-full h-[4.2rem] z-10 md:hidden block
         ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
       `}>
@@ -613,12 +629,12 @@ const ChatBotNavbar = () => {
             aria-expanded={sidebarOpen}
             className="p-2 rounded-md outline-none"
           >
-            <MessagesSquare className={isInWebapp ? "stroke-textdark" : "stroke-textlight"} />
+            <MessagesSquare className={isInWebapp && !isOnboardingActive ? "stroke-textdark" : "stroke-textlight"} />
           </button>
 
           <DropdownMenu>
             <DropdownMenuTrigger>
-              <Menu className={isInWebapp ? "stroke-textdark" : "stroke-textlight"} />
+              <Menu className={isInWebapp && !isOnboardingActive ? "stroke-textdark" : "stroke-textlight"} />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               className={`bg-bglight flex flex-col p-2 gap-2 mr-6 items-center rounded-sm`}
@@ -692,7 +708,7 @@ const ChatBotNavbar = () => {
         aria-modal="true"
         className={`
           fixed left-0 top-0 h-full w-[84%] max-w-[22rem] z-40 md:hidden
-          ${isInWebapp ? "bg-bglight text-textdark" : "bg-bglight text-textdark"}
+          ${isInWebapp && !isOnboardingActive ? "bg-bglight text-textdark" : "bg-bglight text-textdark"}
           border-r
           transform transition-transform duration-300 ease-in-out
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
@@ -702,7 +718,7 @@ const ChatBotNavbar = () => {
         <div className="flex items-center justify-between px-4 py-3">
           <Link to="/" className="ml-0" onClick={() => setSidebarOpen(false)}>
             <img
-              src={isInWebapp ? "/Sage_Logo_Dark.svg" : "/Sage_Logo_Light.svg"}
+              src={isInWebapp && !isOnboardingActive ? "/Sage_Logo_Dark.svg" : "/Sage_Logo_Light.svg"}
               alt="SAGE"
               className="h-8 w-auto"
             />

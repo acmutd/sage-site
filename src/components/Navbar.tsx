@@ -81,20 +81,20 @@ const Navbar = () => {
         )}
 
         <nav className={`
-          ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
-          py-2.5 px-6 fixed w-full z-10 hidden md:block
+          ${isInWebapp && !isOnboardingActive ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
+          py-2.5 px-6 fixed w-full z-[70] hidden md:block
           ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
         `}>
             
           <div className="flex items-center justify-between w-full">
             <Link to="/" className="ml-0">
-              <img src={isInWebapp ? "/Sage_Logo_Dark.svg" : "/Sage_Logo_Light.svg"} alt="SAGE" className="h-8 w-auto" />
+              <img src={isInWebapp && !isOnboardingActive ? "/Sage_Logo_Dark.svg" : "/Sage_Logo_Light.svg"} alt="SAGE" className="h-8 w-auto" />
             </Link>
             <ul className="flex items-center space-x-6 mr-0">
               <li className="flex-row">
                 <Link
                   to="/planner"
-                  className={`${isInWebapp ? "text-textdark hover:text-gray-500" : "text-textlight hover:text-gray-200"}
+                  className={`${isInWebapp && !isOnboardingActive ? "text-textdark hover:text-gray-500" : "text-textlight hover:text-gray-200"}
                   flex items-center gap-2`}
                 >
                   <Route className="stroke-accent" />
@@ -104,7 +104,7 @@ const Navbar = () => {
               <li className="flex-row">
                 <Link
                   to="/chatbot"
-                  className={`${isInWebapp ? "text-textdark hover:text-gray-500" : "text-textlight hover:text-gray-200"}
+                  className={`${isInWebapp && !isOnboardingActive ? "text-textdark hover:text-gray-500" : "text-textlight hover:text-gray-200"}
                   flex items-center gap-2 hover:text-gray-200"`}
                 >
                   <MessageCirclePlus className="stroke-accent" />
@@ -176,8 +176,8 @@ const Navbar = () => {
 
       {/* Mobile Navbar -- Dropdown navbar when screen width < md (768px) */}
       <nav className={`
-        ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
-        py-4 px-6 fixed w-full h-[4.2rem] z-10 md:hidden block
+        ${isInWebapp && !isOnboardingActive ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
+        py-4 px-6 fixed w-full h-[4.2rem] z-[70] md:hidden block
         ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
       `}>
         <div className="flex items-center justify-between w-full">

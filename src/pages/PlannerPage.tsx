@@ -29,6 +29,11 @@ const PlannerPage = () => {
     } else {
       document.body.removeAttribute('data-onboarding-active');
     }
+
+    // unmounting component
+    return () => {
+      document.body.removeAttribute('data-onboarding-active');
+    };
   }, [showOnboarding]);
   
   useEffect(() => {
