@@ -10,10 +10,7 @@ const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
 const Navbar = () => {
   const { user, logout } = useAuth();
   const [isInWebapp, setIsInWebapp] = useState(false);
-  const [isOnboardingActive, setIsOnboardingActive] = useState(false);
-
-  let location = useLocation().pathname;
-  
+  const [isOnboardingActive, setIsOnboardingActive] = useState(false);  
   const [profilePicture, setProfilePicture] = useState<string>("");
 
   let location = useLocation().pathname;
