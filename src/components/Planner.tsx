@@ -479,11 +479,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     }
                     isExpanded={!sidebarCollapsed}
                     onToggleExpanded={() => setSidebarCollapsed(!sidebarCollapsed)}
-<<<<<<< HEAD
                     placedSuggestedCourses={placedSuggestedCourses}
-=======
                     onRestartOnboarding={onRestartOnboarding}
->>>>>>> feat/planner
                 />
                 
                 <div 
