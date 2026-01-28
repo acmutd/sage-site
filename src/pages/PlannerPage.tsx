@@ -258,7 +258,7 @@ const PlannerPage = () => {
               alt="Loading" 
               className="h-16 w-16 animate-spin"
             />
-            <p className="mt-4 text-[#85EA90] opacity-80 font-semibold">Loading...</p>
+            <p className="mt-4 opacity-80 font-semibold">Loading...</p>
           </div>
         </div>
       ) : (

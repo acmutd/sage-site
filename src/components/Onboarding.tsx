@@ -123,7 +123,7 @@ return (
             <FileUploader
               userId={user?.uid || "test-user-123"}
               onNext={handleFileUploadNext}
-              showManualOption={!isFirstTime || transcriptData !== null} 
+              showManualOption={!isFirstTime} 
               onManualFill={handleManualFill}
             />
           )}
