@@ -34,6 +34,10 @@ const Onboarding: React.FC<OnboardingProps> = ({
     setModalStep("Programs");
   };
 
+  const handleManualFill = () => {
+    setModalStep("Programs"); 
+  };
+
   const handleProgramsNext = (updatedPrograms: any[]) => {
     const transformToTranscriptData = (program: any) => ({
       name: program.title,
@@ -119,6 +123,8 @@ return (
             <FileUploader
               userId={user?.uid || "test-user-123"}
               onNext={handleFileUploadNext}
+              showManualOption={!isFirstTime || transcriptData !== null} 
+              onManualFill={handleManualFill}
             />
           )}
 
