@@ -94,6 +94,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return updatedSemesters;
     });
 
+    // Track which suggested courses are currently placed in the plan
+    const [placedSuggestedCourses, setPlacedSuggestedCourses] = useState<Set<string>>(new Set());
+
 
     const [error, setError] = useState<string | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -154,6 +157,16 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         (c: any) => c.id === courseId
                     );
                     if (courseIndex !== -1) {
+                        const removedCourse = sourceSemester.courses[courseIndex];
+                        // If the course being removed was originally suggested, unmark it
+                        if (removedCourse.status === 'planned') {
+                            const courseCode = removedCourse.course_code || removedCourse.code;
+                            setPlacedSuggestedCourses(prevPlaced => {
+                                const newPlaced = new Set(prevPlaced);
+                                newPlaced.delete(courseCode);
+                                return newPlaced;
+                            });
+                        }
                         sourceSemester.courses.splice(courseIndex, 1);
                     }
                 }
@@ -208,6 +221,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                     targetSemester.courses.push(newCourse);
                     console.log("Added suggested course to target:", newCourse);
+                    
+                    // Mark this course as placed
+                    setPlacedSuggestedCourses(prevPlaced => new Set(prevPlaced).add(courseCode));
                 }
 
                 return newState;
@@ -359,6 +375,27 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const handleClearSemester = (yearKey: string, semesterIndex: number) => {
         if (!semesterToDelete) return;
 
+        const semesterToClear = allSemesters[yearKey]?.[semesterIndex];
+        if (semesterToClear?.courses) {
+            const courseCodesToRemove: string[] = [];
+            semesterToClear.courses.forEach((course: any) => {
+                if (course.status === 'planned') {
+                    const courseCode = course.course_code || course.code;
+                    if (courseCode) {
+                        courseCodesToRemove.push(courseCode);
+                    }
+                }
+            });
+            
+            if (courseCodesToRemove.length > 0) {
+                setPlacedSuggestedCourses(prevPlaced => {
+                    const newPlaced = new Set(prevPlaced);
+                    courseCodesToRemove.forEach(code => newPlaced.delete(code));
+                    return newPlaced;
+                });
+            }
+        }
+
         setAllSemesters(prev => {
             const newState = JSON.parse(JSON.stringify(prev));
             newState[yearKey][semesterIndex].courses = [];
@@ -372,6 +409,30 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
     const handleRemoveSemester = (yearKey: string, semesterIndex: number) => {
         if (!semesterToDelete) return;
+        
+        // Get the courses from the semester being removed
+        const semesterToRemove = allSemesters[yearKey]?.[semesterIndex];
+        if (semesterToRemove?.courses) {
+            // Collect all placed suggested courses from this semester
+            const courseCodesToRemove: string[] = [];
+            semesterToRemove.courses.forEach((course: any) => {
+                if (course.status === 'planned') {
+                    const courseCode = course.course_code || course.code;
+                    if (courseCode) {
+                        courseCodesToRemove.push(courseCode);
+                    }
+                }
+            });
+            
+            // Remove them all at once
+            if (courseCodesToRemove.length > 0) {
+                setPlacedSuggestedCourses(prevPlaced => {
+                    const newPlaced = new Set(prevPlaced);
+                    courseCodesToRemove.forEach(code => newPlaced.delete(code));
+                    return newPlaced;
+                });
+            }
+        }
         
         setAllSemesters(prev => {
             const yearSemesters = [...prev[yearKey]];
@@ -439,6 +500,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     }
                     isExpanded={!sidebarCollapsed}
                     onToggleExpanded={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    placedSuggestedCourses={placedSuggestedCourses}
                     onRestartOnboarding={onRestartOnboarding}
                 />
                 

@@ -43,6 +43,7 @@ interface SidebarProps {
     onDropCourse?: (courseId: string, sourceYear: string, sourceSemesterIndex: number) => void;
     isExpanded?: boolean;
     onToggleExpanded?: () => void;
+    placedSuggestedCourses?: Set<string>;
     onRestartOnboarding?: () => void;
 }
 
@@ -51,6 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     onDropCourse,
     isExpanded: externalIsExpanded,
     onToggleExpanded,
+    placedSuggestedCourses = new Set(),
     onRestartOnboarding,
 }) => {
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
@@ -273,6 +275,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             icon="info"
                                             isSuggested={true}
                                             inSidebar={true}
+                                            isPlaced={placedSuggestedCourses.has(course.code)}
                                         />
                                     ))}
                                 </>

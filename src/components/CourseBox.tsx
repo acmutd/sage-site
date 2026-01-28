@@ -23,6 +23,7 @@ interface CourseBoxProps {
     isFromTranscript?: boolean;
     isLocked?: boolean;
     inSidebar?: boolean;
+    isPlaced?: boolean;
 }
 
 const CourseBox: React.FC<CourseBoxProps> = ({
@@ -35,6 +36,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     isFromTranscript = false,
     isLocked = false,
     inSidebar = false,
+    isPlaced = false,
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -44,7 +46,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             type: "COURSE",
             item: () => 
             {
-                if (isFromTranscript || isLocked) return null;
+                if (isFromTranscript || isLocked || isPlaced) return null;
                 return {
                     course: course,
                     sourceYear,
@@ -53,17 +55,20 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     isSuggested: isSuggested,
                 }
             },
-            canDrag: () => !isFromTranscript && !isLocked,
+            canDrag: () => !isFromTranscript && !isLocked && !isPlaced,
             collect: (monitor) => ({
                 isDragging: monitor.isDragging(),
             }),
         }),
-        [course, sourceYear, sourceSemesterIndex, isFromTranscript, isLocked]
+        [course, sourceYear, sourceSemesterIndex, isFromTranscript, isLocked, isPlaced]
     );
 
-    const dragRef = !isFromTranscript ? drag : null;
+    const dragRef = !isFromTranscript && !isPlaced ? drag : null;
 
     const getStatusStyles = () => {
+        if (isPlaced) {
+            return 'border-gray-300 bg-gray-100 opacity-50';
+        }
         if (isSuggested) {
             return 'border-yellow-300 bg-yellow-50';
         }
@@ -155,12 +160,12 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     ref={dragRef}
                     className={`flex items-center justify-between p-3 rounded-lg border-2 ${getStatusStyles()} 
                     transition-all hover:shadow-sm ${isDragging ? "opacity-50" : ""} 
-                    ${isFromTranscript ? "cursor-default" : "cursor-grab"}`}
+                    ${isFromTranscript || isPlaced ? "cursor-default" : "cursor-grab"}`}
                     onMouseEnter={handleMouseEnter}
                     onMouseLeave={handleMouseLeave}
                 >
                     <div className="flex items-center gap-2">
-                        {!isFromTranscript && (
+                        {!isFromTranscript && !isPlaced && (
                             <GripVertical className="w-4 h-4 text-gray-400" />
                         )}
                         <span className="text-sm font-medium text-gray-700 ml-1">
@@ -169,9 +174,14 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     </div>
                     <div className="flex items-center gap-2">
                         {getIcon()}
-                        {isSuggested && (
+                        {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">
                                 Suggested
+                            </span>
+                        )}
+                        {isPlaced && (
+                            <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">
+                                Planned
                             </span>
                         )}
                     </div>
