@@ -167,10 +167,16 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onNext, showManualOption = 
             
             <button
               onClick={handleUpload}
-              className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+              className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isUploading || !selectedFile}
             >
-              {isUploading ? "Uploading..." : "Upload"}
+              {isUploading ? (
+                <span>
+                  Uploading<span className="loading-ellipsis"></span>
+                </span>
+              ) : (
+                "Upload"
+              )}
             </button>
           </div>
         )}
