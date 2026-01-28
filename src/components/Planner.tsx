@@ -375,6 +375,27 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const handleClearSemester = (yearKey: string, semesterIndex: number) => {
         if (!semesterToDelete) return;
 
+        const semesterToClear = allSemesters[yearKey]?.[semesterIndex];
+        if (semesterToClear?.courses) {
+            const courseCodesToRemove: string[] = [];
+            semesterToClear.courses.forEach((course: any) => {
+                if (course.status === 'planned') {
+                    const courseCode = course.course_code || course.code;
+                    if (courseCode) {
+                        courseCodesToRemove.push(courseCode);
+                    }
+                }
+            });
+            
+            if (courseCodesToRemove.length > 0) {
+                setPlacedSuggestedCourses(prevPlaced => {
+                    const newPlaced = new Set(prevPlaced);
+                    courseCodesToRemove.forEach(code => newPlaced.delete(code));
+                    return newPlaced;
+                });
+            }
+        }
+
         setAllSemesters(prev => {
             const newState = JSON.parse(JSON.stringify(prev));
             newState[yearKey][semesterIndex].courses = [];
