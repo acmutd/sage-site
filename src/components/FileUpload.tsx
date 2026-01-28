@@ -34,8 +34,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onNext, showManualOption = 
       const token = user ? await user.getIdToken() : null;
       const response = await uploadFile(user.uid, token);
       if (response?.message === "Transcript processed successfully") {
-        localStorage.removeItem('evaluation');
-        localStorage.removeItem('transcriptData');
         onNext(response.transcript_data); 
       } else {
         setErrorMessage("Upload failed. Unexpected response format.");

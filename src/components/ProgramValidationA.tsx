@@ -111,7 +111,7 @@ interface ProgramValidationAProps {
   isFirstTime?: boolean;
 }
 
-const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, onBack, dropdownRef, showUploadOption = false, onUploadClick, isFirstTime = true
+const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, onBack, dropdownRef, isFirstTime = true
 }) => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false); // State to toggle "Edit" mode
@@ -349,22 +349,16 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
         </Button>
       </div>
       <div className={`flex items-center mt-8 ${isFirstTime ? 'justify-between' : 'justify-between'}`}>
-        {isFirstTime ? (
+        {onBack && (
           <button
             onClick={onBack}
-            className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+            className={isFirstTime 
+              ? "px-8 py-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+              : "text-sm text-gray-500 hover:text-gray-700 underline"
+            }
           >
-            Back
+            {isFirstTime ? "Back" : "Alternatively, reupload your transcript"}
           </button>
-        ) : showUploadOption && onUploadClick ? (
-          <button
-            onClick={onUploadClick}
-            className="text-sm text-gray-500 hover:text-gray-700 underline"
-          >
-            Alternatively, reupload your transcript
-          </button>
-        ) : (
-          <div></div>
         )}
         
         <button

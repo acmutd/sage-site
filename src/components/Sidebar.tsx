@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight, NotebookPen, ArrowLeftFromLine, ArrowRightFromLine } from "lucide-react";
 import { useDrop } from "react-dnd";
 import RequirementCategory from "./RequirementCategory";
 import CourseBox from "./CourseBox";
-import ProgramValidationA from "./ProgramValidationA";
-import FileUploader from "./FileUpload";
 
 interface SidebarProps {
     requirements: {
@@ -46,23 +44,21 @@ interface SidebarProps {
     isExpanded?: boolean;
     onToggleExpanded?: () => void;
     placedSuggestedCourses?: Set<string>;
+    onRestartOnboarding?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
     requirements,
-    transcriptData,
     onDropCourse,
     isExpanded: externalIsExpanded,
     onToggleExpanded,
-    placedSuggestedCourses = new Set()
+    placedSuggestedCourses = new Set(),
+    onRestartOnboarding,
 }) => {
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
     const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
-    const [isProgramValidationOpen, setIsProgramValidationOpen] = useState(false);
-    const [showUploadView, setShowUploadView] = useState(false);
     const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
-    const dropdownRef = useRef<HTMLDivElement>(null);
 
     const [{ isOver }, drop] = useDrop(
         () => ({
@@ -98,27 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         });
         setAutoExpandedCategories(initialExpandedState);
       }, [requirements]);
-
-      const handleOpenProgramValidation = () => {
-        setIsProgramValidationOpen(true);
-      };
-    
-      const handleCloseProgramValidation = (e?: MouseEvent) => {
-        if (
-          e &&
-          dropdownRef.current &&
-          dropdownRef.current.contains(e.target as Node)
-        ) {
-          return;
-        }
-        setIsProgramValidationOpen(false);
-      };
-
-    const handleSavePrograms = (updatedPrograms: any[]) => {
-        console.log("Updated programs:", updatedPrograms);
-        handleCloseProgramValidation();
-    };
-
+      
     const handleToggleSubcategory = (reqIdx: number, catIdx: number) => {
         const key = `${reqIdx}-${catIdx}`;
         setExpandedSubcategories((prev) => ({
@@ -325,7 +301,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     {isExpanded ? (
                         <div className="p-6 pt-8">
                             <div className="flex items-center justify-between mb-6">
-                                <button className="flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700" onClick={handleOpenProgramValidation}>
+                                <button className="flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700" onClick={onRestartOnboarding}>
                                     <NotebookPen size={20} strokeWidth={2} />
                                     <span>Edit plans</span>
                                 </button>
@@ -378,7 +354,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </button>
                             <button 
                                 className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
-                                onClick={handleOpenProgramValidation}
+                                onClick={onRestartOnboarding}
                             >
                                 <NotebookPen className="w-5 h-5" strokeWidth={2} />
                             </button>
@@ -386,45 +362,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                     )}
                 </div>
             </div>
-    
-            {isProgramValidationOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-70 z-[80] flex items-center justify-center">
-                    <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl relative">
-                        <button
-                            className="absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition"
-                            onClick={() => {
-                                setIsProgramValidationOpen(false);
-                                setShowUploadView(false);
-                            }}
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-    
-                        {showUploadView ? (
-                            <FileUploader
-                                userId={transcriptData?.student_id || ""}
-                                onNext={() => {
-                                    setShowUploadView(false);
-                                    setIsProgramValidationOpen(false);
-                                }}
-                                showManualOption={true}
-                                onManualFill={() => setShowUploadView(false)}
-                            />
-                        ) : (
-                            <ProgramValidationA
-                                dropdownRef={dropdownRef}
-                                onNext={(updatedPrograms) => handleSavePrograms(updatedPrograms)}
-                                transcriptData={transcriptData}
-                                showUploadOption={true}
-                                onUploadClick={() => setShowUploadView(true)}
-                                isFirstTime={false}
-                            />
-                        )}
-                    </div>
-                </div>
-            )}       
         </>
     );
 };

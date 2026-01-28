@@ -5,7 +5,7 @@ import { Card, CardContent } from "../components/ui/card";
 import { Separator } from "../components/ui/separator";
 
 interface ClassValidationAProps {
-  onNext: () => void;
+  onNext: (updatedTranscript: any) => void;
   onBack: () => void;
   transcriptData: any;
 }
@@ -167,8 +167,8 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
   );
 
   return (
-    <div className="relative w-full max-w-4xl">
-      <div ref={scrollRef} className="overflow-y-auto max-h-[90vh] custom-scrollbar rounded-lg bg-gray-50" style={{ paddingRight: '20px' }}>
+    <div className="relative w-full max-w-3xl">
+      <div ref={scrollRef} className="overflow-y-auto max-h-[65vh] custom-scrollbar rounded-lg bg-gray-50" style={{ paddingRight: '20px' }}>
         <style>{`
           .custom-scrollbar {
             scrollbar-width: auto;
@@ -224,7 +224,7 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
     
             <button
               className="px-8 py-2 bg-green-400 text-gray-900 font-medium rounded-lg hover:bg-green-500 transition"
-              onClick={onNext}
+              onClick={() => onNext(transcriptData)}
             >
               Finish
             </button>
