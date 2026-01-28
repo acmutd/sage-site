@@ -5,7 +5,7 @@ import { Card, CardContent } from "../components/ui/card";
 import { Separator } from "../components/ui/separator";
 
 interface ClassValidationAProps {
-  onNext: () => void;
+  onNext: (updatedTranscript: any) => void;
   onBack: () => void;
   transcriptData: any;
 }
@@ -224,7 +224,7 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
     
             <button
               className="px-8 py-2 bg-green-400 text-gray-900 font-medium rounded-lg hover:bg-green-500 transition"
-              onClick={onNext}
+              onClick={() => onNext(transcriptData)}
             >
               Finish
             </button>
