@@ -7,6 +7,7 @@ import {
   createUserWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "@/firebase-config";
+import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { Toaster, toast } from "sonner";
@@ -51,6 +52,7 @@ export default function SignupForm(props: {
   setLoading: (loading: boolean) => void;
 }) {
   const navigate = useNavigate();
+  const { setAuthChecking } = useAuth();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -62,6 +64,7 @@ export default function SignupForm(props: {
   });
 
   const handleGoogleSignup = async () => {
+    setAuthChecking(true);
     const provider = new GoogleAuthProvider();
     provider.addScope("email");
     provider.addScope("profile");
@@ -77,14 +80,18 @@ export default function SignupForm(props: {
       if (!email) {
         toast.error("Email is unavailable. Please try again.");
         await user.delete();
+        setAuthChecking(false);
         return;
       }
 
       if (!isAllowedInDev(email)) {
         toast.error("Development access restricted to @acmutd.co emails only.");
         await user.delete();
+        setAuthChecking(false);
         return;
       }
+
+      setAuthChecking(false);
 
       const token = await user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
@@ -113,6 +120,7 @@ export default function SignupForm(props: {
     } catch (error) {
       console.error("Error during Google sign-up:", error);
       toast.error("Failed to sign up with Google. Please try again.");
+      setAuthChecking(false);
       props.setLoading(false); // Unrender loading animation for user
     }
   };
