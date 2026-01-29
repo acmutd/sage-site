@@ -87,7 +87,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     return (
         <div
             ref={!isFromTranscript ? drop : null}
-            className={`bg-white rounded-lg border border-gray-200 shadow-sm p-4 w-[317px] ${
+            className={`bg-white rounded-md border border-gray-200 shadow-sm p-4 w-[317px] ${
                 locked ? "opacity-75 bg-gray-50" : ""
             } ${isOver && canDrop ? "bg-blue-50" : ""}`}
         >
@@ -141,7 +141,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                     No classes were taken in this semester
                 </p>
             ) : courses.length === 0 ? (
-                <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed border-gray-200 rounded-lg">
+                <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed border-gray-200 bg-gray-50 rounded-md">
                     Drag and drop classes here
                 </div>
             ) : (
