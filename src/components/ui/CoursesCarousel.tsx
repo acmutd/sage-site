@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import CourseBox from '../CourseBox';
 
@@ -17,44 +17,20 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
 }) => {
     const COURSES_PER_PAGE = 5;
     const [currentPage, setCurrentPage] = useState(0);
-    const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
-    const [animationKey, setAnimationKey] = useState(0);
-    const [shouldShrink, setShouldShrink] = useState(false);
     
     const totalPages = Math.ceil(courses.length / COURSES_PER_PAGE);
     const startIndex = currentPage * COURSES_PER_PAGE;
     const endIndex = startIndex + COURSES_PER_PAGE;
     const currentCourses = courses.slice(startIndex, endIndex);
-    
-    // Check if this is the last page and has fewer courses
-    const isLastPagePartial = currentPage === totalPages - 1 && currentCourses.length < COURSES_PER_PAGE;
 
-    // Trigger shrink animation after slide-in completes
-    useEffect(() => {
-        if (isLastPagePartial) {
-            // Wait for slide-in animation to complete (400ms), then trigger shrink
-            const timer = setTimeout(() => {
-                setShouldShrink(true);
-            }, 400);
-            return () => clearTimeout(timer);
-        } else {
-            setShouldShrink(false);
-        }
-    }, [isLastPagePartial, animationKey]);
-
-    const goToPage = (page: number, direction?: 'left' | 'right') => {
-        const newPage = Math.max(0, Math.min(page, totalPages - 1));
-        if (newPage !== currentPage) {
-            setSlideDirection(direction || (newPage > currentPage ? 'right' : 'left'));
-            setCurrentPage(newPage);
-            setAnimationKey(prev => prev + 1);
-        }
+    const goToPage = (page: number) => {
+        setCurrentPage(Math.max(0, Math.min(page, totalPages - 1)));
     };
 
-    const firstPage = () => goToPage(0, 'left');
-    const lastPage = () => goToPage(totalPages - 1, 'right');
-    const nextPage = () => goToPage(currentPage + 1, 'right');
-    const prevPage = () => goToPage(currentPage - 1, 'left');
+    const firstPage = () => goToPage(0);
+    const lastPage = () => goToPage(totalPages - 1);
+    const nextPage = () => goToPage(currentPage + 1);
+    const prevPage = () => goToPage(currentPage - 1);
 
     if (courses.length === 0) {
         return (
@@ -66,39 +42,10 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
 
     const dotColor = type === 'suggested' ? 'bg-yellow-400' : 'bg-green-400';
 
-    // Get animation class based on direction
-    const getAnimationClass = () => {
-        return slideDirection === 'right' ? 'animate-slideInRight' : 'animate-slideInLeft';
-    };
-
-    // Calculate the container style for shrinking effect
-    const getContainerStyle = () => {
-        if (shouldShrink && isLastPagePartial) {
-            // Each course is roughly 60px tall + 4px gap (space-y-1)
-            const estimatedHeight = currentCourses.length * 64;
-            return {
-                maxHeight: `${estimatedHeight}px`,
-                transition: 'max-height 0.5s ease-out'
-            };
-        }
-        return {
-            maxHeight: '320px', // 5 courses * 64px
-            transition: 'max-height 0.5s ease-out'
-        };
-    };
-
     return (
-        <div className="w-full overflow-hidden">
-            {/* Container with dynamic height */}
-            <div 
-                style={getContainerStyle()}
-                className="overflow-hidden"
-            >
-                {/* Vertical Stack of Courses with horizontal slide animation */}
-                <div 
-                    key={animationKey}
-                    className={`space-y-1 ${getAnimationClass()}`}
-                >
+        <div className="w-full">
+            {/* Vertical Stack of Courses */}
+            <div className="space-y-1">
                 {currentCourses.map((course: any, idx: number) => {
                     if (type === 'suggested') {
                         const courseCode = course.code || course.course_code;
@@ -150,7 +97,6 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                     }
                 })}
             </div>
-            </div>
 
             {/* Navigation Controls - more than five courses */}
             {totalPages > 1 && (
@@ -191,7 +137,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                         {Array.from({ length: totalPages }).map((_, idx) => (
                             <button
                                 key={idx}
-                                onClick={() => goToPage(idx, idx > currentPage ? 'right' : 'left')}
+                                onClick={() => goToPage(idx)}
                                 className={`transition-all duration-200 ${
                                     idx === currentPage
                                         ? `w-6 h-2 rounded-full ${dotColor}`
