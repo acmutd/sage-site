@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ChevronDown, ChevronRight, NotebookPen, ArrowLeftFromLine, ArrowRightFromLine } from "lucide-react";
+import { NotebookPen, ArrowLeftFromLine, ArrowRightFromLine } from "lucide-react";
 import { useDrop } from "react-dnd";
 import RequirementCategory from "./RequirementCategory";
 import CoursesCarousel from "./ui/CoursesCarousel";
@@ -84,28 +84,50 @@ const Sidebar: React.FC<SidebarProps> = ({
         }
     };
 
+    // parent category
     useEffect(() => {
         const initialExpandedState: { [key: number]: boolean } = {};
         requirements.forEach((req, reqIdx) => {
-          const hasSuggestedCourses = req.categories.some(
-            (category: any) => category.suggested && category.suggested.length > 0
-          );
-          initialExpandedState[reqIdx] = hasSuggestedCourses;
+            const isIncomplete = req.progress < req.total;
+            const hasSuggestedCourses = req.categories.some(
+                (category: any) => category.suggested && category.suggested.length > 0
+            );
+            const hasContent = req.categories && req.categories.length > 0;
+            initialExpandedState[reqIdx] = (isIncomplete && hasContent) || hasSuggestedCourses;
         });
         setAutoExpandedCategories(initialExpandedState);
       }, [requirements]);
-      
-    const handleToggleSubcategory = (reqIdx: number, catIdx: number) => {
-        const key = `${reqIdx}-${catIdx}`;
+    
+      useEffect(() => {
+        const initialState: Record<string, boolean> = {};
+        
+        const initializeCategories = (categories: any[], reqIdx: number, parentIdx: string = "0") => {
+            categories.forEach((category, catIdx) => {
+                const key = `${reqIdx}-${parentIdx}-${catIdx}`;
+                // Auto-expand if category has any progress
+                initialState[key] = category.progress < category.total;
+                
+                // Recursively initialize nested categories
+                if (category.categories && category.categories.length > 0) {
+                    initializeCategories(category.categories, reqIdx, `${parentIdx}-${catIdx}`);
+                }
+            });
+        };
+        
+        requirements.forEach((req, reqIdx) => {
+            if (req.categories && req.categories.length > 0) {
+                initializeCategories(req.categories, reqIdx);
+            }
+        });
+        
+        setExpandedSubcategories(initialState);
+    }, [requirements]);
+    
+    const handleToggleSubcategory = (key: string) => {
         setExpandedSubcategories((prev) => ({
             ...prev,
             [key]: !prev[key],
         }));
-    };
-
-    const isSubcategoryExpanded = (reqIdx: number, catIdx: number) => {
-        const key = `${reqIdx}-${catIdx}`;
-        return expandedSubcategories[key] !== false;
     };
 
     console.log(requirements[0]?.categories?.[0]?.classes);
@@ -160,17 +182,17 @@ const Sidebar: React.FC<SidebarProps> = ({
         });
     };
 
-    const renderCategories = (categories: any[], reqIdx: number, parentCatIdx: number = 0, parentIsOR: boolean = false) => {
-        // Filter categories based on OR/AND logic
+    const renderCategories = (categories: any[], reqIdx: number, parentPath: string = "0", parentIsOR: boolean = false) => {
         const filteredCategories = filterCategories(categories);
         
         return filteredCategories.map((category, catIdx) => {
-            const currentCatIdx = `${parentCatIdx}-${catIdx}`;
+            const originalIdx = categories.indexOf(category);
+            const currentCatIdx = `${reqIdx}-${parentPath}-${originalIdx}`;
+            const nextParentPath = `${parentPath}-${originalIdx}`;
             const categoryName = category.name?.toUpperCase() || '';
             const isOR = categoryName === 'OR';
             const isAND = categoryName === 'AND';
             
-            // Determine display name
             let displayName = category.name;
             if (isOR) {
                 displayName = "Track Options";
@@ -178,7 +200,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                 displayName = `Track ${catIdx + 1}`;
             }
             
-            // For OR categories, filter subcategories to only show those with completion
             let subCategoriesToRender = category.categories || [];
             if (isOR && subCategoriesToRender.length > 0) {
                 subCategoriesToRender = subCategoriesToRender.filter((child: any) => 
@@ -187,66 +208,45 @@ const Sidebar: React.FC<SidebarProps> = ({
             }
             
             return (
-                <div
+                <RequirementCategory
                     key={currentCatIdx}
-                    className="border border-gray-200 rounded-lg overflow-hidden"
+                    title={displayName}
+                    completed={category.progress}
+                    total={category.total}
+                    isExpanded={expandedSubcategories[currentCatIdx]}
+                    onToggle={() => handleToggleSubcategory(currentCatIdx)}
+                    hasSubcategories={subCategoriesToRender.length > 0}
                 >
-                    <div
-                        className="flex items-center justify-between p-2 bg-white cursor-pointer hover:bg-gray-50"
-                        onClick={() => handleToggleSubcategory(reqIdx, parseInt(currentCatIdx))}
-                    >
-                        <div className="flex items-center gap-2">
-                            {isSubcategoryExpanded(reqIdx, parseInt(currentCatIdx)) ? (
-                                <ChevronDown className="w-3 h-3" />
-                            ) : (
-                                <ChevronRight className="w-3 h-3" />
-                            )}
-                            <span className="text-sm font-medium text-gray-700">
-                                {displayName}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-600">
-                                {category.progress}/{category.total}
-                            </span>
-                            <div className="w-2 h-2 bg-green-500 rounded-sm"></div>
-                        </div>
-                    </div>
-
-                    {isSubcategoryExpanded(reqIdx, parseInt(currentCatIdx)) && (
-                        <div className="p-2 space-y-1">
-                            {category.classes && category.classes.length > 0 ? (
-                                <CoursesCarousel 
-                                courses={category.classes} 
-                                type="completed"
-                                />
-                            ) : subCategoriesToRender.length > 0 ? null : (
-                                <div className="text-sm text-gray-500">
-                                    No courses in this category
-                                </div> 
-                            )}
-
-                            {category.suggested && category.suggested.length > 0 && (
-                                <>
-                                    <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
-                                        <span className="text-xs text-gray-500 font-medium">
-                                            Suggested Courses
-                                        </span>
-                                    </div>
-                                    <CoursesCarousel
-                                        courses={category.suggested}
-                                        type="suggested"
-                                        placedSuggestedCourses={placedSuggestedCourses}
-                                        categoryName={category.name}
-                                    />
-                                </>
-                            )}
-
-                            {subCategoriesToRender.length > 0 &&
-                                renderCategories(subCategoriesToRender, reqIdx, parseInt(currentCatIdx), isOR)}
-                        </div>
+                    {category.classes && category.classes.length > 0 ? (
+                        <CoursesCarousel 
+                            courses={category.classes} 
+                            type="completed"
+                        />
+                    ) : subCategoriesToRender.length > 0 ? null : (
+                        <div className="text-sm text-gray-500">
+                            No courses in this category
+                        </div> 
                     )}
-                </div>
+    
+                    {category.suggested && category.suggested.length > 0 && (
+                        <>
+                            <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
+                                <span className="text-xs text-gray-500 font-medium">
+                                    Suggested Courses
+                                </span>
+                            </div>
+                            <CoursesCarousel
+                                courses={category.suggested}
+                                type="suggested"
+                                placedSuggestedCourses={placedSuggestedCourses}
+                                categoryName={category.name}
+                            />
+                        </>
+                    )}
+    
+                    {subCategoriesToRender.length > 0 &&
+                        renderCategories(subCategoriesToRender, reqIdx, nextParentPath, isOR)}
+                </RequirementCategory>
             );
         });
     };
