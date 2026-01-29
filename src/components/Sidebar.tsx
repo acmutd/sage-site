@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight, NotebookPen, ArrowLeftFromLine, ArrowRightFromLine } from "lucide-react";
 import { useDrop } from "react-dnd";
 import RequirementCategory from "./RequirementCategory";
-import CourseBox from "./CourseBox";
+import CoursesCarousel from "./ui/CoursesCarousel";
 
 interface SidebarProps {
     requirements: {
@@ -216,35 +216,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                     {isSubcategoryExpanded(reqIdx, parseInt(currentCatIdx)) && (
                         <div className="p-2 space-y-1">
                             {category.classes && category.classes.length > 0 ? (
-                                category.classes.map((course: any, courseIdx: number) => (
-                                    <CourseBox
-                                        key={courseIdx}
-                                        course={{
-                                            course_code: course.code,
-                                            credits_earned: course.credits,
-                                            course_name: course.name,
-                                            semester: course.semester,
-                                            status: course.status,
-                                        }}
-                                        status={
-                                            course.status as
-                                            | "default"
-                                            | "completed"
-                                            | "warning"
-                                            | "info"
-                                            | undefined
-                                        }
-                                        icon={
-                                            course.status === "completed" ? "check" : null
-                                        }
-                                        isFromTranscript={true}
-                                        inSidebar={true}
-                                    />
-                                ))
+                                <CoursesCarousel 
+                                courses={category.classes} 
+                                type="completed"
+                                />
                             ) : subCategoriesToRender.length > 0 ? null : (
                                 <div className="text-sm text-gray-500">
                                     No courses in this category
-                                </div>
+                                </div> 
                             )}
 
                             {category.suggested && category.suggested.length > 0 && (
@@ -254,30 +233,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             Suggested Courses
                                         </span>
                                     </div>
-                                    {category.suggested.map((course: {
-                                        code: string;
-                                        name: string;
-                                        corequisites: string[];
-                                        excluded: string[];
-                                        required_core: boolean;
-                                        repeatable_for_hours: number;
-                                        notes: string;
-                                        description: string;
-                                    }, idx: number) => (
-                                        <CourseBox
-                                            key={`suggested-${idx}`}
-                                            course={{
-                                                course_code: course.code,
-                                                course_name: course.name,
-                                                description: course.description,
-                                            }}
-                                            status="warning"
-                                            icon="info"
-                                            isSuggested={true}
-                                            inSidebar={true}
-                                            isPlaced={placedSuggestedCourses.has(course.code)}
-                                        />
-                                    ))}
+                                    <CoursesCarousel
+                                        courses={category.suggested}
+                                        type="suggested"
+                                        placedSuggestedCourses={placedSuggestedCourses}
+                                        categoryName={category.name}
+                                    />
                                 </>
                             )}
 
