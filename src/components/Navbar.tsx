@@ -137,7 +137,7 @@ const Navbar = () => {
                       </div>
                     </DropdownMenuTrigger>
                       <DropdownMenuContent
-                        className={`bg-bglight flex flex-col p-2 gap-2 mr-6 items-center rounded-sm`}
+                        className={`bg-bglight flex flex-col p-2 gap-2 mr-6 items-center rounded-sm z-[90]`}
                       >
                         <DropdownMenuItem className="focus:bg-innercontainer w-full">
                         <Link
@@ -188,7 +188,7 @@ const Navbar = () => {
             <DropdownMenuTrigger>
               <Menu className={useDarkMode ? "stroke-textlight" : "stroke-textdark"} />
             </DropdownMenuTrigger>
-            <DropdownMenuContent className={`bg-bglight flex flex-col p-2 gap-2 mr-6 items-center rounded-sm z-[80]`}>
+            <DropdownMenuContent className={`bg-bglight flex flex-col p-2 gap-2 mr-6 items-center rounded-sm z-[90]`}>
               <DropdownMenuItem className="focus:bg-innercontainer w-full">
                 <Link
                   to="/planner"
