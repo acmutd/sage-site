@@ -223,12 +223,22 @@ const PlannerPage = () => {
 
   const fetchRequirements = async (transcriptData: any) => {
     try {
+
+      if (!user?.uid) {
+        console.warn("User ID is missing; cannot proceed further!");
+        return;
+      }
+      
+      const token = await user.getIdToken();
+      if (!token) throw new Error("Failed to retrieve authentication token.");
+
       const response = await fetch(VITE_EVALUATOR_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           id: transcriptData?.id || "student123", 
-          transcriptData: transcriptData 
+          transcriptData: transcriptData,
+          token
         }),
       });
   
