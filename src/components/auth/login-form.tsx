@@ -8,6 +8,7 @@ import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "@/firebase-config";
+import { useAuth } from "@/context/AuthContext";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import Cookies from "js-cookie";
 import { Toaster, toast } from "sonner";
@@ -46,6 +47,7 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
   const location = useLocation();
   const from = location.state?.from || "/chatbot";
   const [loginError, setLoginError] = useState(false);
+  const { setAuthChecking } = useAuth();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -56,6 +58,8 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
   });
 
   const handleGoogleLogin = async () => {
+    setAuthChecking(true);
+    
     const provider = new GoogleAuthProvider();
     provider.addScope("email");
     provider.addScope("profile");
@@ -71,15 +75,18 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
       if (!email) {
         toast.error("Email is unavailable. Please try again.");
         await user.delete();
+        setAuthChecking(false);
         return;
       }
 
       if (!isAllowedInDev(email)) {
         toast.error("Development access restricted to @acmutd.co emails only.");
         await user.delete();
+        setAuthChecking(false);
         return;
       }
 
+      setAuthChecking(false);
       const token = await user.getIdToken();
       Cookies.set("authToken", token, { expires: 7 });
 
@@ -107,6 +114,7 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
     } catch (error) {
       console.error("Error during Google sign-in:", error);
       toast.error("Failed to sign in with Google. Please try again.");
+      setAuthChecking(false);
       props.setLoading(false); // Unrender loading animation for user
     }
   };
