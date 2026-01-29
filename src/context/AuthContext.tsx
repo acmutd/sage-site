@@ -14,6 +14,8 @@ interface AuthContextType {
   loading: boolean;
   logout: () => void;
   profilePicture: string | null;
+  authChecking: boolean;
+  setAuthChecking: (checking: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -21,6 +23,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   logout: () => {},
   profilePicture: null,
+  authChecking: false,
+  setAuthChecking: () => {},
 });
 
 const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
@@ -33,6 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profilePicture, setProfilePicture] = useState(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [authChecking, setAuthChecking] = useState(false);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -95,7 +100,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, profilePicture }}>
+    <AuthContext.Provider value={{ user, loading, logout, profilePicture, authChecking, setAuthChecking, }}>
       {!loading && children}
     </AuthContext.Provider>
   );
