@@ -109,7 +109,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     };
 
     const tooltipContent = (
-        <div className="bg-white text-black rounded-lg p-4 shadow-xl w-72 border border-gray-300">
+        <div className="bg-white text-black rounded-md p-4 shadow-xl w-72 border border-gray-300">
             <h3 className="font-semibold mb-2 text-sm text-gray-900">
                 {course.course_name || "No Name Available"}
             </h3>
@@ -158,7 +158,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             <div className={inSidebar ? "relative" : "group relative"}>
                 <div
                     ref={dragRef}
-                    className={`flex items-center justify-between p-3 rounded-lg border-2 ${getStatusStyles()} 
+                    className={`flex items-center justify-between p-3 rounded-md border-2 ${getStatusStyles()} 
                     transition-all hover:shadow-sm ${isDragging ? "opacity-50" : ""} 
                     ${isFromTranscript || isPlaced ? "cursor-default" : "cursor-grab"}`}
                     onMouseEnter={handleMouseEnter}
@@ -175,12 +175,12 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     <div className="flex items-center gap-2">
                         {getIcon()}
                         {isSuggested && !isPlaced && (
-                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md">
                                 Suggested
                             </span>
                         )}
                         {isPlaced && (
-                            <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">
+                            <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-md ">
                                 Planned
                             </span>
                         )}
