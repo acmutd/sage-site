@@ -3,7 +3,27 @@ import Onboarding from "@/components/Onboarding";
 import Planner from "@/components/Planner";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { TouchBackend } from "react-dnd-touch-backend";
+import { MultiBackend, TouchTransition, MouseTransition } from "react-dnd-multi-backend";
 import { useAuth } from "@/context/AuthContext";
+
+// tablet mode 
+const HTML5toTouch = {
+  backends: [
+    {
+      id: 'html5',
+      backend: HTML5Backend,
+      transition: MouseTransition,
+    },
+    {
+      id: 'touch',
+      backend: TouchBackend,
+      options: { enableMouseEvents: true },
+      preview: true,
+      transition: TouchTransition,
+    },
+  ],
+};
 
 const PlannerPage = () => {
   const [showOnboarding, setShowOnboarding] = useState(true); // Initially show onboarding
@@ -273,7 +293,7 @@ const PlannerPage = () => {
         </div>
       ) : (
         <>
-          <DndProvider backend={HTML5Backend}>
+          <DndProvider backend={MultiBackend} options={HTML5toTouch}>
             <div>
               {showOnboarding && (
                 <Onboarding

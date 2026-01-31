@@ -121,6 +121,19 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     }, [error]);
 
 
+    // tablet mode, collapse sidebar automatically
+    useEffect(() => {
+        const handleResize = () => {
+          if (window.innerWidth < 1024 && window.innerWidth >= 768) {
+            setSidebarCollapsed(true);
+          }
+        };
+        
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const adaptedRequirements = useMemo(() => {
         return requirements;
     }, [requirements]);
@@ -467,7 +480,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     console.log(allSemesters)
 
     return (
-        <div className="flex h-[calc(100vh-4.1rem)] mt-[4.2rem] bg-gray-50">
+        <div className="flex flex-col md:flex-row h-[calc(100vh-4.1rem)] mt-[4.2rem] bg-gray-50">
             <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10000 }}>
                 <Joyride
                     steps={steps}
@@ -574,7 +587,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 </button>
                             </div>
 
-                            <div className="flex flex-wrap gap-4" data-tour="semester-area">
+                            <div className="flex flex-wrap gap-4 justify-start" data-tour="semester-area">
                                 {allSemesters[yearKey].map((semester, idx) => (
                                     <SemesterBox
                                         key={idx}

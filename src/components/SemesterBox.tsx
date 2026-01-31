@@ -87,9 +87,12 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     return (
         <div
             ref={!isFromTranscript ? drop : null}
-            className={`bg-white rounded-md border border-gray-200 shadow-sm p-4 w-[317px] ${
-                locked ? "opacity-75 bg-gray-50" : ""
-            } ${isOver && canDrop ? "bg-blue-50" : ""}`}
+            className={`
+                bg-white rounded-md border border-gray-200 shadow-sm p-4 
+                w-full md:w-[280px] lg:w-[317px]
+                ${locked ? "opacity-75 bg-gray-50" : ""} 
+                ${isOver && canDrop ? "bg-blue-50" : ""}
+            `}
         >
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold text-gray-800">{title}</h3>
