@@ -18,6 +18,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import MessageDisplay from "@/components/chatbot/MessageDisplay";
 import { chatEventEmitter } from "../utils/chatEventEmitter";
+import { useChatbot } from "@/hooks/useChatbot";
 
 // ---- Added: Strong types ----
 type Role = "user" | "bot";
@@ -36,9 +37,7 @@ interface Conversation {
   conversation_name?: string;
 }
 
-// These are in milliseconds
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
-const CONVERSATION_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
 // Steps for Tutorial 
 const steps: Step[] = [
@@ -54,9 +53,9 @@ const steps: Step[] = [
       placement: "bottom"
   },
   {
-    target: '[data-tour="sidebar-collapse"]',
-    content: "You can collapse the sidebar to expand your chat view. Click again to reopen it.",
-    placement: "bottom"
+      target: '[data-tour="sidebar-collapse"]',
+      content: "You can collapse the sidebar to expand your chat view. Click again to reopen it.",
+      placement: "bottom"
   },
   {
       target: '[data-tour="chat-input"]',
@@ -75,8 +74,18 @@ const ChatBot: React.FC = () => {
   const [query, setQuery] = useState("");
   const handleClickQueryFlag = useRef(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversation_id, setconversation_id] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const { 
+    conversations, 
+    conversation_id, 
+    error, 
+    loading,
+    setConversations,
+    deleteConversation,
+    renameConversation,
+    fetchConversation,
+    setConversationId,
+    initialLoad
+  } = useChatbot();
   
   // tutorial overlay 
   const [runTour, setRunTour] = useState(() => {
@@ -113,15 +122,13 @@ const ChatBot: React.FC = () => {
 
   // Wrapper function to update conversation ID and notify mobile navbar
   const updateConversationId = (newId: string | null) => {
-    setconversation_id(newId);
+    setConversationId(newId);
     // Emit event to update mobile navbar's active conversation
     chatEventEmitter.emit('activeConversationUpdate', newId);
   };
 
-  const [chatHistoryLoad, setChatHistoryLoad] = useState(false);
   const [chatLoad, setChatLoad] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
@@ -145,7 +152,6 @@ const ChatBot: React.FC = () => {
   const conversationListRef = useRef<HTMLUListElement | null>(null);
 
   const CHAT_API = import.meta.env.VITE_CHAT_API as string | undefined;
-  const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
   const [mobileView, setMobileView] = useState(false);
 
@@ -216,227 +222,6 @@ const ChatBot: React.FC = () => {
     );
   };
 
-  // Fetch conversation data from Lambda (instead of directly from S3)
-  const fetchConversation = async (): Promise<Conversation[] | undefined> => {
-    if (!user?.uid) {
-      console.warn("User ID is missing. Cannot fetch conversations.");
-      return;
-    }
-
-    setChatHistoryLoad(true);
-    setError(null);
-
-    try {
-      // Check cache
-      const cachedConversationsString = localStorage.getItem("chatbot_conversations");
-      if (cachedConversationsString) {
-        const cachedConversations = JSON.parse(cachedConversationsString);
-        if (
-          cachedConversations.timestamp &&
-          cachedConversations.userId &&
-          isCacheValid(
-            cachedConversations.timestamp,
-            cachedConversations.userId,
-            CONVERSATIONS_CACHE_EXPIRATION_TIME
-          )
-        ) {
-          const cached = Array.isArray(cachedConversations.data) ? cachedConversations.data : [];
-          console.log("Using cached conversations data");
-          updateConversations(sortConversationsByDate([...cached]));
-          setChatHistoryLoad(false);
-          return cached;
-        }
-      }
-
-      if (!CRUD_API) throw new Error("CRUD_API environment variable is missing.");
-      const token = await user.getIdToken();
-      if (!token) throw new Error("Failed to retrieve authentication token.");
-
-      console.log("Fetching fresh conversations data");
-      const response = await fetch(CRUD_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.uid,
-          action: "getConversations",
-          token,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch conversations: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-
-      const convs: Conversation[] = Array.isArray(data)
-        ? data.map((conv: Conversation) => ({
-            ...conv,
-            title: conv.title || conv.conversation_name || conv.messages?.[0]?.content || "Untitled Conversation",
-          }))
-        : [];
-
-      const sorted = sortConversationsByDate(convs);
-      updateConversations(sorted);
-      saveConversationsToCache(sorted);
-      return sorted;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to fetch conversations";
-      setError(msg);
-      console.error("Error fetching conversation:", err);
-    } finally {
-      setChatHistoryLoad(false);
-    }
-  };
-
-  // Delete conversation
-  const deleteConversation = async (conversationId: string) => {
-    if (!user?.uid) {
-      console.warn("User ID is missing. Cannot fetch conversations.");
-      return;
-    }
-    setError(null);
-
-    try {
-      // Optimistically update cache
-      const cachedConversationsString = localStorage.getItem("chatbot_conversations");
-      if (cachedConversationsString) {
-        const cached = JSON.parse(cachedConversationsString);
-        if (cached?.data) {
-          const updatedCache = {
-            ...cached,
-            data: cached.data.filter((item: Conversation) => item.conversation_id !== conversationId),
-          };
-          localStorage.setItem("chatbot_conversations", JSON.stringify(updatedCache));
-        }
-      }
-
-      if (!CRUD_API) throw new Error("CRUD_API environment variable is missing.");
-
-      const token = await user.getIdToken();
-      if (!token) throw new Error("Failed to retrieve authentication token.");
-
-      const response = await fetch(CRUD_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.uid,
-          action: "deleteConversation",
-          token,
-          conversationId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to delete conversation: ${response.status} - ${errorText}`);
-      }
-
-      // Remove in state
-      updateConversations((prev) => prev.filter((item) => item.conversation_id !== conversationId));
-
-      // Update localStorage cache too
-      const updatedCacheString = localStorage.getItem("chatbot_conversations");
-      if (updatedCacheString) {
-        const updatedCache = JSON.parse(updatedCacheString);
-        if (updatedCache?.data) {
-          const filtered = updatedCache.data.filter(
-            (item: Conversation) => item.conversation_id !== conversationId
-          );
-          saveConversationsToCache(filtered);
-        }
-      }
-
-      if (conversation_id === conversationId) {
-        updateConversationId(null);
-        setMessages([]);
-        localStorage.removeItem("chatbot_conversation");
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to delete conversation";
-      setError(msg);
-      console.error("Error deleting conversation:", err);
-    }
-  };
-
-  // rename conversation
-  const renameConversation = async (conversationId: string, newTitle: string) => {
-    if (!user?.uid) {
-      console.warn("User ID is missing. Cannot rename conversation.");
-      return;
-    }
-    setError(null);
-
-    try {
-      console.log('Starting rename for conversation:', conversationId, 'to:', newTitle);
-
-      // Optimistic state update
-      updateConversations((prev) => {
-        const updated = prev.map((conv) => 
-          conv.conversation_id === conversationId 
-            ? { ...conv, title: newTitle } 
-            : conv
-        );
-        console.log('Updated conversations:', updated.length);
-        return updated;
-      });
-
-      // Update local storage
-      const cachedConversationsString = localStorage.getItem("chatbot_conversations");
-      if (cachedConversationsString) {
-        const cached = JSON.parse(cachedConversationsString);
-        if (cached?.data) {
-          const updatedCache = {
-            ...cached,
-            data: cached.data.map((item: Conversation) =>
-              item.conversation_id === conversationId ? { ...item, title: newTitle } : item
-            ),
-          };
-          localStorage.setItem("chatbot_conversations", JSON.stringify(updatedCache));
-          console.log('Updated localStorage cache');
-        }
-      }
-
-      if (!CRUD_API) throw new Error("CRUD_API environment variable is missing.");
-      const token = await user.getIdToken();
-      if (!token) throw new Error("Failed to retrieve authentication token.");
-
-      console.log('Making API call to rename conversation');
-      const response = await fetch(CRUD_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.uid,
-          action: "renameConversation",
-          token,
-          conversationId,
-          newName: newTitle,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error:', response.status, errorText);
-        throw new Error(`Failed to rename conversation: ${response.status} - ${errorText}`);
-      }
-
-      const result = await response.json();
-      console.log('Rename successful:', result);
-      
-      // Emit event to notify mobile navbar
-      chatEventEmitter.emit('conversationRenamed', {
-        conversationId: conversationId,
-        newTitle: newTitle
-      });
-      
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to rename conversation";
-      setError(msg);
-      console.error("Error renaming conversation:", err);
-    }
-  };
-
   const startNewChat = () => {
     if (messages.length > 0 && conversation_id) {
       updateConversations((prevConversations) => {
@@ -498,52 +283,6 @@ const ChatBot: React.FC = () => {
     );
   };
 
-  const initialLoad = async () => {
-    if (!user?.uid) return;
-
-    const cachedData = localStorage.getItem("chatbot_conversation");
-    console.log("user id: ", user.uid);
-
-    if (cachedData) {
-      const { messages: cachedMsgs, conversation_id: cachedId, timestamp, cacheUserId } = JSON.parse(cachedData);
-
-      if (timestamp && cacheUserId && isCacheValid(timestamp, cacheUserId, CONVERSATION_CACHE_EXPIRATION_TIME)) {
-        console.log("Using cached current conversation");
-        setMessages(cachedMsgs || []);
-        updateConversationId(cachedId || null);
-
-        // Also load the conversations list from cache if available
-        const cachedConversationsString = localStorage.getItem("chatbot_conversations");
-        if (cachedConversationsString) {
-          const cachedConversations = JSON.parse(cachedConversationsString);
-          if (
-            cachedConversations.timestamp &&
-            cachedConversations.userId &&
-            isCacheValid(
-              cachedConversations.timestamp,
-              cachedConversations.userId,
-              CONVERSATIONS_CACHE_EXPIRATION_TIME
-            )
-          ) {
-            const list: Conversation[] = Array.isArray(cachedConversations.data)
-              ? cachedConversations.data.map((conv: Conversation) => ({
-                  ...conv,
-                  title: conv.title || conv.conversation_name || conv.messages?.[0]?.content || "Untitled Conversation",
-                }))
-              : [];
-
-            updateConversations(sortConversationsByDate(list));
-            return;
-          }
-        }
-      } else {
-        localStorage.removeItem("chatbot_conversation");
-      }
-    }
-
-    // If no valid cache or cache expired, fetch fresh data
-    await fetchConversation();
-  };
 
   const handleEnter = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -622,7 +361,11 @@ const ChatBot: React.FC = () => {
         }
         if (response.status === 401 && parsed?.error === "Daily query limit reached. Try again tomorrow.") {
           setChatError("Daily query limit reached. Try again tomorrow.");
-        } else {
+        } else if (response.status === 404) {
+          setChatError("This conversation no longer exists.");
+          setConversationId(null);
+        }
+        else {
           throw new Error(`Failed to get chatbot response: ${response.status} - ${errorText}`);
         }
         return;
@@ -692,6 +435,20 @@ const ChatBot: React.FC = () => {
     adjustTextareaHeight();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'chatbot_conversations' && e.newValue) {
+        const cached = JSON.parse(e.newValue);
+        if (cached.data) {
+          setConversations(cached.data);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [setConversations]);
 
   // Listen for events from mobile navbar
   useEffect(() => {
@@ -813,6 +570,11 @@ const ChatBot: React.FC = () => {
               cacheUserId: user?.uid ?? null,
             })
           );
+        } else
+        { 
+          setConversationId(null);
+          setMessages([]);
+          localStorage.removeItem("chatbot_conversation");
         }
       } catch (err) {
         console.error("Error loading chat history:", err);
@@ -968,13 +730,13 @@ const ChatBot: React.FC = () => {
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleEnter}
                     value={query}
-                    disabled={chatHistoryLoad}
+                    disabled={loading}
                   />
 
                   <button
                     className="flex h-full max-h-[3rem] justify-center items-center aspect-square bg-accent rounded-full hover:bg-buttonhover transition-colors disabled:opacity-50"
                     onClick={handleSendQuery}
-                    disabled={chatHistoryLoad || !query.trim()}
+                    disabled={loading || !query.trim()}
                   >
                     <CornerRightUpIcon size={24} />
                   </button>
@@ -1043,7 +805,7 @@ const ChatBot: React.FC = () => {
                     </button>
                   </div>
 
-                  {chatHistoryLoad && <p className="text-textsecondary">Loading conversations...</p>}
+                  {loading && <p className="text-textsecondary">Loading conversations...</p>}
                   {error && <p className="text-destructive">{error}</p>}
 
                   <ul className="flex flex-col gap-2 overflow-y-scroll w-full" ref={conversationListRef} style={{ scrollbarWidth: "none" }} onScroll={updateScrollPosition}>
@@ -1261,13 +1023,13 @@ const ChatBot: React.FC = () => {
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleEnter}
                     value={query}
-                    disabled={chatHistoryLoad}
+                    disabled={loading}
                   />
 
                   <button
                     className="flex h-full max-h-[3rem] justify-center items-center aspect-square bg-accent rounded-full hover:bg-buttonhover transition-colors disabled:opacity-50"
                     onClick={handleSendQuery}
-                    disabled={chatHistoryLoad || !query.trim()}
+                    disabled={loading || !query.trim()}
                   >
                     <CornerRightUpIcon size={24} />
                   </button>
