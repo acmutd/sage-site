@@ -295,12 +295,14 @@ export const useChatbot = () => {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Mobile navbar API Error:', response.status, errorText);
+
+            if (response.status === 404) { // attempted rename of a deleted convo in backend
+              setConversations((prev) => prev.filter((item) => item.conversation_id !== conversation_id));
+              saveConversationsToCache(conversations.filter((item) => item.conversation_id !== conversation_id));
+            }
+
             throw new Error(`Failed to rename conversation: ${response.status} - ${errorText}`);
         }
-
-        const result = await response.json();
-        console.log('Mobile navbar: Rename successful:', result);
         
         } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to rename conversation";
