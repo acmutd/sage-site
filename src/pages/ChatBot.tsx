@@ -361,7 +361,11 @@ const ChatBot: React.FC = () => {
         }
         if (response.status === 401 && parsed?.error === "Daily query limit reached. Try again tomorrow.") {
           setChatError("Daily query limit reached. Try again tomorrow.");
-        } else {
+        } else if (response.status === 404) {
+          setChatError("This conversation no longer exists.");
+          setConversationId(null);
+        }
+        else {
           throw new Error(`Failed to get chatbot response: ${response.status} - ${errorText}`);
         }
         return;
@@ -431,6 +435,20 @@ const ChatBot: React.FC = () => {
     adjustTextareaHeight();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'chatbot_conversations' && e.newValue) {
+        const cached = JSON.parse(e.newValue);
+        if (cached.data) {
+          setConversations(cached.data);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [setConversations]);
 
   // Listen for events from mobile navbar
   useEffect(() => {
@@ -552,6 +570,11 @@ const ChatBot: React.FC = () => {
               cacheUserId: user?.uid ?? null,
             })
           );
+        } else
+        { 
+          setConversationId(null);
+          setMessages([]);
+          localStorage.removeItem("chatbot_conversation");
         }
       } catch (err) {
         console.error("Error loading chat history:", err);
