@@ -279,7 +279,7 @@ const PlannerPage = () => {
   };
 
   return (
-    <div className="bg-gray-50 p-6">
+    <div className="bg-gray-50">
       {loading ? (
         <div className="flex items-center justify-center min-h-screen">
           <div className="flex flex-col items-center justify-center">

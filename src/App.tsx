@@ -27,6 +27,10 @@ const ConditionalNavbar = () => {
     return <ChatBotNavbar />;
   }
   
+  if (location.pathname === "/planner")
+  { 
+    return null;
+  }
   // Show regular Navbar for all other routes
   return <Navbar />;
 };

@@ -3,6 +3,7 @@ import Joyride, { Step } from "react-joyride";
 import Sidebar from "./Sidebar";
 import SemesterBox from "./SemesterBox";
 import { HelpCircle, Plus, PlusCircle, SquareAsterisk } from "lucide-react";
+import PlannerNavbar from "./PlannerNavbar";
 
 interface PlannerProps {
     semesters: {
@@ -480,207 +481,220 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     console.log(allSemesters)
 
     return (
-        <div className="flex flex-col md:flex-row h-[calc(100vh-4.1rem)] mt-[4.2rem] bg-gray-50">
-            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10000 }}>
-                <Joyride
-                    steps={steps}
-                    run={runTour}
-                    callback={handleJoyrideCallback}
-                    continuous
-                    showProgress
-                    showSkipButton
-                    styles={{
-                        options: {
-                            primaryColor: '#4ade80',
-                            zIndex: 10000,
+        <>
+            <PlannerNavbar 
+                requirements={adaptedRequirements}
+                expandedCategories={expandedCategories}
+                onToggleCategory={toggleCategory}
+                transcriptData={transcriptData}
+                onDropCourse={(courseId, sourceYear, sourceSemesterIndex) => 
+                    handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
+                }
+                placedSuggestedCourses={placedSuggestedCourses}
+                onRestartOnboarding={onRestartOnboarding}
+            />
+            <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
+                <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10000 }}>
+                    <Joyride
+                        steps={steps}
+                        run={runTour}
+                        callback={handleJoyrideCallback}
+                        continuous
+                        showProgress
+                        showSkipButton
+                        styles={{
+                            options: {
+                                primaryColor: '#4ade80',
+                                zIndex: 10000,
+                            }
+                        }}
+                    />
+                </div>
+
+                <button onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
+                        <HelpCircle size={18} className="text-white" />
+                </button>
+
+                <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 flex flex-col gap-4 hidden md:flex p-6">
+                    <Sidebar
+                        requirements={adaptedRequirements}
+                        expandedCategories={expandedCategories}
+                        onToggleCategory={toggleCategory}
+                        transcriptData={transcriptData}
+                        onDropCourse={(courseId, sourceYear, sourceSemesterIndex) => 
+                            handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
                         }
-                    }}
-                />
-            </div>
-
-            <button onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
-                    <HelpCircle size={18} className="text-white" />
-            </button>
-
-            <div className="h-[calc(100%-2rem)] pl-2 pr-6 py-6 flex flex-col gap-4">
-                <Sidebar
-                    requirements={adaptedRequirements}
-                    expandedCategories={expandedCategories}
-                    onToggleCategory={toggleCategory}
-                    transcriptData={transcriptData}
-                    onDropCourse={(courseId, sourceYear, sourceSemesterIndex) => 
-                        handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
-                    }
-                    isExpanded={!sidebarCollapsed}
-                    onToggleExpanded={() => setSidebarCollapsed(!sidebarCollapsed)}
-                    placedSuggestedCourses={placedSuggestedCourses}
-                    onRestartOnboarding={onRestartOnboarding}
-                />
-                
-                <div 
-                    className={`${sidebarCollapsed ? "cursor-pointer rounded-md w-20" : "rounded-full w-80"} bg-gray-900 py-3 px-6 flex gap-2 justify-center items-center transition-all duration-300`}
-                    onClick={sidebarCollapsed ? () => setSidebarCollapsed(false) : undefined}
-                >
-                    <SquareAsterisk size={32} className="stroke-green-400 flex-shrink-0" />
-                        <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-white text-xs`}>
-                            This app is in development. For issues or feedback,
-                            <a
-                                href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-accent underline ml-1"
-                            >
-                            click here.
-                        </a>
-                    </small>
-                </div>
-            </div>
-
-            
-            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6" style={{ scrollBehavior: 'smooth' }}>
-                {/* <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-800">Academic Plan</h1>
-                    <button
-                        onClick={handleAddYear}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full text-sm font-medium transition-colors"
+                        isExpanded={!sidebarCollapsed}
+                        onToggleExpanded={() => setSidebarCollapsed(!sidebarCollapsed)}
+                        placedSuggestedCourses={placedSuggestedCourses}
+                        onRestartOnboarding={onRestartOnboarding}
+                    />
+                    
+                    <div 
+                        className={`${sidebarCollapsed ? "cursor-pointer rounded-md w-20" : "rounded-full w-80"} bg-gray-900 py-3 px-6 flex gap-2 justify-center items-center transition-all duration-300`}
+                        onClick={sidebarCollapsed ? () => setSidebarCollapsed(false) : undefined}
                     >
-                        <PlusCircle className="w-5 h-5" />
-                        <span>Add Year</span>
-                    </button>
-                </div> */}
-                {error && (
-                    <div
-                        ref={errorRef}
-                        className="mb-4 mt-2 p-3 bg-red-100 border-l-4 border-red-500 text-red-700 rounded shadow-sm"
-                    >
-                        <div className="flex items-center">
-                            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd"
-                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1 9a1 1 0 01-1-1v-4a1 1 0 112 0v4a1 1 0 01-1 1z"
-                                    clipRule="evenodd" />
-                            </svg>
-                            <span>{error}</span>
-                            <button
-                                onClick={() => setError(null)}
-                                className="ml-auto text-red-700 hover:text-red-900"
-                            >
-                                ×
-                            </button>
-                        </div>
-                    </div>
-                )}
-                <div className="space-y-8">
-                    {Object.keys(allSemesters).map((yearKey) => (
-                        <div key={yearKey}>
-                            <div className="flex justify-between items-center mb-4">
-
-                                <h2 className="text-lg font-semibold text-gray-700 mb-4">
-                                    {yearKey.replace("year", "Year ")} {/* Optional formatting */}
-                                </h2>
-                                <button
-                                    data-tour="add-semester"
-                                    onClick={() => handleAddSemester(yearKey)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full text-sm font-medium transition-colors"
+                        <SquareAsterisk size={32} className="stroke-green-400 flex-shrink-0" />
+                            <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-white text-xs`}>
+                                This app is in development. For issues or feedback,
+                                <a
+                                    href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-accent underline ml-1"
                                 >
-                                    <Plus className="w-4 h-4" />
-                                    <span>Add Semester</span>
-                                </button>
-                            </div>
-
-                            <div className="flex flex-wrap gap-4 justify-start" data-tour="semester-area">
-                                {allSemesters[yearKey].map((semester, idx) => (
-                                    <SemesterBox
-                                        key={idx}
-                                        {...semester}
-                                        yearKey={yearKey}
-                                        semesterIndex={idx}
-                                        isFromTranscript={semester.isFromTranscript || false} // Dynamically set isFromTranscript
-                                        onDropCourse={(course, sourceYear, sourceSemesterIndex, courseId, isSuggested) =>
-                                            handleDropCourse(yearKey, idx, course, sourceYear, sourceSemesterIndex, courseId, isSuggested)
-                                        }
-                                        onClearSemester={() => openClearDeleteModal(yearKey, idx, 'clear')}
-                                        onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
-                                        onShowError={setError}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+                                click here.
+                            </a>
+                        </small>
+                    </div>
                 </div>
-                {Object.keys(allSemesters).length > 0 && (
-                    <div className="mt-8 mb-16 flex justify-end">  {/* mb-16 = 4rem spacing */}
+
+                
+                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6" style={{ scrollBehavior: 'smooth' }}>
+                    {/* <div className="flex justify-between items-center mb-6">
+                        <h1 className="text-2xl font-bold text-gray-800">Academic Plan</h1>
                         <button
-                            data-tour="add-year"
                             onClick={handleAddYear}
                             className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full text-sm font-medium transition-colors"
                         >
-                            <PlusCircle className="w-4 h-4" />
-                            <span>Add Another Year</span>
+                            <PlusCircle className="w-5 h-5" />
+                            <span>Add Year</span>
                         </button>
-                    </div>
-                )}
-
-                {/* Delete Modal */}
-                {showDeleteModal && semesterToDelete && (
-                    <div 
-                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80]"
-                        onClick={() => {
-                            setShowDeleteModal(false);
-                            setSemesterToDelete(null);
-                        }}
-                    >
-                        <div 
-                            className="bg-white p-6 rounded-md shadow-lg w-full max-w-md"
-                            onClick={(e) => e.stopPropagation()}
+                    </div> */}
+                    {error && (
+                        <div
+                            ref={errorRef}
+                            className="mb-4 mt-2 p-3 bg-red-100 border-l-4 border-red-500 text-red-700 rounded shadow-sm"
                         >
-                            <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                                {semesterToDelete.action === 'clear'
-                                    ? `Clear ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex].title}?`
-                                    : semesterToDelete.isLastSemester 
-                                        ? `Remove ${semesterToDelete.yearKey.replace("year", "Year ")}?`
-                                        : `Remove ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex].title}?`
-                                
-                                }
-                            </h3>
-                            <p className="text-sm text-gray-600 mb-6">
-                                {semesterToDelete.action === 'clear'
-                                    ? "All courses in this semester will be cleared."
-                                    : semesterToDelete.isLastSemester
-                                        ? "This will delete the entire year since it's the only semester."
-                                        : "This semester and all its courses will be removed from your plan."
-                                }
-                            </p>
-                            
-                            <div className="flex justify-end gap-4">
+                            <div className="flex items-center">
+                                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd"
+                                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1 9a1 1 0 01-1-1v-4a1 1 0 112 0v4a1 1 0 01-1 1z"
+                                        clipRule="evenodd" />
+                                </svg>
+                                <span>{error}</span>
                                 <button
-                                    className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
-                                    onClick={() => {
-                                        setShowDeleteModal(false);
-                                        setSemesterToDelete(null);
-                                    }}
+                                    onClick={() => setError(null)}
+                                    className="ml-auto text-red-700 hover:text-red-900"
                                 >
-                                    Cancel
-                                </button>
-                                
-                                <button
-                                    className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                                    onClick={() => {
-                                        if (semesterToDelete.action === 'clear') {
-                                            handleClearSemester(semesterToDelete.yearKey, semesterToDelete.semesterIndex);
-                                        }
-                                        else {
-                                            handleRemoveSemester(semesterToDelete.yearKey, semesterToDelete.semesterIndex);
-                                        }
-                                    }}
-                                >
-                                    {semesterToDelete.action === 'clear' ? 'Clear' : 'Remove'}
+                                    Ã—
                                 </button>
                             </div>
                         </div>
+                    )}
+                    <div className="space-y-8">
+                        {Object.keys(allSemesters).map((yearKey) => (
+                            <div key={yearKey}>
+                                <div className="flex justify-between items-center mb-4">
+
+                                    <h2 className="text-lg font-semibold text-gray-700 mb-4">
+                                        {yearKey.replace("year", "Year ")} {/* Optional formatting */}
+                                    </h2>
+                                    <button
+                                        data-tour="add-semester"
+                                        onClick={() => handleAddSemester(yearKey)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full text-sm font-medium transition-colors"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        <span>Add Semester</span>
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-wrap gap-4 justify-start" data-tour="semester-area">
+                                    {allSemesters[yearKey].map((semester, idx) => (
+                                        <SemesterBox
+                                            key={idx}
+                                            {...semester}
+                                            yearKey={yearKey}
+                                            semesterIndex={idx}
+                                            isFromTranscript={semester.isFromTranscript || false} // Dynamically set isFromTranscript
+                                            onDropCourse={(course, sourceYear, sourceSemesterIndex, courseId, isSuggested) =>
+                                                handleDropCourse(yearKey, idx, course, sourceYear, sourceSemesterIndex, courseId, isSuggested)
+                                            }
+                                            onClearSemester={() => openClearDeleteModal(yearKey, idx, 'clear')}
+                                            onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
+                                            onShowError={setError}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                )}
+                    {Object.keys(allSemesters).length > 0 && (
+                        <div className="mt-8 mb-16 flex justify-end">  {/* mb-16 = 4rem spacing */}
+                            <button
+                                data-tour="add-year"
+                                onClick={handleAddYear}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full text-sm font-medium transition-colors"
+                            >
+                                <PlusCircle className="w-4 h-4" />
+                                <span>Add Another Year</span>
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Delete Modal */}
+                    {showDeleteModal && semesterToDelete && (
+                        <div 
+                            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80]"
+                            onClick={() => {
+                                setShowDeleteModal(false);
+                                setSemesterToDelete(null);
+                            }}
+                        >
+                            <div 
+                                className="bg-white p-6 rounded-md shadow-lg w-full max-w-md"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                                    {semesterToDelete.action === 'clear'
+                                        ? `Clear ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex].title}?`
+                                        : semesterToDelete.isLastSemester 
+                                            ? `Remove ${semesterToDelete.yearKey.replace("year", "Year ")}?`
+                                            : `Remove ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex].title}?`
+                                    
+                                    }
+                                </h3>
+                                <p className="text-sm text-gray-600 mb-6">
+                                    {semesterToDelete.action === 'clear'
+                                        ? "All courses in this semester will be cleared."
+                                        : semesterToDelete.isLastSemester
+                                            ? "This will delete the entire year since it's the only semester."
+                                            : "This semester and all its courses will be removed from your plan."
+                                    }
+                                </p>
+                                
+                                <div className="flex justify-end gap-4">
+                                    <button
+                                        className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                                        onClick={() => {
+                                            setShowDeleteModal(false);
+                                            setSemesterToDelete(null);
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                    
+                                    <button
+                                        className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                                        onClick={() => {
+                                            if (semesterToDelete.action === 'clear') {
+                                                handleClearSemester(semesterToDelete.yearKey, semesterToDelete.semesterIndex);
+                                            }
+                                            else {
+                                                handleRemoveSemester(semesterToDelete.yearKey, semesterToDelete.semesterIndex);
+                                            }
+                                        }}
+                                    >
+                                        {semesterToDelete.action === 'clear' ? 'Clear' : 'Remove'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+        </>
     );
 };
 
