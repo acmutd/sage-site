@@ -12,13 +12,17 @@ interface PlannerSidebarContentProps {
   onDropCourse?: (courseId: string, sourceYear: string, sourceSemesterIndex: number) => void;
   placedSuggestedCourses?: Set<string>;
   onRestartOnboarding?: () => void;
+  availableSemesters?: Array<{yearKey: string, semesterIndex: number, title: string}>;
+  onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
 }
 
 const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
   onClose,
   requirements,
   placedSuggestedCourses = new Set(),
-  onRestartOnboarding
+  onRestartOnboarding,
+  availableSemesters = [],
+  onAddCourse
 }) => {
   const [autoExpandedCategories, setAutoExpandedCategories] = React.useState<{ [key: number]: boolean }>({});
   const [expandedSubcategories, setExpandedSubcategories] = React.useState<Record<string, boolean>>({});
@@ -165,6 +169,8 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
                 type="suggested"
                 placedSuggestedCourses={placedSuggestedCourses}
                 categoryName={category.name}
+                availableSemesters={availableSemesters}
+                onAddCourse={onAddCourse}
               />
             </>
           )}

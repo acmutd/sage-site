@@ -20,6 +20,8 @@ interface PlannerNavbarProps {
   transcriptData: any;
   onDropCourse?: (courseId: string, sourceYear: string, sourceSemesterIndex: number) => void;
   placedSuggestedCourses?: Set<string>;
+  availableSemesters?: Array<{yearKey: string, semesterIndex: number, title: string}>;
+  onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
   onRestartOnboarding?: () => void;
 }
 
@@ -30,7 +32,9 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
   transcriptData,
   onDropCourse,
   placedSuggestedCourses,
-  onRestartOnboarding
+  onRestartOnboarding,
+  availableSemesters,
+  onAddCourse
 }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -146,6 +150,8 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
             onDropCourse={onDropCourse}
             placedSuggestedCourses={placedSuggestedCourses}
             onRestartOnboarding={onRestartOnboarding}
+            onAddCourse={onAddCourse}
+            availableSemesters={availableSemesters}
           />
         )}
       />

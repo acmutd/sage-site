@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import SemesterBox from "./SemesterBox";
 import { HelpCircle, Plus, PlusCircle, SquareAsterisk } from "lucide-react";
 import PlannerNavbar from "./PlannerNavbar";
+import { Toaster } from "sonner";
 
 interface PlannerProps {
     semesters: {
@@ -138,6 +139,23 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const adaptedRequirements = useMemo(() => {
         return requirements;
     }, [requirements]);
+
+    // phone mode
+    const availableSemesters = useMemo(() => {
+        const semesters: Array<{yearKey: string, semesterIndex: number, title: string}> = [];
+        Object.keys(allSemesters).forEach(yearKey => {
+            allSemesters[yearKey].forEach((semester, idx) => {
+                if (!semester.isFromTranscript) {
+                    semesters.push({
+                        yearKey,
+                        semesterIndex: idx,
+                        title: semester.title
+                    });
+                }
+            });
+        });
+        return semesters;
+    }, [allSemesters]);
 
     const handleDropCourse = (
         targetYear: string,
@@ -482,7 +500,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
     return (
         <>
+            <Toaster position="top-center" richColors />
             <PlannerNavbar 
+                key={Object.keys(allSemesters).length}
                 requirements={adaptedRequirements}
                 expandedCategories={expandedCategories}
                 onToggleCategory={toggleCategory}
@@ -492,6 +512,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 }
                 placedSuggestedCourses={placedSuggestedCourses}
                 onRestartOnboarding={onRestartOnboarding}
+                availableSemesters={availableSemesters}
+                onAddCourse={handleDropCourse}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
                 <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10000 }}>

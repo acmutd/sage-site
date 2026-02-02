@@ -1,4 +1,4 @@
-import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2 } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2, CirclePlus } from 'lucide-react';
 import { useDrag } from "react-dnd";
 import { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
@@ -14,6 +14,7 @@ interface CourseBoxProps {
         status?: string;
         semester?: string;
         description?: string;
+        code?: string;
     };
     status?: 'default' | 'completed' | 'warning' | 'info';
     icon?: 'check' | 'warning' | 'info' | null;
@@ -40,7 +41,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     inSidebar = false,
     isPlaced = false,
     onAdd,
-    onRemove,
+    onRemove
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -183,15 +184,13 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 {inSidebar && onAdd && !isPlaced && (
                                     <button
                                         onClick={onAdd}
-                                        className="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600"
-                                    >
-                                        Add
+                                    ><CirclePlus className="w-4 h-4 mr-2"/>
                                     </button>
                                 )}
                                 {!inSidebar && onRemove && !isFromTranscript && (
                                     <button
                                         onClick={onRemove}
-                                    ><Trash2 className="w-4 h-4 mr-2 text-gray-400 hover:text-red-500" />
+                                    ><Trash2 className="w-4 h-4 mr-2" />
                                     </button>
                                 )}
                             </>

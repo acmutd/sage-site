@@ -1,23 +1,28 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import CourseBox from '../CourseBox';
+import { toast } from 'sonner';
 
 interface CoursesCarouselProps {
     courses: any[];
     type: 'suggested' | 'completed';
     placedSuggestedCourses?: Set<string>;
     categoryName?: string;
+    availableSemesters?: Array<{yearKey: string, semesterIndex: number, title: string}>;
+    onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
 }
 
 const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
     courses,
     type,
     placedSuggestedCourses = new Set(),
-    categoryName
+    categoryName,
+    availableSemesters = [],
+    onAddCourse
 }) => {
     const COURSES_PER_PAGE = 5;
     const [currentPage, setCurrentPage] = useState(0);
-    
+
     const totalPages = Math.ceil(courses.length / COURSES_PER_PAGE);
     const startIndex = currentPage * COURSES_PER_PAGE;
     const endIndex = startIndex + COURSES_PER_PAGE;
@@ -40,6 +45,33 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
         );
     }
 
+    // phone mode
+    const [showSemesterModal, setShowSemesterModal] = useState(false);
+    const [selectedCourse, setSelectedCourse] = useState<any>(null);
+    const handleAddClick = (course: any) => {
+        if (availableSemesters.length === 0) {
+            toast.error("Please add a semester first before adding courses");
+            return;
+        } else if (availableSemesters.length === 1) { // Auto-add to single semester
+            const sem = availableSemesters[0];
+            onAddCourse?.(sem.yearKey, sem.semesterIndex, course, '', -1, undefined, true);
+            toast.success(`Added ${course.code || course.course_code} to ${sem.title}`);
+        } else {
+            // Show modal
+            setSelectedCourse(course);
+            setShowSemesterModal(true);
+        }
+    };
+
+    const handleSemesterSelect = (semester: any) => {
+        if (selectedCourse) {
+            onAddCourse?.(semester.yearKey, semester.semesterIndex, selectedCourse, '', -1, undefined, true);
+            toast.success(`Added ${selectedCourse.code || selectedCourse.course_code} to ${semester.title}`);
+        }
+        setShowSemesterModal(false);
+        setSelectedCourse(null);
+    };
+
     const dotColor = type === 'suggested' ? 'bg-yellow-400' : 'bg-green-400';
 
     return (
@@ -58,13 +90,14 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                     course_code: courseCode,
                                     course_name: course.name || course.course_name,
                                     description: course.description,
-                                    id: `suggested-${categoryName}-${courseCode}-${startIndex + idx}`,
+                                    id: `suggested-${categoryName}-${courseCode}-${startIndex + idx}`
                                 }}
                                 status="warning"
                                 icon="info"
                                 isSuggested={true}
                                 inSidebar={true}
                                 isPlaced={isPlaced}
+                                onAdd={() => handleAddClick({...course, course_code: courseCode, code: courseCode})}
                             />
                         );
                     } else {
@@ -185,6 +218,31 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                     Page {currentPage + 1} of {totalPages} • {courses.length} courses
                 </div>
             </>
+        )}
+        {showSemesterModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={() => setShowSemesterModal(false)}>
+                <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-sm mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                    <h3 className="text-lg font-semibold mb-4">Select Semester</h3>
+                    <p className="text-sm text-gray-600 mb-4">Choose where to add {selectedCourse?.code || selectedCourse?.course_code}</p>
+                    <div className="space-y-2">
+                        {availableSemesters.map((sem, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => handleSemesterSelect(sem)}
+                                className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded border border-gray-200"
+                            >
+                                {sem.title}
+                            </button>
+                        ))}
+                    </div>
+                    <button 
+                        onClick={() => setShowSemesterModal(false)}
+                        className="w-full mt-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
         )}
         </div>
     );
