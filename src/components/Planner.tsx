@@ -157,7 +157,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             console.log("Is suggested course:", isSuggested);
                         
             // removal logic
-            const isRemoval = !targetYear || 
+            const isRemoval = !course || !targetYear || 
                 targetYear === '' || 
                 targetSemesterIndex === undefined || 
                 targetSemesterIndex === null ||

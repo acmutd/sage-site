@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Route, MessagesSquare, MessageCirclePlus, UserRound } from "lucide-react";
+import { Route, MessageCirclePlus, UserRound, ListTodoIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   DropdownMenu,
@@ -135,7 +135,7 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
       {/* Mobile navbar with sidebar */}
       <MobileNavbar
         isInWebapp={isInWebapp}
-        sidebarIcon={<MessagesSquare className={isInWebapp ? "stroke-textdark" : "stroke-textlight"} />}
+        sidebarIcon={<ListTodoIcon className={isInWebapp ? "stroke-textdark" : "stroke-textlight"} />}
         sidebarContent={(onClose) => (
           <PlannerSidebarContent
             onClose={onClose}

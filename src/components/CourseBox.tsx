@@ -1,6 +1,6 @@
-import { AlertTriangle, Info, CheckCircle, GripVertical } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2 } from 'lucide-react';
 import { useDrag } from "react-dnd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
 interface CourseBoxProps {
@@ -24,6 +24,8 @@ interface CourseBoxProps {
     isLocked?: boolean;
     inSidebar?: boolean;
     isPlaced?: boolean;
+    onAdd?: () => void;
+    onRemove?: () => void;
 }
 
 const CourseBox: React.FC<CourseBoxProps> = ({
@@ -37,10 +39,21 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     isLocked = false,
     inSidebar = false,
     isPlaced = false,
+    onAdd,
+    onRemove,
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-
+    
+    // mobile check
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+    
     const [{ isDragging }, drag] = useDrag(
         () => ({
             type: "COURSE",
@@ -165,8 +178,27 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     onMouseLeave={handleMouseLeave}
                 >
                     <div className="flex items-center gap-2">
-                        {!isFromTranscript && !isPlaced && (
-                            <GripVertical className="w-4 h-4 text-gray-400" />
+                        {isMobile ? (
+                            <>
+                                {inSidebar && onAdd && !isPlaced && (
+                                    <button
+                                        onClick={onAdd}
+                                        className="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600"
+                                    >
+                                        Add
+                                    </button>
+                                )}
+                                {!inSidebar && onRemove && !isFromTranscript && (
+                                    <button
+                                        onClick={onRemove}
+                                    ><Trash2 className="w-4 h-4 mr-2 text-gray-400 hover:text-red-500" />
+                                    </button>
+                                )}
+                            </>
+                        ) : (
+                            !isFromTranscript && !isPlaced && (
+                                <GripVertical className="w-4 h-4 text-gray-400" />
+                            )
                         )}
                         <span className="text-sm font-medium text-gray-700 ml-1">
                             {course.course_code || "Unknown Course"}
