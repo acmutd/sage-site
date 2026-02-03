@@ -46,8 +46,26 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
     
-    // mobile check
+    // mobile check - does it have a cursor or does it have touch?
+    const [canHover, setCanHover] = useState(true);
+    useEffect(() => {
+        const checkHover = () => {
+            // Check if device has fine pointer (mouse) and can hover
+            const hoverQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+            setCanHover(hoverQuery.matches);
+        };
+        checkHover();
+        
+        const hoverQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+        const handleChange = () => checkHover();
+        hoverQuery.addEventListener('change', handleChange);
+        
+        return () => hoverQuery.removeEventListener('change', handleChange);
+    }, []);
+    
+    // mobile check - screen size for layout
     const [isMobile, setIsMobile] = useState(false);
+    
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
         checkMobile();
@@ -106,7 +124,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     };
 
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (inSidebar) {
+        if (inSidebar && !canHover) {
             const rect = e.currentTarget.getBoundingClientRect();
             setTooltipPosition({
                 top: rect.top,
@@ -116,6 +134,12 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         }
     };
 
+    const handleInfoClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!canHover) {
+            setShowTooltip(!showTooltip);
+        }
+    };
     const handleMouseLeave = () => {
         if (inSidebar) {
             setShowTooltip(false);
@@ -123,11 +147,16 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     };
 
     const tooltipContent = (
-        <div className="bg-white text-black rounded-md p-4 shadow-xl w-72 border border-gray-300">
-            <h3 className="font-semibold mb-2 text-sm text-gray-900">
+        <div className={`
+            ${isMobile 
+                ? "bg-white text-black rounded-t-2xl p-4 shadow-2xl w-full border-t-2 border-gray-200" 
+                : "bg-white text-black rounded-md p-3 shadow-lg w-64 border border-gray-200"
+            }
+        `}>
+            <h3 className={`font-semibold mb-2 ${isMobile ? "text-base" : "text-sm"} text-gray-900`}>
                 {course.course_name || "No Name Available"}
             </h3>
-            <div className="space-y-0.5 text-xs">
+            <div className={`space-y-1 ${isMobile ? "text-sm" : "text-xs"}`}>
                 {course.course_code && (
                     <div className="flex gap-2">
                         <span className="text-gray-600 font-medium">Code:</span>
@@ -183,7 +212,10 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                             <>
                                 {inSidebar && onAdd && !isPlaced && (
                                     <button
-                                        onClick={onAdd}
+                                        onClick={(e) => {
+                                            e.stopPropagation();  // Add this!
+                                            onAdd();
+                                        }}
                                     ><CirclePlus className="w-4 h-4 mr-2"/>
                                     </button>
                                 )}
@@ -204,7 +236,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        {getIcon()}
+                        {!isMobile && getIcon()}
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md">
                                 Suggested
@@ -215,29 +247,66 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 Planned
                             </span>
                         )}
+                        {!canHover && isMobile && (
+                            <button
+                                onClick={handleInfoClick}
+                                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <Info className="w-4 h-4 text-blue-500" />
+                            </button>
+                        )}
+
                     </div>
                 </div>
 
                 {/* Tooltip for non-sidebar (inline CSS hover) */}
-                {!inSidebar && (
-                    <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none">
-                        {tooltipContent}
-                    </div>
+                {!inSidebar && !isMobile && (
+                    <>
+                        {/* Tooltip to the right (default) */}
+                        <div className="hidden xl:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none">
+                            {tooltipContent}
+                        </div>
+                        {/* Tooltip above (for smaller screens where right would overflow) */}
+                        <div className="block xl:hidden absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none">
+                            {tooltipContent}
+                        </div>
+                    </>
                 )}
             </div>
 
             {/* Tooltip for sidebar (portal) */}
-            {inSidebar && showTooltip && ReactDOM.createPortal(
-                <div
-                    className="fixed z-[9999] pointer-events-none"
-                    style={{
-                        top: `${tooltipPosition.top}px`,
-                        left: `${tooltipPosition.left}px`,
-                        transform: 'translateY(-50%)'
-                    }}
-                >
-                    {tooltipContent}
-                </div>,
+            {((inSidebar && showTooltip) || (isMobile && showTooltip)) && ReactDOM.createPortal(
+                isMobile ? (
+                    // Mobile: Bottom sheet with overlay
+                    <>
+                        <div 
+                            className="fixed inset-0 bg-black bg-opacity-30 z-[9998]"
+                            onClick={() => setShowTooltip(false)}
+                        />
+                        <div
+                            className="fixed bottom-0 left-0 right-0 z-[9999] animate-slide-up"
+                            style={{
+                                animation: 'slideUp 0.3s ease-out'
+                            }}
+                        >
+                            {tooltipContent}
+                        </div>
+                    </>
+                ) : (
+                    // Desktop: Side tooltip
+                    inSidebar ? (
+                        <div
+                            className="fixed z-[9999] pointer-events-none"
+                            style={{
+                                top: `${tooltipPosition.top}px`,
+                                left: `${tooltipPosition.left}px`,
+                                transform: 'translateY(-50%)'
+                            }}
+                        >
+                            {tooltipContent}
+                        </div>
+                    ) : null
+                ),
                 document.body
             )}
         </>

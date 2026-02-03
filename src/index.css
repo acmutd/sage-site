@@ -150,3 +150,12 @@ body {
     text-shadow: 0.25em 0 0 currentColor, 0.5em 0 0 currentColor;
   }
 }
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
