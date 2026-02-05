@@ -123,11 +123,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     }, [error]);
 
 
-    // tablet mode, collapse sidebar automatically
+    
     useEffect(() => {
         const handleResize = () => {
-          if (window.innerWidth < 1024 && window.innerWidth >= 768) {
+          if (window.innerWidth < 1024 && window.innerWidth >= 768) { // tablet mode, collapse sidebar automatically
             setSidebarCollapsed(true);
+          } else if (window.innerWidth >= 1024) { // if we're on desktop and we change size back
+            setSidebarCollapsed(false);
           }
         };
         
@@ -537,7 +539,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         <HelpCircle size={18} className="text-white" />
                 </button>
 
-                <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 flex flex-col gap-4 hidden md:flex p-6">
+                <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex flex-col gap-4 hidden md:flex p-6">
                     <Sidebar
                         requirements={adaptedRequirements}
                         expandedCategories={expandedCategories}
@@ -553,7 +555,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     />
                     
                     <div 
-                        className={`${sidebarCollapsed ? "cursor-pointer rounded-md w-20" : "rounded-full w-80"} bg-gray-900 py-3 px-6 flex gap-2 justify-center items-center transition-all duration-300`}
+                        className={`${sidebarCollapsed ? "cursor-pointer rounded-md w-20" : "rounded-full w-80"} bg-gray-900 py-3 px-6 flex gap-2 justify-center items-center transition-all duration-300 absolute bottom-8`}
                         onClick={sidebarCollapsed ? () => setSidebarCollapsed(false) : undefined}
                     >
                         <SquareAsterisk size={32} className="stroke-green-400 flex-shrink-0" />

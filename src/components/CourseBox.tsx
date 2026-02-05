@@ -51,12 +51,12 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     useEffect(() => {
         const checkHover = () => {
             // Check if device has fine pointer (mouse) and can hover
-            const hoverQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+            const hoverQuery = window.matchMedia('(hover: hover)');
             setCanHover(hoverQuery.matches);
         };
         checkHover();
         
-        const hoverQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+        const hoverQuery = window.matchMedia('(hover: hover)');
         const handleChange = () => checkHover();
         hoverQuery.addEventListener('change', handleChange);
         
@@ -67,7 +67,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const [isMobile, setIsMobile] = useState(false);
     
     useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        const checkMobile = () => setIsMobile(window.innerWidth <= 768);
         checkMobile();
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
@@ -124,7 +124,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     };
 
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (inSidebar && !canHover) {
+        if (inSidebar && canHover) {
             const rect = e.currentTarget.getBoundingClientRect();
             setTooltipPosition({
                 top: rect.top,
@@ -148,15 +148,15 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
     const tooltipContent = (
         <div className={`
-            ${isMobile 
+            ${!canHover 
                 ? "bg-white text-black rounded-t-2xl p-4 shadow-2xl w-full border-t-2 border-gray-200" 
-                : "bg-white text-black rounded-md p-3 shadow-lg w-64 border border-gray-200"
+                : "bg-white text-black rounded-md p-3 shadow-lg w-56 md:w-64 border border-gray-200"
             }
         `}>
-            <h3 className={`font-semibold mb-2 ${isMobile ? "text-base" : "text-sm"} text-gray-900`}>
+            <h3 className={`font-semibold mb-2 ${!canHover ? "text-base" : "text-sm"} text-gray-900`}>
                 {course.course_name || "No Name Available"}
             </h3>
-            <div className={`space-y-1 ${isMobile ? "text-sm" : "text-xs"}`}>
+            <div className={`space-y-1 ${!canHover ? "text-sm" : "text-xs"}`}>
                 {course.course_code && (
                     <div className="flex gap-2">
                         <span className="text-gray-600 font-medium">Code:</span>
@@ -204,8 +204,8 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     className={`flex items-center justify-between p-3 rounded-md border-2 ${getStatusStyles()} 
                     transition-all hover:shadow-sm ${isDragging ? "opacity-50" : ""} 
                     ${isFromTranscript || isPlaced ? "cursor-default" : "cursor-grab"}`}
-                    onMouseEnter={handleMouseEnter}
-                    onMouseLeave={handleMouseLeave}
+                    onMouseEnter={canHover ? handleMouseEnter : undefined}
+                    onMouseLeave={canHover ? handleMouseLeave : undefined}
                 >
                     <div className="flex items-center gap-2">
                         {isMobile ? (
@@ -213,7 +213,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 {inSidebar && onAdd && !isPlaced && (
                                     <button
                                         onClick={(e) => {
-                                            e.stopPropagation();  // Add this!
+                                            e.stopPropagation();
                                             onAdd();
                                         }}
                                     ><CirclePlus className="w-4 h-4 mr-2"/>
@@ -221,7 +221,10 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 )}
                                 {!inSidebar && onRemove && !isFromTranscript && (
                                     <button
-                                        onClick={onRemove}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onRemove();
+                                        }}
                                     ><Trash2 className="w-4 h-4 mr-2" />
                                     </button>
                                 )}
@@ -236,7 +239,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        {!isMobile && getIcon()}
+                        {canHover && getIcon()}
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md">
                                 Suggested
@@ -247,7 +250,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 Planned
                             </span>
                         )}
-                        {!canHover && isMobile && (
+                        {!canHover && (
                             <button
                                 onClick={handleInfoClick}
                                 className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -255,12 +258,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 <Info className="w-4 h-4 text-blue-500" />
                             </button>
                         )}
-
                     </div>
                 </div>
 
                 {/* Tooltip for non-sidebar (inline CSS hover) */}
-                {!inSidebar && !isMobile && (
+                {!inSidebar && canHover && (
                     <>
                         {/* Tooltip to the right (default) */}
                         <div className="hidden xl:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none">
@@ -275,8 +277,8 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             </div>
 
             {/* Tooltip for sidebar (portal) */}
-            {((inSidebar && showTooltip) || (isMobile && showTooltip)) && ReactDOM.createPortal(
-                isMobile ? (
+            {((inSidebar && showTooltip) || (!canHover && showTooltip)) && ReactDOM.createPortal(
+                !canHover ? (
                     // Mobile: Bottom sheet with overlay
                     <>
                         <div 
