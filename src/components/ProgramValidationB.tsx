@@ -22,7 +22,8 @@ interface ProgramValidationBProps {
 const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext, onRemove, onSave, degreeCatalog }) => {
     const [selectedProgramId] = useState<number | null>(program?.id || null);
     const [updatedProgram, setUpdatedProgram] = useState(program); // Local state for the program being edited
-    
+    const isNewProgram = !program?.id;
+
     const handleFieldChange = (fieldId: string, value: string) => {
         setUpdatedProgram((prev: any) => ({
             ...prev,
@@ -162,7 +163,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                                 >
                                     <div className="relative w-fit mt-[-1.00px] [font-family:'DM_Sans',Helvetica] font-normal text-redesign-stylesdark-text text-base tracking-[0] leading-4 whitespace-nowrap">
                                         <span 
-                                        className="font-[number:var(--body-regular-font-weight)] text-slate-900 leading-[var(--body-regular-line-height)] underline font-body-regular [font-style:var(--body-regular-font-style)] tracking-[var(--body-regular-letter-spacing)] text-[length:var(--body-regular-font-size)]"
+                                        className="font-[number:var(--body-regular-font-weight)] text-blue-600 leading-[var(--body-regular-line-height)] underline font-body-regular [font-style:var(--body-regular-font-style)] tracking-[var(--body-regular-letter-spacing)] text-[length:var(--body-regular-font-size)]"
                                         onClick={() => onSave(updatedProgram)}
                                         >
                                             Save
@@ -173,18 +174,32 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                                 <Button
                                     variant="link"
                                     className="inline-flex items-center justify-center relative flex-[0_0_auto] p-0 h-auto"
-                                    onClick={() => {
-                                        if (selectedProgramId !== null) {
-                                            onRemove(selectedProgramId);
-                                        }
-                                    }}
+                                    onClick={onNext}
                                 >
                                     <div className="relative w-fit mt-[-1.00px] [font-family:'DM_Sans',Helvetica] font-normal text-transparent text-base tracking-[0] leading-4 whitespace-nowrap">
-                                        <span className="font-[number:var(--body-regular-font-weight)] text-[#da0000] leading-[var(--body-regular-line-height)] underline font-body-regular [font-style:var(--body-regular-font-style)] tracking-[var(--body-regular-letter-spacing)] text-[length:var(--body-regular-font-size)]">
-                                            Remove
+                                        <span className="font-[number:var(--body-regular-font-weight)] text-gray-600 leading-[var(--body-regular-line-height)] underline font-body-regular [font-style:var(--body-regular-font-style)] tracking-[var(--body-regular-letter-spacing)] text-[length:var(--body-regular-font-size)]">
+                                            Cancel
                                         </span>
                                     </div>
                                 </Button>
+
+                                {!isNewProgram && (
+                                    <Button
+                                        variant="link"
+                                        className="inline-flex items-center justify-center relative flex-[0_0_auto] p-0 h-auto"
+                                        onClick={() => {
+                                            if (selectedProgramId !== null) {
+                                                onRemove(selectedProgramId);
+                                            }
+                                        }}
+                                    >
+                                        <div className="relative w-fit mt-[-1.00px] [font-family:'DM_Sans',Helvetica] font-normal text-transparent text-base tracking-[0] leading-4 whitespace-nowrap">
+                                            <span className="font-[number:var(--body-regular-font-weight)] text-[#da0000] leading-[var(--body-regular-line-height)] underline font-body-regular [font-style:var(--body-regular-font-style)] tracking-[var(--body-regular-letter-spacing)] text-[length:var(--body-regular-font-size)]">
+                                                Remove
+                                            </span>
+                                        </div>
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     </CardContent>
