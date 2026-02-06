@@ -105,7 +105,7 @@ return (
       {/* Modal with max height and internal scroll */}
       <div
         ref={modalRef}
-        className="bg-white rounded-[18px] shadow-2xl w-full max-w-3xl relative max-h-[85vh] flex flex-col"
+        className="bg-white rounded-[18px] shadow-2xl w-full max-w-3xl relative max-h-[70vh] sm:max-h-[85vh] flex flex-col"
       >
         {!isFirstTime && (
           <button
@@ -118,7 +118,7 @@ return (
           </button>
         )}
         {/* Scrollable content area */}
-        <div className="overflow-y-auto px-9 py-7" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className="overflow-y-auto px-4 sm:px-9 py-4 sm:py-7 pb-24 sm:pb-7" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {modalStep === "FileUpload" && (
             <FileUploader
               userId={user?.uid || "test-user-123"}
@@ -149,8 +149,8 @@ return (
       </div>
 
       {/* Beta Disclaimer at bottom of page */}
-      <div className="absolute bottom-8 left-0 right-0 flex gap-3 items-center justify-center">
-        <SquareAsterisk size={24} className="stroke-accent" />
+      <div className="absolute bottom-4 sm:bottom-8 left-0 right-0 flex gap-2 sm:gap-3 items-center justify-center px-4">
+        <SquareAsterisk size={24} className="hidden sm:block stroke-accent flex-shrink-0" />
         <small className="text-gray-300 text-sm text-center">
             This app is in development. For issues or feedback,
             <a
