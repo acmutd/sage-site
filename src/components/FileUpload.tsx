@@ -9,6 +9,14 @@ interface FileUploaderProps {
   onManualFill?: () => void;
 }
 
+const transcriptSteps = [
+  "Log into UTD Galaxy",
+  "Go to dropdown and select UTD Student Center",
+  "Click on My Academics and then press View My Transcript",
+  "For Report Type, select Unofficial Transcript and press submit. Note: it may take a while",
+  "Download the PDF once opened on a separate tab (usually named SSR_TSRPT.pdf)"
+];
+
 const FileUploader: React.FC<FileUploaderProps> = ({ onNext, showManualOption = false, onManualFill }) => {
   const { selectedFile, isUploading, handleFileChange, uploadFile } =
     useFileUpload(
@@ -18,6 +26,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onNext, showManualOption = 
   const [fileUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const { user } = useAuth();
@@ -99,6 +109,14 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onNext, showManualOption = 
     };
   }, [handleFileChange]);
 
+  const handleMouseLeave = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      setShowTooltip(false);
+      setIsAnimatingOut(false);
+    }, 150);
+  };
+
   return (
 
     <div>
@@ -110,13 +128,44 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onNext, showManualOption = 
         </div>
       )}
       <>
-        <div className="pb-6">
+
+      <div className="pb-6">
           <h1 className="pb-9">Let's get started!</h1>
           <h3>Upload your unofficial transcript</h3>
-          <small className="text-gray-500 ">
+          <small className="text-gray-500 block mb-2">
             This will allow us to automatically fill in your past classes,
             majors, and current schedule. The file is likely named SSR_TSRPT.pdf
           </small>
+          
+          <div className="relative inline-block">
+            <span
+              className="text-sm text-gray-500 hover:text-gray-700 underline cursor-help"
+              onMouseEnter={() => setShowTooltip(true)}
+              onMouseLeave={handleMouseLeave}
+            >
+              Need help finding your unofficial transcript?
+            </span>
+
+            {showTooltip && (
+              <div className="absolute left-0 top-full mt-2 z-50 w-96 bg-white rounded-md shadow-lg border border-gray-200 p-4"     style={{
+                animation: isAnimatingOut ? 'zoomOut 0.15s ease-in' : 'zoomIn 0.15s ease-out'
+              }}>
+                <div className="absolute -top-2 left-8 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
+                <p className="font-semibold text-gray-900 mb-3">
+                  How to get your transcript:
+                </p>
+                
+                <ul className="space-y-2 text-sm text-gray-700">
+                  {transcriptSteps.map((step, index) => (
+                    <li key={index} className="flex gap-2">
+                      <span>{index + 1}.</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
 
         <div
