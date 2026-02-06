@@ -1,4 +1,4 @@
-import { EditIcon, Trash2Icon, SaveIcon } from "lucide-react";
+import { Trash2Icon, SaveIcon, Pencil, PlusCircle } from "lucide-react";
 import React, { useState, useRef } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -79,7 +79,7 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
   const renderCourseSection = (title: string, coursesArray: any[]) => (
     <Card
       key={title}
-      className="flex flex-col items-start justify-center gap-2 px-4 py-5 relative self-stretch w-full bg-white rounded-lg overflow-hidden border border-solid border-slate-300 mb-4"
+      className="flex flex-col items-start justify-center gap-2 px-4 py-5 relative self-stretch w-full bg-white rounded-md overflow-hidden border border-solid border-slate-300 mb-4"
     >
       <CardContent className="p-0 w-full">
         <div className="flex items-center justify-between relative self-stretch w-full flex-[0_0_auto] mb-2">
@@ -93,8 +93,8 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
               className="inline-flex items-center gap-1.5 relative flex-[0_0_auto] h-auto p-0 hover:bg-transparent"
               onClick={handleSave}
             >
-              <SaveIcon className="relative w-4 h-4" />
-              <span className="relative w-fit font-normal text-gray-900 text-sm">
+              <SaveIcon color="#2563EB" className="relative w-4 h-4" />
+              <span className="relative w-fit font-normal text-blue-600 text-sm">
                 Save
               </span>
             </Button>
@@ -105,8 +105,8 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
               className="inline-flex items-center gap-1.5 relative flex-[0_0_auto] h-auto p-0 hover:bg-transparent"
               onClick={() => handleEdit(title)}
             >
-              <EditIcon className="relative w-4 h-4" />
-              <span className="relative w-fit font-normal text-gray-900 text-sm">
+              <Pencil className="relative w-4 h-4" />
+              <span className="relative w-fit font-normal text-gray-900 text-sm underline">
                 Edit
               </span>
             </Button>
@@ -131,19 +131,20 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-red-500"
+                  className="text-red-500 hover:bg-red-50"
                   onClick={() => handleRemoveCourse(index)}
                 >
-                  <Trash2Icon className="w-4 h-4" />
+                  <Trash2Icon color="#da0000" className="w-4 h-4" />
                 </Button>
               </div>
             ))}
             <Button
               variant="ghost"
               size="sm"
-              className="text-blue-500"
+              className="text-green-500 hover:bg-green-50"
               onClick={handleAddCourse}
             >
+              <PlusCircle color="#22c55e" className="w-4 h-4" />
               Add Course
             </Button>
           </>
@@ -168,7 +169,7 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
 
   return (
     <div className="relative w-full max-w-3xl">
-      <div ref={scrollRef} className="overflow-y-auto max-h-[65vh] custom-scrollbar rounded-lg bg-gray-50" style={{ paddingRight: '20px' }}>
+      <div ref={scrollRef} className="overflow-y-auto max-h-[65vh] custom-scrollbar rounded-md bg-gray-50" style={{ paddingRight: '20px' }}>
         <style>{`
           .custom-scrollbar {
             scrollbar-width: auto;
@@ -189,7 +190,7 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
           }
         `}</style>
 
-        <div className="bg-gray-50 p-6 rounded-lg shadow-lg">
+        <div className="bg-gray-50 p-6 rounded-md shadow-lg">
           <div className="flex flex-col items-start mb-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-1">Are these classes right?</h3>
             <p className="text-gray-600 text-sm">
@@ -217,7 +218,7 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
           <div className="flex justify-between items-center mt-8">
             <button
               onClick={onBack}
-              className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+              className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-green-600 transition"
             >
               Back
             </button>

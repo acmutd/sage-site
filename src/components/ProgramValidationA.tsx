@@ -281,8 +281,8 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
       </div>
       <div className="flex flex-col gap-4 bg-gray-100 p-2 rounded-sm">
         {sortedPrograms.map((program) => (
-          <Card key={program.id} className="flex items-center py-3 relative">
-            <CardContent className="flex items-center">
+          <Card key={program.id} className="py-3 relative">
+            <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex flex-col">
                 <h4 className="mb-1">
                   {program.type === "Certificate"
@@ -305,7 +305,7 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
                 </div>
               </div>
               <div
-                className="dropdown-container absolute right-4 flex flex-col w-[248px] gap-2.5 p-[5px] bg-redesign-stylesbg-light rounded-sm border border-slate-300 z-[70]"
+                className="dropdown-container flex flex-col w-full sm:w-[248px] gap-2.5 p-[5px] bg-redesign-stylesbg-light rounded-sm border border-slate-300 z-[70] flex-shrink-0"
                 ref={dropdownRef}
                 onClick={(e) => e.stopPropagation()}
               >
