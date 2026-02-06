@@ -17,14 +17,34 @@ import Planner from "./pages/PlannerPage";
 import PublicRoute from "./components/PublicRoute";
 import ChatBot from "./pages/ChatBot";
 import Profile from "./pages/Profile";
+import { useEffect, useState } from "react";
 
 // Component to conditionally render navbar based on route
 const ConditionalNavbar = () => {
   const location = useLocation();
+  const [isOnboarding, setIsOnboarding] = useState(false);
+
+  useEffect(() => {
+    const checkOnboarding = () => {
+      setIsOnboarding(document.body.hasAttribute('data-onboarding-active'));
+    };
+    
+    // Check initially
+    checkOnboarding();
+    
+    const observer = new MutationObserver(checkOnboarding);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-onboarding-active'] });
+    
+    return () => observer.disconnect();
+  }, [location]);
   
   // Show ChatBotNavbar only on the chatbot route
   if (location.pathname === "/chatbot") {
     return <ChatBotNavbar />;
+  }
+  
+  if (location.pathname === "/planner" && isOnboarding) {
+    return <Navbar />;
   }
   
   if (location.pathname === "/planner")
