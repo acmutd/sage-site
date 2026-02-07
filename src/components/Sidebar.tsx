@@ -60,6 +60,32 @@ const Sidebar: React.FC<SidebarProps> = ({
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
     const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
 
+    // Collect all suggested courses from all categories
+    const allSuggestedCourses = React.useMemo(() => {
+        const courses: any[] = [];
+        
+        const collectSuggestedCourses = (categories: any[]) => {
+            if (!categories) return;
+            
+            categories.forEach((category) => {
+                if (category.suggested && category.suggested.length > 0) {
+                    courses.push(...category.suggested);
+                }
+                if (category.categories && category.categories.length > 0) {
+                    collectSuggestedCourses(category.categories);
+                }
+            });
+        };
+        
+        requirements.forEach((req) => {
+            if (req.categories) {
+                collectSuggestedCourses(req.categories);
+            }
+        });
+        
+        return courses;
+    }, [requirements]);
+
     const [{ isOver }, drop] = useDrop(
         () => ({
             accept: "COURSE",
@@ -240,6 +266,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 type="suggested"
                                 placedSuggestedCourses={placedSuggestedCourses}
                                 categoryName={category.name}
+                                allSuggestedCourses={allSuggestedCourses}
                             />
                         </>
                     )}

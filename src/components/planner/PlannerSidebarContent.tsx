@@ -27,6 +27,32 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
   const [autoExpandedCategories, setAutoExpandedCategories] = React.useState<{ [key: number]: boolean }>({});
   const [expandedSubcategories, setExpandedSubcategories] = React.useState<Record<string, boolean>>({});
 
+  // Collect all suggested courses from all categories
+  const allSuggestedCourses = React.useMemo(() => {
+    const courses: any[] = [];
+    
+    const collectSuggestedCourses = (categories: any[]) => {
+      if (!categories) return;
+      
+      categories.forEach((category) => {
+        if (category.suggested && category.suggested.length > 0) {
+          courses.push(...category.suggested);
+        }
+        if (category.categories && category.categories.length > 0) {
+          collectSuggestedCourses(category.categories);
+        }
+      });
+    };
+    
+    requirements.forEach((req) => {
+      if (req.categories) {
+        collectSuggestedCourses(req.categories);
+      }
+    });
+    
+    return courses;
+  }, [requirements]);
+
   React.useEffect(() => {
     const initialExpandedState: { [key: number]: boolean } = {};
     requirements.forEach((req, reqIdx) => {
@@ -171,6 +197,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
                 categoryName={category.name}
                 availableSemesters={availableSemesters}
                 onAddCourse={onAddCourse}
+                allSuggestedCourses={allSuggestedCourses}
               />
             </>
           )}
