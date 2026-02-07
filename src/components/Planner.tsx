@@ -142,26 +142,33 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return requirements;
     }, [requirements]);
 
-    // Collect all suggested courses with corequisites
+    // Collect all suggested courses with corequisites and their category locations
     const allSuggestedCourses = useMemo(() => {
         const courses: any[] = [];
         
-        const collectSuggestedCourses = (categories: any[]) => {
+        const collectSuggestedCourses = (categories: any[], parentPath: string[] = []) => {
             if (!categories) return;
             
             categories.forEach((category) => {
+                const currentPath = [...parentPath, category.name];
+                
                 if (category.suggested && category.suggested.length > 0) {
-                    courses.push(...category.suggested);
+                    // Add category location to each suggested course
+                    const coursesWithLocation = category.suggested.map((course: any) => ({
+                        ...course,
+                        categoryPath: currentPath.join(' > ')
+                    }));
+                    courses.push(...coursesWithLocation);
                 }
                 if (category.categories && category.categories.length > 0) {
-                    collectSuggestedCourses(category.categories);
+                    collectSuggestedCourses(category.categories, currentPath);
                 }
             });
         };
         
         adaptedRequirements.forEach((req: any) => {
             if (req.categories) {
-                collectSuggestedCourses(req.categories);
+                collectSuggestedCourses(req.categories, [req.degree]);
             }
         });
         

@@ -60,26 +60,33 @@ const Sidebar: React.FC<SidebarProps> = ({
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
     const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
 
-    // Collect all suggested courses from all categories
+    // Collect all suggested courses from all categories with their category paths
     const allSuggestedCourses = React.useMemo(() => {
         const courses: any[] = [];
         
-        const collectSuggestedCourses = (categories: any[]) => {
+        const collectSuggestedCourses = (categories: any[], parentPath: string[] = []) => {
             if (!categories) return;
             
             categories.forEach((category) => {
+                const currentPath = [...parentPath, category.name];
+                
                 if (category.suggested && category.suggested.length > 0) {
-                    courses.push(...category.suggested);
+                    // Add category location to each suggested course
+                    const coursesWithLocation = category.suggested.map((course: any) => ({
+                        ...course,
+                        categoryPath: currentPath.join(' > ')
+                    }));
+                    courses.push(...coursesWithLocation);
                 }
                 if (category.categories && category.categories.length > 0) {
-                    collectSuggestedCourses(category.categories);
+                    collectSuggestedCourses(category.categories, currentPath);
                 }
             });
         };
         
         requirements.forEach((req) => {
             if (req.categories) {
-                collectSuggestedCourses(req.categories);
+                collectSuggestedCourses(req.categories, [req.degree]);
             }
         });
         

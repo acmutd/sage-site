@@ -65,12 +65,19 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     const getUnmetCorequisites = () => {
         if (!courses || courses.length === 0) return null;
 
-        // Create a map of course codes to their corequisites
+        // Create a map of course codes to their corequisites and category paths
         const coreqMap = new Map<string, string[][]>();
+        const categoryPathMap = new Map<string, string>();
+        
         allSuggestedCourses.forEach((suggestedCourse: any) => {
             const code = suggestedCourse.code || suggestedCourse.course_code;
-            if (code && suggestedCourse.corequisites && Array.isArray(suggestedCourse.corequisites)) {
-                coreqMap.set(code, suggestedCourse.corequisites);
+            if (code) {
+                if (suggestedCourse.corequisites && Array.isArray(suggestedCourse.corequisites)) {
+                    coreqMap.set(code, suggestedCourse.corequisites);
+                }
+                if (suggestedCourse.categoryPath) {
+                    categoryPathMap.set(code, suggestedCourse.categoryPath);
+                }
             }
         });
 
@@ -80,7 +87,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         );
 
         // Check each course in this semester for unmet corequisites
-        const unmetCoreqs: { course: string; missing: string[] }[] = [];
+        const unmetCoreqs: { course: string; missing: string[]; locations: string[] }[] = [];
 
         courses.forEach(course => {
             const coreqs = coreqMap.get(course.course_code);
@@ -97,9 +104,18 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
 
                 // If no course from this coreq group is planned, it's unmet
                 if (!hasAnyCoreqPlanned) {
+                    // Get the category paths for each coreq in the group
+                    const locations = coreqGroup
+                        .map(coreqCode => categoryPathMap.get(coreqCode))
+                        .filter((path): path is string => !!path);
+                    
+                    // Remove duplicates
+                    const uniqueLocations = [...new Set(locations)];
+                    
                     unmetCoreqs.push({
                         course: course.course_code,
-                        missing: coreqGroup
+                        missing: coreqGroup,
+                        locations: uniqueLocations
                     });
                 }
             });
@@ -200,6 +216,18 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                                         <div className=" text-xs">
                                                             Needs: {item.missing.join(' or ')}
                                                         </div>
+                                                        {item.locations && item.locations.length > 0 && (
+                                                            <div className=" text-xs mt-1 pt-1 border-t ">
+                                                                📍 {item.locations
+                                                                    .map((loc: string) => {
+                                                                        // Get last part of path
+                                                                        const lastPart = loc.split(' > ').pop() || loc;
+                                                                        // If contains ":", take first part
+                                                                        return lastPart.includes(':') ? lastPart.split(':')[0] : lastPart;
+                                                                    })
+                                                                    .join(' / ')}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>
