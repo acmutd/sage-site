@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Lock, Unlock, MoreVertical, Trash2, Eraser } from "lucide-react";
+import { Lock, Unlock, MoreVertical, Trash2, Eraser, TriangleAlert } from "lucide-react";
 import CourseBox from "./CourseBox";
 import { useDrop } from "react-dnd";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -16,7 +16,8 @@ interface SemesterBoxProps {
         grade: string;
         id: string;
         status?: string;
-        icon?: string | null
+        icon?: string | null;
+        corequisites?: string[][];
     }[];
     isEmpty?: boolean;
     onDropCourse: (
@@ -31,7 +32,9 @@ interface SemesterBoxProps {
     onShowError: (message: string) => void;
     yearKey: string;
     semesterIndex: number;
-    isFromTranscript?: boolean
+    isFromTranscript?: boolean;
+    allSuggestedCourses?: any[];
+    allPlannedCourses?: any[];
 }
 
 const SemesterBox: React.FC<SemesterBoxProps> = ({
@@ -45,15 +48,67 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     onShowError,
     yearKey,
     semesterIndex,
-    isFromTranscript = false
+    isFromTranscript = false,
+    allSuggestedCourses = [],
+    allPlannedCourses = []
 }) => {
     const [locked, setLocked] = useState(isLocked);
     const [showRemoveModal, setShowRemoveModal] = useState(false);
     const [courseToRemove, setCourseToRemove] = useState<string | null>(null);
+    const [showCoreqWarning, setShowCoreqWarning] = useState(false);
 
     const handleLockToggle = () => {
         setLocked((prev) => !prev);
     };
+
+    // Check for unmet corequisites in the semester
+    const getUnmetCorequisites = () => {
+        if (!courses || courses.length === 0) return null;
+
+        // Create a map of course codes to their corequisites
+        const coreqMap = new Map<string, string[][]>();
+        allSuggestedCourses.forEach((suggestedCourse: any) => {
+            const code = suggestedCourse.code || suggestedCourse.course_code;
+            if (code && suggestedCourse.corequisites && Array.isArray(suggestedCourse.corequisites)) {
+                coreqMap.set(code, suggestedCourse.corequisites);
+            }
+        });
+
+        // Get all planned course codes (in any semester)
+        const allPlannedCourseCodes = new Set(
+            allPlannedCourses.map((c: any) => c.course_code || c.code)
+        );
+
+        // Check each course in this semester for unmet corequisites
+        const unmetCoreqs: { course: string; missing: string[] }[] = [];
+
+        courses.forEach(course => {
+            const coreqs = coreqMap.get(course.course_code);
+            if (!coreqs || coreqs.length === 0) return;
+
+            // Check each corequisite group
+            coreqs.forEach((coreqGroup: string[]) => {
+                if (!Array.isArray(coreqGroup) || coreqGroup.length === 0) return;
+
+                // Check if ANY course from this coreq group is planned
+                const hasAnyCoreqPlanned = coreqGroup.some(coreqCode => 
+                    allPlannedCourseCodes.has(coreqCode)
+                );
+
+                // If no course from this coreq group is planned, it's unmet
+                if (!hasAnyCoreqPlanned) {
+                    unmetCoreqs.push({
+                        course: course.course_code,
+                        missing: coreqGroup
+                    });
+                }
+            });
+        });
+
+        return unmetCoreqs.length > 0 ? unmetCoreqs : null;
+    };
+
+    const unmetCorequisites = getUnmetCorequisites();
 
     const handleClearClick = () => {
         if (locked) {
@@ -115,6 +170,44 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                 {!isFromTranscript && (
 
                     <div className="flex items-center gap-2">
+                        {unmetCorequisites && unmetCorequisites.length > 0 && (
+                            <div className="relative">
+                                <button
+                                    onMouseEnter={() => setShowCoreqWarning(true)}
+                                    onMouseLeave={() => setShowCoreqWarning(false)}
+                                    onClick={() => setShowCoreqWarning(!showCoreqWarning)}
+                                    className="hover:bg-orange-50 p-1 rounded"
+                                    title="Unmet corequisites"
+                                >
+                                    <TriangleAlert className="w-4 h-4 stroke-red-600" />
+                                </button>
+                                {showCoreqWarning && (
+                                    <div className="absolute top-full mb-2 right-0 z-50 w-64 bg-white border-2 border-orange-300 rounded-md shadow-lg p-3">
+                                        <div className="text-sm">
+                                            <div className="font-semibold  mb-2 flex items-center gap-2">
+                                                <TriangleAlert className="w-4 h-4" />
+                                                Corequisite Warning
+                                            </div>
+                                            <p className=" text-xs mb-2">
+                                                The following courses need corequisites:
+                                            </p>
+                                            <div className="space-y-2">
+                                                {unmetCorequisites.map((item, idx) => (
+                                                    <div key={idx} className=" p-2 rounded border ">
+                                                        <div className="font-medium text-xs mb-1">
+                                                            {item.course}
+                                                        </div>
+                                                        <div className=" text-xs">
+                                                            Needs: {item.missing.join(' or ')}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <button
                             onClick={handleLockToggle}
                             className={`hover:bg-gray-100 p-1 rounded ${

@@ -142,6 +142,50 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return requirements;
     }, [requirements]);
 
+    // Collect all suggested courses with corequisites
+    const allSuggestedCourses = useMemo(() => {
+        const courses: any[] = [];
+        
+        const collectSuggestedCourses = (categories: any[]) => {
+            if (!categories) return;
+            
+            categories.forEach((category) => {
+                if (category.suggested && category.suggested.length > 0) {
+                    courses.push(...category.suggested);
+                }
+                if (category.categories && category.categories.length > 0) {
+                    collectSuggestedCourses(category.categories);
+                }
+            });
+        };
+        
+        adaptedRequirements.forEach((req: any) => {
+            if (req.categories) {
+                collectSuggestedCourses(req.categories);
+            }
+        });
+        
+        return courses;
+    }, [adaptedRequirements]);
+
+    // Collect all planned courses from all semesters
+    const allPlannedCourses = useMemo(() => {
+        const courses: any[] = [];
+        
+        Object.keys(allSemesters).forEach(yearKey => {
+            allSemesters[yearKey].forEach(semester => {
+                if (semester.courses && semester.courses.length > 0) {
+                    courses.push(...semester.courses.map(c => ({
+                        ...c,
+                        code: c.course_code || c.code
+                    })));
+                }
+            });
+        });
+        
+        return courses;
+    }, [allSemesters]);
+
     // phone mode
     const availableSemesters = useMemo(() => {
         const semesters: Array<{yearKey: string, semesterIndex: number, title: string}> = [];
@@ -638,6 +682,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                             onClearSemester={() => openClearDeleteModal(yearKey, idx, 'clear')}
                                             onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
                                             onShowError={setError}
+                                            allSuggestedCourses={allSuggestedCourses}
+                                            allPlannedCourses={allPlannedCourses}
                                         />
                                     ))}
                                 </div>
