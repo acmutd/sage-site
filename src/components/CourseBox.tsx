@@ -206,7 +206,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     </div>
                 )}
                 {course.description && (
-                    <div className="mt-2 pt-2 border-t border-gray-300">
+                    <div className={`mt-2 pt-2 ${!(corequisiteWarnings && corequisiteWarnings.length > 0) ? 'border-t border-gray-300' : ''}`}>
                         <p className="text-gray-700">{course.description}</p>
                     </div>
                 )}
