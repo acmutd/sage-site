@@ -68,10 +68,12 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         // Create a map of course codes to their corequisites and category paths
         const coreqMap = new Map<string, string[][]>();
         const categoryPathMap = new Map<string, string>();
+        const suggestedCourseCodes = new Set<string>();
         
         allSuggestedCourses.forEach((suggestedCourse: any) => {
             const code = suggestedCourse.code || suggestedCourse.course_code;
             if (code) {
+                suggestedCourseCodes.add(code);
                 if (suggestedCourse.corequisites && Array.isArray(suggestedCourse.corequisites)) {
                     coreqMap.set(code, suggestedCourse.corequisites);
                 }
@@ -97,15 +99,23 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
             coreqs.forEach((coreqGroup: string[]) => {
                 if (!Array.isArray(coreqGroup) || coreqGroup.length === 0) return;
 
-                // Check if ANY course from this coreq group is planned
-                const hasAnyCoreqPlanned = coreqGroup.some(coreqCode => 
+                // Filter coreq group to only include courses that exist in suggested courses
+                const availableCoreqs = coreqGroup.filter(coreqCode => 
+                    suggestedCourseCodes.has(coreqCode)
+                );
+
+                // Skip if no coreqs from this group are available in suggested courses
+                if (availableCoreqs.length === 0) return;
+
+                // Check if ANY course from the available coreqs is planned
+                const hasAnyCoreqPlanned = availableCoreqs.some(coreqCode => 
                     allPlannedCourseCodes.has(coreqCode)
                 );
 
                 // If no course from this coreq group is planned, it's unmet
                 if (!hasAnyCoreqPlanned) {
-                    // Get the category paths for each coreq in the group
-                    const locations = coreqGroup
+                    // Get the category paths for each available coreq in the group
+                    const locations = availableCoreqs
                         .map(coreqCode => categoryPathMap.get(coreqCode))
                         .filter((path): path is string => !!path);
                     
@@ -114,7 +124,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                     
                     unmetCoreqs.push({
                         course: course.course_code,
-                        missing: coreqGroup,
+                        missing: availableCoreqs,
                         locations: uniqueLocations
                     });
                 }
