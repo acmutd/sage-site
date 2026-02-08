@@ -34,7 +34,6 @@ interface SemesterBoxProps {
     semesterIndex: number;
     isFromTranscript?: boolean;
     allSuggestedCourses?: any[];
-    allPlannedCourses?: any[];
 }
 
 const SemesterBox: React.FC<SemesterBoxProps> = ({
@@ -49,8 +48,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     yearKey,
     semesterIndex,
     isFromTranscript = false,
-    allSuggestedCourses = [],
-    allPlannedCourses = []
+    allSuggestedCourses = []
 }) => {
     const [locked, setLocked] = useState(isLocked);
     const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -83,9 +81,9 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
             }
         });
 
-        // Get all planned course codes (in any semester)
-        const allPlannedCourseCodes = new Set(
-            allPlannedCourses.map((c: any) => c.course_code || c.code)
+        // Get course codes in THIS semester only
+        const semesterCourseCodes = new Set(
+            courses.map(c => c.course_code)
         );
 
         // Check each course in this semester for unmet corequisites
@@ -107,12 +105,12 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                 // Skip if no coreqs from this group are available in suggested courses
                 if (availableCoreqs.length === 0) return;
 
-                // Check if ANY course from the available coreqs is planned
+                // Check if ANY course from the available coreqs is planned in THIS semester
                 const hasAnyCoreqPlanned = availableCoreqs.some(coreqCode => 
-                    allPlannedCourseCodes.has(coreqCode)
+                    semesterCourseCodes.has(coreqCode)
                 );
 
-                // If no course from this coreq group is planned, it's unmet
+                // If no course from this coreq group is planned in this semester, it's unmet
                 if (!hasAnyCoreqPlanned) {
                     // Get the category paths for each available coreq in the group
                     const locations = availableCoreqs

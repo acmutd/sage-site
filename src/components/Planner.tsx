@@ -175,24 +175,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return courses;
     }, [adaptedRequirements]);
 
-    // Collect all planned courses from all semesters
-    const allPlannedCourses = useMemo(() => {
-        const courses: any[] = [];
-        
-        Object.keys(allSemesters).forEach(yearKey => {
-            allSemesters[yearKey].forEach(semester => {
-                if (semester.courses && semester.courses.length > 0) {
-                    courses.push(...semester.courses.map(c => ({
-                        ...c,
-                        code: c.course_code || c.code
-                    })));
-                }
-            });
-        });
-        
-        return courses;
-    }, [allSemesters]);
-
     // phone mode
     const availableSemesters = useMemo(() => {
         const semesters: Array<{yearKey: string, semesterIndex: number, title: string}> = [];
@@ -690,7 +672,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                             onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
                                             onShowError={setError}
                                             allSuggestedCourses={allSuggestedCourses}
-                                            allPlannedCourses={allPlannedCourses}
                                         />
                                     ))}
                                 </div>
