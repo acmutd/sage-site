@@ -142,6 +142,39 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return requirements;
     }, [requirements]);
 
+    // Collect all suggested courses with corequisites and their category locations
+    const allSuggestedCourses = useMemo(() => {
+        const courses: any[] = [];
+        
+        const collectSuggestedCourses = (categories: any[], parentPath: string[] = []) => {
+            if (!categories) return;
+            
+            categories.forEach((category) => {
+                const currentPath = [...parentPath, category.name];
+                
+                if (category.suggested && category.suggested.length > 0) {
+                    // Add category location to each suggested course
+                    const coursesWithLocation = category.suggested.map((course: any) => ({
+                        ...course,
+                        categoryPath: currentPath.join(' > ')
+                    }));
+                    courses.push(...coursesWithLocation);
+                }
+                if (category.categories && category.categories.length > 0) {
+                    collectSuggestedCourses(category.categories, currentPath);
+                }
+            });
+        };
+        
+        adaptedRequirements.forEach((req: any) => {
+            if (req.categories) {
+                collectSuggestedCourses(req.categories, [req.degree]);
+            }
+        });
+        
+        return courses;
+    }, [adaptedRequirements]);
+
     // phone mode
     const availableSemesters = useMemo(() => {
         const semesters: Array<{yearKey: string, semesterIndex: number, title: string}> = [];
@@ -638,6 +671,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                             onClearSemester={() => openClearDeleteModal(yearKey, idx, 'clear')}
                                             onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
                                             onShowError={setError}
+                                            allSuggestedCourses={allSuggestedCourses}
                                         />
                                     ))}
                                 </div>

@@ -60,6 +60,39 @@ const Sidebar: React.FC<SidebarProps> = ({
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
     const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
 
+    // Collect all suggested courses from all categories with their category paths
+    const allSuggestedCourses = React.useMemo(() => {
+        const courses: any[] = [];
+        
+        const collectSuggestedCourses = (categories: any[], parentPath: string[] = []) => {
+            if (!categories) return;
+            
+            categories.forEach((category) => {
+                const currentPath = [...parentPath, category.name];
+                
+                if (category.suggested && category.suggested.length > 0) {
+                    // Add category location to each suggested course
+                    const coursesWithLocation = category.suggested.map((course: any) => ({
+                        ...course,
+                        categoryPath: currentPath.join(' > ')
+                    }));
+                    courses.push(...coursesWithLocation);
+                }
+                if (category.categories && category.categories.length > 0) {
+                    collectSuggestedCourses(category.categories, currentPath);
+                }
+            });
+        };
+        
+        requirements.forEach((req) => {
+            if (req.categories) {
+                collectSuggestedCourses(req.categories, [req.degree]);
+            }
+        });
+        
+        return courses;
+    }, [requirements]);
+
     const [{ isOver }, drop] = useDrop(
         () => ({
             accept: "COURSE",
@@ -240,6 +273,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 type="suggested"
                                 placedSuggestedCourses={placedSuggestedCourses}
                                 categoryName={category.name}
+                                allSuggestedCourses={allSuggestedCourses}
                             />
                         </>
                     )}

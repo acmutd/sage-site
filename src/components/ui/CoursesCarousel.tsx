@@ -10,6 +10,7 @@ interface CoursesCarouselProps {
     categoryName?: string;
     availableSemesters?: Array<{yearKey: string, semesterIndex: number, title: string}>;
     onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
+    allSuggestedCourses?: any[];
 }
 
 const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
@@ -18,10 +19,46 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
     placedSuggestedCourses = new Set(),
     categoryName,
     availableSemesters = [],
-    onAddCourse
+    onAddCourse,
+    allSuggestedCourses = []
 }) => {
     const COURSES_PER_PAGE = 5;
     const [currentPage, setCurrentPage] = useState(0);
+
+    // Helper function to check if a course has corequisites that are in the suggested list
+    const getCorequisiteWarnings = (course: any): string[] | null => {
+        if (!course.corequisites || !Array.isArray(course.corequisites) || course.corequisites.length === 0) {
+            return null;
+        }
+
+        // Create a set of all suggested course codes for quick lookup
+        const suggestedCodesSet = new Set(
+            allSuggestedCourses.map((c: any) => c.code || c.course_code)
+        );
+
+        const warningCoreqs: string[] = [];
+
+        // Check each corequisite group
+        for (const coreqGroup of course.corequisites) {
+            // Skip if coreqGroup is not an array
+            if (!Array.isArray(coreqGroup) || coreqGroup.length === 0) {
+                continue;
+            }
+
+            // coreqGroup is an array like ["MATH 2414", "MATH 2419"]
+            // If ANY course in this group is in the suggested list, add the whole group
+            const hasAnyCoreqInSuggested = coreqGroup.some((coreqCode: string) => 
+                suggestedCodesSet.has(coreqCode)
+            );
+
+            if (hasAnyCoreqInSuggested) {
+                // Add all courses in this group to warnings (joined with "or")
+                warningCoreqs.push(coreqGroup.join(' or '));
+            }
+        }
+
+        return warningCoreqs.length > 0 ? warningCoreqs : null;
+    };
 
     const totalPages = Math.ceil(courses.length / COURSES_PER_PAGE);
     const startIndex = currentPage * COURSES_PER_PAGE;
@@ -82,6 +119,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                     if (type === 'suggested') {
                         const courseCode = course.code || course.course_code;
                         const isPlaced = placedSuggestedCourses.has(courseCode);
+                        const coreqWarnings = getCorequisiteWarnings(course);
                         
                         return (
                             <CourseBox
@@ -97,6 +135,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 isSuggested={true}
                                 inSidebar={true}
                                 isPlaced={isPlaced}
+                                corequisiteWarnings={coreqWarnings}
                                 onAdd={() => handleAddClick({...course, course_code: courseCode, code: courseCode})}
                             />
                         );

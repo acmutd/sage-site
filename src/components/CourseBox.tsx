@@ -1,4 +1,4 @@
-import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2, CirclePlus } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2, CirclePlus, TriangleAlert } from 'lucide-react';
 import { useDrag } from "react-dnd";
 import { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
@@ -25,6 +25,7 @@ interface CourseBoxProps {
     isLocked?: boolean;
     inSidebar?: boolean;
     isPlaced?: boolean;
+    corequisiteWarnings?: string[] | null;
     onAdd?: () => void;
     onRemove?: () => void;
 }
@@ -40,6 +41,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     isLocked = false,
     inSidebar = false,
     isPlaced = false,
+    corequisiteWarnings = null,
     onAdd,
     onRemove
 }) => {
@@ -187,8 +189,24 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         <span className="text-gray-900">{course.status}</span>
                     </div>
                 )}
+                {corequisiteWarnings && corequisiteWarnings.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-orange-300 bg-orange-50 -mx-3 px-3 pb-2">
+                        <div className="flex items-start gap-2">
+                            <TriangleAlert className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-orange-900 font-semibold mb-1">Corequisite Warning:</p>
+                                <p className="text-orange-800">Must be taken with:</p>
+                                <ul className="list-disc ml-4 mt-1 text-orange-800">
+                                    {corequisiteWarnings.map((coreq, idx) => (
+                                        <li key={idx}>{coreq}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {course.description && (
-                    <div className="mt-2 pt-2 border-t border-gray-300">
+                    <div className={`mt-2 pt-2 ${!(corequisiteWarnings && corequisiteWarnings.length > 0) ? 'border-t border-gray-300' : ''}`}>
                         <p className="text-gray-700">{course.description}</p>
                     </div>
                 )}
@@ -240,6 +258,9 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     </div>
                     <div className="flex items-center gap-2">
                         {canHover && getIcon()}
+                        {corequisiteWarnings && corequisiteWarnings.length > 0 && (
+                            <TriangleAlert className="w-4 h-4 text-orange-600" />
+                        )}
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md">
                                 Suggested
