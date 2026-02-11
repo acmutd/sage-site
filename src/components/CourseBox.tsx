@@ -2,20 +2,11 @@ import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2, CirclePlus, Tri
 import { useDrag } from "react-dnd";
 import { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
+import { Course } from '@/types/course';
+import { Warning, WarningType } from '@/types/warning';
 
 interface CourseBoxProps {
-    course: {
-        course_code: string;
-        course_name: string;
-        credits_attempted?: number;
-        credits_earned?: number;
-        grade?: string;
-        id?: string;
-        status?: string;
-        semester?: string;
-        description?: string;
-        code?: string;
-    };
+    course: Course;
     status?: 'default' | 'completed' | 'warning' | 'info';
     icon?: 'check' | 'warning' | 'info' | null;
     sourceYear?: string;
@@ -25,10 +16,51 @@ interface CourseBoxProps {
     isLocked?: boolean;
     inSidebar?: boolean;
     isPlaced?: boolean;
-    corequisiteWarnings?: string[] | null;
+    warnings?: Warning[] | null;
     onAdd?: () => void;
     onRemove?: () => void;
 }
+
+const WarningSection: React.FC<{ warnings: Warning[] }> = ({ warnings }) => {
+    const getWarningIcon = (type: WarningType) => {
+        switch(type) {
+            case 'corequisite': return <TriangleAlert className="w-4 h-4" />;
+            case 'credit_limit': return <AlertTriangle className="w-4 h-4" />;
+            default: return <Info className="w-4 h-4" />;
+        }
+    };
+
+    const getWarningStyles = (severity: string) => {
+        switch(severity) {
+            case 'error': return 'bg-red-50 border-red-300 text-red-900';
+            case 'warning': return 'bg-orange-50 border-orange-300 text-orange-900';
+            default: return 'bg-blue-50 border-blue-300 text-blue-900';
+        }
+    };
+
+    return (
+        <div className="space-y-2">
+            {warnings.map((warning, idx) => (
+                <div key={idx} className={`mt-2 pt-2 border-t -mx-3 px-3 pb-2 ${getWarningStyles(warning.severity)}`}>
+                    <div className="flex items-start gap-2">
+                        {getWarningIcon(warning.type)}
+                        <div>
+                            <p className="font-semibold mb-1">{warning.message}</p>
+                            {warning.details && warning.details.length > 0 && (
+                                <ul className="list-disc ml-4 mt-1">
+                                    {warning.details.map((detail, i) => (
+                                        <li key={i}>{detail}</li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 
 const CourseBox: React.FC<CourseBoxProps> = ({
     course,
@@ -41,7 +73,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     isLocked = false,
     inSidebar = false,
     isPlaced = false,
-    corequisiteWarnings = null,
+    warnings = null,
     onAdd,
     onRemove
 }) => {
@@ -189,24 +221,13 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         <span className="text-gray-900">{course.status}</span>
                     </div>
                 )}
-                {corequisiteWarnings && corequisiteWarnings.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-orange-300 bg-orange-50 -mx-3 px-3 pb-2">
-                        <div className="flex items-start gap-2">
-                            <TriangleAlert className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
-                            <div>
-                                <p className="text-orange-900 font-semibold mb-1">Corequisite Warning:</p>
-                                <p className="text-orange-800">Must be taken with:</p>
-                                <ul className="list-disc ml-4 mt-1 text-orange-800">
-                                    {corequisiteWarnings.map((coreq, idx) => (
-                                        <li key={idx}>{coreq}</li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                )}
+
+                {warnings && warnings.length > 0 && (
+                            <WarningSection warnings={warnings} />
+                        )}
+        
                 {course.description && (
-                    <div className={`mt-2 pt-2 ${!(corequisiteWarnings && corequisiteWarnings.length > 0) ? 'border-t border-gray-300' : ''}`}>
+                    <div className={`mt-2 pt-2 ${!(warnings && warnings.length > 0) ? 'border-t border-gray-300' : ''}`}>
                         <p className="text-gray-700">{course.description}</p>
                     </div>
                 )}
@@ -258,8 +279,14 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     </div>
                     <div className="flex items-center gap-2">
                         {canHover && getIcon()}
-                        {corequisiteWarnings && corequisiteWarnings.length > 0 && (
-                            <TriangleAlert className="w-4 h-4 text-orange-600" />
+                        {warnings && warnings.length > 0 && (
+                            <div className="flex items-center">
+                                {warnings.some(w => w.severity === 'error') ? (
+                                    <AlertTriangle className="w-4 h-4 text-red-600" />
+                                ) : (
+                                    <TriangleAlert className="w-4 h-4 text-orange-600" />
+                                )}
+                            </div>
                         )}
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md">

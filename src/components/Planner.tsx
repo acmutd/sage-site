@@ -5,6 +5,7 @@ import SemesterBox from "./SemesterBox";
 import { HelpCircle, Plus, PlusCircle, SquareAsterisk } from "lucide-react";
 import PlannerNavbar from "./PlannerNavbar";
 import { Toaster } from "sonner";
+import { calculateCatalogYear, determineStudentType } from "@/utils/studentInfo";
 
 interface PlannerProps {
     semesters: {
@@ -19,6 +20,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     // main planner scroll ref
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     
+    // student type 
+    const studentType = determineStudentType(transcriptData);
+
     // tutorial screen
     const [runTour, setRunTour] = useState(() => {
         const hasSeenTutorial = localStorage.getItem('hasSeenPlannerTutorial');
@@ -281,7 +285,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     const newCourse = {
                         course_code: course.code || course.course_code,
                         course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
-                        credits: course.credits || 3, // Default credits if not specified
+                        credits_planned: course.credits || 3, // Default credit if no value provided for a course
                         id: newCourseId,
                         status: 'planned'
                     };
@@ -672,6 +676,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                             onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
                                             onShowError={setError}
                                             allSuggestedCourses={allSuggestedCourses}
+                                            studentType={studentType}
+                                            catalogYear={calculateCatalogYear(semester.title)}
                                         />
                                     ))}
                                 </div>

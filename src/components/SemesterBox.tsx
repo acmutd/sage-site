@@ -1,24 +1,16 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Lock, Unlock, MoreVertical, Trash2, Eraser, TriangleAlert } from "lucide-react";
 import CourseBox from "./CourseBox";
 import { useDrop } from "react-dnd";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Course } from "@/types/course";
+import { validateCourseLoad } from '@/utils/courseValidation';
+import ReactDOM from "react-dom";
 
-// SemesterBox Component
 interface SemesterBoxProps {
     title: string;
     isLocked?: boolean;
-    courses?: {
-        course_code: string;
-        course_name: string;
-        credits_attempted: number;
-        credits_earned: number;
-        grade: string;
-        id: string;
-        status?: string;
-        icon?: string | null;
-        corequisites?: string[][];
-    }[];
+    courses?: Course[];
     isEmpty?: boolean;
     onDropCourse: (
         course: any,
@@ -34,6 +26,8 @@ interface SemesterBoxProps {
     semesterIndex: number;
     isFromTranscript?: boolean;
     allSuggestedCourses?: any[];
+    studentType?: 'undergrad' | 'grad';
+    catalogYear?: number;
 }
 
 const SemesterBox: React.FC<SemesterBoxProps> = ({
@@ -48,22 +42,37 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     yearKey,
     semesterIndex,
     isFromTranscript = false,
-    allSuggestedCourses = []
+    allSuggestedCourses = [],
+    studentType = 'undergrad',
+    catalogYear = 2021
 }) => {
     const [locked, setLocked] = useState(isLocked);
     const [showRemoveModal, setShowRemoveModal] = useState(false);
     const [courseToRemove, setCourseToRemove] = useState<string | null>(null);
-    const [showCoreqWarning, setShowCoreqWarning] = useState(false);
+    const [showWarnings, setShowWarnings] = useState(false);
+    const [canHover, setCanHover] = useState(true);
 
     const handleLockToggle = () => {
         setLocked((prev) => !prev);
     };
 
-    // Check for unmet corequisites in the semester
+    useEffect(() => {
+        const checkHover = () => {
+            const hoverQuery = window.matchMedia('(hover: hover)');
+            setCanHover(hoverQuery.matches);
+        };
+        checkHover();
+        
+        const hoverQuery = window.matchMedia('(hover: hover)');
+        const handleChange = () => checkHover();
+        hoverQuery.addEventListener('change', handleChange);
+        
+        return () => hoverQuery.removeEventListener('change', handleChange);
+    }, []);
+
     const getUnmetCorequisites = () => {
         if (!courses || courses.length === 0) return null;
 
-        // Create a map of course codes to their corequisites and category paths
         const coreqMap = new Map<string, string[][]>();
         const categoryPathMap = new Map<string, string>();
         const suggestedCourseCodes = new Set<string>();
@@ -81,43 +90,34 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
             }
         });
 
-        // Get course codes in THIS semester only
         const semesterCourseCodes = new Set(
             courses.map(c => c.course_code)
         );
 
-        // Check each course in this semester for unmet corequisites
         const unmetCoreqs: { course: string; missing: string[]; locations: string[] }[] = [];
 
         courses.forEach(course => {
             const coreqs = coreqMap.get(course.course_code);
             if (!coreqs || coreqs.length === 0) return;
 
-            // Check each corequisite group
             coreqs.forEach((coreqGroup: string[]) => {
                 if (!Array.isArray(coreqGroup) || coreqGroup.length === 0) return;
 
-                // Filter coreq group to only include courses that exist in suggested courses
                 const availableCoreqs = coreqGroup.filter(coreqCode => 
                     suggestedCourseCodes.has(coreqCode)
                 );
 
-                // Skip if no coreqs from this group are available in suggested courses
                 if (availableCoreqs.length === 0) return;
 
-                // Check if ANY course from the available coreqs is planned in THIS semester
                 const hasAnyCoreqPlanned = availableCoreqs.some(coreqCode => 
                     semesterCourseCodes.has(coreqCode)
                 );
 
-                // If no course from this coreq group is planned in this semester, it's unmet
                 if (!hasAnyCoreqPlanned) {
-                    // Get the category paths for each available coreq in the group
                     const locations = availableCoreqs
                         .map(coreqCode => categoryPathMap.get(coreqCode))
                         .filter((path): path is string => !!path);
                     
-                    // Remove duplicates
                     const uniqueLocations = [...new Set(locations)];
                     
                     unmetCoreqs.push({
@@ -134,6 +134,23 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
 
     const unmetCorequisites = getUnmetCorequisites();
 
+    const getCreditWarnings = () => {
+        if (!courses || courses.length === 0) return null;
+        
+        const isSummer = title.toLowerCase().includes('summer');
+        
+        const warnings = validateCourseLoad(
+            courses,
+            studentType || 'undergrad',
+            catalogYear || 2021,
+            isSummer
+        );
+        
+        return warnings.length > 0 ? warnings : null;
+    };
+    
+    const creditWarnings = getCreditWarnings();
+
     const handleClearClick = () => {
         if (locked) {
             onShowError?.(`${title} needs to be unlocked to clear courses.`);
@@ -142,7 +159,6 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         onClearSemester();
     }
 
-    // mobile view (phone)
     const handleRemoveCourse = (courseId: string) => {
         setCourseToRemove(courseId);
         setShowRemoveModal(true);
@@ -159,14 +175,12 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     const [{ isOver, canDrop }, drop] = useDrop(() => ({
         accept: "COURSE",
         drop: (item: any) => {
-            if (isFromTranscript || locked) return; // Prevent dropping if it's from transcriptData (or if user chose to lock semester)
-            console.log("Dropping item:", item); // Log the exact item being dropped for debugging
-
+            if (isFromTranscript || locked) return;
             onDropCourse(
                 item.course,
                 item.sourceYear,
                 item.sourceSemesterIndex,
-                item.courseId, // Use the explicit course ID from the drag item
+                item.courseId,
                 item.isSuggested
             );
         },
@@ -176,8 +190,6 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
             canDrop: monitor.canDrop(),
         }),
     }), [locked, isFromTranscript, onDropCourse]);
-
-    // console.log("SemesterBox courses:", courses);
 
     return (
         <div
@@ -192,58 +204,130 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold text-gray-800">{title}</h3>
                 {!isFromTranscript && (
-
                     <div className="flex items-center gap-2">
-                        {unmetCorequisites && unmetCorequisites.length > 0 && (
-                            <div className="relative">
+                        {(unmetCorequisites || creditWarnings) && (
+                            <div className="relative group">
                                 <button
-                                    onMouseEnter={() => setShowCoreqWarning(true)}
-                                    onMouseLeave={() => setShowCoreqWarning(false)}
-                                    onClick={() => setShowCoreqWarning(!showCoreqWarning)}
-                                    className="hover:bg-orange-50 p-1 rounded"
-                                    title="Unmet corequisites"
+                                    onMouseEnter={canHover ? () => setShowWarnings(true) : undefined}
+                                    onMouseLeave={canHover ? () => setShowWarnings(false) : undefined}
+                                    onClick={() => setShowWarnings(!showWarnings)}
+                                    className="hover:bg-red-50 p-1 rounded relative"
                                 >
-                                    <TriangleAlert className="w-4 h-4 stroke-red-600" />
+                                    <TriangleAlert className={`w-4 h-4 ${
+                                        creditWarnings?.some(w => w.severity === 'error') 
+                                            ? 'stroke-red-600' 
+                                            : 'stroke-orange-600'
+                                    }`} />
+                                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                                        {(unmetCorequisites?.length || 0) + (creditWarnings?.length || 0)}
+                                    </span>
                                 </button>
-                                {showCoreqWarning && (
-                                    <div className="absolute top-full mb-2 right-0 z-50 w-64 bg-white border-2 border-orange-300 rounded-md shadow-lg p-3">
-                                        <div className="text-sm">
-                                            <div className="font-semibold  mb-2 flex items-center gap-2">
-                                                <TriangleAlert className="w-4 h-4" />
-                                                Corequisite Warning
-                                            </div>
-                                            <p className=" text-xs mb-2">
-                                                The following courses need corequisites:
-                                            </p>
-                                            <div className="space-y-2">
-                                                {unmetCorequisites.map((item, idx) => (
-                                                    <div key={idx} className=" p-2 rounded border ">
-                                                        <div className="font-medium text-xs mb-1">
-                                                            {item.course}
-                                                        </div>
-                                                        <div className=" text-xs">
-                                                            Needs: {item.missing.join(' or ')}
-                                                        </div>
-                                                        {item.locations && item.locations.length > 0 && (
-                                                            <div className=" text-xs mt-1 pt-1 border-t ">
-                                                                📍 {item.locations
-                                                                    .map((loc: string) => {
-                                                                        // Get last part of path
+
+                                {/* Desktop */}
+                                {canHover && showWarnings && (
+                                    <div className="absolute top-full mt-2 right-0 z-50 w-72 bg-white border-2 border-red-300 rounded-md shadow-lg p-3 max-h-96 overflow-y-auto">
+                                        {unmetCorequisites && (
+                                            <>
+                                                <div className="font-semibold mb-2 flex items-center gap-2 text-orange-900">
+                                                    <TriangleAlert className="w-4 h-4" />
+                                                    Corequisites
+                                                </div>
+                                                <div className="space-y-2 mb-3">
+                                                    {unmetCorequisites.map((item, idx) => (
+                                                        <div key={idx} className="p-2 rounded border border-orange-200 bg-orange-50">
+                                                            <div className="font-medium text-xs mb-1">{item.course}</div>
+                                                            <div className="text-xs">Needs: {item.missing.join(' or ')}</div>
+                                                            {item.locations?.length > 0 && (
+                                                                <div className="text-xs mt-1 pt-1 border-t border-orange-200">
+                                                                    📍 {item.locations.map((loc: string) => {
                                                                         const lastPart = loc.split(' > ').pop() || loc;
-                                                                        // If contains ":", take first part
                                                                         return lastPart.includes(':') ? lastPart.split(':')[0] : lastPart;
-                                                                    })
-                                                                    .join(' / ')}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
+                                                                    }).join(' / ')}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+                                        {creditWarnings && (
+                                            <>
+                                                <div className="font-semibold mb-2 flex items-center gap-2 text-red-900">
+                                                    <TriangleAlert className="w-4 h-4" />
+                                                    Credit Load
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {creditWarnings.map((warning, idx) => (
+                                                        <div key={idx} className="p-2 rounded border border-red-200 bg-red-50">
+                                                            <div className="font-medium text-xs mb-1">{warning.message}</div>
+                                                            {warning.details?.map((detail, i) => (
+                                                                <div key={i} className="text-xs">• {detail}</div>
+                                                            ))}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
+                                )}
+
+                                {/* Mobile */}
+                                {!canHover && showWarnings && ReactDOM.createPortal(
+                                    <>
+                                        <div 
+                                            className="fixed inset-0 bg-black bg-opacity-30 z-[9998]"
+                                            onClick={() => setShowWarnings(false)}
+                                        />
+                                        <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-white text-black rounded-t-2xl p-4 shadow-2xl border-t-2 border-red-300 max-h-[80vh] overflow-y-auto">
+                                            {unmetCorequisites && (
+                                                <>
+                                                    <div className="font-semibold mb-3 flex items-center gap-2 text-orange-900">
+                                                        <TriangleAlert className="w-5 h-5" />
+                                                        Corequisite Warnings
+                                                    </div>
+                                                    <div className="space-y-3 mb-4">
+                                                        {unmetCorequisites.map((item, idx) => (
+                                                            <div key={idx} className="p-3 rounded border border-orange-200 bg-orange-50">
+                                                                <div className="font-medium text-sm mb-1">{item.course}</div>
+                                                                <div className="text-sm">Needs: {item.missing.join(' or ')}</div>
+                                                                {item.locations?.length > 0 && (
+                                                                    <div className="text-sm mt-2 pt-2 border-t border-orange-200">
+                                                                        📍 {item.locations.map((loc: string) => {
+                                                                            const lastPart = loc.split(' > ').pop() || loc;
+                                                                            return lastPart.includes(':') ? lastPart.split(':')[0] : lastPart;
+                                                                        }).join(' / ')}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                            {creditWarnings && (
+                                                <>
+                                                    <div className="font-semibold mb-3 flex items-center gap-2 text-red-900">
+                                                        <TriangleAlert className="w-5 h-5" />
+                                                        Credit Load Warnings
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        {creditWarnings.map((warning, idx) => (
+                                                            <div key={idx} className="p-3 rounded border border-red-200 bg-red-50">
+                                                                <div className="font-medium text-sm mb-2">{warning.message}</div>
+                                                                {warning.details?.map((detail, i) => (
+                                                                    <div key={i} className="text-sm">• {detail}</div>
+                                                                ))}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </>,
+                                    document.body
                                 )}
                             </div>
                         )}
+
                         <button
                             onClick={handleLockToggle}
                             className={`hover:bg-gray-100 p-1 rounded ${
@@ -251,11 +335,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                             }`}
                             title={locked ? "Unlock semester" : "Lock semester"}
                         >
-                            {locked ? (
-                                <Lock className="w-4 h-4" />
-                            ) : (
-                                <Unlock className="w-4 h-4" /> 
-                            )}
+                            {locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
                         </button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -296,29 +376,15 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                 <div className="space-y-2">
                     {courses.map((course, idx) => (
                         <CourseBox
-                            key={course.id || `${course.course_code || 'unknown'}-${idx}`} // Use ID as key when available
+                            key={course.id || `${course.course_code || 'unknown'}-${idx}`}
                             course={course}
                             sourceYear={yearKey}
                             sourceSemesterIndex={semesterIndex}
                             isFromTranscript={isFromTranscript}
                             isLocked={locked}
-                            status={
-                                course.status as
-                                | "default"
-                                | "completed"
-                                | "warning"
-                                | "info"
-                                | undefined
-                            }
-                            icon={
-                                course.icon as
-                                | "check"
-                                | "warning"
-                                | "info"
-                                | null
-                                | undefined
-                            }
-                            onRemove={() => handleRemoveCourse(course.id)}
+                            status={course.status as "default" | "completed" | "warning" | "info" | undefined}
+                            icon={course.icon as "check" | "warning" | "info" | null | undefined}
+                            onRemove={() => handleRemoveCourse(course.id || '')}
                         />
                     ))}
                 </div>
