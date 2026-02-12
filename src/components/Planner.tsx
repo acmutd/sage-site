@@ -153,6 +153,93 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         setHasUnsavedChanges(true);
     };
 
+    // Plan management functions
+    const handleSwitchPlan = (planId: string) => {
+        setPlannerData(prev => ({
+            ...prev,
+            activePlanId: planId
+        }));
+        setHasUnsavedChanges(true);
+    };
+
+    const handleNewPlan = () => {
+        const newPlanId = crypto.randomUUID();
+        const planNumber = plannerData.plans.length + 1;
+        
+        setPlannerData(prev => ({
+            plans: [
+                ...prev.plans,
+                {
+                    id: newPlanId,
+                    name: `Plan ${planNumber}`,
+                    semesters: initialPlannerState,
+                    placedCourses: [],
+                    lastModified: Date.now()
+                }
+            ],
+            activePlanId: newPlanId
+        }));
+        setHasUnsavedChanges(true);
+        toast.success('Created new plan');
+    };
+
+    const handleDuplicatePlan = () => {
+        const currentPlan = plannerData.plans.find(p => p.id === plannerData.activePlanId);
+        if (!currentPlan) return;
+
+        const newPlanId = crypto.randomUUID();
+        const duplicatedPlan: SavedPlannerState = {
+            ...JSON.parse(JSON.stringify(currentPlan)), // Deep copy
+            id: newPlanId,
+            name: `${currentPlan.name} (Copy)`,
+            lastModified: Date.now()
+        };
+
+        setPlannerData(prev => ({
+            plans: [...prev.plans, duplicatedPlan],
+            activePlanId: newPlanId
+        }));
+        setHasUnsavedChanges(true);
+        toast.success('Duplicated plan');
+    };
+
+    const handleDeletePlan = () => {
+        if (plannerData.plans.length === 1) {
+            toast.error('Cannot delete the last plan');
+            return;
+        }
+
+        const currentIndex = plannerData.plans.findIndex(p => p.id === plannerData.activePlanId);
+        const newActivePlanId = currentIndex > 0 
+            ? plannerData.plans[currentIndex - 1].id 
+            : plannerData.plans[1].id;
+
+        setPlannerData(prev => ({
+            plans: prev.plans.filter(p => p.id !== prev.activePlanId),
+            activePlanId: newActivePlanId
+        }));
+        setHasUnsavedChanges(true);
+        toast.success('Deleted plan');
+    };
+
+    const handleRenamePlan = (newName: string) => {
+        if (!newName.trim()) {
+            toast.error('Plan name cannot be empty');
+            return;
+        }
+
+        setPlannerData(prev => ({
+            ...prev,
+            plans: prev.plans.map(p =>
+                p.id === prev.activePlanId
+                    ? { ...p, name: newName.trim(), lastModified: Date.now() }
+                    : p
+            )
+        }));
+        setHasUnsavedChanges(true);
+        toast.success('Renamed plan');
+    };
+
     const [expandedCategories, setExpandedCategories] = useState<Record<number, boolean>>({
         0: true,
         1: true,
@@ -669,6 +756,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 onRestartOnboarding={onRestartOnboarding}
                 availableSemesters={availableSemesters}
                 onAddCourse={handleDropCourse}
+                plans={plannerData.plans.map(p => ({ id: p.id, name: p.name }))}
+                activePlanId={plannerData.activePlanId}
+                onSwitchPlan={handleSwitchPlan}
+                onNewPlan={handleNewPlan}
+                onDuplicatePlan={handleDuplicatePlan}
+                onDeletePlan={handleDeletePlan}
+                onRenamePlan={handleRenamePlan}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
                 <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10000 }}>
