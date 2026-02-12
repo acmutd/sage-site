@@ -18,15 +18,23 @@ interface PlannerProps {
 }
 
 interface SavedPlannerState {
-  semesters: {
-    [key: string]: {
-      title: string;
-      courses: any[];
-      isFromTranscript?: boolean;
-      isLocked?: boolean;  
-    }[];
-  };
-  placedCourses: string[];
+    id: string;
+    name: string;
+    semesters: {
+        [key: string]: {
+            title: string;
+            courses: any[];
+            isFromTranscript?: boolean;
+            isLocked?: boolean;  
+        }[];
+    };
+    placedCourses: string[];
+    lastModified: number;
+}
+
+interface PlannerData {
+    plans: SavedPlannerState[];
+    activePlanId: string;
 }
 
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding }) => {
@@ -102,7 +110,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return updatedSemesters;
     }, [semesters]);
 
-    const [plannerState, setPlannerState] = useState<SavedPlannerState>(() => {
+    const [plannerData, setPlannerData] = useState<PlannerData>(() => {
         const stored = localStorage.getItem('planner-state');
 
         if (stored) {
@@ -113,22 +121,37 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             }
         }
         
+        const defaultPlanId = crypto.randomUUID();
         return {
-            semesters: initialPlannerState,
-            placedCourses: []
+            plans: [{
+                id: defaultPlanId,
+                name: 'Plan 1',
+                semesters: initialPlannerState,
+                placedCourses: [],
+                lastModified: Date.now()
+            }],
+            activePlanId: defaultPlanId
         };
     });
+
+    const activePlan = plannerData.plans.find(p => p.id === plannerData.activePlanId)!;
+    const allSemesters = activePlan.semesters;
+    const placedSuggestedCourses = new Set(activePlan.placedCourses);
 
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const updatePlannerState = (updates: Partial<SavedPlannerState>) => {
-        setPlannerState(prev => ({ ...prev, ...updates }));
+        setPlannerData(prev => ({
+            ...prev,
+            plans: prev.plans.map(p =>
+                p.id === prev.activePlanId
+                    ? { ...p, ...updates, lastModified: Date.now()}
+                    : p
+            )
+        }));
         setHasUnsavedChanges(true);
     };
-
-    const allSemesters = plannerState.semesters;
-    const placedSuggestedCourses = new Set(plannerState.placedCourses);
 
     const [expandedCategories, setExpandedCategories] = useState<Record<number, boolean>>({
         0: true,
@@ -170,7 +193,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     userId: user.uid,
                     action: 'savePlanner',
                     token,
-                    plannerState: plannerState,
+                    plannerState: plannerData,
                 }),
             });
 
@@ -187,7 +210,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         } finally {
             // Save to localStorage on successful cloud save
             try {
-                localStorage.setItem('planner-state', JSON.stringify(plannerState));
+                localStorage.setItem('planner-state', JSON.stringify(plannerData));
             } catch (error) {
                 console.error('Failed to save to localStorage:', error);
             }
