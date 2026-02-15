@@ -343,7 +343,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                         <div className="flex flex-col items-center gap-8 pt-8 h-full cursor-pointer hover:bg-[#F5F7F5]" onClick={handleToggleSidebar}>
                             <button
                                 className="p-2 hover:bg-gray-200 rounded"
-                                onClick={handleToggleSidebar}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleSidebar();
+                                }}
                             >
                                 <ArrowRightToLine size={24} className="w-5 h-5 text-gray-500" />
                             </button>

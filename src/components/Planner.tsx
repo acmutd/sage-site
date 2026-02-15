@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Joyride, { Step } from "react-joyride";
 import Sidebar from "./Sidebar";
 import SemesterBox from "./SemesterBox";
-import { HelpCircle, Plus, PlusCircle, SquareAsterisk } from "lucide-react";
+import { HelpCircle, PlusCircle, SquareAsterisk } from "lucide-react";
 import PlannerNavbar from "./PlannerNavbar";
 import { Toaster } from "sonner";
 import { calculateCatalogYear, determineStudentType } from "@/utils/studentInfo";
+import YearDivider from "./planner/YearDivider";
 
 interface PlannerProps {
     semesters: {
@@ -108,9 +109,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [semesterToDelete, setSemesterToDelete] = useState<{
         yearKey: string;
-        semesterIndex: number;
-        isLastSemester: boolean;
-        action: 'clear' | 'delete';
+        semesterIndex?: number;
+        isLastSemester?: boolean;
+        action: 'clear' | 'delete' | 'clearYear' | 'deleteYear';
     } | null>(null);
 
     const errorRef = useRef<HTMLDivElement>(null);
@@ -397,6 +398,90 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }));
     };
 
+    const handleClearYear = (yearKey: string) => {
+        setSemesterToDelete({ yearKey, action: 'clearYear' });
+        setShowDeleteModal(true);
+    };
+    
+    const handleDeleteYear = (yearKey: string) => {
+        setSemesterToDelete({ yearKey, action: 'deleteYear' });
+        setShowDeleteModal(true);
+    };
+
+    const executeClearYear = (yearKey: string) => {
+        const yearSemesters = allSemesters[yearKey];
+        const courseCodesToRemove: string[] = [];
+        
+        yearSemesters.forEach((semester) => {
+            if (!semester.isFromTranscript && semester.courses) {
+                semester.courses.forEach((course: any) => {
+                    if (course.status === 'planned') {
+                        const courseCode = course.course_code || course.code;
+                        if (courseCode) {
+                            courseCodesToRemove.push(courseCode);
+                        }
+                    }
+                });
+            }
+        });
+        
+        if (courseCodesToRemove.length > 0) {
+            setPlacedSuggestedCourses(prevPlaced => {
+                const newPlaced = new Set(prevPlaced);
+                courseCodesToRemove.forEach(code => newPlaced.delete(code));
+                return newPlaced;
+            });
+        }
+        
+        setAllSemesters(prev => {
+            const newState = JSON.parse(JSON.stringify(prev));
+            newState[yearKey].forEach((semester: any) => {
+                if (!semester.isFromTranscript) {
+                    semester.courses = [];
+                }
+            });
+            return newState;
+        });
+        
+        setShowDeleteModal(false);
+        setSemesterToDelete(null);
+    };
+    
+    const executeDeleteYear = (yearKey: string) => {
+        const yearSemesters = allSemesters[yearKey];
+        const courseCodesToRemove: string[] = [];
+        
+        yearSemesters.forEach((semester) => {
+            if (semester.courses) {
+                semester.courses.forEach((course: any) => {
+                    if (course.status === 'planned') {
+                        const courseCode = course.course_code || course.code;
+                        if (courseCode) {
+                            courseCodesToRemove.push(courseCode);
+                        }
+                    }
+                });
+            }
+        });
+        
+        if (courseCodesToRemove.length > 0) {
+            setPlacedSuggestedCourses(prevPlaced => {
+                const newPlaced = new Set(prevPlaced);
+                courseCodesToRemove.forEach(code => newPlaced.delete(code));
+                return newPlaced;
+            });
+        }
+        
+        setAllSemesters(prev => {
+            const newState = { ...prev };
+            delete newState[yearKey];
+            return newState;
+        });
+        
+        setShowDeleteModal(false);
+        setSemesterToDelete(null);
+    };
+
     const handleAddSemester = (yearKey: string) => {
         setAllSemesters(prev => {
             const yearSemesters = [...prev[yearKey]];
@@ -611,7 +696,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 </div>
 
                 
-                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6" style={{ scrollBehavior: 'smooth' }}>
+                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
                     {/* <div className="flex justify-between items-center mb-6">
                         <h1 className="text-2xl font-bold text-gray-800">Academic Plan</h1>
                         <button
@@ -644,46 +729,54 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         </div>
                     )}
                     <div className="space-y-8">
-                        {Object.keys(allSemesters).map((yearKey) => (
-                            <div key={yearKey}>
-                                <div className="flex justify-between items-center mb-4">
+                        {Object.keys(allSemesters).map((yearKey) => {
+                            const isEntirelyUserCreated = allSemesters[yearKey].every(
+                                semester => !semester.isFromTranscript
+                            );
 
-                                    <h2 className="text-lg font-semibold text-gray-700 mb-4">
-                                        {yearKey.replace("year", "Year ")} {/* Optional formatting */}
-                                    </h2>
-                                    <button
-                                        data-tour="add-semester"
-                                        onClick={() => handleAddSemester(yearKey)}
-                                        className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full text-sm font-medium transition-colors"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                        <span>Add Semester</span>
-                                    </button>
-                                </div>
+                            const hasUserCoursesToClear = allSemesters[yearKey].some(
+                                semester => !semester.isFromTranscript && semester.courses && semester.courses.length > 0
+                            );
 
-                                <div className="flex flex-wrap gap-4 justify-start" data-tour="semester-area">
-                                    {allSemesters[yearKey].map((semester, idx) => (
-                                        <SemesterBox
-                                            key={idx}
-                                            {...semester}
-                                            yearKey={yearKey}
-                                            semesterIndex={idx}
-                                            isFromTranscript={semester.isFromTranscript || false} // Dynamically set isFromTranscript
-                                            isEmpty={semester.isFromTranscript && semester.courses.length === 0}
-                                            onDropCourse={(course, sourceYear, sourceSemesterIndex, courseId, isSuggested) =>
-                                                handleDropCourse(yearKey, idx, course, sourceYear, sourceSemesterIndex, courseId, isSuggested)
-                                            }
-                                            onClearSemester={() => openClearDeleteModal(yearKey, idx, 'clear')}
-                                            onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
-                                            onShowError={setError}
-                                            allSuggestedCourses={allSuggestedCourses}
-                                            studentType={studentType}
-                                            catalogYear={calculateCatalogYear(semester.title)}
-                                        />
-                                    ))}
+                            return (
+                                <div key={yearKey}>
+                                    <YearDivider 
+                                        yearLabel={yearKey.replace("year", "Year ")}
+                                        yearKey={yearKey}
+                                        isEntirelyUserCreated={isEntirelyUserCreated}
+                                        hasUserCoursesToClear={hasUserCoursesToClear}
+                                        onAddSemester={handleAddSemester}
+                                        onClearYear={handleClearYear}
+                                        onDeleteYear={handleDeleteYear}
+                                    />
+                                    <div className="flex justify-between items-center mb-4">
+                                    <div />
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-4 justify-start" data-tour="semester-area">
+                                        {allSemesters[yearKey].map((semester, idx) => (
+                                            <SemesterBox
+                                                key={idx}
+                                                {...semester}
+                                                yearKey={yearKey}
+                                                semesterIndex={idx}
+                                                isFromTranscript={semester.isFromTranscript || false} // Dynamically set isFromTranscript
+                                                isEmpty={semester.isFromTranscript && semester.courses.length === 0}
+                                                onDropCourse={(course, sourceYear, sourceSemesterIndex, courseId, isSuggested) =>
+                                                    handleDropCourse(yearKey, idx, course, sourceYear, sourceSemesterIndex, courseId, isSuggested)
+                                                }
+                                                onClearSemester={() => openClearDeleteModal(yearKey, idx, 'clear')}
+                                                onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
+                                                onShowError={setError}
+                                                allSuggestedCourses={allSuggestedCourses}
+                                                studentType={studentType}
+                                                catalogYear={calculateCatalogYear(semester.title)}
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                     {Object.keys(allSemesters).length > 0 && (
                         <div className="mt-8 mb-16 flex justify-end">  {/* mb-16 = 4rem spacing */}
@@ -713,19 +806,26 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             >
                                 <h3 className="text-lg font-semibold mb-4 text-gray-800">
                                     {semesterToDelete.action === 'clear'
-                                        ? `Clear ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex].title}?`
-                                        : semesterToDelete.isLastSemester 
-                                            ? `Remove ${semesterToDelete.yearKey.replace("year", "Year ")}?`
-                                            : `Remove ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex].title}?`
-                                    
+                                        ? `Clear ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex!].title}?`
+                                        : semesterToDelete.action === 'clearYear'
+                                            ? `Clear all user courses in ${semesterToDelete.yearKey.replace("year", "Year ")}?`
+                                            : semesterToDelete.action === 'deleteYear'
+                                                ? `Delete ${semesterToDelete.yearKey.replace("year", "Year ")}?`
+                                                : semesterToDelete.isLastSemester 
+                                                    ? `Remove ${semesterToDelete.yearKey.replace("year", "Year ")}?`
+                                                    : `Remove ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex!].title}?`
                                     }
                                 </h3>
                                 <p className="text-sm text-gray-600 mb-6">
                                     {semesterToDelete.action === 'clear'
                                         ? "All courses in this semester will be cleared."
-                                        : semesterToDelete.isLastSemester
-                                            ? "This will delete the entire year since it's the only semester."
-                                            : "This semester and all its courses will be removed from your plan."
+                                        : semesterToDelete.action === 'clearYear'
+                                            ? "All courses in user-created semesters will be cleared. Transcript semesters will remain untouched."
+                                            : semesterToDelete.action === 'deleteYear'
+                                                ? "This entire year and all its semesters will be permanently removed."
+                                                : semesterToDelete.isLastSemester
+                                                    ? "This will delete the entire year since it's the only semester."
+                                                    : "This semester and all its courses will be removed from your plan."
                                     }
                                 </p>
                                 
@@ -744,14 +844,19 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                         className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
                                         onClick={() => {
                                             if (semesterToDelete.action === 'clear') {
-                                                handleClearSemester(semesterToDelete.yearKey, semesterToDelete.semesterIndex);
-                                            }
-                                            else {
-                                                handleRemoveSemester(semesterToDelete.yearKey, semesterToDelete.semesterIndex);
+                                                handleClearSemester(semesterToDelete.yearKey, semesterToDelete.semesterIndex!);
+                                            } else if (semesterToDelete.action === 'clearYear') {
+                                                executeClearYear(semesterToDelete.yearKey);
+                                            } else if (semesterToDelete.action === 'deleteYear') {
+                                                executeDeleteYear(semesterToDelete.yearKey);
+                                            } else {
+                                                handleRemoveSemester(semesterToDelete.yearKey, semesterToDelete.semesterIndex!);
                                             }
                                         }}
                                     >
-                                        {semesterToDelete.action === 'clear' ? 'Clear' : 'Remove'}
+                                        {semesterToDelete.action === 'clear' || semesterToDelete.action === 'clearYear' 
+                                            ? 'Clear' 
+                                            : 'Delete'}
                                     </button>
                                 </div>
                             </div>
