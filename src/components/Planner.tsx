@@ -669,6 +669,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                             yearKey={yearKey}
                                             semesterIndex={idx}
                                             isFromTranscript={semester.isFromTranscript || false} // Dynamically set isFromTranscript
+                                            isEmpty={semester.isFromTranscript && semester.courses.length === 0}
                                             onDropCourse={(course, sourceYear, sourceSemesterIndex, courseId, isSuggested) =>
                                                 handleDropCourse(yearKey, idx, course, sourceYear, sourceSemesterIndex, courseId, isSuggested)
                                             }
