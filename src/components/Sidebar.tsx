@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NotebookPen, ArrowLeftFromLine, ArrowRightFromLine, PanelLeftDashed } from "lucide-react";
+import { NotebookPen, ArrowLeftToLine, PanelLeftDashed, ArrowRightToLine } from "lucide-react";
 import { useDrop } from "react-dnd";
 import RequirementCategory from "./RequirementCategory";
 import CoursesCarousel from "./ui/CoursesCarousel";
@@ -304,7 +304,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     className="p-2 hover:bg-gray-200 rounded"
                                     onClick={handleToggleSidebar}
                                 >
-                                    <ArrowLeftFromLine className="w-5 h-5 text-gray-500" />
+                                    <ArrowLeftToLine className="w-5 h-5 text-gray-500" />
                                 </button>
                             </div>
 
@@ -345,7 +345,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 className="p-2 hover:bg-gray-200 rounded"
                                 onClick={handleToggleSidebar}
                             >
-                                <ArrowRightFromLine className="w-5 h-5 text-gray-500" />
+                                <ArrowRightToLine size={24} className="w-5 h-5 text-gray-500" />
                             </button>
                             <button 
                                 className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
