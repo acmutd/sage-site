@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import Joyride, { Step } from "react-joyride";
+import { driver } from "driver.js";
+import "driver.js/dist/driver.css";
 import { useAuth } from "../context/AuthContext";
 import {
   ArrowLeftToLineIcon,
@@ -39,36 +40,6 @@ interface Conversation {
 
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
-// Steps for Tutorial 
-const steps: Step[] = [
-  {
-      target: '[data-tour="sidebar"]',
-      content: "View and manage your conversation history here. Click on any past conversation to continue it. Hovering over the conversation allows you to manage it.",
-      placement: "right",
-      disableScrolling: true
-  },
-  {
-      target: '[data-tour="new-chat-expanded"]',
-      content: "Start a fresh conversation with Sage anytime.",
-      placement: "bottom"
-  },
-  {
-      target: '[data-tour="sidebar-collapse"]',
-      content: "You can collapse the sidebar to expand your chat view. Click again to reopen it.",
-      placement: "bottom"
-  },
-  {
-      target: '[data-tour="chat-input"]',
-      content: "Type your questions here and press Enter or click the send button to your right.",
-      placement: "top"
-  },
-  {
-      target: '[data-tour="mode-toggle"]',
-      content: "Switch between general advising questions and schedule generation mode.",
-      placement: "top"
-  }
-];
-
 const ChatBot: React.FC = () => {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
@@ -88,21 +59,80 @@ const ChatBot: React.FC = () => {
   } = useChatbot();
   
   // tutorial overlay 
-  const [runTour, setRunTour] = useState(() => {
-      const hasSeenTutorial = localStorage.getItem('hasSeenChatbotTutorial');
-      return !hasSeenTutorial;
-  });
+  const [driverObj, setDriverObj] = useState<any>(null);
 
-  const handleJoyrideCallback = (data: any) => {
-    const { status } = data;
-    
-    if (status === 'finished' || status === 'skipped') {
-        localStorage.setItem('hasSeenChatbotTutorial', 'true');
-        setRunTour(false);
-    }
+  useEffect(() => {
+        const driverInstance = driver({
+            showProgress: true,
+            showButtons: ['next', 'previous', 'close'],
+            steps: [
+                {
+                    element: '[data-tour="sidebar"]',
+                    popover: {
+                        title: 'Conversation History',
+                        description: 'View and manage your conversation history here. Click on any past conversation to continue it. Hovering over the conversation allows you to manage it.',
+                        side: "right"
+                    }
+                },
+                {
+                    element: '[data-tour="new-chat-expanded"]',
+                    popover: {
+                        title: 'New Chat',
+                        description: 'Start a fresh conversation with SAGE anytime.',
+                        side: "bottom"
+                    }
+                },
+                {
+                    element: '[data-tour="sidebar-collapse"]',
+                    popover: {
+                        title: 'Collapse Sidebar',
+                        description: 'You can collapse the sidebar to expand your chat view. Click again to reopen it.',
+                        side: "bottom"
+                    }
+                },
+                {
+                    element: '[data-tour="chat-input"]',
+                    popover: {
+                        title: 'Ask Questions',
+                        description: 'Type your questions here and press Enter or click the send button to your right.',
+                        side: "top"
+                    }
+                },
+                {
+                    element: '[data-tour="mode-toggle"]',
+                    popover: {
+                        title: 'Mode Toggle',
+                        description: 'Switch between general advising questions and schedule generation mode.',
+                        side: "top"
+                    }
+                },
+                {
+                  element: '[data-tour="help-button"]',
+                  popover: {
+                      title: 'Tutorial',
+                      description: 'Click here to replay the tutorial at any time',
+                      side: "left"
+                  }
+                }
+            ],
+            onDestroyed: () => {
+                localStorage.setItem('hasSeenChatbotTutorial', 'true');
+            },
+            popoverClass: 'sage-driver-theme'
+        });
+        
+        setDriverObj(driverInstance);
+        const hasSeenTutorial = localStorage.getItem('hasSeenChatbotTutorial');
+        if (!hasSeenTutorial) {
+            setTimeout(() => driverInstance.drive(), 500);
+        }
+  }, []);
+  
+  const startTutorial = () => {
+      if (driverObj) {
+          driverObj.drive();
+      }
   };
-
-  const startTutorial = () => { setRunTour(true); };
 
   // Wrapper function to update conversations and notify mobile navbar
   const updateConversations = (newConversations: Conversation[] | ((prev: Conversation[]) => Conversation[])) => {
@@ -598,24 +628,7 @@ const ChatBot: React.FC = () => {
       className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]"
       onClick={handleOutsideClick}
     >
-      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 100 }}>
-        <Joyride
-          steps={steps}
-          run={runTour}
-          callback={handleJoyrideCallback}
-          continuous
-          showProgress
-          showSkipButton
-          styles={{
-            options: {
-              primaryColor: '#4ade80',
-              zIndex: 100,
-            }
-          }}
-        />
-      </div>
-
-      <button onClick={startTutorial} className="fixed bottom-4 right-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
+      <button data-tour="help-button" onClick={startTutorial} className="fixed bottom-4 right-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
         <HelpCircle size={18} className="text-white" />
       </button>
       

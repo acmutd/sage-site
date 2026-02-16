@@ -45,7 +45,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function LoginForm(props: { isMobile: boolean, setLoading: (loading: boolean) => void}) {
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from || "/chatbot";
+  const from = location.state?.from || "/";
   const [loginError, setLoginError] = useState(false);
   const { setAuthChecking } = useAuth();
 

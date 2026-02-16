@@ -128,6 +128,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                     course_code: courseCode,
                                     course_name: course.name || course.course_name,
                                     description: course.description,
+                                    credits_planned: course.credits,
                                     id: `suggested-${categoryName}-${courseCode}-${startIndex + idx}`
                                 }}
                                 status="warning"
@@ -135,7 +136,12 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 isSuggested={true}
                                 inSidebar={true}
                                 isPlaced={isPlaced}
-                                corequisiteWarnings={coreqWarnings}
+                                warnings={coreqWarnings ? [{
+                                    type: 'corequisite',
+                                    severity: 'warning',
+                                    message: 'Corequisite Warning:',
+                                    details: coreqWarnings
+                                }] : null}
                                 onAdd={() => handleAddClick({...course, course_code: courseCode, code: courseCode})}
                             />
                         );

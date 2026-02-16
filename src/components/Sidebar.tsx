@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NotebookPen, ArrowLeftFromLine, ArrowRightFromLine } from "lucide-react";
+import { NotebookPen, ArrowLeftToLine, PanelLeftDashed, ArrowRightToLine } from "lucide-react";
 import { useDrop } from "react-dnd";
 import RequirementCategory from "./RequirementCategory";
 import CoursesCarousel from "./ui/CoursesCarousel";
@@ -251,7 +251,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     hasSubcategories={subCategoriesToRender.length > 0}
                 >
                     {category.classes && category.classes.length > 0 ? (
-                        <CoursesCarousel 
+                        <CoursesCarousel
                             courses={category.classes} 
                             type="completed"
                         />
@@ -296,15 +296,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                     {isExpanded ? (
                         <div className="p-6 pt-8">
                             <div className="flex items-center justify-between mb-6">
-                                <button className="flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700" onClick={onRestartOnboarding}>
+                                <button data-tour="edit-plans" className="flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700" onClick={onRestartOnboarding}>
                                     <NotebookPen size={20} strokeWidth={2} />
                                     <span>Edit plans</span>
                                 </button>
                                 <button
+                                    data-tour="sidebar-toggle"
                                     className="p-2 hover:bg-gray-200 rounded"
                                     onClick={handleToggleSidebar}
                                 >
-                                    <ArrowLeftFromLine className="w-5 h-5 text-gray-500" />
+                                    <ArrowLeftToLine className="w-5 h-5 text-gray-500" />
                                 </button>
                             </div>
 
@@ -327,6 +328,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             }));
                                         }}
                                         hasSubcategories={req.categories && req.categories.length > 0}
+                                        isFirstCategory={reqIdx === 0}
                                     >
                                         {req.categories && req.categories.length > 0 ? (
                                             renderCategories(req.categories, reqIdx)
@@ -340,12 +342,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center gap-8 pt-8">
+                        <div className="flex flex-col items-center gap-8 pt-8 h-full cursor-pointer hover:bg-[#F5F7F5]" onClick={handleToggleSidebar}>
                             <button
                                 className="p-2 hover:bg-gray-200 rounded"
-                                onClick={handleToggleSidebar}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleSidebar();
+                                }}
                             >
-                                <ArrowRightFromLine className="w-5 h-5 text-gray-500" />
+                                <ArrowRightToLine size={24} className="w-5 h-5 text-gray-500" />
                             </button>
                             <button 
                                 className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
@@ -353,6 +358,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                             >
                                 <NotebookPen className="w-5 h-5" strokeWidth={2} />
                             </button>
+
+                            <div className="flex flex-grow" />
+
+                            <div className="w-12 h-12 flex items-center justify-center -translate-y-4">
+                                <PanelLeftDashed size={24} className="stroke-[#bbbbbb] group-hover/sidebar:stroke-[#dddddd] transition-colors duration-150" />
+                            </div>
                         </div>
                     )}
                 </div>

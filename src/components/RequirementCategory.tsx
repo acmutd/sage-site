@@ -11,6 +11,7 @@ interface RequirementCategoryProps {
     onToggle: () => void;
     hasSubcategories: boolean;
     children: React.ReactNode;
+    isFirstCategory?: boolean;
   }
   
   const RequirementCategory: React.FC<RequirementCategoryProps> = ({
@@ -21,6 +22,7 @@ interface RequirementCategoryProps {
     onToggle,
     hasSubcategories,
     children,
+    isFirstCategory = false
   }) => {
     return (
       <div className="border border-gray-200 rounded-md overflow-hidden">
@@ -28,7 +30,7 @@ interface RequirementCategoryProps {
           onClick={onToggle}
           className="w-full flex items-start justify-between p-3 hover:bg-gray-50 transition-colors text-left"
         >
-          <div className="flex items-center gap-2">
+          <div data-tour={isFirstCategory ? "requirement-category-toggle" : undefined} className="flex items-center gap-2">
             {isExpanded ? (
               <ChevronUp className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
             ) : (
@@ -36,7 +38,7 @@ interface RequirementCategoryProps {
             )}
             <span className="text-sm font-medium text-gray-800">{title}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div data-tour={isFirstCategory ? "requirement-category-progress" : undefined} className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-600 leading-snug">
               {completed}/{total}
             </span>
