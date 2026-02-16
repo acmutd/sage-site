@@ -184,3 +184,13 @@ body {
     transform: scale(0.95);
   }
 }
+
+.sage-driver-theme .driver-popover-next-btn {
+  background-color: transparent !important;
+  color: #5AED86 !important;
+  border: 1px solid #5AED86 !important;
+}
+
+.sage-driver-theme .driver-popover-next-btn:hover {
+  background-color: rgba(90, 237, 134, 0.1) !important;
+}

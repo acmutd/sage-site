@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import Joyride, { Step } from "react-joyride";
+import { driver } from "driver.js";
+import "driver.js/dist/driver.css";
 import Sidebar from "./Sidebar";
 import SemesterBox from "./SemesterBox";
 import { HelpCircle, PlusCircle, SquareAsterisk } from "lucide-react";
@@ -24,56 +25,102 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     // student type 
     const studentType = determineStudentType(transcriptData);
 
-    // tutorial screen
-    const [runTour, setRunTour] = useState(() => {
+    // Driver.js instance
+    const [driverObj, setDriverObj] = useState<any>(null);
+    const dropdownWasOpenedRef = useRef(false);
+
+    useEffect(() => {        
+        const driverInstance = driver({
+            showProgress: true,
+            showButtons: ['next', 'previous', 'close'],
+            steps: [
+                {
+                    element: '[data-tour="sidebar"]',
+                    popover: {
+                        title: 'Degree Requirements',
+                        description: 'This sidebar shows your degree requirements and suggested courses (when you expand the categories).',
+                        side: "right"
+                    }
+                },
+                {
+                    element: '[data-tour="semester-area"]',
+                    popover: {
+                        title: 'Academic Plan',
+                        description: 'This is your academic plan. Drag courses here to build your schedule.',
+                        side: "top"
+                    }
+                },
+                {
+                    element: '[data-tour="year-option"]',
+                    popover: {
+                        title: 'Year Options',
+                        description: 'Click this button to reveal all available options for an academic year.',
+                        side: "top"
+                    },
+                    onDeselected: () => {
+                        if (!dropdownWasOpenedRef.current) {
+                            setTimeout(() => {
+                                driverInstance.moveTo(5);
+                                setTimeout(() => {
+                                    driverInstance.destroy();
+                                    driverInstance.drive(5); // Go to step 5
+                                }, 50);
+                            }, 150);
+                        }
+                    }
+                },
+                {
+                    element: '[data-tour="add-semester"]',
+                    popover: {
+                        title: 'Add Semester',
+                        description: 'Add a semester to this academic year. You can have up to three semesters per year: Fall, Spring, and Summer.',
+                        side: "bottom"
+                    }
+                },
+                {
+                    element: '[data-tour="clear-all-semesters"]',
+                    popover: {
+                        title: 'Clear Semesters',
+                        description: 'Clear all courses you\'ve created for semesters in this year. Note: completed semesters will not get touched nor locked semesters.',
+                        side: "bottom"
+                    }
+                },
+                {
+                    element: '[data-tour="add-year"]',
+                    popover: {
+                        title: 'Add Year',
+                        description: 'Create a new academic year to start future planning.',
+                        side: "left"
+                    },
+                    onDeselected: () => {
+                        scrollContainerRef.current?.scrollTo({
+                            top: 0,
+                            behavior: 'smooth'
+                        });
+                    }
+                }
+            ],
+            onDestroyed: () => {
+                localStorage.setItem('hasSeenPlannerTutorial', 'true');
+                dropdownWasOpenedRef.current = false;
+            },
+            popoverClass: 'sage-driver-theme'
+        });
+        
+        setDriverObj(driverInstance);
+        
         const hasSeenTutorial = localStorage.getItem('hasSeenPlannerTutorial');
-        console.log('hasSeenTutorial:', hasSeenTutorial);
-        console.log('runTour will be:', !hasSeenTutorial);
-        return !hasSeenTutorial; // Only run if user has not seen it
-    });
-
-    const handleJoyrideCallback = (data: any) => {
-        const { status, index, type } = data;
-
-        if (type === 'step:after' && index === 2) { // Before the "add-year" step
-            scrollContainerRef.current?.scrollTo({
-                top: scrollContainerRef.current.scrollHeight,
-                behavior: 'smooth'
-            });
+        if (!hasSeenTutorial) {
+            setTimeout(() => driverInstance.drive(), 500);
         }
 
-        if (status === 'finished' || status === 'skipped') {
-            localStorage.setItem('hasSeenPlannerTutorial', 'true');
-            setRunTour(false);
+    }, []);
+
+    const startTutorial = () => {
+        if (driverObj) {
+            driverObj.drive();
         }
     };
-
-    const startTutorial = () => { setRunTour(true); };
-
-    const steps: Step[] = [
-        {
-          target: '[data-tour="sidebar"]',
-          content: "This sidebar shows your degree requirements and suggested courses (when you expand the categories).",
-          placement: "right",
-          disableScrolling: true
-        },
-        {
-          target: '[data-tour="semester-area"]',
-          content: "This is your academic plan. Drag courses here to build your schedule.",
-          placement: "top"
-        },
-        {
-          target: '[data-tour="add-semester"]',
-          content: "Add a new semester to the selected year. You can have up to three semester per year (Fall, Spring, Summer). You also have three dots on each semester box to remove it and clear courses. You can also lock semesters to prevent dragging things into them.",
-          placement: "bottom"
-        },
-        {
-          target: '[data-tour="add-year"]',
-          content: "Add another academic year to your plan. When deleting the last semester in a year, the entire year will be removed.",
-          placement: "top",
-          disableScrolling: true
-        }
-      ];
 
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
@@ -91,19 +138,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         Object.keys(updatedSemesters).forEach((yearKey) => {
             updatedSemesters[yearKey] = updatedSemesters[yearKey].map((semester, semIdx) => ({
                 ...semester,
-                isFromTranscript: true, // Mark all semesters as from transcriptData
+                isFromTranscript: true,
                 courses: semester.courses.map(course => ({
                     ...course,
-                    originalLocation: { yearKey, semesterIndex: semIdx } // dragging to origin
+                    originalLocation: { yearKey, semesterIndex: semIdx }
                 }))
             }));
         });
         return updatedSemesters;
     });
 
-    // Track which suggested courses are currently placed in the plan
     const [placedSuggestedCourses, setPlacedSuggestedCourses] = useState<Set<string>>(new Set());
-
 
     const [error, setError] = useState<string | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -127,13 +172,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
     }, [error]);
 
-
-    
     useEffect(() => {
         const handleResize = () => {
-          if (window.innerWidth < 1024 && window.innerWidth >= 768) { // tablet mode, collapse sidebar automatically
+          if (window.innerWidth < 1024 && window.innerWidth >= 768) {
             setSidebarCollapsed(true);
-          } else if (window.innerWidth >= 1024) { // if we're on desktop and we change size back
+          } else if (window.innerWidth >= 1024) {
             setSidebarCollapsed(false);
           }
         };
@@ -147,7 +190,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return requirements;
     }, [requirements]);
 
-    // Collect all suggested courses with corequisites and their category locations
     const allSuggestedCourses = useMemo(() => {
         const courses: any[] = [];
         
@@ -158,7 +200,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 const currentPath = [...parentPath, category.name];
                 
                 if (category.suggested && category.suggested.length > 0) {
-                    // Add category location to each suggested course
                     const coursesWithLocation = category.suggested.map((course: any) => ({
                         ...course,
                         categoryPath: currentPath.join(' > ')
@@ -180,7 +221,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return courses;
     }, [adaptedRequirements]);
 
-    // phone mode
     const availableSemesters = useMemo(() => {
         const semesters: Array<{yearKey: string, semesterIndex: number, title: string}> = [];
         Object.keys(allSemesters).forEach(yearKey => {
@@ -214,7 +254,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             console.log("Target year/semester:", targetYear, targetSemesterIndex);
             console.log("Is suggested course:", isSuggested);
                         
-            // removal logic
             const isRemoval = !course || !targetYear || 
                 targetYear === '' || 
                 targetSemesterIndex === undefined || 
@@ -230,7 +269,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     );
                     if (courseIndex !== -1) {
                         const removedCourse = sourceSemester.courses[courseIndex];
-                        // If the course being removed was originally suggested, unmark it
                         if (removedCourse.status === 'planned') {
                             const courseCode = removedCourse.course_code || removedCourse.code;
                             setPlacedSuggestedCourses(prevPlaced => {
@@ -257,11 +295,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 }
             }
             
-            // Check if course exists anywhere else in the plan
             for (const yearKey in prev) {
                 for (let idx = 0; idx < prev[yearKey].length; idx++) {
                     const semester = prev[yearKey][idx];
-                    // Skip the source semester
                     if (yearKey === sourceYear && idx === sourceSemesterIndex) continue;
                     
                     const exists = semester.courses.some(c => c.course_code === courseCode);
@@ -272,21 +308,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 }
             }
 
-            // Create deep copies to avoid mutation
             const newState = JSON.parse(JSON.stringify(prev));
 
-            // For suggested courses, we don't need to remove from source
-            // Just add a new copy to the target
             if (isSuggested) {
                 const targetSemester = newState[targetYear][targetSemesterIndex];
                 if (targetSemester && Array.isArray(targetSemester.courses)) {
-                    // Create a proper course object from the suggestion
                     const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
 
                     const newCourse = {
                         course_code: course.code || course.course_code,
                         course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
-                        credits_planned: course.credits || 3, // Default credit if no value provided for a course
+                        credits_planned: course.credits || 3,
                         id: newCourseId,
                         status: 'planned'
                     };
@@ -294,15 +326,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     targetSemester.courses.push(newCourse);
                     console.log("Added suggested course to target:", newCourse);
                     
-                    // Mark this course as placed
                     setPlacedSuggestedCourses(prevPlaced => new Set(prevPlaced).add(courseCode));
                 }
 
                 return newState;
             }
 
-            // For regular courses, handle as before
-            // Find and remove the exact course from the source
             if (sourceYear && sourceSemesterIndex !== undefined) {
                 const sourceSemester = newState[sourceYear][sourceSemesterIndex];
                 if (sourceSemester && Array.isArray(sourceSemester.courses)) {
@@ -311,11 +340,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     );
 
                     if (courseIndex !== -1) {
-                        // Remove this specific course
                         const [removedCourse] = sourceSemester.courses.splice(courseIndex, 1);
                         console.log("Successfully removed course:", removedCourse);
 
-                        // Add to the target semester
                         if (targetYear && targetSemesterIndex !== undefined) {
                             const targetSemester = newState[targetYear][targetSemesterIndex];
                             if (targetSemester && Array.isArray(targetSemester.courses)) {
@@ -333,6 +360,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             return newState;
         });
     };
+
     const [expandedCategories, setExpandedCategories] = useState<Record<number, boolean>>({
         0: true,
         1: true,
@@ -359,28 +387,22 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         const nextYearNum = getNextYearNumber();
         const nextYear = `year${nextYearNum}`;
 
-        // Find the last year in the existing semesters to determine the next calendar year
         let nextFallYear;
 
         if (Object.keys(allSemesters).length === 0) {
-            // If there are no years yet, start with the current year
             nextFallYear = new Date().getFullYear();
         } else {
-            // Find the latest semester's year and determine the next one
             const lastYearKey = Object.keys(allSemesters).sort().pop();
             if (lastYearKey) {
                 const lastSemesters = allSemesters[lastYearKey];
-                // Find the last Fall semester's year or use the last semester's year
                 const lastSemester = lastSemesters[lastSemesters.length - 1];
                 const lastYear = parseInt(lastSemester.title.split(' ')[1]);
 
-                // If the last semester is Summer, the next Fall should be in the same year
-                // If it's Spring or Fall, the next Fall should be in the next year
                 if (lastSemester.title.includes('Summer')) {
                     nextFallYear = lastYear;
                 } else if (lastSemester.title.includes('Spring')) {
                     nextFallYear = lastYear;
-                } else { // Fall
+                } else {
                     nextFallYear = lastYear + 1;
                 }
             } else {
@@ -392,8 +414,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             ...prev,
             [nextYear]: [
                 { title: `Fall ${nextFallYear}`, courses: [] },
-                // { title: `Spring ${nextFallYear + 1}`, courses: [] },
-                // { title: `Summer ${nextFallYear + 1}`, courses: [] }
             ]
         }));
     };
@@ -486,7 +506,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         setAllSemesters(prev => {
             const yearSemesters = [...prev[yearKey]];
 
-            // prevent adding more than three semesters
             if (yearSemesters.length >= 3) {
                 setError(`Cannot add more than 3 semesters (Fall, Spring, Summer) to ${yearKey.replace("year", "Year ")}`);
                 return prev;
@@ -503,7 +522,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 { title: `Summer ${baseYear + 1}`, courses: [], isFromTranscript: false }
             ];
 
-            // find missing semester 
             const existingTitles = yearSemesters.map(s => s.title);
             const missingSemesters = allPossibleSemesters.filter(
                 sem => !existingTitles.includes(sem.title)
@@ -558,7 +576,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             return newState;
         });
        
-        //Close modal and reset state
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     }
@@ -566,10 +583,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const handleRemoveSemester = (yearKey: string, semesterIndex: number) => {
         if (!semesterToDelete) return;
         
-        // Get the courses from the semester being removed
         const semesterToRemove = allSemesters[yearKey]?.[semesterIndex];
         if (semesterToRemove?.courses) {
-            // Collect all placed suggested courses from this semester
             const courseCodesToRemove: string[] = [];
             semesterToRemove.courses.forEach((course: any) => {
                 if (course.status === 'planned') {
@@ -580,7 +595,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 }
             });
             
-            // Remove them all at once
             if (courseCodesToRemove.length > 0) {
                 setPlacedSuggestedCourses(prevPlaced => {
                     const newPlaced = new Set(prevPlaced);
@@ -607,7 +621,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             };
         });
         
-        // Close modal and reset state
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
@@ -619,8 +632,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         setSemesterToDelete({ yearKey, semesterIndex, isLastSemester, action});
         setShowDeleteModal(true);
     };
-
-    console.log(allSemesters)
 
     return (
         <>
@@ -640,26 +651,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 onAddCourse={handleDropCourse}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
-                <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10000 }}>
-                    <Joyride
-                        steps={steps}
-                        run={runTour}
-                        callback={handleJoyrideCallback}
-                        continuous
-                        showProgress
-                        showSkipButton
-                        styles={{
-                            options: {
-                                primaryColor: '#4ade80',
-                                zIndex: 10000,
-                            }
-                        }}
-                    />
-                </div>
-
                 <button onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
-                        <HelpCircle size={18} className="text-white" />
-                </button>
+                    <HelpCircle size={18} className="text-white" />
+                </button>   
 
                 <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex flex-col gap-4 hidden md:flex p-6">
                     <Sidebar
@@ -681,32 +675,21 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         onClick={sidebarCollapsed ? () => setSidebarCollapsed(false) : undefined}
                     >
                         <SquareAsterisk size={32} className="stroke-green-400 flex-shrink-0" />
-                            <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-white text-xs`}>
-                                This app is in development. For issues or feedback,
-                                <a
-                                    href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-accent underline ml-1"
-                                >
-                                click here.
+                        <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-textlight text-xs`}>
+                            This app is in development. For issues or feedback,
+                            <a
+                            href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-accent underline ml-1"
+                            >
+                            click here.
                             </a>
                         </small>
                     </div>
                 </div>
 
-                
                 <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
-                    {/* <div className="flex justify-between items-center mb-6">
-                        <h1 className="text-2xl font-bold text-gray-800">Academic Plan</h1>
-                        <button
-                            onClick={handleAddYear}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full text-sm font-medium transition-colors"
-                        >
-                            <PlusCircle className="w-5 h-5" />
-                            <span>Add Year</span>
-                        </button>
-                    </div> */}
                     {error && (
                         <div
                             ref={errorRef}
@@ -723,7 +706,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                     onClick={() => setError(null)}
                                     className="ml-auto text-red-700 hover:text-red-900"
                                 >
-                                    Ã—
+                                    ×
                                 </button>
                             </div>
                         </div>
@@ -748,9 +731,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                         onAddSemester={handleAddSemester}
                                         onClearYear={handleClearYear}
                                         onDeleteYear={handleDeleteYear}
+                                        driverObj={driverObj}
+                                        dropdownWasOpenedRef={dropdownWasOpenedRef}
                                     />
                                     <div className="flex justify-between items-center mb-4">
-                                    <div />
+                                        <div />
                                     </div>
 
                                     <div className="flex flex-wrap gap-4 justify-start" data-tour="semester-area">
@@ -760,7 +745,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                                 {...semester}
                                                 yearKey={yearKey}
                                                 semesterIndex={idx}
-                                                isFromTranscript={semester.isFromTranscript || false} // Dynamically set isFromTranscript
+                                                isFromTranscript={semester.isFromTranscript || false}
                                                 isEmpty={semester.isFromTranscript && semester.courses.length === 0}
                                                 onDropCourse={(course, sourceYear, sourceSemesterIndex, courseId, isSuggested) =>
                                                     handleDropCourse(yearKey, idx, course, sourceYear, sourceSemesterIndex, courseId, isSuggested)
@@ -779,7 +764,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         })}
                     </div>
                     {Object.keys(allSemesters).length > 0 && (
-                        <div className="mt-8 mb-16 flex justify-end">  {/* mb-16 = 4rem spacing */}
+                        <div className="mt-8 mb-16 flex justify-end">
                             <button
                                 data-tour="add-year"
                                 onClick={handleAddYear}
@@ -791,7 +776,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         </div>
                     )}
 
-                    {/* Delete Modal */}
                     {showDeleteModal && semesterToDelete && (
                         <div 
                             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80]"

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Eraser, Menu, Plus, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
@@ -10,6 +9,8 @@ interface YearDividerProps {
     onAddSemester?: (yearKey: string) => void;
     onClearYear?: (yearKey: string) => void;
     onDeleteYear?: (yearKey: string) => void;
+    driverObj?: any;
+    dropdownWasOpenedRef?: React.MutableRefObject<boolean>;
 }
 
 const YearDivider: React.FC<YearDividerProps> = ({
@@ -19,7 +20,9 @@ const YearDivider: React.FC<YearDividerProps> = ({
     hasUserCoursesToClear = false,
     onAddSemester,
     onClearYear,
-    onDeleteYear
+    onDeleteYear,
+    driverObj,
+    dropdownWasOpenedRef
     }) => {
     return (
         <div className="w-full mb-4">
@@ -27,15 +30,27 @@ const YearDivider: React.FC<YearDividerProps> = ({
                 <h2 className="text-lg font-semibold text-gray-700">
                     {yearLabel}
                 </h2>
-                <DropdownMenu>
+                <DropdownMenu onOpenChange={(open) => {
+                    if (open) {
+                        if (dropdownWasOpenedRef) {
+                            dropdownWasOpenedRef.current = true;
+                        }
+
+                        const currentStep = driverObj.getActiveIndex();
+                        if (currentStep === 2) {
+                            setTimeout(() => driverObj.moveNext(), 100);
+                        }
+                    }
+                }}>
                     <DropdownMenuTrigger asChild>
-                        <button className="hover:bg-gray-100 p-1 rounded">
+                        <button data-tour="year-option" className="hover:bg-gray-100 p-1 rounded">
                             <Menu className="w-5 h-5 text-gray-600" />
                         </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                     {onAddSemester && (
                             <DropdownMenuItem 
+                                data-tour="add-semester"
                                 className="text-[#3eb369] focus:text-[#3eb369] hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-[#3eb369]"
                                 onClick={() => onAddSemester(yearKey)}
                             >
@@ -46,6 +61,7 @@ const YearDivider: React.FC<YearDividerProps> = ({
                         
                         {hasUserCoursesToClear && onClearYear && (
                             <DropdownMenuItem 
+                                data-tour="clear-all-semesters"
                                 className="text-amber-600 focus:text-amber-600 hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-amber-600"
                                 onClick={() => onClearYear(yearKey)}
                             >
@@ -56,6 +72,7 @@ const YearDivider: React.FC<YearDividerProps> = ({
                         
                         {isEntirelyUserCreated && onDeleteYear && (
                             <DropdownMenuItem 
+                                data-tour="delete-year"
                                 className="text-destructive focus:text-destructive hover:bg-gray-100 cursor-pointer"
                                 onClick={() => onDeleteYear(yearKey)}
                             >
