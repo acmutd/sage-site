@@ -28,6 +28,7 @@ interface SemesterBoxProps {
     allSuggestedCourses?: any[];
     studentType?: 'undergrad' | 'grad';
     catalogYear?: number;
+    'data-tour'?: string;
 }
 
 const SemesterBox: React.FC<SemesterBoxProps> = ({
@@ -44,7 +45,8 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     isFromTranscript = false,
     allSuggestedCourses = [],
     studentType = 'undergrad',
-    catalogYear = 2021
+    catalogYear = 2021,
+    'data-tour': dataTour
 }) => {
     const [locked, setLocked] = useState(isLocked);
     const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -200,6 +202,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                 ${locked ? "opacity-75 bg-gray-50" : ""} 
                 ${isOver && canDrop ? "bg-blue-50" : ""}
             `}
+            data-tour={dataTour}
         >
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold text-gray-800">{title}</h3>
@@ -330,6 +333,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
 
                         <button
                             onClick={handleLockToggle}
+                            data-tour={dataTour ? "semester-lock" : undefined}
                             className={`hover:bg-gray-100 p-1 rounded ${
                                 locked ? "text-gray-700" : "text-gray-400"
                             }`}
@@ -339,7 +343,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                         </button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button className="hover:bg-gray-100 p-1 rounded">
+                                <button data-tour={dataTour ? "semester-options" : undefined} className="hover:bg-gray-100 p-1 rounded">
                                     <MoreVertical className="w-4 h-4 text-gray-600" />
                                 </button>
                             </DropdownMenuTrigger>

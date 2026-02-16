@@ -251,7 +251,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     hasSubcategories={subCategoriesToRender.length > 0}
                 >
                     {category.classes && category.classes.length > 0 ? (
-                        <CoursesCarousel 
+                        <CoursesCarousel
                             courses={category.classes} 
                             type="completed"
                         />
@@ -296,11 +296,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                     {isExpanded ? (
                         <div className="p-6 pt-8">
                             <div className="flex items-center justify-between mb-6">
-                                <button className="flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700" onClick={onRestartOnboarding}>
+                                <button data-tour="edit-plans" className="flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700" onClick={onRestartOnboarding}>
                                     <NotebookPen size={20} strokeWidth={2} />
                                     <span>Edit plans</span>
                                 </button>
                                 <button
+                                    data-tour="sidebar-toggle"
                                     className="p-2 hover:bg-gray-200 rounded"
                                     onClick={handleToggleSidebar}
                                 >
@@ -327,6 +328,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             }));
                                         }}
                                         hasSubcategories={req.categories && req.categories.length > 0}
+                                        isFirstCategory={reqIdx === 0}
                                     >
                                         {req.categories && req.categories.length > 0 ? (
                                             renderCategories(req.categories, reqIdx)

@@ -37,8 +37,40 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 {
                     element: '[data-tour="sidebar"]',
                     popover: {
-                        title: 'Degree Requirements',
-                        description: 'This sidebar shows your degree requirements and suggested courses (when you expand the categories).',
+                        title: 'Sidebar',
+                        description: 'This sidebar shows your degree requirements and suggested courses (when you expand the categories). Scroll down to see all categories',
+                        side: "right"
+                    }
+                },
+                {
+                    element: '[data-tour="edit-plans"]',
+                    popover: {
+                        title: 'Edit Plans',
+                        description: 'You can re-evaluate your degree plan at any time by either uploading a new transcript or by manually filling out your academic history.',
+                        side: "right"
+                    }
+                },
+                {
+                    element: '[data-tour="sidebar-toggle"]',
+                    popover: {
+                        title: 'Expanding/Collapsing Sidebar',
+                        description: 'To give you more room to work with your academic plan, you can collapse the sidebar. To see requirements again, click anywhere in the collapsed sidebar or press the sidebar button to expand',
+                        side: "right"
+                    }
+                },
+                {
+                    element: '[data-tour="requirement-category-toggle"]',
+                    popover: {
+                        title: 'Expanding/Collapsing Categories',
+                        description: 'SAGE automatically collapses completed categories and expands incomplete categories. You can collapse/expand categories at any time.',
+                        side: "right"
+                    }
+                },
+                {
+                    element: '[data-tour="requirement-category-progress"]',
+                    popover: {
+                        title: 'Checking Progress',
+                        description: 'This tracks total progress completed for a degree category (including subcategories)',
                         side: "right"
                     }
                 },
@@ -54,16 +86,16 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     element: '[data-tour="year-option"]',
                     popover: {
                         title: 'Year Options',
-                        description: 'Click this button to reveal all available options for an academic year.',
+                        description: 'You can add a semester, clear all your custom semesters, or remove a year.',
                         side: "top"
                     },
                     onDeselected: () => {
                         if (!dropdownWasOpenedRef.current) {
                             setTimeout(() => {
-                                driverInstance.moveTo(5);
+                                driverInstance.moveTo(13);
                                 setTimeout(() => {
                                     driverInstance.destroy();
-                                    driverInstance.drive(5); // Go to step 5
+                                    driverInstance.drive(12);
                                 }, 50);
                             }, 150);
                         }
@@ -78,11 +110,35 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     }
                 },
                 {
-                    element: '[data-tour="clear-all-semesters"]',
+                    element: '[data-tour="transcript-semester"]',
                     popover: {
-                        title: 'Clear Semesters',
-                        description: 'Clear all courses you\'ve created for semesters in this year. Note: completed semesters will not get touched nor locked semesters.',
-                        side: "bottom"
+                        title: 'Completed Semester',
+                        description: 'These boxes represent a completed semester and aren\'t editable.',
+                        side: "top"
+                    }
+                },
+                {
+                    element: '[data-tour="user-semester"]',
+                    popover: {
+                        title: 'Your Semester',
+                        description: 'These boxes allow you to drag your courses here',
+                        side: "top"
+                    }
+                },
+                {
+                    element: '[data-tour="semester-lock"]',
+                    popover: {
+                        title: 'Semester Lock/Unlock',
+                        description: 'Lock/unlock courses in this semester to prevent/allow changes to them.',
+                        side: "left"
+                    }
+                },
+                {
+                    element: '[data-tour="semester-options"]',
+                    popover: {
+                        title: 'Semester Options',
+                        description: 'You can clear courses or remove the semester entirely.',
+                        side: "left"
                     }
                 },
                 {
@@ -90,6 +146,20 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     popover: {
                         title: 'Add Year',
                         description: 'Create a new academic year to start future planning.',
+                        side: "left"
+                    },
+                    onDeselected: () => {
+                        scrollContainerRef.current?.scrollTo({
+                            top: 0,
+                            behavior: 'smooth'
+                        });
+                    }
+                },
+                {
+                    element: '[data-tour="help-button"]',
+                    popover: {
+                        title: 'Tutorial',
+                        description: 'Click here to replay the tutorial at any time',
                         side: "left"
                     },
                     onDeselected: () => {
@@ -651,7 +721,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 onAddCourse={handleDropCourse}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
-                <button onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
+                <button data-tour="help-button" onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
                     <HelpCircle size={18} className="text-white" />
                 </button>   
 
@@ -743,6 +813,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                             <SemesterBox
                                                 key={idx}
                                                 {...semester}
+                                                data-tour={!semester.isFromTranscript && !document.querySelector('[data-tour="user-semester"]') ? "user-semester" : "transcript-semester"}
                                                 yearKey={yearKey}
                                                 semesterIndex={idx}
                                                 isFromTranscript={semester.isFromTranscript || false}
