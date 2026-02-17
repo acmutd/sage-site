@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Lock, Unlock, MoreVertical, Trash2, Eraser, TriangleAlert } from "lucide-react";
+import { Lock, Unlock, MoreVertical, Trash2, Eraser, TriangleAlert, ChevronUp } from "lucide-react";
 import CourseBox from "./CourseBox";
 import { useDrop } from "react-dnd";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -10,6 +10,7 @@ import ReactDOM from "react-dom";
 interface SemesterBoxProps {
     title: string;
     isLocked?: boolean;
+    isCollapsed?: boolean;
     courses?: Course[];
     isEmpty?: boolean;
     onDropCourse: (
@@ -22,6 +23,7 @@ interface SemesterBoxProps {
     onClearSemester: () => void;
     onRemoveSemester: () => void;
     onShowError: (message: string) => void;
+    onToggleCollapse?: () => void;
     yearKey: string;
     semesterIndex: number;
     isFromTranscript?: boolean;
@@ -36,6 +38,8 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     isLocked = false,
     courses = [],
     isEmpty = false,
+    isCollapsed = false,
+    onToggleCollapse,
     onDropCourse,
     onClearSemester,
     onRemoveSemester,
@@ -197,6 +201,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         <div
             ref={!isFromTranscript ? drop : null}
             className={`
+                self-start
                 bg-white rounded-md border border-gray-200 shadow-sm p-4 
                 w-full md:w-[280px] lg:w-[317px]
                 ${locked ? "opacity-75 bg-gray-50" : ""} 
@@ -205,9 +210,27 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
             data-tour={dataTour}
         >
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-semibold text-gray-800">{title}</h3>
+                <button
+                    onClick={() => onToggleCollapse?.()}
+                    className="flex items-center gap-1.5 group flex-1 min-w-0 text-left"
+                    aria-expanded={!isCollapsed}
+                    aria-label={isCollapsed ? `Expand ${title}` : `Collapse ${title}`}
+                >
+                    <ChevronUp
+                        className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
+                            isCollapsed ? "-rotate-180" : "rotate-0"
+                        }`}
+                    />
+                    <h3 className="text-base font-semibold text-gray-800 truncate">{title}</h3>
+                    {isCollapsed && courses.length > 0 && (
+                        <span className="ml-1.5 flex-shrink-0 text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+                            {courses.length} course{courses.length !== 1 ? 's' : ''}
+                        </span>
+                    )}
+                </button>
+
                 {!isFromTranscript && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                         {(unmetCorequisites || creditWarnings) && (
                             <div className="relative group">
                                 <button
@@ -368,31 +391,36 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                 )}
             </div>
 
-            {isEmpty ? (
-                <p className="text-sm text-gray-500 py-8 text-center">
-                    No classes were taken in this semester
-                </p>
-            ) : courses.length === 0 ? (
-                <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed border-gray-200 bg-gray-50 rounded-md">
-                    Drag and drop classes here
-                </div>
-            ) : (
-                <div className="space-y-2">
-                    {courses.map((course, idx) => (
-                        <CourseBox
-                            key={course.id || `${course.course_code || 'unknown'}-${idx}`}
-                            course={course}
-                            sourceYear={yearKey}
-                            sourceSemesterIndex={semesterIndex}
-                            isFromTranscript={isFromTranscript}
-                            isLocked={locked}
-                            status={course.status as "default" | "completed" | "warning" | "info" | undefined}
-                            icon={course.icon as "check" | "warning" | "info" | null | undefined}
-                            onRemove={() => handleRemoveCourse(course.id || '')}
-                        />
-                    ))}
-                </div>
+            {!isCollapsed && (
+                <>
+                    {isEmpty ? (
+                        <p className="text-sm text-gray-500 py-8 text-center">
+                            No classes were taken in this semester
+                        </p>
+                    ) : courses.length === 0 ? (
+                        <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed border-gray-200 bg-gray-50 rounded-md">
+                            Drag and drop classes here
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {courses.map((course, idx) => (
+                                <CourseBox
+                                    key={course.id || `${course.course_code || 'unknown'}-${idx}`}
+                                    course={course}
+                                    sourceYear={yearKey}
+                                    sourceSemesterIndex={semesterIndex}
+                                    isFromTranscript={isFromTranscript}
+                                    isLocked={locked}
+                                    status={course.status as "default" | "completed" | "warning" | "info" | undefined}
+                                    icon={course.icon as "check" | "warning" | "info" | null | undefined}
+                                    onRemove={() => handleRemoveCourse(course.id || '')}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
+
             {showRemoveModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[90]" onClick={() => setShowRemoveModal(false)}>
                     <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>

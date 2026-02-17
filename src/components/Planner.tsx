@@ -202,6 +202,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             setSidebarCollapsedDelayed(false);
         }
     }, [sidebarCollapsed]);
+
+    const [collapsedYears, setCollapsedYears] = useState<Record<string, boolean>>({});
+    const toggleYearCollapse = (yearKey: string) => {
+        setCollapsedYears(prev => ({ ...prev, [yearKey]: !prev[yearKey] }));
+    };
+
+    const [collapsedSemesters, setCollapsedSemesters] = useState<Record<string, boolean>>({});
+    const toggleSemesterCollapse = (yearKey: string, semesterIndex: number) => {
+        const key = `${yearKey}-${semesterIndex}`;
+        setCollapsedSemesters(prev => ({ ...prev, [key]: !prev[key] }));
+    };
     
     const [allSemesters, setAllSemesters] = useState(() => {
         const updatedSemesters = { ...semesters };
@@ -791,6 +802,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 semester => !semester.isFromTranscript && semester.courses && semester.courses.length > 0
                             );
 
+                            const isYearCollapsed = !!collapsedYears[yearKey];
+                            const totalCourses = allSemesters[yearKey].reduce(
+                                (sum, sem) => sum + (sem.courses?.length ?? 0), 0
+                            );
+
                             return (
                                 <div key={yearKey}>
                                     <YearDivider 
@@ -803,33 +819,38 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                         onDeleteYear={handleDeleteYear}
                                         driverObj={driverObj}
                                         dropdownWasOpenedRef={dropdownWasOpenedRef}
+                                        isCollapsed={isYearCollapsed}
+                                        onToggleCollapse={() => toggleYearCollapse(yearKey)}
+                                        semesterCount={allSemesters[yearKey].length}
+                                        courseCount={totalCourses}
                                     />
-                                    <div className="flex justify-between items-center mb-4">
-                                        <div />
-                                    </div>
 
-                                    <div className="flex flex-wrap gap-4 justify-start" data-tour="semester-area">
-                                        {allSemesters[yearKey].map((semester, idx) => (
-                                            <SemesterBox
-                                                key={idx}
-                                                {...semester}
-                                                data-tour={!semester.isFromTranscript && !document.querySelector('[data-tour="user-semester"]') ? "user-semester" : "transcript-semester"}
-                                                yearKey={yearKey}
-                                                semesterIndex={idx}
-                                                isFromTranscript={semester.isFromTranscript || false}
-                                                isEmpty={semester.isFromTranscript && semester.courses.length === 0}
-                                                onDropCourse={(course, sourceYear, sourceSemesterIndex, courseId, isSuggested) =>
-                                                    handleDropCourse(yearKey, idx, course, sourceYear, sourceSemesterIndex, courseId, isSuggested)
-                                                }
-                                                onClearSemester={() => openClearDeleteModal(yearKey, idx, 'clear')}
-                                                onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
-                                                onShowError={setError}
-                                                allSuggestedCourses={allSuggestedCourses}
-                                                studentType={studentType}
-                                                catalogYear={calculateCatalogYear(semester.title)}
-                                            />
-                                        ))}
-                                    </div>
+                                    {!isYearCollapsed && (
+                                        <div className="flex flex-wrap gap-4 justify-start" data-tour="semester-area">
+                                            {allSemesters[yearKey].map((semester, idx) => (
+                                                <SemesterBox
+                                                    key={idx}
+                                                    {...semester}
+                                                    data-tour={!semester.isFromTranscript && !document.querySelector('[data-tour="user-semester"]') ? "user-semester" : "transcript-semester"}
+                                                    yearKey={yearKey}
+                                                    semesterIndex={idx}
+                                                    isFromTranscript={semester.isFromTranscript || false}
+                                                    isEmpty={semester.isFromTranscript && semester.courses.length === 0}
+                                                    onDropCourse={(course, sourceYear, sourceSemesterIndex, courseId, isSuggested) =>
+                                                        handleDropCourse(yearKey, idx, course, sourceYear, sourceSemesterIndex, courseId, isSuggested)
+                                                    }
+                                                    onClearSemester={() => openClearDeleteModal(yearKey, idx, 'clear')}
+                                                    onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
+                                                    onShowError={setError}
+                                                    allSuggestedCourses={allSuggestedCourses}
+                                                    studentType={studentType}
+                                                    catalogYear={calculateCatalogYear(semester.title)}
+                                                    isCollapsed={!!collapsedSemesters[`${yearKey}-${idx}`]}
+                                                    onToggleCollapse={() => toggleSemesterCollapse(yearKey, idx)}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
