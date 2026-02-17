@@ -8,6 +8,7 @@ import PlannerNavbar from "./PlannerNavbar";
 import { Toaster } from "sonner";
 import { calculateCatalogYear, determineStudentType } from "@/utils/studentInfo";
 import YearDivider from "./planner/YearDivider";
+import { useUISnapshot } from "@/hooks/useUISnapshot";
 
 interface PlannerProps {
     semesters: {
@@ -192,9 +193,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
     };
 
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [uiSnapshot, setUISnapshot] = useUISnapshot('sage-planner-ui', {
+        collapsedYears: {} as Record<string, boolean>,
+        collapsedSemesters: {} as Record<string, boolean>,
+        sidebarCollapsed: false,
+        expandedCategories: { "0": true, "1": true, "2": true } as Record<string, boolean>,
+    });
+    
+    const { collapsedYears, collapsedSemesters, sidebarCollapsed, expandedCategories } = uiSnapshot;
+    
     const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
-
+    
     useEffect(() => {
         if (sidebarCollapsed) {
             setTimeout(() => setSidebarCollapsedDelayed(true), 150);
@@ -202,18 +211,31 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             setSidebarCollapsedDelayed(false);
         }
     }, [sidebarCollapsed]);
-
-    const [collapsedYears, setCollapsedYears] = useState<Record<string, boolean>>({});
-    const toggleYearCollapse = (yearKey: string) => {
-        setCollapsedYears(prev => ({ ...prev, [yearKey]: !prev[yearKey] }));
-    };
-
-    const [collapsedSemesters, setCollapsedSemesters] = useState<Record<string, boolean>>({});
-    const toggleSemesterCollapse = (yearKey: string, semesterIndex: number) => {
-        const key = `${yearKey}-${semesterIndex}`;
-        setCollapsedSemesters(prev => ({ ...prev, [key]: !prev[key] }));
-    };
     
+    const toggleSidebar = () =>
+        setUISnapshot(prev => ({ ...prev, sidebarCollapsed: !prev.sidebarCollapsed }));
+    
+    const toggleYearCollapse = (yearKey: string) =>
+        setUISnapshot(prev => ({
+            ...prev,
+            collapsedYears: { ...prev.collapsedYears, [yearKey]: !prev.collapsedYears[yearKey] }
+        }));
+    
+    const toggleSemesterCollapse = (yearKey: string, semesterIndex: number) =>
+        setUISnapshot(prev => ({
+            ...prev,
+            collapsedSemesters: {
+                ...prev.collapsedSemesters,
+                [`${yearKey}-${semesterIndex}`]: !prev.collapsedSemesters[`${yearKey}-${semesterIndex}`]
+            }
+        }));
+    
+    const toggleCategory = (index: number) =>
+        setUISnapshot(prev => ({
+            ...prev,
+            expandedCategories: { ...prev.expandedCategories, [String(index)]: !prev.expandedCategories[String(index)] }
+        }));
+        
     const [allSemesters, setAllSemesters] = useState(() => {
         const updatedSemesters = { ...semesters };
         Object.keys(updatedSemesters).forEach((yearKey) => {
@@ -255,13 +277,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
     useEffect(() => {
         const handleResize = () => {
-          if (window.innerWidth < 1024 && window.innerWidth >= 768) {
-            setSidebarCollapsed(true);
-          } else if (window.innerWidth >= 1024) {
-            setSidebarCollapsed(false);
-          }
+            if (window.innerWidth < 1024 && window.innerWidth >= 768) {
+                setUISnapshot(prev => ({ ...prev, sidebarCollapsed: true }));
+            }
         };
-        
         handleResize();
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
@@ -442,18 +461,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         });
     };
 
-    const [expandedCategories, setExpandedCategories] = useState<Record<number, boolean>>({
-        0: true,
-        1: true,
-        2: true,
-    });
-
-    const toggleCategory = (index: number) => {
-        setExpandedCategories((prev) => ({
-            ...prev,
-            [index]: !prev[index],
-        }));
-    };
 
     const getNextYearNumber = () => {
         const yearNumbers = Object.keys(allSemesters)
@@ -746,14 +753,14 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
                         }
                         isExpanded={!sidebarCollapsed}
-                        onToggleExpanded={() => setSidebarCollapsed(!sidebarCollapsed)}
+                        onToggleExpanded={toggleSidebar}
                         placedSuggestedCourses={placedSuggestedCourses}
                         onRestartOnboarding={onRestartOnboarding}
                     />
                     
                     <div 
                         className={`${sidebarCollapsed ? "cursor-pointer rounded-md w-20" : "rounded-full w-80"} bg-gray-900 py-3 px-6 flex gap-2 justify-center items-center transition-all duration-300 absolute bottom-8`}
-                        onClick={sidebarCollapsed ? () => setSidebarCollapsed(false) : undefined}
+                        onClick={sidebarCollapsed ? toggleSidebar : undefined}
                     >
                         <SquareAsterisk size={32} className="stroke-green-400 flex-shrink-0" />
                         <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-textlight text-xs`}>
