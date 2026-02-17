@@ -821,7 +821,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                     {semesterToDelete.action === 'clear'
                                         ? `Clear ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex!].title}?`
                                         : semesterToDelete.action === 'clearYear'
-                                            ? `Clear all user courses in ${semesterToDelete.yearKey.replace("year", "Year ")}?`
+                                            ? `Clear all your courses in ${semesterToDelete.yearKey.replace("year", "Year ")}?`
                                             : semesterToDelete.action === 'deleteYear'
                                                 ? `Delete ${semesterToDelete.yearKey.replace("year", "Year ")}?`
                                                 : semesterToDelete.isLastSemester
@@ -833,7 +833,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                     {semesterToDelete.action === 'clear'
                                         ? "All courses in this semester will be cleared."
                                         : semesterToDelete.action === 'clearYear'
-                                            ? "All courses in user-created semesters will be cleared. Transcript semesters will remain untouched."
+                                            ? "All courses in your created semesters will be cleared."
                                             : semesterToDelete.action === 'deleteYear'
                                                 ? "This entire year and all its semesters will be permanently removed."
                                                 : semesterToDelete.isLastSemester
