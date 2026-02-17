@@ -127,6 +127,14 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     }
                 },
                 {
+                    element: '[data-tour="year-toggle"]',
+                    popover: {
+                        title: 'Year Collapse/Expand',
+                        description: 'You can expand/collapse years at any time to focus on the years below.',
+                        side: "top"
+                    }
+                },
+                {
                     element: '[data-tour="year-option"]',
                     popover: {
                         title: 'Year Options',
@@ -136,10 +144,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     onDeselected: () => {
                         if (!dropdownWasOpenedRef.current) {
                             setTimeout(() => {
-                                driverInstance.moveTo(13);
+                                driverInstance.moveTo(15);
                                 setTimeout(() => {
                                     driverInstance.destroy();
-                                    driverInstance.drive(12);
+                                    driverInstance.drive(14);
                                 }, 50);
                             }, 150);
                         }
@@ -166,6 +174,14 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     popover: {
                         title: 'Your Semester',
                         description: 'These boxes allow you to drag your courses here',
+                        side: "top"
+                    }
+                },
+                {
+                    element: '[data-tour="semester-toggle"]',
+                    popover: {
+                        title: 'Semester Collapse/Expand',
+                        description: 'You can expand/collapse semesters at any time.',
                         side: "top"
                     }
                 },

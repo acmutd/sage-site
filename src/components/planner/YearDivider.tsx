@@ -37,6 +37,7 @@ const YearDivider: React.FC<YearDividerProps> = ({
         <div className="w-full mb-4">
             <div className="flex items-center justify-between mb-2">
                 <button
+                    data-tour="year-toggle"
                     onClick={onToggleCollapse}
                     className="flex items-center gap-1.5 group text-left"
                     aria-expanded={!isCollapsed}

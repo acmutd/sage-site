@@ -236,6 +236,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         >
             <div className="flex items-center justify-between mb-4">
                 <button
+                    data-tour="semester-toggle"
                     onClick={() => onToggleCollapse?.()}
                     className="flex items-center gap-1.5 group flex-1 min-w-0 text-left"
                     aria-expanded={!isCollapsed}
