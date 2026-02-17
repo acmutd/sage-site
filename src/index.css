@@ -194,3 +194,7 @@ body {
 .sage-driver-theme .driver-popover-next-btn:hover {
   background-color: rgba(90, 237, 134, 0.1) !important;
 }
+
+.sage-driver-theme * {
+  font-family: 'DM Sans', sans-serif;
+}
