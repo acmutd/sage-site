@@ -19,18 +19,61 @@ interface PlannerProps {
     onRestartOnboarding?: () => void;
 }
 
+const replaceSemesterCourses = (
+    prev: any,
+    yearKey: string,
+    semesterIndex: number,
+    courses: any[]
+) => ({
+    ...prev,
+    [yearKey]: prev[yearKey].map((sem: any, i: number) =>
+        i === semesterIndex ? { ...sem, courses } : sem
+    ),
+});
+
+const moveCourse = (
+    prev: any,
+    sourceYear: string,
+    sourceSemIdx: number,
+    courseId: string,
+    targetYear: string,
+    targetSemIdx: number
+) => {
+    const sourceSemester = prev[sourceYear][sourceSemIdx];
+    const courseIndex = sourceSemester.courses.findIndex((c: any) => c.id === courseId);
+    if (courseIndex === -1) return prev;
+
+    const course = sourceSemester.courses[courseIndex];
+    const newSourceCourses = sourceSemester.courses.filter((_: any, i: number) => i !== courseIndex);
+
+    if (sourceYear === targetYear) {
+        // Both in same year — update that year's array in one pass
+        const newYearSemesters = prev[sourceYear].map((sem: any, i: number) => {
+            if (i === sourceSemIdx) return { ...sem, courses: newSourceCourses };
+            if (i === targetSemIdx) return { ...sem, courses: [...sem.courses, course] };
+            return sem;
+        });
+        return { ...prev, [sourceYear]: newYearSemesters };
+    }
+
+    const newSourceYear = prev[sourceYear].map((sem: any, i: number) =>
+        i === sourceSemIdx ? { ...sem, courses: newSourceCourses } : sem
+    );
+    const newTargetYear = prev[targetYear].map((sem: any, i: number) =>
+        i === targetSemIdx ? { ...sem, courses: [...sem.courses, course] } : sem
+    );
+    return { ...prev, [sourceYear]: newSourceYear, [targetYear]: newTargetYear };
+};
+
+
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding }) => {
-    // main planner scroll ref
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    
-    // student type 
     const studentType = determineStudentType(transcriptData);
 
-    // Driver.js instance
     const [driverObj, setDriverObj] = useState<any>(null);
     const dropdownWasOpenedRef = useRef(false);
 
-    useEffect(() => {        
+    useEffect(() => {
         const driverInstance = driver({
             showProgress: true,
             showButtons: ['next', 'previous', 'close'],
@@ -150,10 +193,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         side: "left"
                     },
                     onDeselected: () => {
-                        scrollContainerRef.current?.scrollTo({
-                            top: 0,
-                            behavior: 'smooth'
-                        });
+                        scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                     }
                 },
                 {
@@ -164,10 +204,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         side: "left"
                     },
                     onDeselected: () => {
-                        scrollContainerRef.current?.scrollTo({
-                            top: 0,
-                            behavior: 'smooth'
-                        });
+                        scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                     }
                 }
             ],
@@ -177,20 +214,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             },
             popoverClass: 'sage-driver-theme'
         });
-        
+
         setDriverObj(driverInstance);
-        
+
         const hasSeenTutorial = localStorage.getItem('hasSeenPlannerTutorial');
         if (!hasSeenTutorial) {
             setTimeout(() => driverInstance.drive(), 500);
         }
-
     }, []);
 
     const startTutorial = () => {
-        if (driverObj) {
-            driverObj.drive();
-        }
+        if (driverObj) driverObj.drive();
     };
 
     const [uiSnapshot, setUISnapshot] = useUISnapshot('sage-planner-ui', {
@@ -199,11 +233,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         sidebarCollapsed: false,
         expandedCategories: { "0": true, "1": true, "2": true } as Record<string, boolean>,
     });
-    
+
     const { collapsedYears, collapsedSemesters, sidebarCollapsed, expandedCategories } = uiSnapshot;
-    
+
     const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
-    
+
     useEffect(() => {
         if (sidebarCollapsed) {
             setTimeout(() => setSidebarCollapsedDelayed(true), 150);
@@ -211,16 +245,16 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             setSidebarCollapsedDelayed(false);
         }
     }, [sidebarCollapsed]);
-    
+
     const toggleSidebar = () =>
         setUISnapshot(prev => ({ ...prev, sidebarCollapsed: !prev.sidebarCollapsed }));
-    
+
     const toggleYearCollapse = (yearKey: string) =>
         setUISnapshot(prev => ({
             ...prev,
             collapsedYears: { ...prev.collapsedYears, [yearKey]: !prev.collapsedYears[yearKey] }
         }));
-    
+
     const toggleSemesterCollapse = (yearKey: string, semesterIndex: number) =>
         setUISnapshot(prev => ({
             ...prev,
@@ -229,13 +263,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 [`${yearKey}-${semesterIndex}`]: !prev.collapsedSemesters[`${yearKey}-${semesterIndex}`]
             }
         }));
-    
+
     const toggleCategory = (index: number) =>
         setUISnapshot(prev => ({
             ...prev,
             expandedCategories: { ...prev.expandedCategories, [String(index)]: !prev.expandedCategories[String(index)] }
         }));
-        
+
     const [allSemesters, setAllSemesters] = useState(() => {
         const updatedSemesters = { ...semesters };
         Object.keys(updatedSemesters).forEach((yearKey) => {
@@ -267,10 +301,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     useEffect(() => {
         if (error && scrollContainerRef.current) {
             setTimeout(() => {
-                scrollContainerRef.current?.scrollTo({
-                        top: 0,
-                        behavior: 'smooth'
-                });
+                scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
             }, 200);
         }
     }, [error]);
@@ -286,55 +317,44 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const adaptedRequirements = useMemo(() => {
-        return requirements;
-    }, [requirements]);
+    const adaptedRequirements = useMemo(() => requirements, [requirements]);
 
     const allSuggestedCourses = useMemo(() => {
         const courses: any[] = [];
-        
+
         const collectSuggestedCourses = (categories: any[], parentPath: string[] = []) => {
             if (!categories) return;
-            
             categories.forEach((category) => {
                 const currentPath = [...parentPath, category.name];
-                
-                if (category.suggested && category.suggested.length > 0) {
-                    const coursesWithLocation = category.suggested.map((course: any) => ({
+                if (category.suggested?.length > 0) {
+                    courses.push(...category.suggested.map((course: any) => ({
                         ...course,
                         categoryPath: currentPath.join(' > ')
-                    }));
-                    courses.push(...coursesWithLocation);
+                    })));
                 }
-                if (category.categories && category.categories.length > 0) {
+                if (category.categories?.length > 0) {
                     collectSuggestedCourses(category.categories, currentPath);
                 }
             });
         };
-        
+
         adaptedRequirements.forEach((req: any) => {
-            if (req.categories) {
-                collectSuggestedCourses(req.categories, [req.degree]);
-            }
+            if (req.categories) collectSuggestedCourses(req.categories, [req.degree]);
         });
-        
+
         return courses;
     }, [adaptedRequirements]);
 
     const availableSemesters = useMemo(() => {
-        const semesters: Array<{yearKey: string, semesterIndex: number, title: string}> = [];
+        const result: Array<{ yearKey: string; semesterIndex: number; title: string }> = [];
         Object.keys(allSemesters).forEach(yearKey => {
             allSemesters[yearKey].forEach((semester, idx) => {
                 if (!semester.isFromTranscript) {
-                    semesters.push({
-                        yearKey,
-                        semesterIndex: idx,
-                        title: semester.title
-                    });
+                    result.push({ yearKey, semesterIndex: idx, title: semester.title });
                 }
             });
         });
-        return semesters;
+        return result;
     }, [allSemesters]);
 
     const handleDropCourse = (
@@ -347,126 +367,98 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         isSuggested?: boolean
     ) => {
         setAllSemesters((prev) => {
-            console.log("=== DROP OPERATION START ===");
-            console.log("Course being moved:", course);
-            console.log("Course ID used for finding:", courseId || course?.id);
-            console.log("Source year/semester:", sourceYear, sourceSemesterIndex);
-            console.log("Target year/semester:", targetYear, targetSemesterIndex);
-            console.log("Is suggested course:", isSuggested);
-                        
-            const isRemoval = !course || !targetYear || 
-                targetYear === '' || 
-                targetSemesterIndex === undefined || 
+            const isRemoval =
+                !course || !targetYear ||
+                targetYear === '' ||
+                targetSemesterIndex === undefined ||
                 targetSemesterIndex === null ||
-                targetSemesterIndex < 0; 
+                targetSemesterIndex < 0;
 
+            // --- REMOVAL ---
             if (isRemoval) {
-                const newState = JSON.parse(JSON.stringify(prev));
-                const sourceSemester = newState[sourceYear]?.[sourceSemesterIndex];
-                if (sourceSemester?.courses) {
-                    const courseIndex = sourceSemester.courses.findIndex(
-                        (c: any) => c.id === courseId
-                    );
-                    if (courseIndex !== -1) {
-                        const removedCourse = sourceSemester.courses[courseIndex];
-                        if (removedCourse.status === 'planned') {
-                            const courseCode = removedCourse.course_code || removedCourse.code;
-                            setPlacedSuggestedCourses(prevPlaced => {
-                                const newPlaced = new Set(prevPlaced);
-                                newPlaced.delete(courseCode);
-                                return newPlaced;
-                            });
-                        }
-                        sourceSemester.courses.splice(courseIndex, 1);
-                    }
+                const sourceSemester = prev[sourceYear]?.[sourceSemesterIndex];
+                if (!sourceSemester?.courses) return prev;
+
+                const courseIndex = sourceSemester.courses.findIndex((c: any) => c.id === courseId);
+                if (courseIndex === -1) return prev;
+
+                const removedCourse = sourceSemester.courses[courseIndex];
+                if (removedCourse.status === 'planned') {
+                    const courseCode = removedCourse.course_code || removedCourse.code;
+                    setPlacedSuggestedCourses(prevPlaced => {
+                        const next = new Set(prevPlaced);
+                        next.delete(courseCode);
+                        return next;
+                    });
                 }
-                return newState;
+
+                const newCourses = sourceSemester.courses.filter((_: any, i: number) => i !== courseIndex);
+                return replaceSemesterCourses(prev, sourceYear, sourceSemesterIndex, newCourses);
             }
 
             const courseCode = course.code || course.course_code;
+
             if (!isSuggested && course.originalLocation) {
-                const isOriginalLocation = 
-                    targetYear === course.originalLocation.yearKey && 
+                const isOriginalLocation =
+                    targetYear === course.originalLocation.yearKey &&
                     targetSemesterIndex === course.originalLocation.semesterIndex;
-                
+
                 if (!isOriginalLocation) {
                     setError(`${courseCode} can only be moved back to ${prev[course.originalLocation.yearKey][course.originalLocation.semesterIndex].title}`);
                     return prev;
                 }
             }
-            
+
             for (const yearKey in prev) {
                 for (let idx = 0; idx < prev[yearKey].length; idx++) {
-                    const semester = prev[yearKey][idx];
                     if (yearKey === sourceYear && idx === sourceSemesterIndex) continue;
-                    
-                    const exists = semester.courses.some(c => c.course_code === courseCode);
-                    if (exists) {
-                        setError(`${courseCode} is already in ${semester.title}`);
+                    if (prev[yearKey][idx].courses.some((c: any) => c.course_code === courseCode)) {
+                        setError(`${courseCode} is already in ${prev[yearKey][idx].title}`);
                         return prev;
                     }
                 }
             }
 
-            const newState = JSON.parse(JSON.stringify(prev));
-
             if (isSuggested) {
-                const targetSemester = newState[targetYear][targetSemesterIndex];
-                if (targetSemester && Array.isArray(targetSemester.courses)) {
-                    const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
+                const targetSemester = prev[targetYear][targetSemesterIndex];
+                if (!targetSemester || !Array.isArray(targetSemester.courses)) return prev;
 
-                    const newCourse = {
-                        course_code: course.code || course.course_code,
-                        course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
-                        credits_planned: course.credits || 3,
-                        id: newCourseId,
-                        status: 'planned'
-                    };
+                const newCourse = {
+                    course_code: course.code || course.course_code,
+                    course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
+                    credits_planned: course.credits || 3,
+                    id: `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`,
+                    status: 'planned'
+                };
 
-                    targetSemester.courses.push(newCourse);
-                    console.log("Added suggested course to target:", newCourse);
-                    
-                    setPlacedSuggestedCourses(prevPlaced => new Set(prevPlaced).add(courseCode));
-                }
-
-                return newState;
+                setPlacedSuggestedCourses(prevPlaced => new Set(prevPlaced).add(courseCode));
+                return replaceSemesterCourses(
+                    prev,
+                    targetYear,
+                    targetSemesterIndex,
+                    [...targetSemester.courses, newCourse]
+                );
             }
 
-            if (sourceYear && sourceSemesterIndex !== undefined) {
-                const sourceSemester = newState[sourceYear][sourceSemesterIndex];
-                if (sourceSemester && Array.isArray(sourceSemester.courses)) {
-                    const courseIndex = sourceSemester.courses.findIndex(
-                        (c: any) => c.id === courseId
-                    );
+            if (!sourceYear || sourceSemesterIndex === undefined) return prev;
 
-                    if (courseIndex !== -1) {
-                        const [removedCourse] = sourceSemester.courses.splice(courseIndex, 1);
-                        console.log("Successfully removed course:", removedCourse);
+            const sourceSemester = prev[sourceYear][sourceSemesterIndex];
+            if (!sourceSemester || !Array.isArray(sourceSemester.courses)) return prev;
 
-                        if (targetYear && targetSemesterIndex !== undefined) {
-                            const targetSemester = newState[targetYear][targetSemesterIndex];
-                            if (targetSemester && Array.isArray(targetSemester.courses)) {
-                                targetSemester.courses.push(removedCourse);
-                                console.log("Added course to target:", removedCourse);
-                            }
-                        }
-                    } else {
-                        console.error(`Course with ID ${courseId} not found in source semester`);
-                    }
-                }
+            const courseIndex = sourceSemester.courses.findIndex((c: any) => c.id === courseId);
+            if (courseIndex === -1) {
+                console.error(`Course with ID ${courseId} not found in source semester`);
+                return prev;
             }
 
-            console.log("=== DROP OPERATION END ===");
-            return newState;
+            return moveCourse(prev, sourceYear, sourceSemesterIndex, courseId!, targetYear, targetSemesterIndex);
         });
     };
-
 
     const getNextYearNumber = () => {
         const yearNumbers = Object.keys(allSemesters)
             .map(key => parseInt(key.replace('year', '')))
             .filter(num => !isNaN(num));
-
         if (yearNumbers.length === 0) return 1;
         return Math.max(...yearNumbers) + 1;
     };
@@ -475,7 +467,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         const nextYearNum = getNextYearNumber();
         const nextYear = `year${nextYearNum}`;
 
-        let nextFallYear;
+        let nextFallYear: number;
 
         if (Object.keys(allSemesters).length === 0) {
             nextFallYear = new Date().getFullYear();
@@ -486,13 +478,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 const lastSemester = lastSemesters[lastSemesters.length - 1];
                 const lastYear = parseInt(lastSemester.title.split(' ')[1]);
 
-                if (lastSemester.title.includes('Summer')) {
-                    nextFallYear = lastYear;
-                } else if (lastSemester.title.includes('Spring')) {
-                    nextFallYear = lastYear;
-                } else {
-                    nextFallYear = lastYear + 1;
-                }
+                nextFallYear = lastSemester.title.includes('Fall') ? lastYear + 1 : lastYear;
             } else {
                 nextFallYear = new Date().getFullYear();
             }
@@ -500,9 +486,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
         setAllSemesters(prev => ({
             ...prev,
-            [nextYear]: [
-                { title: `Fall ${nextFallYear}`, courses: [] },
-            ]
+            [nextYear]: [{ title: `Fall ${nextFallYear}`, courses: [] }]
         }));
     };
 
@@ -510,89 +494,76 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         setSemesterToDelete({ yearKey, action: 'clearYear' });
         setShowDeleteModal(true);
     };
-    
+
     const handleDeleteYear = (yearKey: string) => {
         setSemesterToDelete({ yearKey, action: 'deleteYear' });
         setShowDeleteModal(true);
     };
 
     const executeClearYear = (yearKey: string) => {
-        const yearSemesters = allSemesters[yearKey];
         const courseCodesToRemove: string[] = [];
-        
-        yearSemesters.forEach((semester) => {
-            if (!semester.isFromTranscript && semester.courses) {
-                semester.courses.forEach((course: any) => {
+        allSemesters[yearKey].forEach((semester) => {
+            if (!semester.isFromTranscript) {
+                semester.courses?.forEach((course: any) => {
                     if (course.status === 'planned') {
-                        const courseCode = course.course_code || course.code;
-                        if (courseCode) {
-                            courseCodesToRemove.push(courseCode);
-                        }
+                        const code = course.course_code || course.code;
+                        if (code) courseCodesToRemove.push(code);
                     }
                 });
             }
         });
-        
+
         if (courseCodesToRemove.length > 0) {
             setPlacedSuggestedCourses(prevPlaced => {
-                const newPlaced = new Set(prevPlaced);
-                courseCodesToRemove.forEach(code => newPlaced.delete(code));
-                return newPlaced;
+                const next = new Set(prevPlaced);
+                courseCodesToRemove.forEach(code => next.delete(code));
+                return next;
             });
         }
-        
-        setAllSemesters(prev => {
-            const newState = JSON.parse(JSON.stringify(prev));
-            newState[yearKey].forEach((semester: any) => {
-                if (!semester.isFromTranscript) {
-                    semester.courses = [];
-                }
-            });
-            return newState;
-        });
-        
+
+        setAllSemesters(prev => ({
+            ...prev,
+            [yearKey]: prev[yearKey].map((sem: any) =>
+                sem.isFromTranscript ? sem : { ...sem, courses: [] }
+            )
+        }));
+
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
-    
+
     const executeDeleteYear = (yearKey: string) => {
-        const yearSemesters = allSemesters[yearKey];
         const courseCodesToRemove: string[] = [];
-        
-        yearSemesters.forEach((semester) => {
-            if (semester.courses) {
-                semester.courses.forEach((course: any) => {
-                    if (course.status === 'planned') {
-                        const courseCode = course.course_code || course.code;
-                        if (courseCode) {
-                            courseCodesToRemove.push(courseCode);
-                        }
-                    }
-                });
-            }
+        allSemesters[yearKey].forEach((semester) => {
+            semester.courses?.forEach((course: any) => {
+                if (course.status === 'planned') {
+                    const code = course.course_code || course.code;
+                    if (code) courseCodesToRemove.push(code);
+                }
+            });
         });
-        
+
         if (courseCodesToRemove.length > 0) {
             setPlacedSuggestedCourses(prevPlaced => {
-                const newPlaced = new Set(prevPlaced);
-                courseCodesToRemove.forEach(code => newPlaced.delete(code));
-                return newPlaced;
+                const next = new Set(prevPlaced);
+                courseCodesToRemove.forEach(code => next.delete(code));
+                return next;
             });
         }
-        
+
         setAllSemesters(prev => {
-            const newState = { ...prev };
-            delete newState[yearKey];
-            return newState;
+            const next = { ...prev };
+            delete next[yearKey];
+            return next;
         });
-        
+
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
 
     const handleAddSemester = (yearKey: string) => {
         setAllSemesters(prev => {
-            const yearSemesters = [...prev[yearKey]];
+            const yearSemesters = prev[yearKey];
 
             if (yearSemesters.length >= 3) {
                 setError(`Cannot add more than 3 semesters (Fall, Spring, Summer) to ${yearKey.replace("year", "Year ")}`);
@@ -601,36 +572,23 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
             setError(null);
 
-            const firstSemester = yearSemesters[0];
-            const baseYear = parseInt(firstSemester.title.split(' ')[1]);
-
-            const allPossibleSemesters = [
+            const baseYear = parseInt(yearSemesters[0].title.split(' ')[1]);
+            const allPossible = [
                 { title: `Fall ${baseYear}`, courses: [], isFromTranscript: false },
                 { title: `Spring ${baseYear + 1}`, courses: [], isFromTranscript: false },
                 { title: `Summer ${baseYear + 1}`, courses: [], isFromTranscript: false }
             ];
 
-            const existingTitles = yearSemesters.map(s => s.title);
-            const missingSemesters = allPossibleSemesters.filter(
-                sem => !existingTitles.includes(sem.title)
+            const existingTitles = new Set(yearSemesters.map(s => s.title));
+            const missing = allPossible.filter(sem => !existingTitles.has(sem.title));
+            if (missing.length === 0) return prev;
+
+            const order: Record<string, number> = { Fall: 0, Spring: 1, Summer: 2 };
+            const updated = [...yearSemesters, missing[0]].sort(
+                (a, b) => order[a.title.split(' ')[0]] - order[b.title.split(' ')[0]]
             );
-    
-            if (missingSemesters.length === 0) {
-                return prev;
-            }
-            
-            const updatedSemesters = [...yearSemesters, missingSemesters[0]];
-            updatedSemesters.sort((a, b) => {
-                const order: Record<string, number> = { 'Fall': 0, 'Spring': 1, 'Summer': 2 };
-                const seasonA = a.title.split(' ')[0];
-                const seasonB = b.title.split(' ')[0];
-                return order[seasonA] - order[seasonB];
-            });
-    
-            return {
-                ...prev,
-                [yearKey]: updatedSemesters
-            };
+
+            return { ...prev, [yearKey]: updated };
         });
     };
 
@@ -639,98 +597,80 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
         const semesterToClear = allSemesters[yearKey]?.[semesterIndex];
         if (semesterToClear?.courses) {
-            const courseCodesToRemove: string[] = [];
-            semesterToClear.courses.forEach((course: any) => {
-                if (course.status === 'planned') {
-                    const courseCode = course.course_code || course.code;
-                    if (courseCode) {
-                        courseCodesToRemove.push(courseCode);
-                    }
-                }
-            });
-            
-            if (courseCodesToRemove.length > 0) {
+            const codes = semesterToClear.courses
+                .filter((c: any) => c.status === 'planned')
+                .map((c: any) => c.course_code || c.code)
+                .filter(Boolean);
+
+            if (codes.length > 0) {
                 setPlacedSuggestedCourses(prevPlaced => {
-                    const newPlaced = new Set(prevPlaced);
-                    courseCodesToRemove.forEach(code => newPlaced.delete(code));
-                    return newPlaced;
+                    const next = new Set(prevPlaced);
+                    codes.forEach((code: string) => next.delete(code));
+                    return next;
                 });
             }
         }
 
-        setAllSemesters(prev => {
-            const newState = JSON.parse(JSON.stringify(prev));
-            newState[yearKey][semesterIndex].courses = [];
-            return newState;
-        });
-       
+        setAllSemesters(prev => replaceSemesterCourses(prev, yearKey, semesterIndex, []));
         setShowDeleteModal(false);
         setSemesterToDelete(null);
-    }
+    };
 
     const handleRemoveSemester = (yearKey: string, semesterIndex: number) => {
         if (!semesterToDelete) return;
-        
+
         const semesterToRemove = allSemesters[yearKey]?.[semesterIndex];
         if (semesterToRemove?.courses) {
-            const courseCodesToRemove: string[] = [];
-            semesterToRemove.courses.forEach((course: any) => {
-                if (course.status === 'planned') {
-                    const courseCode = course.course_code || course.code;
-                    if (courseCode) {
-                        courseCodesToRemove.push(courseCode);
-                    }
-                }
-            });
-            
-            if (courseCodesToRemove.length > 0) {
+            const codes = semesterToRemove.courses
+                .filter((c: any) => c.status === 'planned')
+                .map((c: any) => c.course_code || c.code)
+                .filter(Boolean);
+
+            if (codes.length > 0) {
                 setPlacedSuggestedCourses(prevPlaced => {
-                    const newPlaced = new Set(prevPlaced);
-                    courseCodesToRemove.forEach(code => newPlaced.delete(code));
-                    return newPlaced;
+                    const next = new Set(prevPlaced);
+                    codes.forEach((code: string) => next.delete(code));
+                    return next;
                 });
             }
         }
-        
+
         setAllSemesters(prev => {
-            const yearSemesters = [...prev[yearKey]];
-            
+            const yearSemesters = prev[yearKey];
+
+            // If last semester, remove the whole year
             if (yearSemesters.length === 1) {
-                const newState = { ...prev };
-                delete newState[yearKey];
-                return newState;
+                const next = { ...prev };
+                delete next[yearKey];
+                return next;
             }
-            
-            yearSemesters.splice(semesterIndex, 1);
-            
+
             return {
                 ...prev,
-                [yearKey]: yearSemesters
+                [yearKey]: yearSemesters.filter((_: any, i: number) => i !== semesterIndex)
             };
         });
-        
+
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
 
     const openClearDeleteModal = (yearKey: string, semesterIndex: number, action: 'clear' | 'delete') => {
-        const yearSemesters = allSemesters[yearKey];
-        const isLastSemester = yearSemesters.length === 1;
-        
-        setSemesterToDelete({ yearKey, semesterIndex, isLastSemester, action});
+        const isLastSemester = allSemesters[yearKey].length === 1;
+        setSemesterToDelete({ yearKey, semesterIndex, isLastSemester, action });
         setShowDeleteModal(true);
     };
 
     return (
         <>
             <Toaster position="top-center" richColors />
-            <PlannerNavbar 
+            <PlannerNavbar
                 key={Object.keys(allSemesters).length}
                 requirements={adaptedRequirements}
                 expandedCategories={expandedCategories}
                 onToggleCategory={toggleCategory}
                 transcriptData={transcriptData}
-                onDropCourse={(courseId, sourceYear, sourceSemesterIndex) => 
+                onDropCourse={(courseId, sourceYear, sourceSemesterIndex) =>
                     handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
                 }
                 placedSuggestedCourses={placedSuggestedCourses}
@@ -741,7 +681,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
                 <button data-tour="help-button" onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
                     <HelpCircle size={18} className="text-white" />
-                </button>   
+                </button>
 
                 <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex flex-col gap-4 hidden md:flex p-6">
                     <Sidebar
@@ -749,7 +689,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         expandedCategories={expandedCategories}
                         onToggleCategory={toggleCategory}
                         transcriptData={transcriptData}
-                        onDropCourse={(courseId, sourceYear, sourceSemesterIndex) => 
+                        onDropCourse={(courseId, sourceYear, sourceSemesterIndex) =>
                             handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
                         }
                         isExpanded={!sidebarCollapsed}
@@ -757,8 +697,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         placedSuggestedCourses={placedSuggestedCourses}
                         onRestartOnboarding={onRestartOnboarding}
                     />
-                    
-                    <div 
+
+                    <div
                         className={`${sidebarCollapsed ? "cursor-pointer rounded-md w-20" : "rounded-full w-80"} bg-gray-900 py-3 px-6 flex gap-2 justify-center items-center transition-all duration-300 absolute bottom-8`}
                         onClick={sidebarCollapsed ? toggleSidebar : undefined}
                     >
@@ -766,12 +706,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-textlight text-xs`}>
                             This app is in development. For issues or feedback,
                             <a
-                            href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-accent underline ml-1"
+                                href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-accent underline ml-1"
                             >
-                            click here.
+                                click here.
                             </a>
                         </small>
                     </div>
@@ -790,25 +730,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                         clipRule="evenodd" />
                                 </svg>
                                 <span>{error}</span>
-                                <button
-                                    onClick={() => setError(null)}
-                                    className="ml-auto text-red-700 hover:text-red-900"
-                                >
-                                    ×
-                                </button>
+                                <button onClick={() => setError(null)} className="ml-auto text-red-700 hover:text-red-900">×</button>
                             </div>
                         </div>
                     )}
+
                     <div className="space-y-8">
                         {Object.keys(allSemesters).map((yearKey) => {
-                            const isEntirelyUserCreated = allSemesters[yearKey].every(
-                                semester => !semester.isFromTranscript
-                            );
-
+                            const isEntirelyUserCreated = allSemesters[yearKey].every(s => !s.isFromTranscript);
                             const hasUserCoursesToClear = allSemesters[yearKey].some(
-                                semester => !semester.isFromTranscript && semester.courses && semester.courses.length > 0
+                                s => !s.isFromTranscript && s.courses?.length > 0
                             );
-
                             const isYearCollapsed = !!collapsedYears[yearKey];
                             const totalCourses = allSemesters[yearKey].reduce(
                                 (sum, sem) => sum + (sem.courses?.length ?? 0), 0
@@ -816,7 +748,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                             return (
                                 <div key={yearKey}>
-                                    <YearDivider 
+                                    <YearDivider
                                         yearLabel={yearKey.replace("year", "Year ")}
                                         yearKey={yearKey}
                                         isEntirelyUserCreated={isEntirelyUserCreated}
@@ -862,6 +794,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             );
                         })}
                     </div>
+
                     {Object.keys(allSemesters).length > 0 && (
                         <div className="mt-8 mb-16 flex justify-end">
                             <button
@@ -876,14 +809,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     )}
 
                     {showDeleteModal && semesterToDelete && (
-                        <div 
+                        <div
                             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80]"
-                            onClick={() => {
-                                setShowDeleteModal(false);
-                                setSemesterToDelete(null);
-                            }}
+                            onClick={() => { setShowDeleteModal(false); setSemesterToDelete(null); }}
                         >
-                            <div 
+                            <div
                                 className="bg-white p-6 rounded-md shadow-lg w-full max-w-md"
                                 onClick={(e) => e.stopPropagation()}
                             >
@@ -894,7 +824,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                             ? `Clear all user courses in ${semesterToDelete.yearKey.replace("year", "Year ")}?`
                                             : semesterToDelete.action === 'deleteYear'
                                                 ? `Delete ${semesterToDelete.yearKey.replace("year", "Year ")}?`
-                                                : semesterToDelete.isLastSemester 
+                                                : semesterToDelete.isLastSemester
                                                     ? `Remove ${semesterToDelete.yearKey.replace("year", "Year ")}?`
                                                     : `Remove ${allSemesters[semesterToDelete.yearKey][semesterToDelete.semesterIndex!].title}?`
                                     }
@@ -911,18 +841,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                                     : "This semester and all its courses will be removed from your plan."
                                     }
                                 </p>
-                                
                                 <div className="flex justify-end gap-4">
                                     <button
                                         className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
-                                        onClick={() => {
-                                            setShowDeleteModal(false);
-                                            setSemesterToDelete(null);
-                                        }}
+                                        onClick={() => { setShowDeleteModal(false); setSemesterToDelete(null); }}
                                     >
                                         Cancel
                                     </button>
-                                    
                                     <button
                                         className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
                                         onClick={() => {
@@ -937,8 +862,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                             }
                                         }}
                                     >
-                                        {semesterToDelete.action === 'clear' || semesterToDelete.action === 'clearYear' 
-                                            ? 'Clear' 
+                                        {semesterToDelete.action === 'clear' || semesterToDelete.action === 'clearYear'
+                                            ? 'Clear'
                                             : 'Delete'}
                                     </button>
                                 </div>
