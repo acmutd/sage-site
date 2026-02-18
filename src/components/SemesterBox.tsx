@@ -162,18 +162,47 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         setCourseToRemove(null);
     };
 
-    const [{ isOver, canDrop }, drop] = useDrop(() => ({
+    const [{ isOver, canDrop, projectedWarnings }, drop] = useDrop(() => ({
         accept: "COURSE",
         drop: (item: any) => {
             if (isFromTranscript || locked) return;
             onDropCourse(item.course, item.sourceYear, item.sourceSemesterIndex, item.courseId, item.isSuggested);
         },
-        canDrop: () => !isFromTranscript && !locked,
-        collect: (monitor) => ({
-            isOver: monitor.isOver(),
-            canDrop: monitor.canDrop(),
-        }),
-    }), [locked, isFromTranscript, onDropCourse]);
+        canDrop: (item: any) => {
+            if (isFromTranscript || locked) return false;
+            const isSummer = title.toLowerCase().includes('summer');
+            const projectedCourses = [...courses, item.course];
+            const warnings = validateCourseLoad(projectedCourses, studentType, catalogYear, isSummer);
+            return !warnings.some(w => w.severity === 'error' && w.type === 'credit_limit');
+        },
+        collect: (monitor) => {
+            const item = monitor.getItem() as any;
+            let projectedWarnings = null;
+            if (monitor.isOver() && item?.course) {
+                const isSummer = title.toLowerCase().includes('summer');
+                const projectedCourses = [...courses, item.course];
+                projectedWarnings = validateCourseLoad(projectedCourses, studentType, catalogYear, isSummer);
+                if (projectedWarnings.length === 0) projectedWarnings = null;
+            }
+            return {
+                isOver: monitor.isOver(),
+                canDrop: monitor.canDrop(),
+                projectedWarnings,
+            };
+        },
+    }), [locked, isFromTranscript, onDropCourse, courses, studentType, catalogYear, title]);
+
+    // Auto-open warning popover when drag is blocked
+    useEffect(() => {
+        if (isOver && !canDrop) {
+            setShowWarnings(true);
+        } else if (!isOver) {
+            setShowWarnings(false);
+        }
+    }, [isOver, canDrop]);
+
+    // Use projected warnings during hover, fall back to current warnings otherwise
+    const displayedCreditWarnings = (isOver && projectedWarnings) ? projectedWarnings : creditWarnings;
 
     const warningPopoverContent = (
         <>
@@ -201,14 +230,14 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                     </div>
                 </>
             )}
-            {creditWarnings && (
+            {displayedCreditWarnings && (
                 <>
                     <div className="font-semibold mb-2 flex items-center gap-2 text-red-900">
                         <TriangleAlert className="w-4 h-4" />
                         Credit Load
                     </div>
                     <div className="space-y-2">
-                        {creditWarnings.map((warning, idx) => (
+                        {displayedCreditWarnings.map((warning, idx) => (
                             <div key={idx} className="p-2 rounded border border-red-200 bg-red-50">
                                 <div className="font-medium text-xs mb-1">{warning.message}</div>
                                 {warning.details?.map((detail, i) => (
@@ -231,6 +260,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                 w-full md:w-[280px] lg:w-[317px]
                 ${locked ? "opacity-75 bg-gray-50" : ""} 
                 ${isOver && canDrop ? "bg-blue-50" : ""}
+                ${isOver && !canDrop ? "bg-red-50 border-red-300" : ""}
             `}
             data-tour={dataTour}
         >
@@ -257,7 +287,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
 
                 {!isFromTranscript && (
                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                        {(unmetCorequisites || creditWarnings) && (
+                        {(unmetCorequisites || creditWarnings || (isOver && projectedWarnings)) && (
                             <div className="relative">
                                 <button
                                     ref={warningButtonRef}
@@ -267,12 +297,12 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                     className="hover:bg-red-50 p-1 rounded relative"
                                 >
                                     <TriangleAlert className={`w-4 h-4 ${
-                                        creditWarnings?.some(w => w.severity === 'error')
+                                        displayedCreditWarnings?.some(w => w.severity === 'error')
                                             ? 'stroke-red-600'
                                             : 'stroke-orange-600'
                                     }`} />
                                     <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                                        {(unmetCorequisites?.length || 0) + (creditWarnings?.length || 0)}
+                                        {(unmetCorequisites?.length || 0) + (displayedCreditWarnings?.length || 0)}
                                     </span>
                                 </button>
 
@@ -321,14 +351,14 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                                     </div>
                                                 </>
                                             )}
-                                            {creditWarnings && (
+                                            {displayedCreditWarnings && (
                                                 <>
                                                     <div className="font-semibold mb-3 flex items-center gap-2 text-red-900">
                                                         <TriangleAlert className="w-5 h-5" />
                                                         Credit Load Warnings
                                                     </div>
                                                     <div className="space-y-3">
-                                                        {creditWarnings.map((warning, idx) => (
+                                                        {displayedCreditWarnings.map((warning, idx) => (
                                                             <div key={idx} className="p-3 rounded border border-red-200 bg-red-50">
                                                                 <div className="font-medium text-sm mb-2">{warning.message}</div>
                                                                 {warning.details?.map((detail, i) => (
