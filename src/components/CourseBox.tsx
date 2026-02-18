@@ -289,12 +289,12 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                             </div>
                         )}
                         {isSuggested && !isPlaced && (
-                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md">
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
                                 Suggested
                             </span>
                         )}
                         {isPlaced && (
-                            <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-md ">
+                            <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
                                 Planned
                             </span>
                         )}
