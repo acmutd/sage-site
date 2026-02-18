@@ -215,9 +215,39 @@ const Sidebar: React.FC<SidebarProps> = ({
         });
     };
 
-    const renderCategories = (categories: any[], reqIdx: number, parentPath: string = "0", parentIsOR: boolean = false) => {
+    const renderCategoryContent = (category: any, reqIdx: number, nextParentPath: string, isOR: boolean, subCategoriesToRender: any[]): React.ReactNode => (
+        <>
+            {category.classes && category.classes.length > 0 ? (
+                <CoursesCarousel courses={category.classes} type="completed" />
+            ) : subCategoriesToRender.length > 0 ? null : (
+                !category.suggested?.length && (
+                    <div className="text-sm text-gray-500">No courses in this category</div>
+                )
+            )}
+    
+            {category.suggested && category.suggested.length > 0 && (
+                <>
+                    <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
+                        <span className="text-xs text-gray-500 font-medium">Suggested Courses</span>
+                    </div>
+                    <CoursesCarousel
+                        courses={category.suggested}
+                        type="suggested"
+                        placedSuggestedCourses={placedSuggestedCourses}
+                        categoryName={category.name}
+                        allSuggestedCourses={allSuggestedCourses}
+                    />
+                </>
+            )}
+    
+            {subCategoriesToRender.length > 0 &&
+                renderCategories(subCategoriesToRender, reqIdx, nextParentPath, isOR)}
+        </>
+    );
+    
+    const renderCategories = (categories: any[], reqIdx: number, parentPath: string = "0", parentIsOR: boolean = false): React.ReactNode[] => {
         const filteredCategories = filterCategories(categories);
-        
+    
         return filteredCategories.map((category, catIdx) => {
             const originalIdx = categories.indexOf(category);
             const currentCatIdx = `${reqIdx}-${parentPath}-${originalIdx}`;
@@ -225,21 +255,45 @@ const Sidebar: React.FC<SidebarProps> = ({
             const categoryName = category.name?.toUpperCase() || '';
             const isOR = categoryName === 'OR';
             const isAND = categoryName === 'AND';
-            
+    
             let displayName = category.name;
             if (isOR) {
                 displayName = "Track Options";
             } else if (isAND && parentIsOR) {
                 displayName = `Track ${catIdx + 1}`;
             }
-            
+    
             let subCategoriesToRender = category.categories || [];
             if (isOR && subCategoriesToRender.length > 0) {
-                subCategoriesToRender = subCategoriesToRender.filter((child: any) => 
-                    hasCompletion(child)
-                );
+                subCategoriesToRender = subCategoriesToRender.filter((child: any) => hasCompletion(child));
             }
-            
+    
+            const content = renderCategoryContent(category, reqIdx, nextParentPath, isOR, subCategoriesToRender);
+    
+            const parts = displayName?.split('|').map((p: string) => p.trim()) || [displayName];
+    
+            if (parts.length > 1) {
+                
+                // Build from inside out — innermost part gets the content
+                return parts.reduceRight((inner: React.ReactNode, part: string, i: number) => {
+                    const partKey = `${currentCatIdx}-part-${i}`;
+                    return (
+                        <RequirementCategory
+                            key={partKey}
+                            title={part}
+                            // these sections are often misleading when done with '|' and to prevent confusion...this is removed
+                            completed={i === 0 ? category.progress : 0}
+                            total={i === 0 ? category.total : 0}
+                            isExpanded={expandedSubcategories[partKey] ?? true}
+                            onToggle={() => handleToggleSubcategory(partKey)}
+                            hasSubcategories={i < parts.length - 1 || subCategoriesToRender.length > 0}
+                        >
+                            {inner}
+                        </RequirementCategory>
+                    );
+                }, content);
+            }
+    
             return (
                 <RequirementCategory
                     key={currentCatIdx}
@@ -250,38 +304,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     onToggle={() => handleToggleSubcategory(currentCatIdx)}
                     hasSubcategories={subCategoriesToRender.length > 0}
                 >
-                    {category.classes && category.classes.length > 0 ? (
-                        <CoursesCarousel
-                            courses={category.classes} 
-                            type="completed"
-                        />
-                    ) : subCategoriesToRender.length > 0 ? null : (
-                        !category.suggested?.length && (
-                            <div className="text-sm text-gray-500">
-                                No courses in this category
-                            </div>
-                        )
-                    )}
-    
-                    {category.suggested && category.suggested.length > 0 && (
-                        <>
-                            <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
-                                <span className="text-xs text-gray-500 font-medium">
-                                    Suggested Courses
-                                </span>
-                            </div>
-                            <CoursesCarousel
-                                courses={category.suggested}
-                                type="suggested"
-                                placedSuggestedCourses={placedSuggestedCourses}
-                                categoryName={category.name}
-                                allSuggestedCourses={allSuggestedCourses}
-                            />
-                        </>
-                    )}
-    
-                    {subCategoriesToRender.length > 0 &&
-                        renderCategories(subCategoriesToRender, reqIdx, nextParentPath, isOR)}
+                    {content}
                 </RequirementCategory>
             );
         });

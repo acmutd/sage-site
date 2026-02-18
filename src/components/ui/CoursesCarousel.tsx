@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import CourseBox from '../CourseBox';
 import { toast } from 'sonner';
@@ -24,6 +24,24 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
 }) => {
     const COURSES_PER_PAGE = 5;
     const [currentPage, setCurrentPage] = useState(0);
+
+    // resize windowed dots based on container size (so dynamically computed)
+    const dotsContainerRef = React.useRef<HTMLDivElement>(null);
+    const [maxDots, setMaxDots] = useState(7);
+    
+    useEffect(() => {
+        if (!dotsContainerRef.current) return;
+        
+        const observer = new ResizeObserver((entries) => {
+            const width = entries[0].contentRect.width;
+            const availableWidth = width - 60;
+            const dotsCount = Math.max(3, Math.floor(availableWidth / 14));
+            setMaxDots(dotsCount % 2 === 0 ? dotsCount - 1 : dotsCount); // odd so current page centers nicely
+        });
+        
+        observer.observe(dotsContainerRef.current);
+        return () => observer.disconnect();
+    }, []);
 
     // Helper function to check if a course has corequisites that are in the suggested list
     const getCorequisiteWarnings = (course: any): string[] | null => {
@@ -210,21 +228,33 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                         <ChevronLeft className="w-4 h-4" />
                     </button>
 
-                    {/* Page Dots */}
-                    <div className="flex gap-1.5 mx-1">
-                        {Array.from({ length: totalPages }).map((_, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => goToPage(idx)}
-                                className={`transition-all duration-200 ${
-                                    idx === currentPage
-                                        ? `w-6 h-2 rounded-full ${dotColor}`
-                                        : 'w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400'
-                                }`}
-                                aria-label={`Go to page ${idx + 1}`}
-                                title={`Page ${idx + 1}`}
-                            />
-                        ))}
+                    {/* Page Dots (windowed because apparently LOTS of courses can show up for certain majors...) */}
+                    <div ref={dotsContainerRef} className="flex gap-1.5 mx-1">
+                        {(() => {
+                            const MAX_DOTS = maxDots;
+                            const half = Math.floor(MAX_DOTS / 2);
+                            
+                            let start = Math.max(0, currentPage - half);
+                            let end = Math.min(totalPages - 1, start + MAX_DOTS - 1);
+                            
+                            if (end - start < MAX_DOTS - 1) {
+                                start = Math.max(0, end - MAX_DOTS + 1);
+                            }
+                            
+                            return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => goToPage(idx)}
+                                    className={`transition-all duration-200 ${
+                                        idx === currentPage
+                                            ? `w-6 h-2 rounded-full ${dotColor}`
+                                            : 'w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400'
+                                    }`}
+                                    aria-label={`Go to page ${idx + 1}`}
+                                    title={`Page ${idx + 1}`}
+                                />
+                            ));
+                        })()}
                     </div>
 
                     {/* Next Button */}

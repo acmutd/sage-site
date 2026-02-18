@@ -38,17 +38,19 @@ interface RequirementCategoryProps {
             )}
             <span className="text-sm font-medium text-gray-800">{title}</span>
           </div>
-          <div data-tour={isFirstCategory ? "requirement-category-progress" : undefined} className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-sm font-medium text-gray-600 tabular-nums">
-              {completed}/{total}
-            </span>
-            <div className="w-4 h-5 bg-gray-200 rounded overflow-hidden flex flex-col-reverse">
-              <div 
-                className="w-full bg-green-500 rounded transition-all duration-300"
-                style={{ height: `${(completed / total) * 100}%` }}
-              />
+          {total > 0 && (
+            <div data-tour={isFirstCategory ? "requirement-category-progress" : undefined} className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-sm font-medium text-gray-600 tabular-nums">
+                {completed}/{total}
+              </span>
+              <div className="w-4 h-5 bg-gray-200 rounded overflow-hidden flex flex-col-reverse">
+                <div 
+                  className="w-full bg-green-500 rounded transition-all duration-300"
+                  style={{ height: `${(completed / total) * 100}%` }}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </button>
   
         {isExpanded && (
