@@ -180,14 +180,16 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
           hasSubcategories={subCategoriesToRender.length > 0}
         >
           {category.classes && category.classes.length > 0 ? (
-            <CoursesCarousel 
-              courses={category.classes} 
-              type="completed"
-            />
+              <CoursesCarousel
+                  courses={category.classes} 
+                  type="completed"
+              />
           ) : subCategoriesToRender.length > 0 ? null : (
-            <div className="text-sm text-gray-500">
-              No courses in this category
-            </div> 
+              !category.suggestedCourses?.length && (
+                  <div className="text-sm text-gray-500">
+                      No courses in this category
+                  </div>
+              )
           )}
 
           {category.suggested && category.suggested.length > 0 && (
