@@ -35,6 +35,13 @@ const PlannerPage = () => {
   const VITE_EVALUATOR_API = import.meta.env.VITE_EVALUATOR_API;
   const { user } = useAuth();
 
+  const parseRequirementsFromEvaluation = (rawEvaluation: string | null): any[] => {
+    if (!rawEvaluation) return [];
+    const parsed = JSON.parse(rawEvaluation);
+    if (Array.isArray(parsed)) return parsed;
+    return parsed?.results || [];
+  };
+
   // prevent global scroll
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -60,16 +67,42 @@ const PlannerPage = () => {
   useEffect(() => {
     checkExistingEvaluation();
   }, []);
+
+  useEffect(() => {
+    const handlePlannerEvaluationUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ requirements?: any[] }>;
+      const nextRequirements = customEvent.detail?.requirements;
+
+      if (Array.isArray(nextRequirements)) {
+        setRequirements(nextRequirements);
+        return;
+      }
+
+      const cachedEvaluation = localStorage.getItem("evaluation");
+      setRequirements(parseRequirementsFromEvaluation(cachedEvaluation));
+    };
+
+    window.addEventListener(
+      "planner-evaluation-updated",
+      handlePlannerEvaluationUpdated as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "planner-evaluation-updated",
+        handlePlannerEvaluationUpdated as EventListener
+      );
+    };
+  }, []);
   
   const checkExistingEvaluation = async () => {
     const cachedEvaluation = localStorage.getItem('evaluation');
     const cachedTranscript = localStorage.getItem('transcriptData');
   
     if (cachedEvaluation && cachedTranscript) {
-      const evalData = JSON.parse(cachedEvaluation);
       const transcript = JSON.parse(cachedTranscript);
 
-      setRequirements(evalData.results || []);
+      setRequirements(parseRequirementsFromEvaluation(cachedEvaluation));
       setTranscriptData(transcript);
       setShowOnboarding(false);
       setShowPlanner(true);
