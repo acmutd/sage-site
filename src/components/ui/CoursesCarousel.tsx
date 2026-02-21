@@ -13,6 +13,33 @@ interface CoursesCarouselProps {
     allSuggestedCourses?: any[];
 }
 
+const normalizeCourseCode = (value: unknown): string =>
+    String(value || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toUpperCase();
+
+const normalizeCorequisiteGroups = (corequisites: unknown): string[][] => {
+    if (!Array.isArray(corequisites)) return [];
+
+    return corequisites
+        .map((group: unknown) => {
+            if (Array.isArray(group)) {
+                return group
+                    .map((code: unknown) => normalizeCourseCode(code))
+                    .filter(Boolean);
+            }
+
+            if (typeof group === 'string') {
+                const normalized = normalizeCourseCode(group);
+                return normalized ? [normalized] : [];
+            }
+
+            return [];
+        })
+        .filter((group: string[]) => group.length > 0);
+};
+
 const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
     courses,
     type,
@@ -27,25 +54,22 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
 
     // Helper function to check if a course has corequisites that are in the suggested list
     const getCorequisiteWarnings = (course: any): string[] | null => {
-        if (!course.corequisites || !Array.isArray(course.corequisites) || course.corequisites.length === 0) {
+        const normalizedCoreqGroups = normalizeCorequisiteGroups(course.corequisites);
+        if (normalizedCoreqGroups.length === 0) {
             return null;
         }
 
         // Create a set of all suggested course codes for quick lookup
         const suggestedCodesSet = new Set(
-            allSuggestedCourses.map((c: any) => c.code || c.course_code)
+            allSuggestedCourses
+                .map((c: any) => normalizeCourseCode(c.code || c.course_code))
+                .filter(Boolean)
         );
 
         const warningCoreqs: string[] = [];
 
         // Check each corequisite group
-        for (const coreqGroup of course.corequisites) {
-            // Skip if coreqGroup is not an array
-            if (!Array.isArray(coreqGroup) || coreqGroup.length === 0) {
-                continue;
-            }
-
-            // coreqGroup is an array like ["MATH 2414", "MATH 2419"]
+        for (const coreqGroup of normalizedCoreqGroups) {
             // If ANY course in this group is in the suggested list, add the whole group
             const hasAnyCoreqInSuggested = coreqGroup.some((coreqCode: string) => 
                 suggestedCodesSet.has(coreqCode)
