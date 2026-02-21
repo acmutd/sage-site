@@ -31,6 +31,33 @@ interface SemesterBoxProps {
     'data-tour'?: string;
 }
 
+const normalizeCourseCode = (value: unknown): string =>
+    String(value || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toUpperCase();
+
+const normalizeCorequisiteGroups = (corequisites: unknown): string[][] => {
+    if (!Array.isArray(corequisites)) return [];
+
+    return corequisites
+        .map((group: unknown) => {
+            if (Array.isArray(group)) {
+                return group
+                    .map((code: unknown) => normalizeCourseCode(code))
+                    .filter(Boolean);
+            }
+
+            if (typeof group === "string") {
+                const normalized = normalizeCourseCode(group);
+                return normalized ? [normalized] : [];
+            }
+
+            return [];
+        })
+        .filter((group: string[]) => group.length > 0);
+};
+
 const SemesterBox: React.FC<SemesterBoxProps> = ({
     title,
     isLocked = false,
@@ -80,11 +107,16 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         const suggestedCourseCodes = new Set<string>();
         
         allSuggestedCourses.forEach((suggestedCourse: any) => {
-            const code = suggestedCourse.code || suggestedCourse.course_code;
+            const code = normalizeCourseCode(
+                suggestedCourse.code || suggestedCourse.course_code
+            );
             if (code) {
                 suggestedCourseCodes.add(code);
-                if (suggestedCourse.corequisites && Array.isArray(suggestedCourse.corequisites)) {
-                    coreqMap.set(code, suggestedCourse.corequisites);
+                const normalizedCoreqGroups = normalizeCorequisiteGroups(
+                    suggestedCourse.corequisites
+                );
+                if (normalizedCoreqGroups.length > 0) {
+                    coreqMap.set(code, normalizedCoreqGroups);
                 }
                 if (suggestedCourse.categoryPath) {
                     categoryPathMap.set(code, suggestedCourse.categoryPath);
@@ -93,13 +125,14 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         });
 
         const semesterCourseCodes = new Set(
-            courses.map(c => c.course_code)
+            courses.map((c) => normalizeCourseCode(c.course_code))
         );
 
         const unmetCoreqs: { course: string; missing: string[]; locations: string[] }[] = [];
 
         courses.forEach(course => {
-            const coreqs = coreqMap.get(course.course_code);
+            const courseCode = normalizeCourseCode(course.course_code);
+            const coreqs = coreqMap.get(courseCode);
             if (!coreqs || coreqs.length === 0) return;
 
             coreqs.forEach((coreqGroup: string[]) => {
@@ -123,7 +156,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                     const uniqueLocations = [...new Set(locations)];
                     
                     unmetCoreqs.push({
-                        course: course.course_code,
+                        course: course.course_code || courseCode,
                         missing: availableCoreqs,
                         locations: uniqueLocations
                     });
