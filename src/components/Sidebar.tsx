@@ -44,6 +44,13 @@ interface SidebarProps {
     isExpanded?: boolean;
     onToggleExpanded?: () => void;
     placedSuggestedCourses?: Set<string>;
+    allCompletedCourseCodes?: string[];
+    allPlannedCoursesWithOrder?: Array<{
+        code: string;
+        yearKey: string;
+        semesterIndex: number;
+        semesterOrder: number;
+    }>;
     onRestartOnboarding?: () => void;
 }
 
@@ -53,6 +60,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     isExpanded: externalIsExpanded,
     onToggleExpanded,
     placedSuggestedCourses = new Set(),
+    allCompletedCourseCodes = [],
+    allPlannedCoursesWithOrder = [],
     onRestartOnboarding,
 }) => {
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
@@ -274,6 +283,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 placedSuggestedCourses={placedSuggestedCourses}
                                 categoryName={category.name}
                                 allSuggestedCourses={allSuggestedCourses}
+                                allCompletedCourseCodes={allCompletedCourseCodes}
+                                allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                             />
                         </>
                     )}

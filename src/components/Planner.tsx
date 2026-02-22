@@ -10,6 +10,7 @@ import { calculateCatalogYear, determineStudentType } from "@/utils/studentInfo"
 import YearDivider from "./planner/YearDivider";
 import { useAuth } from "@/context/AuthContext";
 import Cookies from "js-cookie";
+import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
 
 interface PlannerProps {
     semesters: {
@@ -505,6 +506,38 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return courses;
     }, [adaptedRequirements]);
 
+    const allCompletedCourseCodes = useMemo(() => {
+        const completedCodes = new Set<string>();
+
+        const collectCompletedCourseCodes = (categories: any[]) => {
+            if (!Array.isArray(categories)) return;
+
+            categories.forEach((category) => {
+                if (Array.isArray(category.classes)) {
+                    category.classes.forEach((course: any) => {
+                        const status = String(course.status || "").toLowerCase();
+                        const code = normalizeCourseCode(course.code || course.course_code);
+
+                        if (!code) return;
+                        if (!status || status === "completed") {
+                            completedCodes.add(code);
+                        }
+                    });
+                }
+
+                if (Array.isArray(category.categories) && category.categories.length > 0) {
+                    collectCompletedCourseCodes(category.categories);
+                }
+            });
+        };
+
+        adaptedRequirements.forEach((requirement: any) => {
+            collectCompletedCourseCodes(requirement.categories || []);
+        });
+
+        return Array.from(completedCodes);
+    }, [adaptedRequirements]);
+
     const availableSemesters = useMemo(() => {
         const semesters: Array<{yearKey: string, semesterIndex: number, title: string}> = [];
         Object.keys(allSemesters).forEach(yearKey => {
@@ -520,6 +553,52 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         });
         return semesters;
     }, [allSemesters]);
+
+    const semesterOrderByKey = useMemo(() => {
+        const map: Record<string, number> = {};
+        let semesterOrder = 0;
+
+        Object.keys(allSemesters).forEach((yearKey) => {
+            allSemesters[yearKey].forEach((_, semesterIndex) => {
+                map[`${yearKey}-${semesterIndex}`] = semesterOrder;
+                semesterOrder += 1;
+            });
+        });
+
+        return map;
+    }, [allSemesters]);
+
+    const allPlannedCoursesWithOrder = useMemo(() => {
+        const courses: Array<{
+            code: string;
+            yearKey: string;
+            semesterIndex: number;
+            semesterOrder: number;
+        }> = [];
+
+        Object.keys(allSemesters).forEach((yearKey) => {
+            allSemesters[yearKey].forEach((semester, semesterIndex) => {
+                const semesterOrder = semesterOrderByKey[`${yearKey}-${semesterIndex}`];
+                semester.courses?.forEach((course: any) => {
+                    const code = normalizeCourseCode(course.course_code || course.code);
+                    if (!code) return;
+
+                    courses.push({
+                        code,
+                        yearKey,
+                        semesterIndex,
+                        semesterOrder,
+                    });
+                });
+            });
+        });
+
+        return courses;
+    }, [allSemesters, semesterOrderByKey]);
+
+    const allPlannedCourseCodes = useMemo(() => {
+        return allPlannedCoursesWithOrder.map((course) => course.code);
+    }, [allPlannedCoursesWithOrder]);
 
     const handleDropCourse = (
         targetYear: string,
@@ -933,6 +1012,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
                 }
                 placedSuggestedCourses={placedSuggestedCourses}
+                allCompletedCourseCodes={allCompletedCourseCodes}
+                allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                 onRestartOnboarding={onRestartOnboarding}
                 availableSemesters={availableSemesters}
                 onAddCourse={handleDropCourse}
@@ -988,6 +1069,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         isExpanded={!sidebarCollapsed}
                         onToggleExpanded={() => setSidebarCollapsed(!sidebarCollapsed)}
                         placedSuggestedCourses={placedSuggestedCourses}
+                        allCompletedCourseCodes={allCompletedCourseCodes}
+                        allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                         onRestartOnboarding={onRestartOnboarding}
                     />
                     
@@ -1076,6 +1159,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                                 onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
                                                 onShowError={setError}
                                                 allSuggestedCourses={allSuggestedCourses}
+                                                allCompletedCourseCodes={allCompletedCourseCodes}
+                                                allPlannedCourseCodes={allPlannedCourseCodes}
+                                                allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
+                                                currentSemesterOrder={semesterOrderByKey[`${yearKey}-${idx}`]}
                                                 studentType={studentType}
                                                 catalogYear={calculateCatalogYear(semester.title)}
                                             />

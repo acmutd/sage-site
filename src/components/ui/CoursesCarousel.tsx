@@ -2,6 +2,11 @@ import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import CourseBox from '../CourseBox';
 import { toast } from 'sonner';
+import {
+    getCoursePrerequisiteGroups,
+    getMissingPrerequisiteGroups,
+    normalizeCourseCode,
+} from '@/utils/prerequisiteUtils';
 
 interface CoursesCarouselProps {
     courses: any[];
@@ -11,13 +16,14 @@ interface CoursesCarouselProps {
     availableSemesters?: Array<{yearKey: string, semesterIndex: number, title: string}>;
     onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
     allSuggestedCourses?: any[];
+    allCompletedCourseCodes?: string[];
+    allPlannedCoursesWithOrder?: Array<{
+        code: string;
+        yearKey: string;
+        semesterIndex: number;
+        semesterOrder: number;
+    }>;
 }
-
-const normalizeCourseCode = (value: unknown): string =>
-    String(value || '')
-        .trim()
-        .replace(/\s+/g, ' ')
-        .toUpperCase();
 
 const normalizeCorequisiteGroups = (corequisites: unknown): string[][] => {
     if (!Array.isArray(corequisites)) return [];
@@ -47,7 +53,9 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
     categoryName,
     availableSemesters = [],
     onAddCourse,
-    allSuggestedCourses = []
+    allSuggestedCourses = [],
+    allCompletedCourseCodes = [],
+    allPlannedCoursesWithOrder = []
 }) => {
     const COURSES_PER_PAGE = 5;
     const [currentPage, setCurrentPage] = useState(0);
@@ -82,6 +90,51 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
         }
 
         return warningCoreqs.length > 0 ? warningCoreqs : null;
+    };
+
+    const getPrerequisiteWarnings = (course: any): string[] | null => {
+        const prerequisiteGroups = getCoursePrerequisiteGroups(course);
+        if (prerequisiteGroups.length === 0) return null;
+
+        const normalizedCourseCode = normalizeCourseCode(course.code || course.course_code);
+        const plannedCourseOrderByCode = new Map<string, number>();
+
+        allPlannedCoursesWithOrder.forEach((plannedCourse) => {
+            const plannedCode = normalizeCourseCode(plannedCourse.code);
+            if (!plannedCode) return;
+
+            const existingOrder = plannedCourseOrderByCode.get(plannedCode);
+            if (
+                existingOrder === undefined ||
+                plannedCourse.semesterOrder < existingOrder
+            ) {
+                plannedCourseOrderByCode.set(plannedCode, plannedCourse.semesterOrder);
+            }
+        });
+
+        const placedSemesterOrder = plannedCourseOrderByCode.get(normalizedCourseCode);
+        const eligiblePlannedCodes = allPlannedCoursesWithOrder
+            .filter((plannedCourse) =>
+                placedSemesterOrder === undefined
+                    ? true
+                    : plannedCourse.semesterOrder < placedSemesterOrder
+            )
+            .map((plannedCourse) => normalizeCourseCode(plannedCourse.code))
+            .filter(Boolean);
+
+        const satisfiedCourseCodes = new Set(
+            [...allCompletedCourseCodes, ...eligiblePlannedCodes]
+                .map((code) => normalizeCourseCode(code))
+                .filter(Boolean)
+        );
+
+        const missingGroups = getMissingPrerequisiteGroups(
+            prerequisiteGroups,
+            satisfiedCourseCodes
+        );
+
+        if (missingGroups.length === 0) return null;
+        return missingGroups.map((group) => group.join(' or '));
     };
 
     const totalPages = Math.ceil(courses.length / COURSES_PER_PAGE);
@@ -144,6 +197,21 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                         const courseCode = course.code || course.course_code;
                         const isPlaced = placedSuggestedCourses.has(courseCode);
                         const coreqWarnings = getCorequisiteWarnings(course);
+                        const prerequisiteWarnings = getPrerequisiteWarnings(course);
+                        const warnings = [
+                            ...(coreqWarnings ? [{
+                                type: 'corequisite' as const,
+                                severity: 'warning' as const,
+                                message: 'Corequisite Warning:',
+                                details: coreqWarnings
+                            }] : []),
+                            ...(prerequisiteWarnings ? [{
+                                type: 'prerequisite' as const,
+                                severity: 'warning' as const,
+                                message: 'Prerequisite Warning:',
+                                details: prerequisiteWarnings
+                            }] : [])
+                        ];
                         
                         return (
                             <CourseBox
@@ -160,12 +228,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 isSuggested={true}
                                 inSidebar={true}
                                 isPlaced={isPlaced}
-                                warnings={coreqWarnings ? [{
-                                    type: 'corequisite',
-                                    severity: 'warning',
-                                    message: 'Corequisite Warning:',
-                                    details: coreqWarnings
-                                }] : null}
+                                warnings={warnings.length > 0 ? warnings : null}
                                 onAdd={() => handleAddClick({...course, course_code: courseCode, code: courseCode})}
                             />
                         );

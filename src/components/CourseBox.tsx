@@ -25,6 +25,7 @@ const WarningSection: React.FC<{ warnings: Warning[] }> = ({ warnings }) => {
     const getWarningIcon = (type: WarningType) => {
         switch(type) {
             case 'corequisite': return <TriangleAlert className="w-4 h-4" />;
+            case 'prerequisite': return <TriangleAlert className="w-4 h-4" />;
             case 'credit_limit': return <AlertTriangle className="w-4 h-4" />;
             default: return <Info className="w-4 h-4" />;
         }
