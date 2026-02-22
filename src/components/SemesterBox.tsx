@@ -446,7 +446,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
 
                                 {/* Desktop */}
                                 {canHover && showWarnings && (
-                                    <div className="absolute top-full mt-2 right-0 z-50 w-72 bg-white border-2 border-red-300 rounded-md shadow-lg p-3 max-h-96 overflow-y-auto">
+                                    <div className="absolute top-full mt-2 right-0 z-50 w-72 bg-white border-2 border-red-300 rounded-md shadow-lg p-3 max-h-[calc(100vh-6rem)] overflow-y-auto">
                                         {prerequisiteCollisions && (
                                             <>
                                                 <div className="font-semibold mb-2 flex items-center gap-2 text-orange-900">
@@ -539,7 +539,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                             className="fixed inset-0 bg-black bg-opacity-30 z-[9998]"
                                             onClick={() => setShowWarnings(false)}
                                         />
-                                        <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-white text-black rounded-t-2xl p-4 shadow-2xl border-t-2 border-red-300 max-h-[80vh] overflow-y-auto">
+                                        <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-white text-black rounded-t-2xl p-4 shadow-2xl border-t-2 border-red-300 max-h-[calc(100vh-3rem)] overflow-y-auto">
                                             {prerequisiteCollisions && (
                                                 <>
                                                     <div className="font-semibold mb-3 flex items-center gap-2 text-orange-900">

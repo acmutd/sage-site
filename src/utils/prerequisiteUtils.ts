@@ -1,65 +1,103 @@
-export const normalizeCourseCode = (value: unknown): string =>
+const normalizeRawToken = (value: unknown): string =>
   String(value || "")
+    .toUpperCase()
     .trim()
-    .replace(/\s+/g, " ")
-    .toUpperCase();
+    .replace(/\s*\/\s*/g, "/")
+    .replace(/\s+/g, " ");
 
-const stripGradeRequirement = (token: string): string => {
-  return token.split("|")[0].trim();
-};
+export const normalizeCourseCode = (value: unknown): string => {
+  const normalized = normalizeRawToken(value);
+  if (!normalized) return "";
 
-const expandCourseToken = (token: string): string[] => {
-  const withoutGrade = normalizeCourseCode(stripGradeRequirement(token));
-  if (!withoutGrade) return [];
-
-  // Handles "CS 3345", "CS/SE 3345", and slash+grade variants (grade removed above).
-  const match = withoutGrade.match(/^([A-Z]+(?:\/[A-Z]+)*)\s+([0-9][A-Z0-9]*)$/);
-  if (!match) return [withoutGrade];
-
-  const subjects = match[1]
-    .split("/")
-    .map((subject) => subject.trim())
-    .filter(Boolean);
-  const number = match[2].trim();
-
-  if (subjects.length === 0) return [withoutGrade];
-  return subjects.map((subject) => normalizeCourseCode(`${subject} ${number}`));
-};
-
-const unique = (values: string[]): string[] => [...new Set(values)];
-
-const normalizeGroupItem = (item: unknown): string[] => {
-  if (Array.isArray(item)) {
-    return unique(
-      item
-        .flatMap((value) => expandCourseToken(String(value || "")))
-        .filter(Boolean)
-    );
+  // Canonicalize "CS1337" -> "CS 1337", "CS 1337" -> "CS 1337".
+  const subjectNumberMatch = normalized.match(/^([A-Z]+)\s*([0-9][A-Z0-9]*)$/);
+  if (subjectNumberMatch) {
+    return `${subjectNumberMatch[1]} ${subjectNumberMatch[2]}`;
   }
 
-  return unique(expandCourseToken(String(item || "")).filter(Boolean));
+  // Keep slash-subject tokens canonicalized as "CE/CS 1337".
+  const slashSubjectMatch = normalized.match(
+    /^([A-Z]+(?:\/[A-Z]+)+)\s*([0-9][A-Z0-9]*)$/
+  );
+  if (slashSubjectMatch) {
+    return `${slashSubjectMatch[1]} ${slashSubjectMatch[2]}`;
+  }
+
+  return normalized;
+};
+
+const unique = (values: string[]): string[] => [...new Set(values.filter(Boolean))];
+
+const splitPrerequisites = (prereqToken: string): string[] => {
+  const normalizedToken = normalizeRawToken(prereqToken);
+  if (!normalizedToken) return [];
+
+  const [courseToken] = normalizedToken.split("|");
+  const normalizedCourseToken = normalizeRawToken(courseToken);
+
+  // Mimics evaluator behavior:
+  // if token contains slash subject form (e.g. CE/CS 1337),
+  // expand to OR alternatives (CE 1337, CS 1337).
+  if (!normalizedCourseToken.includes("/")) {
+    return [normalizeCourseCode(normalizedCourseToken)];
+  }
+
+  const prereqArray = normalizedCourseToken.split(" ");
+  if (prereqArray.length < 2) {
+    return [normalizeCourseCode(normalizedCourseToken)];
+  }
+
+  const subjectSegment = prereqArray[0];
+  const numberSegment = prereqArray[1];
+
+  return subjectSegment
+    .split("/")
+    .map((prefix) => normalizeCourseCode(`${prefix} ${numberSegment}`))
+    .filter(Boolean);
 };
 
 export const parsePrerequisiteGroups = (value: unknown): string[][] => {
   if (!value) return [];
 
-  // Top-level list = AND groups. Nested list item = OR alternatives within that group.
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => normalizeGroupItem(item))
-      .filter((group) => group.length > 0);
-  }
+  const res: string[][] = [];
 
-  // Backward compatibility for object shape: treat keys as AND requirements.
-  if (typeof value === "object") {
-    return Object.keys(value as Record<string, unknown>)
-      .map((token) => unique(expandCourseToken(token)))
-      .filter((group) => group.length > 0);
-  }
-
+  // Top-level list = AND. Nested list items = OR within that group.
   if (typeof value === "string") {
-    const group = unique(expandCourseToken(value));
+    const group = unique(splitPrerequisites(value));
     return group.length > 0 ? [group] : [];
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => {
+      if (typeof item === "string") {
+        const group = unique(splitPrerequisites(item));
+        if (group.length > 0) res.push(group);
+        return;
+      }
+
+      if (Array.isArray(item)) {
+        const temp: string[] = [];
+        item.forEach((subItem) => {
+          if (typeof subItem === "string") {
+            temp.push(...splitPrerequisites(subItem));
+          }
+        });
+        const group = unique(temp);
+        if (group.length > 0) res.push(group);
+      }
+    });
+
+    return res;
+  }
+
+  // Backward compatibility for dict format.
+  if (typeof value === "object") {
+    Object.keys(value as Record<string, unknown>).forEach((token) => {
+      const group = unique(splitPrerequisites(token));
+      if (group.length > 0) res.push(group);
+    });
+
+    return res;
   }
 
   return [];
@@ -90,10 +128,11 @@ export const getMissingPrerequisiteGroups = (
   prerequisiteGroups: string[][],
   satisfiedCourseCodes: Set<string>
 ): string[][] => {
+  const normalizedSatisfied = new Set(
+    [...satisfiedCourseCodes].map((code) => normalizeCourseCode(code)).filter(Boolean)
+  );
+
   return prerequisiteGroups.filter(
-    (group) =>
-      !group.some((courseCode) =>
-        satisfiedCourseCodes.has(normalizeCourseCode(courseCode))
-      )
+    (group) => !group.some((courseCode) => normalizedSatisfied.has(normalizeCourseCode(courseCode)))
   );
 };
