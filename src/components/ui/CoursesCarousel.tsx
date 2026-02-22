@@ -212,6 +212,8 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 details: prerequisiteWarnings
                             }] : [])
                         ];
+                        const displayedWarnings =
+                            isPlaced || warnings.length === 0 ? null : warnings;
                         
                         return (
                             <CourseBox
@@ -228,7 +230,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 isSuggested={true}
                                 inSidebar={true}
                                 isPlaced={isPlaced}
-                                warnings={warnings.length > 0 ? warnings : null}
+                                warnings={displayedWarnings}
                                 onAdd={() => handleAddClick({...course, course_code: courseCode, code: courseCode})}
                             />
                         );
