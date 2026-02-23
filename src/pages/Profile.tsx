@@ -110,27 +110,25 @@ const Profile = () => {
 
     async function pickProfile(picNumber: number) {
         const token = await user?.getIdToken();
-
-        const newType = profilePictureType === picNumber ? 0 : picNumber; // if going for Google tile, switch to 0 or we do 1-6
-
-        await fetch(CRUD_API as string,
-            { 
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify
-                (
-                    {
-                        userId: user?.uid,
-                        action: "updateProfile",
-                        token,
-                        profile_picture_type: newType
-                    }
-                )
-            }
-        );
-
+    
+        const currentType = parseInt(localStorage.getItem('profilePictureType') ?? '1');
+        const newType = currentType === picNumber ? (googlePhotoURL ? 0 : 1) : picNumber;
+        
+        const res = await fetch(CRUD_API as string, { 
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                userId: user?.uid,
+                action: "updateProfile",
+                token,
+                profile_picture_type: newType
+            })
+        });
+        const result = await res.json();
+        console.log("updateProfile response:", result);
+    
         setProfilePictureType(newType);
-        localStorage.setItem('profilePictureType', newType.toString()); // cache in regular stores if not changing PFP 
+        localStorage.setItem('profilePictureType', newType.toString());
         window.dispatchEvent(new Event('storage'));
         if (newType === 0 && googlePhotoURL) {
             setProfilePic(googlePhotoURL);
@@ -175,7 +173,7 @@ const Profile = () => {
         setGraduateHours(0);
 
         // profile pic type and URL 
-        const picType = data.profile_picture_type ?? 1;
+        const picType = data.profile?.["user-fields"]?.profile_picture_type ?? data.profile_picture_type ?? 1;
         setProfilePictureType(picType);
 
         localStorage.setItem('profilePictureType', picType.toString());
