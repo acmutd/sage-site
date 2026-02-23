@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef} from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import DegreeProgressCard from "@/components/ui/degreeprograsscard";
+import DegreeProgressCard from "@/components/ui/degreeprogresscard";
 import { useAuth } from "../context/AuthContext";
 
 const Profile = () => {
@@ -62,7 +62,7 @@ const Profile = () => {
     
     const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
-    const cardsPerView = 2; // Number of cards visible at once
+    const cardsPerView = mobileView ? 1 : 2; // Number of cards visible at once
     const maxIndex = carouselData.length - cardsPerView;
 
     const goToPrevious = () => {
@@ -110,27 +110,25 @@ const Profile = () => {
 
     async function pickProfile(picNumber: number) {
         const token = await user?.getIdToken();
-
-        const newType = profilePictureType === picNumber ? 0 : picNumber; // if going for Google tile, switch to 0 or we do 1-6
-
-        await fetch(CRUD_API as string,
-            { 
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify
-                (
-                    {
-                        userId: user?.uid,
-                        action: "updateProfile",
-                        token,
-                        profile_picture_type: newType
-                    }
-                )
-            }
-        );
-
+    
+        const currentType = parseInt(localStorage.getItem('profilePictureType') ?? '1');
+        const newType = currentType === picNumber ? (googlePhotoURL ? 0 : 1) : picNumber;
+        
+        const res = await fetch(CRUD_API as string, { 
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                userId: user?.uid,
+                action: "updateProfile",
+                token,
+                profile_picture_type: newType
+            })
+        });
+        const result = await res.json();
+        console.log("updateProfile response:", result);
+    
         setProfilePictureType(newType);
-        localStorage.setItem('profilePictureType', newType.toString()); // cache in regular stores if not changing PFP 
+        localStorage.setItem('profilePictureType', newType.toString());
         window.dispatchEvent(new Event('storage'));
         if (newType === 0 && googlePhotoURL) {
             setProfilePic(googlePhotoURL);
@@ -175,7 +173,7 @@ const Profile = () => {
         setGraduateHours(0);
 
         // profile pic type and URL 
-        const picType = data.profile_picture_type ?? 1;
+        const picType = data.profile?.["user-fields"]?.profile_picture_type ?? data.profile_picture_type ?? 1;
         setProfilePictureType(picType);
 
         localStorage.setItem('profilePictureType', picType.toString());
@@ -208,23 +206,116 @@ const Profile = () => {
     }
 
     useEffect(() => {
-        if(window.innerWidth < 768) {
-        setMobileView(true);
-        };
+        const handleResize = () => setMobileView(window.innerWidth < 768);
+        handleResize(); // set on mount
+        window.addEventListener("resize", handleResize);
         getUserInfo();
+        return () => window.removeEventListener("resize", handleResize);
     }, []);
 
     return (
         <>
             <div className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]">
                 {
-                    mobileView ? 
-                    // in mobile view
-                    <div className="text-textdark text-xl font-semibold">Mobile Profile View
-                        <div>
+                    mobileView ?
+                    // mobile view
+                    <div className="text-textdark w-full flex flex-col gap-5">
+                        {/* Profile picture left, stats right */}
+                        <div className="border border-card-bord rounded-3xl bg-innercontainer p-4 flex flex-row gap-4 items-stretch">
+                            <button onClick={() => setIsPopUpOpen(true)} className="flex-shrink-0">
+                                <img
+                                    src={profilepic}
+                                    draggable={false}
+                                    className="w-28 h-28 object-cover rounded-2xl"
+                                />
+                            </button>
+                            <div className="flex flex-col gap-2 flex-1 min-w-0">
+                                <p className="font-semibold text-lg">{name}</p>
+                                <div className="border border-card-bord bg-white rounded-xl px-3 py-2 flex flex-col">
+                                    <span className="font-semibold text-sm">{undergraduateHours} Credits</span>
+                                    <span className="text-xs text-[#6C6C6C]">Undergraduate</span>
+                                </div>
+                                <div className="border border-card-bord bg-white rounded-xl px-3 py-2 flex flex-col">
+                                    <span className="font-semibold text-sm">{graduateHours} Credits</span>
+                                    <span className="text-xs text-[#6C6C6C]">Graduate</span>
+                                </div>
+                                <div className="border border-card-bord bg-white rounded-xl px-3 py-2 flex flex-col">
+                                    <span className="font-semibold text-sm">{startDate}</span>
+                                    <span className="text-xs text-[#6C6C6C]">Enrollment Date</span>
+                                </div>
+                            </div>
                         </div>
-                    </div> 
-                    : 
+
+                        {/* Program Status with dropdown */}
+                        <div className="flex flex-row justify-between items-center">
+                            <h2 className="text-xl font-semibold">Program Status</h2>
+                            <div className="relative">
+                                <select
+                                    value={program}
+                                    onChange={e => pickProgram(e.target.value)}
+                                    className="appearance-none border border-card-bord rounded-full pl-4 pr-8 py-1.5 text-sm bg-white text-textdark cursor-pointer"
+                                >
+                                    <option value="All">All</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Complete">Complete</option>
+                                </select>
+                                <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-textdark rotate-90 pointer-events-none" />
+                            </div>
+                        </div>
+
+                        {/* Carousel - 1 card at a time on mobile */}
+                        <div className="relative w-full">
+                            {carouselData.length > 0 && (
+                                <DegreeProgressCard
+                                    title={carouselData[currentIndex].title}
+                                    core={carouselData[currentIndex].core}
+                                    major={carouselData[currentIndex].major}
+                                    elective={carouselData[currentIndex].elective}
+                                    completed={carouselData[currentIndex].completed}
+                                    total={carouselData[currentIndex].total}
+                                    percentage={carouselData[currentIndex].percentage}
+                                    active={false}
+                                />
+                            )}
+
+                            {/* Prev/Next buttons */}
+                            <div className="flex justify-between mt-3">
+                                <button
+                                    onClick={goToPrevious}
+                                    disabled={currentIndex === 0}
+                                    className="p-2 rounded-full bg-white shadow border border-gray-200 disabled:opacity-30"
+                                    aria-label="Previous"
+                                >
+                                    <ChevronLeft className="w-4 h-4 text-gray-700" />
+                                </button>
+
+                                {/* Dots */}
+                                <div className="flex items-center gap-2">
+                                    {carouselData.map((_, index) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => goToSlide(index)}
+                                            className={`h-3 rounded-full transition-all duration-300 ${
+                                                index === currentIndex ? 'bg-accent w-8' : 'bg-gray-300 w-3 hover:bg-gray-400'
+                                            }`}
+                                            aria-label={`Go to slide ${index + 1}`}
+                                        />
+                                    ))}
+                                </div>
+
+                                <button
+                                    onClick={goToNext}
+                                    disabled={currentIndex === carouselData.length - 1}
+                                    className="p-2 rounded-full bg-white shadow border border-gray-200 disabled:opacity-30"
+                                    aria-label="Next"
+                                >
+                                    <ChevronRight className="w-4 h-4 text-gray-700" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    :
+                    
                     // desktop view
                     <div className="text-textdark text-xl font-semibold flex-1 w-full">
                         {/* profile picture, user stats */}
@@ -358,56 +449,58 @@ const Profile = () => {
                             </div>
                         </div>
 
-                        {
-                            isPopUpOpen && (
-                                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setIsPopUpOpen(false)}>
-                                    <div className="bg-white rounded-2xl p-10 shadow-lg relative items-center text-center space-y-10">
-                                        <h2>Pick Your Favorite Peechi</h2>
-                                        
-                                        <div className="flex flex-row space-x-10">
-                                            {[1, 2, 3].map(num => (
-                                                <button key={num} className="hover:scale-105 transition-transform" 
-                                                        onClick={() => pickProfile(num)}>
-                                                    {profilePictureType === num && googlePhotoURL ? (
-                                                        <div className="relative">
-                                                            <img src={googlePhotoURL}
-                                                                className="w-40 h-40 object-cover rounded-3xl" 
-                                                                draggable={false} />
-                                                        </div>
-                                                    ) : (
-                                                        <img src={`/assets/profile_pics/${num}.png`}
-                                                            className="w-40 h-40 object-cover" 
-                                                            draggable={false} />
-                                                    )}
-                                                </button>
-                                            ))}
-                                        </div>
-            
-                                        <div className="flex flex-row space-x-10">
-                                            {[4, 5, 6].map(num => (
-                                                <button key={num} className="hover:scale-105 transition-transform" 
-                                                        onClick={() => pickProfile(num)}>
-                                                    {profilePictureType === num && googlePhotoURL ? (
-                                                        <div className="relative">
-                                                            <img src={googlePhotoURL}
-                                                                className="w-40 h-40 object-cover rounded-3xl" 
-                                                                draggable={false} />
-                                                        </div>
-                                                    ) : (
-                                                        <img src={`/assets/profile_pics/${num}.png`}
-                                                            className="w-40 h-40 object-cover" 
-                                                            draggable={false} />
-                                                    )}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            )
-                        }
                     </div>
                 }
             </div>
+
+            {/* Profile picture picker popup - shared between mobile and desktop */}
+            {
+                isPopUpOpen && (
+                    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setIsPopUpOpen(false)}>
+                        <div className="bg-white rounded-2xl p-6 sm:p-10 shadow-lg relative items-center text-center space-y-6 sm:space-y-10" onClick={e => e.stopPropagation()}>
+                            <h2>Pick Your Favorite Peechi</h2>
+                            
+                            <div className="flex flex-row space-x-4 sm:space-x-10">
+                                {[1, 2, 3].map(num => (
+                                    <button key={num} className="hover:scale-105 transition-transform" 
+                                            onClick={() => pickProfile(num)}>
+                                        {profilePictureType === num && googlePhotoURL ? (
+                                            <div className="relative">
+                                                <img referrerPolicy="no-referrer" src={googlePhotoURL}
+                                                    className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" 
+                                                    draggable={false} />
+                                            </div>
+                                        ) : (
+                                            <img src={`/assets/profile_pics/${num}.png`}
+                                                className="w-24 h-24 sm:w-40 sm:h-40 object-cover" 
+                                                draggable={false} />
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+        
+                            <div className="flex flex-row space-x-4 sm:space-x-10">
+                                {[4, 5, 6].map(num => (
+                                    <button key={num} className="hover:scale-105 transition-transform" 
+                                            onClick={() => pickProfile(num)}>
+                                        {profilePictureType === num && googlePhotoURL ? (
+                                            <div className="relative">
+                                                <img referrerPolicy="no-referrer" src={googlePhotoURL}
+                                                    className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" 
+                                                    draggable={false} />
+                                            </div>
+                                        ) : (
+                                            <img src={`/assets/profile_pics/${num}.png`}
+                                                className="w-24 h-24 sm:w-40 sm:h-40 object-cover" 
+                                                draggable={false} />
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
         </>
     );
 };

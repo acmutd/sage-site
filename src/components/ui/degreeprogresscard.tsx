@@ -32,7 +32,7 @@ const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
       `}
     >
       {/* Left side */}
-      <div className="flex flex-row w-full space-x-4">
+      <div className="flex flex-col w-full gap-4">
         <div className="flex flex-col space-y-4">
           <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
 
@@ -45,7 +45,7 @@ const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
 
         {/* {inner container} */}
 
-        <div className="flex flex-1 flex-row items-center border p-2 px-10 space-x-4 border-border bg-white rounded-md justify-center">
+        <div className="flex flex-row items-center border p-4 gap-4 border-border bg-white rounded-md justify-center">
             <div className="text-center">
               <p className="text-4xl font-semibold text-gray-900">{completed}</p>
               {/* <p className="text-gray-700 font-medium">Credit Hours</p> */}
