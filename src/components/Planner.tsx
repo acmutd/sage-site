@@ -574,6 +574,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             yearKey: string;
             semesterIndex: number;
             semesterOrder: number;
+            semesterTitle: string;
         }> = [];
 
         Object.keys(allSemesters).forEach((yearKey) => {
@@ -588,6 +589,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         yearKey,
                         semesterIndex,
                         semesterOrder,
+                        semesterTitle: semester.title,
                     });
                 });
             });

@@ -39,6 +39,7 @@ interface SemesterBoxProps {
         yearKey: string;
         semesterIndex: number;
         semesterOrder: number;
+        semesterTitle?: string;
     }>;
     currentSemesterOrder?: number;
     studentType?: 'undergrad' | 'grad';
@@ -118,6 +119,37 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         return () => hoverQuery.removeEventListener('change', handleChange);
     }, []);
 
+    const plannedSemestersByCode = new Map<string, string[]>();
+    if (allPlannedCoursesWithOrder.length > 0) {
+        allPlannedCoursesWithOrder.forEach((plannedCourse) => {
+            const plannedCode = normalizeCourseCode(plannedCourse.code);
+            if (!plannedCode) return;
+
+            const semesterTitle = String(plannedCourse.semesterTitle || "").trim();
+            if (!semesterTitle) return;
+
+            const existingTitles = plannedSemestersByCode.get(plannedCode) || [];
+            if (!existingTitles.includes(semesterTitle)) {
+                existingTitles.push(semesterTitle);
+                plannedSemestersByCode.set(plannedCode, existingTitles);
+            }
+        });
+    }
+
+    const getPreferredLocationsForCourse = (
+        requiredCourseCode: string,
+        sidebarLocation?: string
+    ): string[] => {
+        const plannedSemesterLocations =
+            plannedSemestersByCode.get(normalizeCourseCode(requiredCourseCode)) || [];
+        if (plannedSemesterLocations.length > 0) {
+            return plannedSemesterLocations;
+        }
+
+        if (sidebarLocation) return [sidebarLocation];
+        return [];
+    };
+
     const getUnmetCorequisites = (): MissingRequirementItem[] | null => {
         if (!courses || courses.length === 0) return null;
 
@@ -169,8 +201,13 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
 
                 if (!hasAnyCoreqPlanned) {
                     const locations = availableCoreqs
-                        .map(coreqCode => categoryPathMap.get(coreqCode))
-                        .filter((path): path is string => !!path);
+                        .flatMap((coreqCode) =>
+                            getPreferredLocationsForCourse(
+                                coreqCode,
+                                categoryPathMap.get(coreqCode)
+                            )
+                        )
+                        .filter(Boolean);
                     
                     const uniqueLocations = [...new Set(locations)];
                     
@@ -273,9 +310,14 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                 const collisionLabels = collisionGroups.map((group) => group.join(" or "));
                 const collisionLocations = collisionGroups
                     .flatMap((group) =>
-                        group.map((prereqCode) => categoryPathMap.get(prereqCode))
+                        group.flatMap((prereqCode) =>
+                            getPreferredLocationsForCourse(
+                                prereqCode,
+                                categoryPathMap.get(prereqCode)
+                            )
+                        )
                     )
-                    .filter((path): path is string => !!path);
+                    .filter(Boolean);
 
                 collisionPrereqs.push({
                     course: course.course_code || courseCode,
@@ -288,9 +330,14 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                 const unmetLabels = unmetGroups.map((group) => group.join(" or "));
                 const unmetLocations = unmetGroups
                     .flatMap((group) =>
-                        group.map((prereqCode) => categoryPathMap.get(prereqCode))
+                        group.flatMap((prereqCode) =>
+                            getPreferredLocationsForCourse(
+                                prereqCode,
+                                categoryPathMap.get(prereqCode)
+                            )
+                        )
                     )
-                    .filter((path): path is string => !!path);
+                    .filter(Boolean);
 
                 unmetPrereqs.push({
                     course: course.course_code || courseCode,
@@ -348,7 +395,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     unmetPrerequisites?.forEach((item) => {
         const details = [`Missing prerequisite(s): ${item.missing.join(", ")}`];
         if (item.locations.length > 0) {
-            details.push(`Find in sidebar: ${item.locations.join(" / ")}`);
+            details.push(`Location: ${item.locations.join(" / ")}`);
         }
         addCourseWarning(item.course, {
             type: "prerequisite",
@@ -361,7 +408,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     unmetCorequisites?.forEach((item) => {
         const details = [`Needs: ${item.missing.join(" or ")}`];
         if (item.locations.length > 0) {
-            details.push(`Find in sidebar: ${item.locations.join(" / ")}`);
+            details.push(`Location: ${item.locations.join(" / ")}`);
         }
         addCourseWarning(item.course, {
             type: "corequisite",
