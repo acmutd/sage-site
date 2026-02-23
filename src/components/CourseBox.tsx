@@ -167,8 +167,15 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         return <TriangleAlert className="w-4 h-4 text-orange-600" />;
     };
 
+    const hasPrerequisiteWarning = !!warnings?.some(
+        (warning) => warning.type === 'prerequisite'
+    );
+
     const shouldReplaceSidebarInfoIcon =
-        inSidebar && canHover && icon === 'info' && !!warnings?.length;
+        inSidebar && canHover && icon === 'info' && hasPrerequisiteWarning;
+
+    const shouldShowWarningIcon =
+        inSidebar ? hasPrerequisiteWarning : !!warnings?.length;
 
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
         if (inSidebar && canHover) {
@@ -294,7 +301,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         {shouldReplaceSidebarInfoIcon
                             ? getWarningIndicatorIcon()
                             : canHover && getIcon()}
-                        {!shouldReplaceSidebarInfoIcon && getWarningIndicatorIcon()}
+                        {!shouldReplaceSidebarInfoIcon && shouldShowWarningIcon && getWarningIndicatorIcon()}
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md">
                                 Suggested
