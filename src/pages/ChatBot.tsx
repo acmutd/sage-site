@@ -550,8 +550,6 @@ const ChatBot: React.FC = () => {
       className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]"
       onClick={handleOutsideClick}
     >
-
-      // note: help button not doing anything because i have a new system otw so dw about it
       <button onClick={() => {}} className="fixed bottom-4 right-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
         <HelpCircle size={18} className="text-white" />
       </button>

@@ -468,7 +468,7 @@ const Profile = () => {
                                             onClick={() => pickProfile(num)}>
                                         {profilePictureType === num && googlePhotoURL ? (
                                             <div className="relative">
-                                                <img src={googlePhotoURL}
+                                                <img referrerPolicy="no-referrer" src={googlePhotoURL}
                                                     className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" 
                                                     draggable={false} />
                                             </div>
@@ -487,7 +487,7 @@ const Profile = () => {
                                             onClick={() => pickProfile(num)}>
                                         {profilePictureType === num && googlePhotoURL ? (
                                             <div className="relative">
-                                                <img src={googlePhotoURL}
+                                                <img referrerPolicy="no-referrer" src={googlePhotoURL}
                                                     className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" 
                                                     draggable={false} />
                                             </div>
