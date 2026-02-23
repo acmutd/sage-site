@@ -620,7 +620,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         const code = normalizeCourseCode(course.course_code || course.code);
                         if (!code) return;
 
-                        plannedCoursePlacements.push(`${code}@${yearKey}-${semesterIndex}`);
+                        plannedCoursePlacements.push(`${code}`);
                     });
                 });
             });
