@@ -445,6 +445,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         action: 'clear' | 'delete' | 'clearYear' | 'deleteYear';
     } | null>(null);
     const [isRunningQuickEvaluation, setIsRunningQuickEvaluation] = useState(false);
+    const [lastQuickEvalPlannedCoursesSignature, setLastQuickEvalPlannedCoursesSignature] =
+        useState<string | null>(null);
 
     const errorRef = useRef<HTMLDivElement>(null);
 
@@ -604,18 +606,55 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return allPlannedCoursesWithOrder.map((course) => course.code);
     }, [allPlannedCoursesWithOrder]);
 
+    const plannedCoursesSignature = useMemo(() => {
+        const plannedCoursePlacements: string[] = [];
+
+        Object.keys(allSemesters)
+            .sort()
+            .forEach((yearKey) => {
+                allSemesters[yearKey].forEach((semester, semesterIndex) => {
+                    semester.courses?.forEach((course: any) => {
+                        const status = String(course.status || "").toLowerCase();
+                        if (status !== "planned") return;
+
+                        const code = normalizeCourseCode(course.course_code || course.code);
+                        if (!code) return;
+
+                        plannedCoursePlacements.push(`${code}@${yearKey}-${semesterIndex}`);
+                    });
+                });
+            });
+
+        plannedCoursePlacements.sort();
+        return plannedCoursePlacements.join("|");
+    }, [allSemesters]);
+
     const runQuickEvaluation = async () => {
+        if (!plannedCoursesSignature) {
+            toast.info("Plan more courses from the sidebar to suggest more classes.");
+            return;
+        }
+
+        if (plannedCoursesSignature === lastQuickEvalPlannedCoursesSignature) {
+            toast.info("Plan more courses from the sidebar to suggest more classes.");
+            return;
+        }
+
         setIsRunningQuickEvaluation(true);
         try {
+            // Persist planner state before quick evaluation refreshes suggestions.
+            localStorage.setItem('planner-state', JSON.stringify(plannerData));
+
             await evaluatePlannerAndMergeSuggestions({
                 quickEvaluation: true,
                 assumeMinimumGradePass: true,
                 plannerStateOverride: plannerData,
             });
             toast.success("Suggested courses refreshed");
+            setLastQuickEvalPlannedCoursesSignature(plannedCoursesSignature);
         } catch (error) {
             console.error("Quick evaluation failed:", error);
-            toast.error("Could not refresh suggested courses");
+            toast.error("Could not save planner state or refresh suggested courses");
         } finally {
             setIsRunningQuickEvaluation(false);
         }
@@ -1064,7 +1103,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         ) : (
                             <RefreshCw size={16} />
                         )}
-                        <span>{isRunningQuickEvaluation ? "Running..." : "Quick Eval"}</span>
+                        <span>{isRunningQuickEvaluation ? "Running..." : "Suggest More Classes"}</span>
                     </button>
 
                     <button 
