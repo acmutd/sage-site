@@ -3,7 +3,7 @@ import { useDrag } from "react-dnd";
 import { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { Course } from '@/types/course';
-import { Warning, WarningType } from '@/types/warning';
+import { Warning } from '@/types/warning';
 
 interface CourseBoxProps {
     course: Course;
@@ -17,21 +17,12 @@ interface CourseBoxProps {
     inSidebar?: boolean;
     isPlaced?: boolean;
     warnings?: Warning[] | null;
+    hasWarningBorder?: boolean;
     onAdd?: () => void;
     onRemove?: () => void;
 }
 
 const WarningSection: React.FC<{ warnings: Warning[] }> = ({ warnings }) => {
-    const getWarningIcon = (type: WarningType) => {
-        switch(type) {
-            case 'corequisite': return <TriangleAlert className="w-4 h-4" />;
-            case 'prerequisite': return <TriangleAlert className="w-4 h-4" />;
-            case 'conflict': return <TriangleAlert className="w-4 h-4" />;
-            case 'credit_limit': return <AlertTriangle className="w-4 h-4" />;
-            default: return <Info className="w-4 h-4" />;
-        }
-    };
-
     const getWarningStyles = (severity: string) => {
         switch(severity) {
             case 'error': return 'bg-red-50 border-red-300 text-red-900';
@@ -40,25 +31,55 @@ const WarningSection: React.FC<{ warnings: Warning[] }> = ({ warnings }) => {
         }
     };
 
+    const getLocationBorderStyles = (severity: string) => {
+        switch(severity) {
+            case 'error': return 'border-red-200';
+            case 'warning': return 'border-orange-200';
+            default: return 'border-blue-200';
+        }
+    };
+
+    const formatLocationLabel = (loc: string) => {
+        const trimmed = loc.trim();
+        const lastPart = trimmed.split(' > ').pop() || trimmed;
+        return lastPart.includes(':') ? lastPart.split(':')[0].trim() : lastPart;
+    };
+
     return (
         <div className="space-y-2">
-            {warnings.map((warning, idx) => (
-                <div key={idx} className={`mt-2 pt-2 border-t -mx-3 px-3 pb-2 ${getWarningStyles(warning.severity)}`}>
-                    <div className="flex items-start gap-2">
-                        {getWarningIcon(warning.type)}
+            {warnings.map((warning, idx) => {
+                const details = warning.details || [];
+                const locationDetail = details.find((detail) => detail.startsWith("Location:"));
+                const nonLocationDetails = details.filter((detail) => !detail.startsWith("Location:"));
+                const locationValue = locationDetail?.replace(/^Location:\s*/, "");
+                const formattedLocations = locationValue
+                    ? locationValue
+                        .split('/')
+                        .map((loc) => formatLocationLabel(loc))
+                        .filter(Boolean)
+                        .join(' / ')
+                    : "";
+
+                return (
+                    <div key={idx} className={`mt-2 pt-2 border-t -mx-3 px-3 pb-2 ${getWarningStyles(warning.severity)}`}>
                         <div>
                             <p className="font-semibold mb-1">{warning.message}</p>
-                            {warning.details && warning.details.length > 0 && (
+                            {nonLocationDetails.length > 0 && (
                                 <ul className="list-disc ml-4 mt-1">
-                                    {warning.details.map((detail, i) => (
+                                    {nonLocationDetails.map((detail, i) => (
                                         <li key={i}>{detail}</li>
                                     ))}
                                 </ul>
                             )}
+                            {formattedLocations && (
+                                <div className={`text-xs mt-1 pt-1 border-t ${getLocationBorderStyles(warning.severity)}`}>
+                                    Location: {formattedLocations}
+                                </div>
+                            )}
                         </div>
                     </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 };
@@ -76,6 +97,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     inSidebar = false,
     isPlaced = false,
     warnings = null,
+    hasWarningBorder = false,
     onAdd,
     onRemove
 }) => {
@@ -139,6 +161,9 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         }
         if (isSuggested) {
             return 'border-yellow-300 bg-yellow-50';
+        }
+        if (hasWarningBorder) {
+            return 'border-red-500 bg-white';
         }
         switch (status) {
             case 'completed':

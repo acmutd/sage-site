@@ -383,7 +383,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     };
 
     prerequisiteCollisions?.forEach((item) => {
-        const details = [`Same semester prerequisite(s): ${item.missing.join(", ")}`];
+        const details = [`Same semester as prerequisite: ${item.missing.join(", ")}`];
         addCourseWarning(item.course, {
             type: "conflict",
             severity: "warning",
@@ -734,24 +734,30 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                 </div>
             ) : (
                 <div className="space-y-2">
-                    {courses.map((course, idx) => (
-                        <CourseBox
-                            key={course.id || `${course.course_code || 'unknown'}-${idx}`}
-                            course={course}
-                            sourceYear={yearKey}
-                            sourceSemesterIndex={semesterIndex}
-                            isFromTranscript={isFromTranscript}
-                            isLocked={locked}
-                            status={course.status as "default" | "completed" | "warning" | "info" | undefined}
-                            icon={course.icon as "check" | "warning" | "info" | null | undefined}
-                            warnings={
-                                course.status === "planned"
-                                    ? null
-                                    : courseWarningsByCode.get(normalizeCourseCode(course.course_code)) || null
-                            }
-                            onRemove={() => handleRemoveCourse(course.id || '')}
-                        />
-                    ))}
+                    {courses.map((course, idx) => {
+                        const normalizedCourseCode = normalizeCourseCode(course.course_code);
+                        const courseWarnings =
+                            courseWarningsByCode.get(normalizedCourseCode) || [];
+                        const isPlannedCourse =
+                            String(course.status || "").toLowerCase() === "planned";
+                        const hasWarningBorder = isPlannedCourse && courseWarnings.length > 0;
+
+                        return (
+                            <CourseBox
+                                key={course.id || `${course.course_code || 'unknown'}-${idx}`}
+                                course={course}
+                                sourceYear={yearKey}
+                                sourceSemesterIndex={semesterIndex}
+                                isFromTranscript={isFromTranscript}
+                                isLocked={locked}
+                                status={course.status as "default" | "completed" | "warning" | "info" | undefined}
+                                icon={course.icon as "check" | "warning" | "info" | null | undefined}
+                                warnings={courseWarnings.length > 0 ? courseWarnings : null}
+                                hasWarningBorder={hasWarningBorder}
+                                onRemove={() => handleRemoveCourse(course.id || '')}
+                            />
+                        );
+                    })}
                 </div>
             )}
             {showRemoveModal && (
