@@ -393,7 +393,10 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     });
 
     unmetPrerequisites?.forEach((item) => {
-        const details = [`Missing prerequisite(s): ${item.missing.join(", ")}`];
+        const details = item.missing.map(
+            (missingPrerequisite) =>
+                `${missingPrerequisite} must be taken before ${item.course}`
+        );
         if (item.locations.length > 0) {
             details.push(`Location: ${item.locations.join(" / ")}`);
         }
@@ -520,7 +523,11 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                                     {unmetPrerequisites.map((item, idx) => (
                                                         <div key={idx} className="p-2 rounded border border-orange-200 bg-orange-50">
                                                             <div className="font-medium text-xs mb-1">{item.course}</div>
-                                                            <div className="text-xs">Missing: {item.missing.join(", ")}</div>
+                                                            <div className="text-xs">
+                                                                {item.missing
+                                                                    .map((missingPrerequisite) => `${missingPrerequisite} must be taken before ${item.course}`)
+                                                                    .join(" AND ")}
+                                                            </div>
                                                             {item.locations?.length > 0 && (
                                                                 <div className="text-xs mt-1 pt-1 border-t border-orange-200">
                                                                     📍 {item.locations.map((loc: string) => {
@@ -613,7 +620,11 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                                         {unmetPrerequisites.map((item, idx) => (
                                                             <div key={idx} className="p-3 rounded border border-orange-200 bg-orange-50">
                                                                 <div className="font-medium text-sm mb-1">{item.course}</div>
-                                                                <div className="text-sm">Missing: {item.missing.join(", ")}</div>
+                                                                <div className="text-sm">
+                                                                    {item.missing
+                                                                        .map((missingPrerequisite) => `${missingPrerequisite} must be taken before ${item.course}`)
+                                                                        .join(" AND ")}
+                                                                </div>
                                                                 {item.locations?.length > 0 && (
                                                                     <div className="text-sm mt-2 pt-2 border-t border-orange-200">
                                                                         📍 {item.locations.map((loc: string) => {

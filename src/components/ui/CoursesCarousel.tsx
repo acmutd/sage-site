@@ -97,6 +97,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
         if (prerequisiteGroups.length === 0) return null;
 
         const normalizedCourseCode = normalizeCourseCode(course.code || course.course_code);
+        const displayCourseCode = course.code || course.course_code || normalizedCourseCode;
         const plannedCourseOrderByCode = new Map<string, number>();
 
         allPlannedCoursesWithOrder.forEach((plannedCourse) => {
@@ -134,7 +135,9 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
         );
 
         if (missingGroups.length === 0) return null;
-        return missingGroups.map((group) => group.join(' or '));
+        return missingGroups.map(
+            (group) => `${group.join(' or ')} must be taken before ${displayCourseCode}`
+        );
     };
 
     const totalPages = Math.ceil(courses.length / COURSES_PER_PAGE);
