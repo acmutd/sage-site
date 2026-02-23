@@ -3,8 +3,14 @@ import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import Sidebar from "./Sidebar";
 import SemesterBox from "./SemesterBox";
-import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2} from "lucide-react";
+import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2, ChevronDown, Settings, Pencil, Plus, Copy, Trash2 } from "lucide-react";
 import PlannerNavbar from "./PlannerNavbar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 import { Toaster, toast } from "sonner";
 import { calculateCatalogYear, determineStudentType } from "@/utils/studentInfo";
 import YearDivider from "./planner/YearDivider";
@@ -442,6 +448,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         isLastSemester?: boolean;
         action: 'clear' | 'delete' | 'clearYear' | 'deleteYear';
     } | null>(null);
+    const [showRenameModal, setShowRenameModal] = useState(false);
+    const [showPlanDeleteModal, setShowPlanDeleteModal] = useState(false);
+    const [newPlanName, setNewPlanName] = useState("");
 
     const errorRef = useRef<HTMLDivElement>(null);
 
@@ -936,38 +945,34 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 onRestartOnboarding={onRestartOnboarding}
                 availableSemesters={availableSemesters}
                 onAddCourse={handleDropCourse}
-                plans={plannerData.plans.map(p => ({ id: p.id, name: p.name }))}
-                activePlanId={plannerData.activePlanId}
-                onSwitchPlan={handleSwitchPlan}
-                onNewPlan={handleNewPlan}
-                onDuplicatePlan={handleDuplicatePlan}
-                onDeletePlan={handleDeletePlan}
-                onRenamePlan={handleRenamePlan}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
                 {/* Save button */}
                 <button 
                     onClick={handleSave}
                     disabled={!hasUnsavedChanges || isLoading}
-                    className={`fixed bottom-4 right-24 px-4 py-2 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
+                    className={`fixed bottom-4 right-28 px-6 py-3 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
                         hasUnsavedChanges
-                            ? 'hover:-translate-y-0.5 motion-safe:animate-pulse'
+                            ? 'hover:-translate-y-0.5'
                             : 'cursor-default'
-                    } text-white font-medium text-sm`}
+                    } text-white font-medium text-base`}
                 >
+                    {hasUnsavedChanges && (
+                        <div className="absolute -top-0 -right-3 w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
+                    )}
                     {isLoading ? (
                         <>
-                            <Loader2 size={18} className="animate-spin" />
+                            <Loader2 size={20} className="animate-spin" />
                             <span>Saving...</span>
                         </>
                     ) : hasUnsavedChanges ? (
                         <>
-                            <Save size={18} />
+                            <Save size={20} />
                             <span>Save</span>
                         </>
                     ) : (
                         <>
-                            <Check size={18} />
+                            <Check size={20} />
                             <span>Saved</span>
                         </>
                     )}
@@ -976,7 +981,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     <HelpCircle size={18} className="text-white" />
                 </button>   
 
-                <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex flex-col gap-4 hidden md:flex p-6">
+                <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex-col gap-4 hidden md:flex">
                     <Sidebar
                         requirements={adaptedRequirements}
                         expandedCategories={expandedCategories}
@@ -1011,6 +1016,73 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 </div>
 
                 <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
+                    {/* Plan Selector */}
+                    <div className="mb-6 flex items-center gap-3">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger className="flex items-center gap-3 px-5 py-3 border-2 border-green-400 rounded-2xl text-base bg-white hover:bg-gray-50 shadow-sm font-medium">
+                                <span>{activePlan?.name || 'Select Plan'}</span>
+                                <ChevronDown size={18} />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="bg-bglight rounded-2xl">
+                                {plannerData.plans.map(plan => (
+                                    <DropdownMenuItem 
+                                        key={plan.id}
+                                        onClick={() => handleSwitchPlan(plan.id)}
+                                        className="focus:bg-innercontainer cursor-pointer"
+                                    >
+                                        {plan.name}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        
+                        <DropdownMenu>
+                            <DropdownMenuTrigger className="p-2.5 hover:bg-gray-100 rounded-lg transition-colors">
+                                <Settings size={20} className="text-gray-600" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="bg-white rounded-lg shadow-lg p-3" align="end" side="right" sideOffset={10} alignOffset={-150}>
+                                <DropdownMenuItem 
+                                    onClick={() => {
+                                        setNewPlanName(activePlan?.name || '');
+                                        setShowRenameModal(true);
+                                    }}
+                                    className="focus:bg-gray-100 cursor-pointer flex items-center gap-3 px-5 py-3"
+                                >
+                                    <Pencil size={16} />
+                                    <span>Rename plan</span>
+                                </DropdownMenuItem>
+                                
+                                <DropdownMenuItem 
+                                    onClick={handleNewPlan}
+                                    className="focus:bg-gray-100 cursor-pointer flex items-center gap-3 px-5 py-3"
+                                >
+                                    <Plus size={16} />
+                                    <span>Create new plan</span>
+                                </DropdownMenuItem>
+                                
+                                <DropdownMenuItem 
+                                    onClick={handleDuplicatePlan}
+                                    className="focus:bg-gray-100 cursor-pointer flex items-center gap-3 px-5 py-3"
+                                >
+                                    <Copy size={16} />
+                                    <span>Duplicate plan</span>
+                                </DropdownMenuItem>
+                                
+                                <DropdownMenuItem 
+                                    onClick={() => {
+                                        if (plannerData.plans.length === 1) return;
+                                        setShowPlanDeleteModal(true);
+                                    }}
+                                    disabled={plannerData.plans.length === 1}
+                                    className="focus:bg-red-50 cursor-pointer flex items-center gap-3 px-5 py-3 text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Trash2 size={16} />
+                                    <span>Delete plan</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+
                     {error && (
                         <div
                             ref={errorRef}
@@ -1095,6 +1167,88 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 <PlusCircle className="w-4 h-4" />
                                 <span>Add Another Year</span>
                             </button>
+                        </div>
+                    )}
+
+                    {/* Rename Plan Modal */}
+                    {showRenameModal && (
+                        <div 
+                            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
+                            onClick={() => setShowRenameModal(false)}
+                        >
+                            <div 
+                                className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <h3 className="font-semibold mb-3 text-lg">Rename Plan</h3>
+                                <input
+                                    type="text"
+                                    value={newPlanName}
+                                    onChange={(e) => setNewPlanName(e.target.value)}
+                                    className="border px-3 py-2 rounded w-full mb-4"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleRenamePlan(newPlanName);
+                                            setShowRenameModal(false);
+                                        }
+                                    }}
+                                />
+                                <div className="flex gap-2 justify-end">
+                                    <button 
+                                        onClick={() => setShowRenameModal(false)}
+                                        className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            handleRenamePlan(newPlanName);
+                                            setShowRenameModal(false);
+                                        }}
+                                        className="px-4 py-2 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                                    >
+                                        Save
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Delete Plan Modal */}
+                    {showPlanDeleteModal && (
+                        <div 
+                            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
+                            onClick={() => setShowPlanDeleteModal(false)}
+                        >
+                            <div 
+                                className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <h3 className="font-semibold mb-3 text-lg text-gray-800">
+                                    Delete {activePlan?.name}?
+                                </h3>
+                                <p className="text-sm text-gray-600 mb-6">
+                                    This plan and all its courses will be permanently deleted. This action cannot be undone.
+                                </p>
+                                <div className="flex gap-2 justify-end">
+                                    <button 
+                                        onClick={() => setShowPlanDeleteModal(false)}
+                                        className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            handleDeletePlan();
+                                            setShowPlanDeleteModal(false);
+                                        }}
+                                        className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
 
