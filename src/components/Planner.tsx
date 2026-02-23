@@ -3,7 +3,7 @@ import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import Sidebar from "./Sidebar";
 import SemesterBox from "./SemesterBox";
-import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2} from "lucide-react";
+import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2, RefreshCw } from "lucide-react";
 import PlannerNavbar from "./PlannerNavbar";
 import { Toaster, toast } from "sonner";
 import { calculateCatalogYear, determineStudentType } from "@/utils/studentInfo";
@@ -11,6 +11,7 @@ import YearDivider from "./planner/YearDivider";
 import { useAuth } from "@/context/AuthContext";
 import Cookies from "js-cookie";
 import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
+import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
 
 interface PlannerProps {
     semesters: {
@@ -443,6 +444,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         isLastSemester?: boolean;
         action: 'clear' | 'delete' | 'clearYear' | 'deleteYear';
     } | null>(null);
+    const [isRunningQuickEvaluation, setIsRunningQuickEvaluation] = useState(false);
 
     const errorRef = useRef<HTMLDivElement>(null);
 
@@ -601,6 +603,23 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const allPlannedCourseCodes = useMemo(() => {
         return allPlannedCoursesWithOrder.map((course) => course.code);
     }, [allPlannedCoursesWithOrder]);
+
+    const runQuickEvaluation = async () => {
+        setIsRunningQuickEvaluation(true);
+        try {
+            await evaluatePlannerAndMergeSuggestions({
+                quickEvaluation: true,
+                assumeMinimumGradePass: true,
+                plannerStateOverride: plannerData,
+            });
+            toast.success("Suggested courses refreshed");
+        } catch (error) {
+            console.error("Quick evaluation failed:", error);
+            toast.error("Could not refresh suggested courses");
+        } finally {
+            setIsRunningQuickEvaluation(false);
+        }
+    };
 
     const handleDropCourse = (
         targetYear: string,
@@ -1028,33 +1047,53 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 onRenamePlan={handleRenamePlan}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
-                {/* Save button */}
-                <button 
-                    onClick={handleSave}
-                    disabled={!hasUnsavedChanges || isLoading}
-                    className={`fixed bottom-4 right-24 px-4 py-2 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
-                        hasUnsavedChanges
-                            ? 'hover:-translate-y-0.5 motion-safe:animate-pulse'
-                            : 'cursor-default'
-                    } text-white font-medium text-sm`}
-                >
-                    {isLoading ? (
-                        <>
-                            <Loader2 size={18} className="animate-spin" />
-                            <span>Saving...</span>
-                        </>
-                    ) : hasUnsavedChanges ? (
-                        <>
-                            <Save size={18} />
-                            <span>Save</span>
-                        </>
-                    ) : (
-                        <>
-                            <Check size={18} />
-                            <span>Saved</span>
-                        </>
-                    )}
-                </button>
+                {/* Action buttons */}
+                <div className="fixed bottom-4 right-24 flex items-center gap-2 z-50">
+                    <button
+                        onClick={runQuickEvaluation}
+                        disabled={isRunningQuickEvaluation || isLoading}
+                        className={`px-4 py-2 rounded-full bg-white border border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-gray-700 font-medium text-sm ${
+                            isRunningQuickEvaluation || isLoading
+                                ? 'cursor-not-allowed opacity-70'
+                                : 'hover:-translate-y-0.5'
+                        }`}
+                        title="Run quick evaluation and refresh suggested courses"
+                    >
+                        {isRunningQuickEvaluation ? (
+                            <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                            <RefreshCw size={16} />
+                        )}
+                        <span>{isRunningQuickEvaluation ? "Running..." : "Quick Eval"}</span>
+                    </button>
+
+                    <button 
+                        onClick={handleSave}
+                        disabled={!hasUnsavedChanges || isLoading}
+                        className={`px-4 py-2 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 ${
+                            hasUnsavedChanges
+                                ? 'hover:-translate-y-0.5 motion-safe:animate-pulse'
+                                : 'cursor-default'
+                        } text-white font-medium text-sm`}
+                    >
+                        {isLoading ? (
+                            <>
+                                <Loader2 size={18} className="animate-spin" />
+                                <span>Saving...</span>
+                            </>
+                        ) : hasUnsavedChanges ? (
+                            <>
+                                <Save size={18} />
+                                <span>Save</span>
+                            </>
+                        ) : (
+                            <>
+                                <Check size={18} />
+                                <span>Saved</span>
+                            </>
+                        )}
+                    </button>
+                </div>
                 <button data-tour="help-button" onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
                     <HelpCircle size={18} className="text-white" />
                 </button>   

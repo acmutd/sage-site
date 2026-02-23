@@ -22,6 +22,12 @@ type EvaluatePlannerSuggestionsPayload = {
   [key: string]: any;
 };
 
+type PlannerEvaluationOptions = {
+  quickEvaluation?: boolean;
+  assumeMinimumGradePass?: boolean;
+  plannerStateOverride?: any;
+};
+
 function normalizeName(name: string): string {
   return String(name || "").trim().replace(/\s+/g, " ").toUpperCase();
 }
@@ -242,10 +248,11 @@ function mergeEvaluatePlannerSuggestionsIntoLocalEvaluation(
   return mergedRequirements;
 }
 
-async function requestPlannerEvaluation(): Promise<any> {
+async function requestPlannerEvaluation(
+  options: PlannerEvaluationOptions = {}
+): Promise<any> {
   const token = Cookies.get("authToken");
   if (!token) throw new Error("No auth token found — are you logged in?");
-
   const rawTranscript = localStorage.getItem("transcriptData");
   if (!rawTranscript)
     throw new Error("No transcript data found in localStorage");
@@ -253,7 +260,7 @@ async function requestPlannerEvaluation(): Promise<any> {
   const id = transcriptData.id;
   if (!id) throw new Error("No account ID found in transcript data");
 
-  const plannerData = getPlannerState();
+  const plannerData = options.plannerStateOverride || getPlannerState();
   const activePlan = plannerData.plans.find(
     (p: any) => p.id === plannerData.activePlanId
   );
@@ -265,10 +272,21 @@ async function requestPlannerEvaluation(): Promise<any> {
   };
   console.log("Sending active plan to evaluator...", plannedCourses);
 
+  const isQuickEvaluation = Boolean(options.quickEvaluation);
+  const assumeMinimumGradePass = Boolean(options.assumeMinimumGradePass);
+
   const response = await fetch(import.meta.env.VITE_EVALUATOR_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, plannedCourses, token }),
+    body: JSON.stringify({
+      id,
+      plannedCourses,
+      token,
+      quickEvaluation: isQuickEvaluation,
+      quick_evaluation: isQuickEvaluation,
+      assumeMinimumGradePass,
+      assume_minimum_grade: assumeMinimumGradePass,
+    }),
   });
 
   if (!response.ok) {
@@ -280,15 +298,19 @@ async function requestPlannerEvaluation(): Promise<any> {
   return data;
 }
 
-async function evaluatePlanner(): Promise<any> {
-  const data = await requestPlannerEvaluation();
+async function evaluatePlanner(
+  options: PlannerEvaluationOptions = {}
+): Promise<any> {
+  const data = await requestPlannerEvaluation(options);
   const results = data.results ?? data;
   console.log("Evaluator response:", JSON.stringify(results, null, 2));
   return results;
 }
 
-async function evaluatePlannerAndMergeSuggestions(): Promise<any[]> {
-  const plannerEvaluation = await requestPlannerEvaluation();
+async function evaluatePlannerAndMergeSuggestions(
+  options: PlannerEvaluationOptions = {}
+): Promise<any[]> {
+  const plannerEvaluation = await requestPlannerEvaluation(options);
   return mergeEvaluatePlannerSuggestionsIntoLocalEvaluation(plannerEvaluation);
 }
 
