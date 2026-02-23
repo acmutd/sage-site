@@ -73,7 +73,7 @@ const WarningSection: React.FC<{ warnings: Warning[] }> = ({ warnings }) => {
                             )}
                             {formattedLocations && (
                                 <div className={`text-xs mt-1 pt-1 border-t ${getLocationBorderStyles(warning.severity)}`}>
-                                    Location: {formattedLocations}
+                                    📍 {formattedLocations}
                                 </div>
                             )}
                         </div>
