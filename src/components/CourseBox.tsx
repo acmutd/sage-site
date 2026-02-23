@@ -186,10 +186,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
     const getWarningIndicatorIcon = () => {
         if (!warnings || warnings.length === 0) return null;
-        if (warnings.some(w => w.severity === 'error')) {
-            return <AlertTriangle className="w-4 h-4 text-red-600" />;
-        }
-        return <TriangleAlert className="w-4 h-4 text-orange-600" />;
+        return <TriangleAlert className={`w-4 h-4 ${
+            warnings?.some(w => w.severity === 'error') 
+                ? 'stroke-red-600' 
+                : 'stroke-orange-600'
+        }`} />
     };
 
     const hasPrerequisiteWarning = !!warnings?.some(
