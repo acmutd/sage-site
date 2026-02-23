@@ -232,6 +232,7 @@ const Profile = () => {
                                 />
                             </button>
                             <div className="flex flex-col gap-2 flex-1 min-w-0">
+                                <p className="font-semibold text-lg">{name}</p>
                                 <div className="border border-card-bord bg-white rounded-xl px-3 py-2 flex flex-col">
                                     <span className="font-semibold text-sm">{undergraduateHours} Credits</span>
                                     <span className="text-xs text-[#6C6C6C]">Undergraduate</span>
@@ -246,7 +247,6 @@ const Profile = () => {
                                 </div>
                             </div>
                         </div>
-                        <p className="font-semibold text-lg">{name}</p>
 
                         {/* Program Status with dropdown */}
                         <div className="flex flex-row justify-between items-center">
