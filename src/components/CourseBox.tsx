@@ -159,6 +159,17 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         return null;
     };
 
+    const getWarningIndicatorIcon = () => {
+        if (!warnings || warnings.length === 0) return null;
+        if (warnings.some(w => w.severity === 'error')) {
+            return <AlertTriangle className="w-4 h-4 text-red-600" />;
+        }
+        return <TriangleAlert className="w-4 h-4 text-orange-600" />;
+    };
+
+    const shouldReplaceSidebarInfoIcon =
+        inSidebar && canHover && icon === 'info' && !!warnings?.length;
+
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
         if (inSidebar && canHover) {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -280,16 +291,10 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        {canHover && getIcon()}
-                        {warnings && warnings.length > 0 && (
-                            <div className="flex items-center">
-                                {warnings.some(w => w.severity === 'error') ? (
-                                    <AlertTriangle className="w-4 h-4 text-red-600" />
-                                ) : (
-                                    <TriangleAlert className="w-4 h-4 text-orange-600" />
-                                )}
-                            </div>
-                        )}
+                        {shouldReplaceSidebarInfoIcon
+                            ? getWarningIndicatorIcon()
+                            : canHover && getIcon()}
+                        {!shouldReplaceSidebarInfoIcon && getWarningIndicatorIcon()}
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md">
                                 Suggested
