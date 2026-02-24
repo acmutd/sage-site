@@ -163,7 +163,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             return 'border-yellow-300 bg-yellow-50';
         }
         if (hasWarningBorder) {
-            return 'border-red-500 bg-white';
+            return 'border-red-600 bg-white';
         }
         switch (status) {
             case 'completed':
@@ -187,9 +187,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const getWarningIndicatorIcon = () => {
         if (!warnings || warnings.length === 0) return null;
         return <TriangleAlert className={`w-4 h-4 ${
-            warnings?.some(w => w.severity === 'error') 
-                ? 'stroke-red-600' 
-                : 'stroke-orange-600'
+                'stroke-red-600' 
         }`} />
     };
 
