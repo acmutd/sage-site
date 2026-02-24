@@ -402,7 +402,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     userId: user.uid,
                     action: 'savePlanner',
                     token,
-                    plannerState: plannerData,
+                    plannerData: plannerData,
                 }),
             });
 
@@ -410,19 +410,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 throw new Error('Failed to save planner');
             }
 
-            // Move local storage save here
-
-            setHasUnsavedChanges(false);
-            toast.success('Saved your plan');
-        } catch (error) {
-            toast.error('Failed to save. Try again.');
-        } finally {
             // Save to localStorage on successful cloud save
             try {
                 localStorage.setItem('planner-state', JSON.stringify(plannerData));
             } catch (error) {
                 console.error('Failed to save to localStorage:', error);
             }
+            setHasUnsavedChanges(false);
+            toast.success('Saved your plan');
+        } catch (error) {
+            toast.error('Failed to save. Try again.');
+        } finally {
             setIsLoading(false);
         }
     };
@@ -951,11 +949,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 <button 
                     onClick={handleSave}
                     disabled={!hasUnsavedChanges || isLoading}
-                    className={`fixed bottom-4 right-28 px-6 py-3 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
+                    className={`fixed bottom-4 right-24 px-6 py-3 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
                         hasUnsavedChanges
                             ? 'hover:-translate-y-0.5'
                             : 'cursor-default'
-                    } text-white font-medium text-base`}
+                    } text-white font-medium text-sm`}
                 >
                     {hasUnsavedChanges && (
                         <div className="absolute -top-0 -right-3 w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
@@ -1040,32 +1038,33 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             <DropdownMenuTrigger className="p-2.5 hover:bg-gray-100 rounded-lg transition-colors">
                                 <Settings size={20} className="text-gray-600" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="bg-white rounded-lg shadow-lg p-3" align="end" side="right" sideOffset={10} alignOffset={-150}>
+                            <DropdownMenuContent className="bg-white rounded-3xl shadow-lg p-3" align="end" side="right" sideOffset={10} alignOffset={-100}>
+                                <DropdownMenuItem 
+                                    onClick={handleNewPlan}
+                                    className="text-[#3eb369] focus:text-[#3eb369] hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-[#3eb369]"
+                                >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Create new plan
+                                </DropdownMenuItem>
+
                                 <DropdownMenuItem 
                                     onClick={() => {
                                         setNewPlanName(activePlan?.name || '');
                                         setShowRenameModal(true);
                                     }}
-                                    className="focus:bg-gray-100 cursor-pointer flex items-center gap-3 px-5 py-3"
+                                    className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100"
                                 >
-                                    <Pencil size={16} />
-                                    <span>Rename plan</span>
+                                    <Pencil className="w-4 h-4 mr-2" />
+                                    Rename plan
                                 </DropdownMenuItem>
                                 
-                                <DropdownMenuItem 
-                                    onClick={handleNewPlan}
-                                    className="focus:bg-gray-100 cursor-pointer flex items-center gap-3 px-5 py-3"
-                                >
-                                    <Plus size={16} />
-                                    <span>Create new plan</span>
-                                </DropdownMenuItem>
                                 
                                 <DropdownMenuItem 
                                     onClick={handleDuplicatePlan}
-                                    className="focus:bg-gray-100 cursor-pointer flex items-center gap-3 px-5 py-3"
+                                    className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100"
                                 >
-                                    <Copy size={16} />
-                                    <span>Duplicate plan</span>
+                                    <Copy className="w-4 h-4 mr-2" />
+                                    Duplicate plan
                                 </DropdownMenuItem>
                                 
                                 <DropdownMenuItem 
@@ -1074,10 +1073,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                         setShowPlanDeleteModal(true);
                                     }}
                                     disabled={plannerData.plans.length === 1}
-                                    className="focus:bg-red-50 cursor-pointer flex items-center gap-3 px-5 py-3 text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="text-destructive focus:text-destructive hover:bg-gray-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <Trash2 size={16} />
-                                    <span>Delete plan</span>
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete plan
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
