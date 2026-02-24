@@ -695,7 +695,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 onAddCourse={handleDropCourse}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
-                <button data-tour="help-button" onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
+                <button data-tour="help-button" aria-label="Planner Help" onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
                     <HelpCircle size={18} className="text-white" />
                 </button>
 
@@ -717,6 +717,15 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     <div
                         className={`${sidebarCollapsed ? "cursor-pointer rounded-md w-20" : "rounded-full w-80"} bg-gray-900 py-3 px-6 flex gap-2 justify-center items-center transition-all duration-300 absolute bottom-8`}
                         onClick={sidebarCollapsed ? toggleSidebar : undefined}
+                        role={sidebarCollapsed ? "button" : undefined}
+                        tabIndex={sidebarCollapsed ? 0 : undefined}
+                        aria-label={sidebarCollapsed ? "Expand sidebar" : undefined}
+                        onKeyDown={sidebarCollapsed ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggleSidebar();
+                          }
+                        } : undefined}
                     >
                         <SquareAsterisk size={32} className="stroke-green-400 flex-shrink-0" />
                         <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-textlight text-xs`}>
@@ -746,7 +755,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                         clipRule="evenodd" />
                                 </svg>
                                 <span>{error}</span>
-                                <button onClick={() => setError(null)} className="ml-auto text-red-700 hover:text-red-900">×</button>
+                                <button onClick={() => setError(null)} aria-label="Dismiss error" className="ml-auto text-red-700 hover:text-red-900">×</button>
                             </div>
                         </div>
                     )}
@@ -830,6 +839,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             onClick={() => { setShowDeleteModal(false); setSemesterToDelete(null); }}
                         >
                             <div
+                                role="dialog"
+                                aria-modal="true"
+                                aria-label="Confirm action"
                                 className="bg-white p-6 rounded-md shadow-lg w-full max-w-md"
                                 onClick={(e) => e.stopPropagation()}
                             >

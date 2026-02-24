@@ -321,12 +321,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                     {isExpanded ? (
                         <div className="p-6 pt-8">
                             <div className="flex items-center justify-between mb-6">
-                                <button data-tour="edit-plans" className="flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700" onClick={onRestartOnboarding}>
+                                <button data-tour="edit-plans" aria-label="Edit Degree Plans" className="flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700" onClick={onRestartOnboarding}>
                                     <NotebookPen size={20} strokeWidth={2} />
                                     <span>Edit plans</span>
                                 </button>
                                 <button
                                     data-tour="sidebar-toggle"
+                                    aria-label="Planner Sidebar Toggle"
                                     className="p-2 hover:bg-gray-200 rounded"
                                     onClick={handleToggleSidebar}
                                 >
@@ -367,8 +368,21 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center gap-8 pt-8 h-full cursor-pointer hover:bg-[#F5F7F5]" onClick={handleToggleSidebar}>
+                        <div 
+                            className="flex flex-col items-center gap-8 pt-8 h-full cursor-pointer hover:bg-[#F5F7F5]" 
+                            onClick={handleToggleSidebar}
+                            role="button"
+                            tabIndex={0}
+                            aria-label="Expand sidebar"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                handleToggleSidebar();
+                              }
+                            }}
+                        >    
                             <button
+                                aria-label="Expand sidebar"
                                 className="p-2 hover:bg-gray-200 rounded"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -379,6 +393,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </button>
                             <button 
                                 className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
+                                aria-label="Edit Degree Plans"
                                 onClick={onRestartOnboarding}
                             >
                                 <NotebookPen className="w-5 h-5" strokeWidth={2} />

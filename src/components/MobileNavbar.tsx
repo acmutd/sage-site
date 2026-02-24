@@ -1,5 +1,5 @@
 import { Route, Menu, MessageCirclePlus, UserRound, ArrowLeftFromLine} from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -26,7 +26,12 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
   }) => {
     const { user, logout } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+      if (sidebarOpen) closeButtonRef.current?.focus();
+    }, [sidebarOpen]);
+    
     useEffect(() => {
         if (!sidebarOpen) return;
         const onKeyDown = (e: KeyboardEvent) => e.key === "Escape" && setSidebarOpen(false);
@@ -59,7 +64,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
           )}
 
           <DropdownMenu>
-            <DropdownMenuTrigger>
+            <DropdownMenuTrigger aria-label="Open navigation menu">
               <Menu className={isInWebapp ? "stroke-textdark" : "stroke-textlight"} />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-bglight flex flex-col p-2 gap-2 mr-6 items-center rounded-sm">
@@ -108,9 +113,10 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
 
       {/* Sidebar */}
       {showSidebar && (
-        <aside
+        <div
           role="dialog"
           aria-modal="true"
+          aria-hidden={!sidebarOpen}
           className={`
             fixed left-0 top-0 h-full w-[84%] max-w-[22rem] z-40 md:hidden
             bg-bglight text-textdark border-r
@@ -123,14 +129,14 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
             <Link to="/" onClick={() => setSidebarOpen(false)}>
               <img src={isInWebapp ? "/Sage_Logo_Dark.svg" : "/Sage_Logo_Light.svg"} alt="SAGE" className="h-8 w-auto" />
             </Link>
-            <button onClick={() => setSidebarOpen(false)} aria-label="Close sidebar" className="p-2 rounded-md outline-none">
+            <button ref={closeButtonRef} onClick={() => setSidebarOpen(false)} aria-label="Close sidebar" className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent">
               <ArrowLeftFromLine />
             </button>
           </div>
 
           {/* Content */}
           {sidebarContent?.(()=> setSidebarOpen(false))}
-        </aside>
+        </div>
       )}
     </>
   );

@@ -73,7 +73,7 @@ const YearDivider: React.FC<YearDividerProps> = ({
                     }
                 }}>
                     <DropdownMenuTrigger asChild>
-                        <button data-tour="year-option" className="hover:bg-gray-100 p-1 rounded">
+                        <button data-tour="year-option" aria-label="Year options" className="hover:bg-gray-100 p-1 rounded">
                             <Menu className="w-5 h-5 text-gray-600" />
                         </button>
                     </DropdownMenuTrigger>
