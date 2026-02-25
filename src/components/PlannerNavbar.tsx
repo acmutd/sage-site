@@ -84,9 +84,12 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
         ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
       `}>
         <div className="flex items-center justify-between w-full">
-          <Link to="/" className="ml-0 flex-shrink-0">
-            <img src={isInWebapp ? "/Sage_Logo_Dark.svg" : "/Sage_Logo_Light.svg"} alt="SAGE" className="h-8 w-auto" />
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link to="/" className="ml-0 flex-shrink-0">
+              <img src={isInWebapp ? "/Sage_Logo_Dark.svg" : "/Sage_Logo_Light.svg"} alt="SAGE" className="h-8 w-auto" />
+            </Link>
+          </div>
+          
           <ul className="flex items-center space-x-6 mr-0">
             <li>
               <Link to="/planner" className={`${isInWebapp ? "text-textdark hover:text-gray-500" : "text-textlight hover:text-gray-200"} flex items-center gap-2`}>
