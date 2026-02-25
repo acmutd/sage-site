@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Toaster, toast } from "sonner";
-import { calculateCatalogYear, determineStudentType } from "@/utils/studentInfo";
+import { calculateCatalogYear, determineStudentType, isCurrentSemester } from "@/utils/studentInfo";
 import YearDivider from "./planner/YearDivider";
 import { useUISnapshot } from "@/hooks/useUISnapshot";
 import { useAuth } from "@/context/AuthContext";
@@ -57,7 +57,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
     const [driverObj, setDriverObj] = useState<any>(null);
     const dropdownWasOpenedRef = useRef(false);
-
+    
     useEffect(() => {
         const driverInstance = driver({
             showProgress: true,
@@ -1138,8 +1138,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 (sum, sem) => sum + (sem.courses?.length ?? 0), 0
                             );
 
+                            const hasCurrentSemester = allSemesters[yearKey].some(
+                                sem => isCurrentSemester(sem.title)
+                            );
+
                             return (
                                 <div key={yearKey}>
+                                    
                                     <YearDivider
                                         yearLabel={yearKey.replace("year", "Year ")}
                                         yearKey={yearKey}
@@ -1154,6 +1159,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                         onToggleCollapse={() => toggleYearCollapse(yearKey)}
                                         semesterCount={allSemesters[yearKey].length}
                                         courseCount={totalCourses}
+                                        hasCurrentSemester={hasCurrentSemester}
                                     />
 
                                     {!isYearCollapsed && (
@@ -1178,6 +1184,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                                     catalogYear={calculateCatalogYear(semester.title)}
                                                     isCollapsed={!!collapsedSemesters[`${yearKey}-${idx}`]}
                                                     onToggleCollapse={() => toggleSemesterCollapse(yearKey, idx)}
+                                                    isCurrentSemester={isCurrentSemester(semester.title)}
                                                 />
                                             ))}
                                         </div>

@@ -16,6 +16,7 @@ interface YearDividerProps {
     onToggleCollapse?: () => void;
     semesterCount?: number;
     courseCount?: number;
+    hasCurrentSemester: boolean;
 }
 
 const YearDivider: React.FC<YearDividerProps> = ({
@@ -32,6 +33,7 @@ const YearDivider: React.FC<YearDividerProps> = ({
     onToggleCollapse,
     semesterCount,
     courseCount,
+    hasCurrentSemester = false,
 }) => {
     return (
         <div className="w-full mb-4">
@@ -57,6 +59,11 @@ const YearDivider: React.FC<YearDividerProps> = ({
                                 semesterCount !== undefined && `${semesterCount} semester${semesterCount !== 1 ? 's' : ''}`,
                                 courseCount !== undefined && `${courseCount} course${courseCount !== 1 ? 's' : ''}`,
                             ].filter(Boolean).join(' · ')}
+                        </span>
+                    )}
+                    {isCollapsed && hasCurrentSemester && (
+                        <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full">
+                            Current
                         </span>
                     )}
                 </button>

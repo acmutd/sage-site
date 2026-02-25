@@ -31,6 +31,7 @@ interface SemesterBoxProps {
     studentType?: 'undergrad' | 'grad';
     catalogYear?: number;
     'data-tour'?: string;
+    isCurrentSemester?: boolean;
 }
 
 const SemesterBox: React.FC<SemesterBoxProps> = ({
@@ -50,7 +51,8 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     allSuggestedCourses = [],
     studentType = 'undergrad',
     catalogYear = 2021,
-    'data-tour': dataTour
+    'data-tour': dataTour,
+    isCurrentSemester = false,
 }) => {
     const [locked, setLocked] = useState(isLocked);
     const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -261,6 +263,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                 ${locked ? "opacity-75 bg-gray-50" : ""} 
                 ${isOver && canDrop ? "bg-blue-50" : ""}
                 ${isOver && !canDrop ? "bg-red-50 border-red-300" : ""}
+                ${isCurrentSemester ? "ring-2 ring-green-400" : ""}
             `}
             data-tour={dataTour}
         >
