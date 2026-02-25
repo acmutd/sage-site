@@ -47,52 +47,6 @@ interface PlannerData {
     activePlanId: string;
 }
 
-const replaceSemesterCourses = (
-    prev: any,
-    yearKey: string,
-    semesterIndex: number,
-    courses: any[]
-) => ({
-    ...prev,
-    [yearKey]: prev[yearKey].map((sem: any, i: number) =>
-        i === semesterIndex ? { ...sem, courses } : sem
-    ),
-});
-
-const moveCourse = (
-    prev: any,
-    sourceYear: string,
-    sourceSemIdx: number,
-    courseId: string,
-    targetYear: string,
-    targetSemIdx: number
-) => {
-    const sourceSemester = prev[sourceYear][sourceSemIdx];
-    const courseIndex = sourceSemester.courses.findIndex((c: any) => c.id === courseId);
-    if (courseIndex === -1) return prev;
-
-    const course = sourceSemester.courses[courseIndex];
-    const newSourceCourses = sourceSemester.courses.filter((_: any, i: number) => i !== courseIndex);
-
-    if (sourceYear === targetYear) {
-        // Both in same year — update that year's array in one pass
-        const newYearSemesters = prev[sourceYear].map((sem: any, i: number) => {
-            if (i === sourceSemIdx) return { ...sem, courses: newSourceCourses };
-            if (i === targetSemIdx) return { ...sem, courses: [...sem.courses, course] };
-            return sem;
-        });
-        return { ...prev, [sourceYear]: newYearSemesters };
-    }
-
-    const newSourceYear = prev[sourceYear].map((sem: any, i: number) =>
-        i === sourceSemIdx ? { ...sem, courses: newSourceCourses } : sem
-    );
-    const newTargetYear = prev[targetYear].map((sem: any, i: number) =>
-        i === targetSemIdx ? { ...sem, courses: [...sem.courses, course] } : sem
-    );
-    return { ...prev, [sourceYear]: newSourceYear, [targetYear]: newTargetYear };
-};
-
 
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
