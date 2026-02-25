@@ -270,8 +270,6 @@ async function requestPlannerEvaluation(
     placedCourses: activePlan.placedCourses,
     semesters: activePlan.semesters,
   };
-  console.log("Sending active plan to evaluator...", plannedCourses);
-
   const isQuickEvaluation = Boolean(options.quickEvaluation);
   const assumeMinimumGradePass = Boolean(options.assumeMinimumGradePass);
 
@@ -303,7 +301,6 @@ async function evaluatePlanner(
 ): Promise<any> {
   const data = await requestPlannerEvaluation(options);
   const results = data.results ?? data;
-  console.log("Evaluator response:", JSON.stringify(results, null, 2));
   return results;
 }
 
@@ -312,16 +309,6 @@ async function evaluatePlannerAndMergeSuggestions(
 ): Promise<any[]> {
   const plannerEvaluation = await requestPlannerEvaluation(options);
   return mergeEvaluatePlannerSuggestionsIntoLocalEvaluation(plannerEvaluation);
-}
-
-if (import.meta.env.DEV) {
-  (window as any).evaluatePlanner = evaluatePlanner;
-  (window as any).getPlannerState = getPlannerState;
-  (window as any).mergeEvaluatePlannerSuggestions = mergeEvaluatePlannerSuggestions;
-  (window as any).mergeEvaluatePlannerSuggestionsIntoLocalEvaluation =
-    mergeEvaluatePlannerSuggestionsIntoLocalEvaluation;
-  (window as any).evaluatePlannerAndMergeSuggestions =
-    evaluatePlannerAndMergeSuggestions;
 }
 
 export {
