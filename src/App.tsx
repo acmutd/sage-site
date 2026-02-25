@@ -62,60 +62,60 @@ const App = () => {
       <AuthProvider>
         <Router>
           <ConditionalNavbar />
-          <div className="min-h-screen">
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route 
-                path="/login" 
-                element={
-                  <PublicRoute>
-                    <LoginPage />
-                  </PublicRoute>
-                } 
-              />
-              <Route 
-                path="/signup" 
-                element={
-                  <PublicRoute>
-                    <SignupPage />
-                  </PublicRoute>
-                } 
-              />
-              <Route 
-                path="/forgot-password" 
-                element={
-                  <PublicRoute>
-                    <ForgotPasswordPage />
-                  </PublicRoute>
-                } 
-              />
-              <Route
-                path="/planner"
-                element={
-                  <ProtectedRoute>
-                    <Planner />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/chatbot"
-                element={
-                  <ProtectedRoute>
-                    <ChatBot />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
+          <main className="min-h-screen">
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route 
+                  path="/login" 
+                  element={
+                    <PublicRoute>
+                      <LoginPage />
+                    </PublicRoute>
+                  } 
+                />
+                <Route 
+                  path="/signup" 
+                  element={
+                    <PublicRoute>
+                      <SignupPage />
+                    </PublicRoute>
+                  } 
+                />
+                <Route 
+                  path="/forgot-password" 
+                  element={
+                    <PublicRoute>
+                      <ForgotPasswordPage />
+                    </PublicRoute>
+                  } 
+                />
+                <Route
+                  path="/planner"
+                  element={
+                    <ProtectedRoute>
+                      <Planner />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/chatbot"
+                  element={
+                    <ProtectedRoute>
+                      <ChatBot />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+          </main>
         </Router>
       </AuthProvider>
 

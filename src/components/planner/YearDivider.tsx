@@ -1,4 +1,5 @@
-import { Eraser, Menu, Plus, Trash2 } from 'lucide-react';
+import React from 'react';
+import { ChevronUp, Eraser, Menu, Plus, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 interface YearDividerProps {
@@ -11,6 +12,10 @@ interface YearDividerProps {
     onDeleteYear?: (yearKey: string) => void;
     driverObj?: any;
     dropdownWasOpenedRef?: React.MutableRefObject<boolean>;
+    isCollapsed?: boolean;
+    onToggleCollapse?: () => void;
+    semesterCount?: number;
+    courseCount?: number;
 }
 
 const YearDivider: React.FC<YearDividerProps> = ({
@@ -22,33 +27,58 @@ const YearDivider: React.FC<YearDividerProps> = ({
     onClearYear,
     onDeleteYear,
     driverObj,
-    dropdownWasOpenedRef
-    }) => {
+    dropdownWasOpenedRef,
+    isCollapsed = false,
+    onToggleCollapse,
+    semesterCount,
+    courseCount,
+}) => {
     return (
         <div className="w-full mb-4">
             <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold text-gray-700">
-                    {yearLabel}
-                </h2>
+                <button
+                    data-tour="year-toggle"
+                    onClick={onToggleCollapse}
+                    className="flex items-center gap-1.5 group text-left"
+                    aria-expanded={!isCollapsed}
+                    aria-label={isCollapsed ? `Expand ${yearLabel}` : `Collapse ${yearLabel}`}
+                >
+                    <ChevronUp
+                        className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
+                            isCollapsed ? "-rotate-180" : "rotate-0"
+                        }`}
+                    />
+                    <h2 className="text-lg font-semibold text-gray-700">
+                        {yearLabel}
+                    </h2>
+                    {isCollapsed && (semesterCount !== undefined || courseCount !== undefined) && (
+                        <span className="ml-1.5 text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2.5 py-0.5 flex-shrink-0">
+                            {[
+                                semesterCount !== undefined && `${semesterCount} semester${semesterCount !== 1 ? 's' : ''}`,
+                                courseCount !== undefined && `${courseCount} course${courseCount !== 1 ? 's' : ''}`,
+                            ].filter(Boolean).join(' · ')}
+                        </span>
+                    )}
+                </button>
+
                 <DropdownMenu onOpenChange={(open) => {
                     if (open) {
                         if (dropdownWasOpenedRef) {
                             dropdownWasOpenedRef.current = true;
                         }
-
-                        const currentStep = driverObj.getActiveIndex();
+                        const currentStep = driverObj?.getActiveIndex?.();
                         if (currentStep === 2) {
                             setTimeout(() => driverObj.moveNext(), 100);
                         }
                     }
                 }}>
                     <DropdownMenuTrigger asChild>
-                        <button data-tour="year-option" className="hover:bg-gray-100 p-1 rounded">
+                        <button data-tour="year-option" aria-label="Year options" className="hover:bg-gray-100 p-1 rounded">
                             <Menu className="w-5 h-5 text-gray-600" />
                         </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                    {onAddSemester && (
+                        {onAddSemester && (
                             <DropdownMenuItem 
                                 data-tour="add-semester"
                                 className="text-[#3eb369] focus:text-[#3eb369] hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-[#3eb369]"

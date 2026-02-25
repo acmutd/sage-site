@@ -279,7 +279,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     </div>
                     <div className="flex items-center gap-2">
                         {canHover && getIcon()}
-                        {warnings && warnings.length > 0 && (
+                        {!inSidebar && warnings && warnings.length > 0 && (
                             <div className="flex items-center">
                                 {warnings.some(w => w.severity === 'error') ? (
                                     <AlertTriangle className="w-4 h-4 text-red-600" />
@@ -289,12 +289,12 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                             </div>
                         )}
                         {isSuggested && !isPlaced && (
-                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md">
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
                                 Suggested
                             </span>
                         )}
                         {isPlaced && (
-                            <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-md ">
+                            <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
                                 Planned
                             </span>
                         )}
