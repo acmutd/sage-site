@@ -113,7 +113,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
             </div>
 
             <div className="flex flex-col gap-4 bg-gray-100 p-2 rounded-sm">
-                <Card className="flex items-center py-3 relative">
+                <Card className="py-3 relative overflow-hidden">
                     <CardContent className="flex items-center">
                         <div className="flex flex-col gap-4 w-full"> {/* Ensure all selects are in a column */}
                             {formFields.map((field) => (
@@ -130,7 +130,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
 
                                     <Select onValueChange={(value) => handleFieldChange(field.id, value)}
                                     >
-                                        <SelectTrigger className="w-full bg-redesign-stylesbg-light rounded-sm border border-slate-300 p-2">
+                                        <SelectTrigger className={`bg-redesign-stylesbg-light rounded-sm border border-slate-300 p-2 ${field.id === "title" ? "w-full" : "w-64"}`}>
                                             <SelectValue
                                                 placeholder={
                                                     field.id === "title"

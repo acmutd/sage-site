@@ -6,6 +6,7 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { TouchBackend } from "react-dnd-touch-backend";
 import { MultiBackend, TouchTransition, MouseTransition } from "react-dnd-multi-backend";
 import { useAuth } from "@/context/AuthContext";
+import Cookies from "js-cookie";
 
 // tablet mode 
 const HTML5toTouch = {
@@ -26,12 +27,12 @@ const HTML5toTouch = {
 };
 
 const PlannerPage = () => {
-  const [showOnboarding, setShowOnboarding] = useState(true); // Initially show onboarding
+  const [showOnboarding, setShowOnboarding] = useState(false); // Initially show onboarding
   const [showPlanner, setShowPlanner] = useState(false); // Initially hide planner
   const [isFirstTime, setFirstTime] = useState(true);
   const [transcriptData, setTranscriptData] = useState<{ id: string; courses?: { utd_classes?: Record<string, any[]> } } | null>(null);
   const [requirements, setRequirements] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false); // Track loading state
+  const [loading, setLoading] = useState(true); // Track loading state
   const VITE_EVALUATOR_API = import.meta.env.VITE_EVALUATOR_API;
   const { user } = useAuth();
 
@@ -65,7 +66,31 @@ const PlannerPage = () => {
   }, [showOnboarding]);
   
   useEffect(() => {
-    checkExistingEvaluation();
+    const initializePlanner = async () => {
+      setLoading(true);
+      
+      await syncPlannerFromCloud();
+      
+      const hasPlannerState = localStorage.getItem('planner-state');
+      const hasEvaluation = localStorage.getItem('evaluation');
+      
+      if (hasEvaluation) {
+        const evalData = JSON.parse(hasEvaluation);
+        setRequirements(evalData);
+      }
+      
+      if (hasPlannerState && hasEvaluation) {
+        setShowPlanner(true);
+        setShowOnboarding(false);
+      } else {
+        setShowOnboarding(true);
+        setShowPlanner(false);
+      }
+      
+      setLoading(false);
+    };
+    
+    initializePlanner();
   }, []);
 
   useEffect(() => {
@@ -94,48 +119,107 @@ const PlannerPage = () => {
       );
     };
   }, []);
-  
-  const checkExistingEvaluation = async () => {
-    const cachedEvaluation = localStorage.getItem('evaluation');
-    const cachedTranscript = localStorage.getItem('transcriptData');
-  
-    if (cachedEvaluation && cachedTranscript) {
-      const transcript = JSON.parse(cachedTranscript);
 
-      setRequirements(parseRequirementsFromEvaluation(cachedEvaluation));
-      setTranscriptData(transcript);
-      setShowOnboarding(false);
-      setShowPlanner(true);
-      return;
-    }
-    
+  const syncPlannerFromCloud = async () => {
+    // Check if we've already synced this browser session
+    const hasCheckedCloud = sessionStorage.getItem('hasCheckedCloudThisSession');
+    if (hasCheckedCloud) return;
+
     if (!user?.uid) {
-      console.warn("User ID is missing; cannot proceed further!");
+      sessionStorage.setItem('hasCheckedCloudThisSession', 'true');
       return;
     }
 
-    const token = await user.getIdToken();
-    if (!token) throw new Error("Failed to retrieve authentication token.");
+    const token = Cookies.get('authToken');
+    if (!token) {
+      sessionStorage.setItem('hasCheckedCloudThisSession', 'true');
+      return;
+    }
 
     try {
-      const response = await fetch(VITE_EVALUATOR_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.uid, action: "getEvaluation", token })
-      });
-  
-      const data = await response.json();
+      const CRUD_API = import.meta.env.VITE_CRUD_API;
       
-      if (data.status === 'complete' && data.evaluation) {
-        localStorage.setItem('evaluation', JSON.stringify(data.evaluation));
-        setRequirements(data.evaluation.results || []);
-        setShowOnboarding(false);
-        setShowPlanner(true);
+      // Fetch planner, evaluation, and profile in parallel
+      const [plannerResponse, evalResponse, profileResponse] = await Promise.all([
+        fetch(CRUD_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.uid,
+            action: 'getPlanner',
+            token,
+          }),
+        }),
+        fetch(CRUD_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.uid,
+            action: 'getEvaluation',
+            token,
+          }),
+        }),
+        fetch(CRUD_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.uid,
+            action: 'getProfile',
+            token,
+          }),
+        }),
+      ]);
+
+      // Handle planner data
+      if (plannerResponse.ok) {
+        const plannerResult = await plannerResponse.json();
+        
+        if (plannerResult.plannerData) {
+          const cloudData = plannerResult.plannerData;
+          const localDataStr = localStorage.getItem('planner-state');
+          
+          if (localDataStr) {
+            const localData = JSON.parse(localDataStr);
+            const cloudTimestamp = cloudData.lastModified || 0;
+            const localTimestamp = localData.lastModified || 0;
+
+            if (cloudTimestamp > localTimestamp) {
+              localStorage.setItem('planner-state', JSON.stringify(cloudData));
+            }
+          } else {
+            localStorage.setItem('planner-state', JSON.stringify(cloudData));
+          }
+        }
       }
+
+      // Handle evaluation data
+      if (evalResponse.ok) {
+        const evalResult = await evalResponse.json();
+        
+        if (evalResult.evaluation) {
+          localStorage.setItem('evaluation', JSON.stringify(evalResult.evaluation));
+        }
+      }
+
+      // Handle profile data and sync tutorial status
+      if (profileResponse.ok) {
+        const profileResult = await profileResponse.json();
+        if (profileResult.profile) {
+          const hasSeenTutorial = profileResult.profile?.['system-fields']?.hasSeenPlannerTutorial;
+          if (hasSeenTutorial === true) {
+            localStorage.setItem('hasSeenPlannerTutorial', 'true');
+          }
+        }
+      }
+
     } catch (error) {
-      console.error('Failed to check existing evaluation:', error);
+      console.error('Cloud sync failed, using local data:', error);
+    } finally {
+      sessionStorage.setItem('hasCheckedCloudThisSession', 'true');
     }
   };
+  
+  
 
   const handleFinishOnboarding = async (data: any) => {
     setShowOnboarding(false); // Close the onboarding modal
@@ -300,7 +384,6 @@ const PlannerPage = () => {
       }
   
       const fetchedData = await response.json();
-      console.log("Requirements fetched:", fetchedData);
       const degrees = fetchedData.results || [];
       setRequirements(degrees);
 
