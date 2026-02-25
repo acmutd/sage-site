@@ -107,8 +107,8 @@ const PlannerPage = () => {
     try {
       const CRUD_API = import.meta.env.VITE_CRUD_API;
       
-      // Fetch both planner and evaluation in parallel
-      const [plannerResponse, evalResponse] = await Promise.all([
+      // Fetch planner, evaluation, and profile in parallel
+      const [plannerResponse, evalResponse, profileResponse] = await Promise.all([
         fetch(CRUD_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -124,6 +124,15 @@ const PlannerPage = () => {
           body: JSON.stringify({
             userId: user.uid,
             action: 'getEvaluation',
+            token,
+          }),
+        }),
+        fetch(CRUD_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.uid,
+            action: 'getProfile',
             token,
           }),
         }),
@@ -158,6 +167,21 @@ const PlannerPage = () => {
         if (evalResult.evaluation) {
           localStorage.setItem('evaluation', JSON.stringify(evalResult.evaluation));
           console.log('Synced evaluation from cloud');
+        }
+      }
+
+      // Handle profile data and sync tutorial status
+      if (profileResponse.ok) {
+        const profileResult = await profileResponse.json();
+        console.log('ok')
+        
+        if (profileResult.profile) {
+          console.log('ok')
+          const hasSeenTutorial = profileResult.profile?.['system-fields']?.hasSeenPlannerTutorial;
+          console.log(hasSeenTutorial)     
+          if (hasSeenTutorial === true) {
+            localStorage.setItem('hasSeenPlannerTutorial', 'true');
+          }
         }
       }
 

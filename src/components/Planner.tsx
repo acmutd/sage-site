@@ -255,9 +255,32 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     }
                 }
             ],
-            onDestroyed: () => {
+            onDestroyed: async () => {
                 localStorage.setItem('hasSeenPlannerTutorial', 'true');
                 dropdownWasOpenedRef.current = false;
+
+                // CRUD Update
+                if (user?.uid) {
+                    const token = Cookies.get('authToken');
+                    if (token) {
+                        try {
+                            const CRUD_API = import.meta.env.VITE_CRUD_API;
+                            await fetch(CRUD_API, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    userId: user.uid,
+                                    action: 'updateTutorialStatus',
+                                    token,
+                                    tutorialName: 'hasSeenPlannerTutorial',
+                                    seenStatus: true
+                                }),
+                            });
+                        } catch (error) {
+                            console.error('Failed to update tutorial status in cloud:', error);
+                        }
+                    }
+                }
             },
             popoverClass: 'sage-driver-theme'
         });
