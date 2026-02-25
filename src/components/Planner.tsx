@@ -386,6 +386,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     };
 
     const handleNewPlan = () => {
+        if (plannerData.plans.length >= 5) {
+            toast.error('Maximum of 5 plans allowed');
+            return;
+        }
+
         const newPlanId = crypto.randomUUID();
         const planNumber = plannerData.plans.length + 1;
         
@@ -407,6 +412,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     };
 
     const handleDuplicatePlan = () => {
+        if (plannerData.plans.length >= 5) {
+            toast.error('Maximum of 5 plans allowed');
+            return;
+        }
+
         const currentPlan = plannerData.plans.find(p => p.id === plannerData.activePlanId);
         if (!currentPlan) return;
 
@@ -462,17 +472,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         setHasUnsavedChanges(true);
         toast.success('Renamed plan');
     };
-
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
-
-    useEffect(() => {
-        if (sidebarCollapsed) {
-            setTimeout(() => setSidebarCollapsedDelayed(true), 150);
-        } else {
-            setSidebarCollapsedDelayed(false);
-        }
-    }, [sidebarCollapsed]);
 
     // Handle save to cloud
     const handleSave = async () => {
@@ -678,8 +677,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             const newState = JSON.parse(JSON.stringify(allSemesters));
 
             if (isSuggested) {
-                const targetSemester = prev[targetYear][targetSemesterIndex];
-                if (!targetSemester || !Array.isArray(targetSemester.courses)) return prev;
+                const targetSemester = newState[targetYear][targetSemesterIndex];
+                if (targetSemester && Array.isArray(targetSemester.courses)) {
+                    const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
 
                     const newCourse = {
                         course_code: course.code || course.course_code,
