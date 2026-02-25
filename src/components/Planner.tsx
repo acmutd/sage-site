@@ -1103,7 +1103,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         ) : (
                             <RefreshCw size={16} />
                         )}
-                        <span>{isRunningQuickEvaluation ? "Running..." : "Suggest More Classes"}</span>
+                        <span>{isRunningQuickEvaluation ? "Running..." : "Suggest Future Classes"}</span>
                     </button>
 
                     <button 
