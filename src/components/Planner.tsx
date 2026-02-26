@@ -54,7 +54,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
     
-    // student type 
     const studentType = determineStudentType(transcriptData);
 
     const [driverObj, setDriverObj] = useState<any>(null);
@@ -555,7 +554,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const adaptedRequirements = useMemo(() => requirements, [requirements]);
+    const adaptedRequirements = useMemo(
+        () => Array.isArray(requirements) ? requirements : requirements?.results ?? [],
+        [requirements]
+    );
 
     const allSuggestedCourses = useMemo(() => {
         const courses: any[] = [];
@@ -681,7 +683,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         Object.keys(allSemesters)
             .sort()
             .forEach((yearKey) => {
-                allSemesters[yearKey].forEach((semester, semIdx) => {
+                allSemesters[yearKey].forEach((semester) => {
                     semester.courses?.forEach((course: any) => {
                         const status = String(course.status || "").toLowerCase();
                         if (status !== "planned") return;
@@ -689,8 +691,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         const code = normalizeCourseCode(course.course_code || course.code);
                         if (!code) return;
 
-                        // Push only the code so that it is time agnostic
-                        plannedCoursePlacements.push(`${code}`);
+                        plannedCoursePlacements.push(code);
                     });
                 });
             });
@@ -791,12 +792,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     return;
                 }
             }
-            
-            // Check if course exists anywhere else in the plan
             for (const yearKey in allSemesters) {
                 for (let idx = 0; idx < allSemesters[yearKey].length; idx++) {
                     const semester = allSemesters[yearKey][idx];
-                    // Skip the source semester
                     if (yearKey === sourceYear && idx === sourceSemesterIndex) continue;
                     
                     const exists = semester.courses.some(c => c.course_code === courseCode);
@@ -807,41 +805,38 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 }
             }
 
-            // Create deep copies to avoid mutation
             const newState = JSON.parse(JSON.stringify(allSemesters));
 
             if (isSuggested) {
                 const targetSemester = newState[targetYear][targetSemesterIndex];
-                if (targetSemester && Array.isArray(targetSemester.courses)) {
-                    const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
+                if (!targetSemester || !Array.isArray(targetSemester.courses)) return;
 
-                    const newCourse = {
-                        course_code: course.code || course.course_code,
-                        course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
-                        credits_planned: course.credits || 3,
-                        id: newCourseId,
-                        status: 'planned'
-                    };
+                const newCourse = {
+                    course_code: course.code || course.course_code,
+                    course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
+                    credits_planned: course.credits || 3,
+                    id: `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`,
+                    status: 'planned'
+                };
 
-                    targetSemester.courses.push(newCourse);
+                targetSemester.courses.push(newCourse);
 
-                    // Mark this course as placed
-                    updatePlannerState({
-                        semesters: newState,
-                        placedCourses: Array.from(new Set([...placedSuggestedCourses, courseCode]))
-                    });
-                }
+                updatePlannerState({
+                    semesters: newState,
+                    placedCourses: Array.from(new Set([...placedSuggestedCourses, courseCode]))
+                });
 
                 return;
             }
 
-            if (sourceYear && sourceSemesterIndex !== undefined) {
-                const sourceSemester = newState[sourceYear][sourceSemesterIndex];
-                if (sourceSemester && Array.isArray(sourceSemester.courses)) {
+            if (!sourceYear || sourceSemesterIndex === undefined) return;
+
+            {
+                const sourceSemester = newState[sourceYear]?.[sourceSemesterIndex];
+                if (sourceSemester?.courses) {
                     const courseIndex = sourceSemester.courses.findIndex(
                         (c: any) => c.id === courseId
                     );
-
                     if (courseIndex !== -1) {
                         const [removedCourse] = sourceSemester.courses.splice(courseIndex, 1);
 
@@ -952,7 +947,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 }
             });
         });
-        
         const newState = { ...allSemesters };
         delete newState[yearKey];
         
@@ -967,9 +961,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             updatePlannerState({ semesters: newState });
         }
             
-            setShowDeleteModal(false);
-            setSemesterToDelete(null);
-        };
+        setShowDeleteModal(false);
+        setSemesterToDelete(null);
+    };
 
     const handleAddSemester = (yearKey: string) => {
         const yearSemesters = [...allSemesters[yearKey]];
@@ -1466,12 +1460,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     )}
 
                     {showDeleteModal && semesterToDelete && (
-                        <div 
+                        <div
                             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80]"
-                            onClick={() => {
-                                setShowDeleteModal(false);
-                                setSemesterToDelete(null);
-                            }}
+                            onClick={() => { setShowDeleteModal(false); setSemesterToDelete(null); }}
                         >
                             <div
                                 role="dialog"
