@@ -711,16 +711,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
 
         setIsRunningQuickEvaluation(true);
-        try {
-            await savePlannerState();
-        } catch (saveError) {
-            console.warn("Cloud save failed before quick eval, falling back to localStorage:", saveError);
-            try {
-                localStorage.setItem('planner-state', JSON.stringify(plannerData));
-            } catch (e) {
-                console.error("localStorage fallback also failed:", e);
-            }
-        }
 
         try {
             await evaluatePlannerAndMergeSuggestions({
@@ -730,12 +720,24 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             });
             toast.success("Suggested courses refreshed");
             setLastQuickEvalPlannedCoursesSignature(plannedCoursesSignature);
+
         } catch (error) {
             console.error("Quick evaluation failed:", error);
             toast.error("Could not refresh suggested courses");
         } finally {
+            try {
+                await savePlannerState();
+            } catch (saveError) {
+                console.warn("Cloud save failed before quick eval, falling back to localStorage:", saveError);
+                try {
+                    localStorage.setItem('planner-state', JSON.stringify(plannerData));
+                } catch (e) {
+                    console.error("localStorage fallback also failed:", e);
+                }
+            }
             setIsRunningQuickEvaluation(false);
         }
+
     };
 
     const handleDropCourse = (
