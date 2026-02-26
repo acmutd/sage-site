@@ -77,11 +77,15 @@ const PlannerPage = () => {
       if (hasEvaluation) {
         setRequirements(parseRequirementsFromEvaluation(hasEvaluation));
       }
+
+      
       
       if (hasPlannerState && hasEvaluation) {
+        // Load evaluation and show planner
         setShowPlanner(true);
         setShowOnboarding(false);
       } else {
+        // Missing planner or evaluation, show onboarding
         setShowOnboarding(true);
         setShowPlanner(false);
       }
@@ -197,14 +201,21 @@ const PlannerPage = () => {
         
         if (evalResult.evaluation) {
           localStorage.setItem('evaluation', JSON.stringify(evalResult.evaluation));
+
+          console.log('Synced evaluation from cloud');
         }
       }
 
       // Handle profile data and sync tutorial status
       if (profileResponse.ok) {
         const profileResult = await profileResponse.json();
+
+        console.log('ok')
+        
         if (profileResult.profile) {
+          console.log('ok')
           const hasSeenTutorial = profileResult.profile?.['system-fields']?.hasSeenPlannerTutorial;
+          console.log(hasSeenTutorial)     
           if (hasSeenTutorial === true) {
             localStorage.setItem('hasSeenPlannerTutorial', 'true');
           }

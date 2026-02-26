@@ -20,6 +20,7 @@ import Cookies from "js-cookie";
 import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
 import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
 
+
 interface PlannerProps {
     semesters: {
         [key: string]: { title: string; courses: any[]; isFromTranscript?: boolean }[];
@@ -54,6 +55,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
     
+
+    // student type 
     const studentType = determineStudentType(transcriptData);
 
     const [driverObj, setDriverObj] = useState<any>(null);
@@ -482,6 +485,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         setHasUnsavedChanges(false);
     };
 
+    // Handle save to cloud
     const handleSave = async () => {
         if (!user) {
             toast.error('You must be logged in to save');
@@ -497,6 +501,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         setIsLoading(true);
         try {
             await savePlannerState();
+
             toast.success('Saved your plan');
         } catch (error) {
             toast.error('Failed to save. Try again.');
@@ -795,6 +800,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             for (const yearKey in allSemesters) {
                 for (let idx = 0; idx < allSemesters[yearKey].length; idx++) {
                     const semester = allSemesters[yearKey][idx];
+
                     if (yearKey === sourceYear && idx === sourceSemesterIndex) continue;
                     
                     const exists = semester.courses.some(c => c.course_code === courseCode);
@@ -805,51 +811,63 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 }
             }
 
+
+            // Create deep copies to avoid mutation
             const newState = JSON.parse(JSON.stringify(allSemesters));
 
             if (isSuggested) {
                 const targetSemester = newState[targetYear][targetSemesterIndex];
-                if (!targetSemester || !Array.isArray(targetSemester.courses)) return;
+                if (targetSemester && Array.isArray(targetSemester.courses)) {
+                    const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
 
-                const newCourse = {
-                    course_code: course.code || course.course_code,
-                    course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
-                    credits_planned: course.credits || 3,
-                    id: `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`,
-                    status: 'planned'
-                };
+                    const newCourse = {
+                        course_code: course.code || course.course_code,
+                        course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
+                        credits_planned: course.credits || 3,
+                        id: newCourseId,
+                        status: 'planned'
+                    };
 
-                targetSemester.courses.push(newCourse);
-
-                updatePlannerState({
-                    semesters: newState,
-                    placedCourses: Array.from(new Set([...placedSuggestedCourses, courseCode]))
-                });
+                    targetSemester.courses.push(newCourse);
+                    console.log("Added suggested course to target:", newCourse);
+                    
+                    // Mark this course as placed
+                    updatePlannerState({
+                        semesters: newState,
+                        placedCourses: Array.from(new Set([...placedSuggestedCourses, courseCode]))
+                    });
+                }
 
                 return;
             }
 
-            if (!sourceYear || sourceSemesterIndex === undefined) return;
 
-            {
-                const sourceSemester = newState[sourceYear]?.[sourceSemesterIndex];
-                if (sourceSemester?.courses) {
+            if (sourceYear && sourceSemesterIndex !== undefined) {
+                const sourceSemester = newState[sourceYear][sourceSemesterIndex];
+                if (sourceSemester && Array.isArray(sourceSemester.courses)) {
                     const courseIndex = sourceSemester.courses.findIndex(
                         (c: any) => c.id === courseId
                     );
+
                     if (courseIndex !== -1) {
                         const [removedCourse] = sourceSemester.courses.splice(courseIndex, 1);
+                        console.log("Successfully removed course:", removedCourse);
 
                         if (targetYear && targetSemesterIndex !== undefined) {
                             const targetSemester = newState[targetYear][targetSemesterIndex];
                             if (targetSemester && Array.isArray(targetSemester.courses)) {
                                 targetSemester.courses.push(removedCourse);
+
+                                console.log("Added course to target:", removedCourse);
                             }
                         }
+                    } else {
+                        console.error(`Course with ID ${courseId} not found in source semester`);
                     }
                 }
             }
 
+            console.log("=== DROP OPERATION END ===");
             updatePlannerState({ semesters: newState });
     };
 
@@ -964,6 +982,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
+
 
     const handleAddSemester = (yearKey: string) => {
         const yearSemesters = [...allSemesters[yearKey]];
@@ -1130,34 +1149,39 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         )}
                         <span>{isRunningQuickEvaluation ? "Running..." : "Suggest Future Classes"}</span>
                     </button>
-
+                    {/* Save button */}
                     <button 
                         onClick={handleSave}
                         disabled={!hasUnsavedChanges || isLoading}
-                        className={`px-4 py-2 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 ${
+                        className={`fixed bottom-4 right-24 px-6 py-3 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
                             hasUnsavedChanges
-                                ? 'hover:-translate-y-0.5 motion-safe:animate-pulse'
+                                ? 'hover:-translate-y-0.5'
                                 : 'cursor-default'
                         } text-white font-medium text-sm`}
                     >
+                        {hasUnsavedChanges && (
+                            <div className="absolute -top-0 -right-3 w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
+                        )}
                         {isLoading ? (
                             <>
-                                <Loader2 size={18} className="animate-spin" />
+                                <Loader2 size={20} className="animate-spin" />
                                 <span>Saving...</span>
                             </>
                         ) : hasUnsavedChanges ? (
                             <>
-                                <Save size={18} />
+                                <Save size={20} />
                                 <span>Save</span>
                             </>
                         ) : (
                             <>
-                                <Check size={18} />
+                                <Check size={20} />
                                 <span>Saved</span>
                             </>
                         )}
-                    </button>
+                    </button> 
+
                 </div>
+
                 <button data-tour="help-button" onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
                     <HelpCircle size={18} className="text-white" />
                 </button>
@@ -1460,9 +1484,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     )}
 
                     {showDeleteModal && semesterToDelete && (
-                        <div
+                        <div 
                             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80]"
-                            onClick={() => { setShowDeleteModal(false); setSemesterToDelete(null); }}
+                            onClick={() => {
+                                setShowDeleteModal(false);
+                                setSemesterToDelete(null);
+                            }}
                         >
                             <div
                                 role="dialog"
