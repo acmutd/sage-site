@@ -1141,7 +1141,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     <button 
                         onClick={handleSave}
                         disabled={!hasUnsavedChanges || isLoading}
-                        className={`fixed bottom-4 right-24 px-6 py-3 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
+                        className={`px-4 py-2 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
                             hasUnsavedChanges
                                 ? 'hover:-translate-y-0.5'
                                 : 'cursor-default'
