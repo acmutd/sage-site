@@ -683,7 +683,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         Object.keys(allSemesters)
             .sort()
             .forEach((yearKey) => {
-                allSemesters[yearKey].forEach((semester) => {
+                allSemesters[yearKey].forEach((semester, _) => {
                     semester.courses?.forEach((course: any) => {
                         const status = String(course.status || "").toLowerCase();
                         if (status !== "planned") return;
