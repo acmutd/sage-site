@@ -7,7 +7,6 @@ import { TouchBackend } from "react-dnd-touch-backend";
 import { MultiBackend, TouchTransition, MouseTransition } from "react-dnd-multi-backend";
 import { useAuth } from "@/context/AuthContext";
 import Cookies from "js-cookie";
-import Cookies from "js-cookie";
 
 // tablet mode 
 const HTML5toTouch = {
@@ -218,9 +217,6 @@ const PlannerPage = () => {
       }
 
     } catch (error) {
-      console.error('Cloud sync failed, using local data:', error);
-    } finally {
-      sessionStorage.setItem('hasCheckedCloudThisSession', 'true');
       console.error('Cloud sync failed, using local data:', error);
     } finally {
       sessionStorage.setItem('hasCheckedCloudThisSession', 'true');
@@ -446,5 +442,6 @@ const PlannerPage = () => {
     </div>
   );
 };
+}
 
 export default PlannerPage;

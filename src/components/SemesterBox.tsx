@@ -433,7 +433,6 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         }
         onClearSemester();
     };
-    };
 
     const handleRemoveCourse = (courseId: string) => {
         setCourseToRemove(courseId);
@@ -448,7 +447,6 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         setCourseToRemove(null);
     };
 
-    const [{ isOver, canDrop, projectedWarnings }, drop] = useDrop(() => ({
     const [{ isOver, canDrop, projectedWarnings }, drop] = useDrop(() => ({
         accept: "COURSE",
         drop: (item: any) => {
@@ -655,7 +653,6 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                 {!canHover && showWarnings && ReactDOM.createPortal(
                                     <>
                                         <div
-                                        <div
                                             className="fixed inset-0 bg-black bg-opacity-30 z-[9998]"
                                             onClick={() => setShowWarnings(false)}
                                         />
@@ -769,14 +766,12 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                <DropdownMenuItem
                                     className="text-amber-600 focus:text-amber-600 hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-amber-600"
                                     onClick={handleClearClick}
                                 >
                                     <Eraser className="w-4 h-4 mr-2" />
                                     Clear Semester
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
                                 <DropdownMenuItem
                                     className="text-destructive focus:text-destructive hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-destructive"
                                     onClick={onRemoveSemester}
