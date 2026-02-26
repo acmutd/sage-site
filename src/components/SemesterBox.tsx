@@ -5,6 +5,12 @@ import { useDrop } from "react-dnd";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Course } from "@/types/course";
 import { validateCourseLoad } from '@/utils/courseValidation';
+import { Warning } from "@/types/warning";
+import {
+    getCoursePrerequisiteGroups,
+    getMissingPrerequisiteGroups,
+    normalizeCourseCode,
+} from "@/utils/prerequisiteUtils";
 import ReactDOM from "react-dom";
 
 interface SemesterBoxProps {
@@ -28,11 +34,48 @@ interface SemesterBoxProps {
     semesterIndex: number;
     isFromTranscript?: boolean;
     allSuggestedCourses?: any[];
+    allCompletedCourseCodes?: string[];
+    allPlannedCourseCodes?: string[];
+    allPlannedCoursesWithOrder?: Array<{
+        code: string;
+        yearKey: string;
+        semesterIndex: number;
+        semesterOrder: number;
+        semesterTitle?: string;
+    }>;
+    currentSemesterOrder?: number;
     studentType?: 'undergrad' | 'grad';
     catalogYear?: number;
     'data-tour'?: string;
     isCurrentSemester?: boolean;
 }
+
+const normalizeCorequisiteGroups = (corequisites: unknown): string[][] => {
+    if (!Array.isArray(corequisites)) return [];
+
+    return corequisites
+        .map((group: unknown) => {
+            if (Array.isArray(group)) {
+                return group
+                    .map((code: unknown) => normalizeCourseCode(code))
+                    .filter(Boolean);
+            }
+
+            if (typeof group === "string") {
+                const normalized = normalizeCourseCode(group);
+                return normalized ? [normalized] : [];
+            }
+
+            return [];
+        })
+        .filter((group: string[]) => group.length > 0);
+};
+
+type MissingRequirementItem = {
+    course: string;
+    missing: string[];
+    locations: string[];
+};
 
 const SemesterBox: React.FC<SemesterBoxProps> = ({
     title,
@@ -49,6 +92,10 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     semesterIndex,
     isFromTranscript = false,
     allSuggestedCourses = [],
+    allCompletedCourseCodes = [],
+    allPlannedCourseCodes = [],
+    allPlannedCoursesWithOrder = [],
+    currentSemesterOrder,
     studentType = 'undergrad',
     catalogYear = 2021,
     'data-tour': dataTour,
@@ -82,19 +129,66 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         }
     }, [showWarnings, canHover]);
 
-    const getUnmetCorequisites = () => {
+    useEffect(() => {
+        if (showWarnings && canHover && warningButtonRef.current) {
+            const rect = warningButtonRef.current.getBoundingClientRect();
+            setPopoverPosition({
+                top: rect.bottom + window.scrollY + 8,
+                right: window.innerWidth - rect.right,
+            });
+        }
+    }, [showWarnings, canHover]);
+
+    const plannedSemestersByCode = new Map<string, string[]>();
+    if (allPlannedCoursesWithOrder.length > 0) {
+        allPlannedCoursesWithOrder.forEach((plannedCourse) => {
+            const plannedCode = normalizeCourseCode(plannedCourse.code);
+            if (!plannedCode) return;
+
+            const semesterTitle = String(plannedCourse.semesterTitle || "").trim();
+            if (!semesterTitle) return;
+
+            const existingTitles = plannedSemestersByCode.get(plannedCode) || [];
+            if (!existingTitles.includes(semesterTitle)) {
+                existingTitles.push(semesterTitle);
+                plannedSemestersByCode.set(plannedCode, existingTitles);
+            }
+        });
+    }
+
+    const getPreferredLocationsForCourse = (
+        requiredCourseCode: string,
+        sidebarLocation?: string
+    ): string[] => {
+        const plannedSemesterLocations =
+            plannedSemestersByCode.get(normalizeCourseCode(requiredCourseCode)) || [];
+        if (plannedSemesterLocations.length > 0) {
+            return plannedSemesterLocations;
+        }
+
+        if (sidebarLocation) return [sidebarLocation];
+        return [];
+    };
+
+    const getUnmetCorequisites = (): MissingRequirementItem[] | null => {
         if (!courses || courses.length === 0) return null;
 
         const coreqMap = new Map<string, string[][]>();
         const categoryPathMap = new Map<string, string>();
         const suggestedCourseCodes = new Set<string>();
 
+
         allSuggestedCourses.forEach((suggestedCourse: any) => {
-            const code = suggestedCourse.code || suggestedCourse.course_code;
+            const code = normalizeCourseCode(
+                suggestedCourse.code || suggestedCourse.course_code
+            );
             if (code) {
                 suggestedCourseCodes.add(code);
-                if (suggestedCourse.corequisites && Array.isArray(suggestedCourse.corequisites)) {
-                    coreqMap.set(code, suggestedCourse.corequisites);
+                const normalizedCoreqGroups = normalizeCorequisiteGroups(
+                    suggestedCourse.corequisites
+                );
+                if (normalizedCoreqGroups.length > 0) {
+                    coreqMap.set(code, normalizedCoreqGroups);
                 }
                 if (suggestedCourse.categoryPath) {
                     categoryPathMap.set(code, suggestedCourse.categoryPath);
@@ -102,11 +196,15 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
             }
         });
 
-        const semesterCourseCodes = new Set(courses.map(c => c.course_code));
-        const unmetCoreqs: { course: string; missing: string[]; locations: string[] }[] = [];
+        const semesterCourseCodes = new Set(
+            courses.map((c) => normalizeCourseCode(c.course_code))
+        );
+
+        const unmetCoreqs: MissingRequirementItem[] = [];
 
         courses.forEach(course => {
-            const coreqs = coreqMap.get(course.course_code);
+            const courseCode = normalizeCourseCode(course.course_code);
+            const coreqs = coreqMap.get(courseCode);
             if (!coreqs || coreqs.length === 0) return;
 
             coreqs.forEach((coreqGroup: string[]) => {
@@ -118,10 +216,15 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                 const hasAnyCoreqPlanned = availableCoreqs.some(code => semesterCourseCodes.has(code));
                 if (!hasAnyCoreqPlanned) {
                     const locations = availableCoreqs
-                        .map(code => categoryPathMap.get(code))
-                        .filter((path): path is string => !!path);
+                        .flatMap((coreqCode) =>
+                            getPreferredLocationsForCourse(
+                                coreqCode,
+                                categoryPathMap.get(coreqCode)
+                            )
+                        )
+                        .filter(Boolean);
                     unmetCoreqs.push({
-                        course: course.course_code,
+                        course: course.course_code || courseCode,
                         missing: availableCoreqs,
                         locations: [...new Set(locations)]
                     });
@@ -134,6 +237,138 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
 
     const unmetCorequisites = getUnmetCorequisites();
 
+    const getPrerequisiteFindings = (): {
+        collisions: MissingRequirementItem[] | null;
+        unmet: MissingRequirementItem[] | null;
+    } => {
+        if (!courses || courses.length === 0) return { collisions: null, unmet: null };
+
+        const prerequisiteMap = new Map<string, string[][]>();
+        const categoryPathMap = new Map<string, string>();
+
+        allSuggestedCourses.forEach((suggestedCourse: any) => {
+            const code = normalizeCourseCode(
+                suggestedCourse.code || suggestedCourse.course_code
+            );
+            if (!code) return;
+
+            const prerequisiteGroups = getCoursePrerequisiteGroups(suggestedCourse);
+            if (prerequisiteGroups.length > 0) {
+                prerequisiteMap.set(code, prerequisiteGroups);
+            }
+            if (suggestedCourse.categoryPath) {
+                categoryPathMap.set(code, suggestedCourse.categoryPath);
+            }
+        });
+
+        const sameSemesterCourseCodesSet = new Set(
+            courses.map((course) => normalizeCourseCode(course.course_code)).filter(Boolean)
+        );
+        const earlierPlannedCourseCodesSet = new Set<string>();
+
+        if (
+            typeof currentSemesterOrder === "number" &&
+            allPlannedCoursesWithOrder.length > 0
+        ) {
+            allPlannedCoursesWithOrder.forEach((plannedCourse) => {
+                const plannedCode = normalizeCourseCode(plannedCourse.code);
+                if (!plannedCode) return;
+                if (plannedCourse.semesterOrder < currentSemesterOrder) {
+                    earlierPlannedCourseCodesSet.add(plannedCode);
+                }
+            });
+        } else {
+            allPlannedCourseCodes
+                .map((code) => normalizeCourseCode(code))
+                .filter(Boolean)
+                .forEach((code) => {
+                    if (!sameSemesterCourseCodesSet.has(code)) {
+                        earlierPlannedCourseCodesSet.add(code);
+                    }
+                });
+        }
+
+        const completedCourseCodesSet = new Set(
+            allCompletedCourseCodes.map((code) => normalizeCourseCode(code)).filter(Boolean)
+        );
+        const satisfiedCourseCodes = new Set([
+            ...earlierPlannedCourseCodesSet,
+            ...completedCourseCodesSet,
+        ]);
+
+        const unmetPrereqs: MissingRequirementItem[] = [];
+        const collisionPrereqs: MissingRequirementItem[] = [];
+
+        courses.forEach((course) => {
+            const courseCode = normalizeCourseCode(course.course_code);
+            const prerequisiteGroups = prerequisiteMap.get(courseCode);
+            if (!prerequisiteGroups || prerequisiteGroups.length === 0) return;
+
+            const missingPrerequisiteGroups = getMissingPrerequisiteGroups(
+                prerequisiteGroups,
+                satisfiedCourseCodes
+            );
+            if (missingPrerequisiteGroups.length === 0) return;
+
+            const collisionGroups = missingPrerequisiteGroups.filter((group) =>
+                group.some((prereqCode) => sameSemesterCourseCodesSet.has(prereqCode))
+            );
+            const unmetGroups = missingPrerequisiteGroups.filter(
+                (group) =>
+                    !group.some((prereqCode) => sameSemesterCourseCodesSet.has(prereqCode))
+            );
+
+            if (collisionGroups.length > 0) {
+                const collisionLabels = collisionGroups.map((group) => group.join(" or "));
+                const collisionLocations = collisionGroups
+                    .flatMap((group) =>
+                        group.flatMap((prereqCode) =>
+                            getPreferredLocationsForCourse(
+                                prereqCode,
+                                categoryPathMap.get(prereqCode)
+                            )
+                        )
+                    )
+                    .filter(Boolean);
+
+                collisionPrereqs.push({
+                    course: course.course_code || courseCode,
+                    missing: [...new Set(collisionLabels)],
+                    locations: [...new Set(collisionLocations)],
+                });
+            }
+
+            if (unmetGroups.length > 0) {
+                const unmetLabels = unmetGroups.map((group) => group.join(" or "));
+                const unmetLocations = unmetGroups
+                    .flatMap((group) =>
+                        group.flatMap((prereqCode) =>
+                            getPreferredLocationsForCourse(
+                                prereqCode,
+                                categoryPathMap.get(prereqCode)
+                            )
+                        )
+                    )
+                    .filter(Boolean);
+
+                unmetPrereqs.push({
+                    course: course.course_code || courseCode,
+                    missing: [...new Set(unmetLabels)],
+                    locations: [...new Set(unmetLocations)],
+                });
+            }
+        });
+
+        return {
+            collisions: collisionPrereqs.length > 0 ? collisionPrereqs : null,
+            unmet: unmetPrereqs.length > 0 ? unmetPrereqs : null,
+        };
+    };
+
+    const prerequisiteFindings = getPrerequisiteFindings();
+    const prerequisiteCollisions = prerequisiteFindings.collisions;
+    const unmetPrerequisites = prerequisiteFindings.unmet;
+
     const getCreditWarnings = () => {
         if (!courses || courses.length === 0) return null;
         const isSummer = title.toLowerCase().includes('summer');
@@ -141,7 +376,55 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         return warnings.length > 0 ? warnings : null;
     };
 
+
     const creditWarnings = getCreditWarnings();
+
+    const courseWarningsByCode = new Map<string, Warning[]>();
+
+    const addCourseWarning = (courseCode: string, warning: Warning) => {
+        const normalizedCourseCode = normalizeCourseCode(courseCode);
+        const existingWarnings = courseWarningsByCode.get(normalizedCourseCode) || [];
+        courseWarningsByCode.set(normalizedCourseCode, [...existingWarnings, warning]);
+    };
+
+    prerequisiteCollisions?.forEach((item) => {
+        const details = [`Same semester as prerequisite: ${item.missing.join(", ")}`];
+        addCourseWarning(item.course, {
+            type: "conflict",
+            severity: "warning",
+            message: "Collision Warning:",
+            details,
+        });
+    });
+
+    unmetPrerequisites?.forEach((item) => {
+        const details = item.missing.map(
+            (missingPrerequisite) =>
+                `${missingPrerequisite} must be taken before ${item.course}`
+        );
+        if (item.locations.length > 0) {
+            details.push(`Location: ${item.locations.join(" / ")}`);
+        }
+        addCourseWarning(item.course, {
+            type: "prerequisite",
+            severity: "warning",
+            message: "Prerequisite Warning:",
+            details,
+        });
+    });
+
+    unmetCorequisites?.forEach((item) => {
+        const details = [`Needs: ${item.missing.join(" or ")}`];
+        if (item.locations.length > 0) {
+            details.push(`Location: ${item.locations.join(" / ")}`);
+        }
+        addCourseWarning(item.course, {
+            type: "corequisite",
+            severity: "warning",
+            message: "Corequisite Warning:",
+            details,
+        });
+    });
 
     const handleClearClick = () => {
         if (locked) {
@@ -290,7 +573,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
 
                 {!isFromTranscript && (
                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                        {(unmetCorequisites || creditWarnings || (isOver && projectedWarnings)) && (
+                        {(prerequisiteCollisions || unmetPrerequisites || unmetCorequisites || creditWarnings || (isOver && projectedWarnings)) && (
                             <div className="relative">
                                 <button
                                     ref={warningButtonRef}
@@ -305,11 +588,11 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                             : 'stroke-orange-600'
                                     }`} />
                                     <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                                        {(unmetCorequisites?.length || 0) + (displayedCreditWarnings?.length || 0)}
+                                        {(prerequisiteCollisions?.length || 0) + (unmetPrerequisites?.length || 0) + (unmetCorequisites?.length || 0) + (displayedCreditWarnings?.length || 0)}
                                     </span>
                                 </button>
 
-                                {/* Desktop — portalled so that there's no clipping */}
+                                {/* Desktop — portalled to avoid clipping */}
                                 {canHover && showWarnings && ReactDOM.createPortal(
                                     <div
                                         style={{ top: popoverPosition.top, right: popoverPosition.right }}
@@ -317,6 +600,50 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                         onMouseEnter={() => setShowWarnings(true)}
                                         onMouseLeave={() => setShowWarnings(false)}
                                     >
+                                        {prerequisiteCollisions && (
+                                            <>
+                                                <div className="font-semibold mb-2 flex items-center gap-2 text-orange-900">
+                                                    <TriangleAlert className="w-4 h-4" />
+                                                    Collisions
+                                                </div>
+                                                <div className="space-y-2 mb-3">
+                                                    {prerequisiteCollisions.map((item, idx) => (
+                                                        <div key={idx} className="p-2 rounded border border-orange-200 bg-orange-50">
+                                                            <div className="font-medium text-xs mb-1">{item.course}</div>
+                                                            <div className="text-xs">Same semester as prerequisite: {item.missing.join(", ")}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+                                        {unmetPrerequisites && (
+                                            <>
+                                                <div className="font-semibold mb-2 flex items-center gap-2 text-orange-900">
+                                                    <TriangleAlert className="w-4 h-4" />
+                                                    Prerequisites
+                                                </div>
+                                                <div className="space-y-2 mb-3">
+                                                    {unmetPrerequisites.map((item, idx) => (
+                                                        <div key={idx} className="p-2 rounded border border-orange-200 bg-orange-50">
+                                                            <div className="font-medium text-xs mb-1">{item.course}</div>
+                                                            <div className="text-xs">
+                                                                {item.missing
+                                                                    .map((missingPrerequisite) => `${missingPrerequisite} must be taken before ${item.course}`)
+                                                                    .join(" AND ")}
+                                                            </div>
+                                                            {item.locations?.length > 0 && (
+                                                                <div className="text-xs mt-1 pt-1 border-t border-orange-200">
+                                                                    📍 {item.locations.map((loc: string) => {
+                                                                        const lastPart = loc.split(' > ').pop() || loc;
+                                                                        return lastPart.includes(':') ? lastPart.split(':')[0] : lastPart;
+                                                                    }).join(' / ')}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
                                         {warningPopoverContent}
                                     </div>,
                                     document.body
@@ -329,7 +656,51 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                             className="fixed inset-0 bg-black bg-opacity-30 z-[9998]"
                                             onClick={() => setShowWarnings(false)}
                                         />
-                                        <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-white text-black rounded-t-2xl p-4 shadow-2xl border-t-2 border-red-300 max-h-[80vh] overflow-y-auto">
+                                        <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-white text-black rounded-t-2xl p-4 shadow-2xl border-t-2 border-red-300 max-h-[calc(100vh-3rem)] overflow-y-auto">
+                                            {prerequisiteCollisions && (
+                                                <>
+                                                    <div className="font-semibold mb-3 flex items-center gap-2 text-orange-900">
+                                                        <TriangleAlert className="w-5 h-5" />
+                                                        Collision Warnings
+                                                    </div>
+                                                    <div className="space-y-3 mb-4">
+                                                        {prerequisiteCollisions.map((item, idx) => (
+                                                            <div key={idx} className="p-3 rounded border border-orange-200 bg-orange-50">
+                                                                <div className="font-medium text-sm mb-1">{item.course}</div>
+                                                                <div className="text-sm">Same semester as prerequisite: {item.missing.join(", ")}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                            {unmetPrerequisites && (
+                                                <>
+                                                    <div className="font-semibold mb-3 flex items-center gap-2 text-orange-900">
+                                                        <TriangleAlert className="w-5 h-5" />
+                                                        Prerequisite Warnings
+                                                    </div>
+                                                    <div className="space-y-3 mb-4">
+                                                        {unmetPrerequisites.map((item, idx) => (
+                                                            <div key={idx} className="p-3 rounded border border-orange-200 bg-orange-50">
+                                                                <div className="font-medium text-sm mb-1">{item.course}</div>
+                                                                <div className="text-sm">
+                                                                    {item.missing
+                                                                        .map((missingPrerequisite) => `${missingPrerequisite} must be taken before ${item.course}`)
+                                                                        .join(" AND ")}
+                                                                </div>
+                                                                {item.locations?.length > 0 && (
+                                                                    <div className="text-sm mt-2 pt-2 border-t border-orange-200">
+                                                                        📍 {item.locations.map((loc: string) => {
+                                                                            const lastPart = loc.split(' > ').pop() || loc;
+                                                                            return lastPart.includes(':') ? lastPart.split(':')[0] : lastPart;
+                                                                        }).join(' / ')}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
                                             {unmetCorequisites && (
                                                 <>
                                                     <div className="font-semibold mb-3 flex items-center gap-2 text-orange-900">
@@ -426,19 +797,30 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            {courses.map((course, idx) => (
-                                <CourseBox
-                                    key={course.id || `${course.course_code || 'unknown'}-${idx}`}
-                                    course={course}
-                                    sourceYear={yearKey}
-                                    sourceSemesterIndex={semesterIndex}
-                                    isFromTranscript={isFromTranscript}
-                                    isLocked={locked}
-                                    status={course.status as "default" | "completed" | "warning" | "info" | undefined}
-                                    icon={course.icon as "check" | "warning" | "info" | null | undefined}
-                                    onRemove={() => handleRemoveCourse(course.id || '')}
-                                />
-                            ))}
+                            {courses.map((course, idx) => {
+                                const normalizedCourseCode = normalizeCourseCode(course.course_code);
+                                const courseWarnings =
+                                    courseWarningsByCode.get(normalizedCourseCode) || [];
+                                const isPlannedCourse =
+                                    String(course.status || "").toLowerCase() === "planned";
+                                const hasWarningBorder = isPlannedCourse && courseWarnings.length > 0;
+
+                                return (
+                                    <CourseBox
+                                        key={course.id || `${course.course_code || 'unknown'}-${idx}`}
+                                        course={course}
+                                        sourceYear={yearKey}
+                                        sourceSemesterIndex={semesterIndex}
+                                        isFromTranscript={isFromTranscript}
+                                        isLocked={locked}
+                                        status={course.status as "default" | "completed" | "warning" | "info" | undefined}
+                                        icon={course.icon as "check" | "warning" | "info" | null | undefined}
+                                        warnings={courseWarnings.length > 0 ? courseWarnings : null}
+                                        hasWarningBorder={hasWarningBorder}
+                                        onRemove={() => handleRemoveCourse(course.id || '')}
+                                    />
+                                );
+                            })}
                         </div>
                     )}
                 </>

@@ -3,7 +3,7 @@ import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import Sidebar from "./Sidebar";
 import SemesterBox from "./SemesterBox";
-import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2, ChevronDown, Settings, Pencil, Plus, Copy, Trash2 } from "lucide-react";
+import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2, RefreshCw, ChevronDown, Settings, Pencil, Plus, Copy, Trash2 } from "lucide-react";
 import PlannerNavbar from "./PlannerNavbar";
 import {
   DropdownMenu,
@@ -17,6 +17,8 @@ import YearDivider from "./planner/YearDivider";
 import { useUISnapshot } from "@/hooks/useUISnapshot";
 import { useAuth } from "@/context/AuthContext";
 import Cookies from "js-cookie";
+import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
+import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
 
 interface PlannerProps {
     semesters: {
@@ -450,7 +452,37 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         toast.success('Renamed plan');
     };
 
-    // Handle save to cloud
+    const savePlannerState = async () => {
+        const token = Cookies.get('authToken');
+        if (!token || !user) {
+            throw new Error('Not authenticated');
+        }
+
+        const CRUD_API = import.meta.env.VITE_CRUD_API;
+        const response = await fetch(CRUD_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: user.uid,
+                action: 'savePlanner',
+                token,
+                plannerData: plannerData,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to save planner');
+        }
+
+        try {
+            localStorage.setItem('planner-state', JSON.stringify(plannerData));
+        } catch (e) {
+            console.error('Failed to save to localStorage:', e);
+        }
+
+        setHasUnsavedChanges(false);
+    };
+
     const handleSave = async () => {
         if (!user) {
             toast.error('You must be logged in to save');
@@ -465,30 +497,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
         setIsLoading(true);
         try {
-            const CRUD_API = import.meta.env.VITE_CRUD_API;
-            
-            const response = await fetch(CRUD_API, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user.uid,
-                    action: 'savePlanner',
-                    token,
-                    plannerData: plannerData,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to save planner');
-            }
-
-            // Save to localStorage on successful cloud save
-            try {
-                localStorage.setItem('planner-state', JSON.stringify(plannerData));
-            } catch (error) {
-                console.error('Failed to save to localStorage:', error);
-            }
-            setHasUnsavedChanges(false);
+            await savePlannerState();
             toast.success('Saved your plan');
         } catch (error) {
             toast.error('Failed to save. Try again.');
@@ -518,6 +527,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         isLastSemester?: boolean;
         action: 'clear' | 'delete' | 'clearYear' | 'deleteYear';
     } | null>(null);
+    const [isRunningQuickEvaluation, setIsRunningQuickEvaluation] = useState(false);
+    const [lastQuickEvalPlannedCoursesSignature, setLastQuickEvalPlannedCoursesSignature] =
+        useState<string | null>(null);
     const [showRenameModal, setShowRenameModal] = useState(false);
     const [showPlanDeleteModal, setShowPlanDeleteModal] = useState(false);
     const [newPlanName, setNewPlanName] = useState("");
@@ -543,7 +555,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const adaptedRequirements = useMemo(() => requirements, [requirements]);
+    const adaptedRequirements = useMemo(
+        () => Array.isArray(requirements) ? requirements : requirements?.results ?? [],
+        [requirements]
+    );
 
     const allSuggestedCourses = useMemo(() => {
         const courses: any[] = [];
@@ -571,6 +586,38 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return courses;
     }, [adaptedRequirements]);
 
+    const allCompletedCourseCodes = useMemo(() => {
+        const completedCodes = new Set<string>();
+
+        const collectCompletedCourseCodes = (categories: any[]) => {
+            if (!Array.isArray(categories)) return;
+
+            categories.forEach((category) => {
+                if (Array.isArray(category.classes)) {
+                    category.classes.forEach((course: any) => {
+                        const status = String(course.status || "").toLowerCase();
+                        const code = normalizeCourseCode(course.code || course.course_code);
+
+                        if (!code) return;
+                        if (!status || status === "completed") {
+                            completedCodes.add(code);
+                        }
+                    });
+                }
+
+                if (Array.isArray(category.categories) && category.categories.length > 0) {
+                    collectCompletedCourseCodes(category.categories);
+                }
+            });
+        };
+
+        adaptedRequirements.forEach((requirement: any) => {
+            collectCompletedCourseCodes(requirement.categories || []);
+        });
+
+        return Array.from(completedCodes);
+    }, [adaptedRequirements]);
+
     const availableSemesters = useMemo(() => {
         const result: Array<{ yearKey: string; semesterIndex: number; title: string }> = [];
         Object.keys(allSemesters).forEach(yearKey => {
@@ -582,6 +629,118 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         });
         return result;
     }, [allSemesters]);
+
+    const semesterOrderByKey = useMemo(() => {
+        const map: Record<string, number> = {};
+        let semesterOrder = 0;
+
+        Object.keys(allSemesters).forEach((yearKey) => {
+            allSemesters[yearKey].forEach((_, semesterIndex) => {
+                map[`${yearKey}-${semesterIndex}`] = semesterOrder;
+                semesterOrder += 1;
+            });
+        });
+
+        return map;
+    }, [allSemesters]);
+
+    const allPlannedCoursesWithOrder = useMemo(() => {
+        const courses: Array<{
+            code: string;
+            yearKey: string;
+            semesterIndex: number;
+            semesterOrder: number;
+            semesterTitle: string;
+        }> = [];
+
+        Object.keys(allSemesters).forEach((yearKey) => {
+            allSemesters[yearKey].forEach((semester, semesterIndex) => {
+                const semesterOrder = semesterOrderByKey[`${yearKey}-${semesterIndex}`];
+                semester.courses?.forEach((course: any) => {
+                    const code = normalizeCourseCode(course.course_code || course.code);
+                    if (!code) return;
+
+                    courses.push({
+                        code,
+                        yearKey,
+                        semesterIndex,
+                        semesterOrder,
+                        semesterTitle: semester.title,
+                    });
+                });
+            });
+        });
+
+        return courses;
+    }, [allSemesters, semesterOrderByKey]);
+
+    const allPlannedCourseCodes = useMemo(() => {
+        return allPlannedCoursesWithOrder.map((course) => course.code);
+    }, [allPlannedCoursesWithOrder]);
+
+    const plannedCoursesSignature = useMemo(() => {
+        const plannedCoursePlacements: string[] = [];
+
+        Object.keys(allSemesters)
+            .sort()
+            .forEach((yearKey) => {
+                allSemesters[yearKey].forEach((semester, _) => {
+                    semester.courses?.forEach((course: any) => {
+                        const status = String(course.status || "").toLowerCase();
+                        if (status !== "planned") return;
+
+                        const code = normalizeCourseCode(course.course_code || course.code);
+                        if (!code) return;
+
+                        plannedCoursePlacements.push(code);
+                    });
+                });
+            });
+
+        plannedCoursePlacements.sort();
+        return plannedCoursePlacements.join("|");
+    }, [allSemesters]);
+
+    const runQuickEvaluation = async () => {
+        if (!plannedCoursesSignature) {
+            toast.info("Plan more courses from the sidebar to suggest more classes.");
+            return;
+        }
+
+        if (plannedCoursesSignature === lastQuickEvalPlannedCoursesSignature) {
+            toast.info("Plan more courses from the sidebar to suggest more classes.");
+            return;
+        }
+
+        setIsRunningQuickEvaluation(true);
+
+        try {
+            await evaluatePlannerAndMergeSuggestions({
+                quickEvaluation: true,
+                assumeMinimumGradePass: true,
+                plannerStateOverride: plannerData,
+            });
+            toast.success("Suggested courses refreshed");
+            setLastQuickEvalPlannedCoursesSignature(plannedCoursesSignature);
+
+        } catch (error) {
+            console.error("Quick evaluation failed:", error);
+            toast.error("Could not refresh suggested courses");
+        } finally {
+            try {
+                await savePlannerState();
+            } catch (saveError) {
+                console.warn("Cloud save failed before quick eval, falling back to localStorage:", saveError);
+                try {
+                    localStorage.setItem('planner-state', JSON.stringify(plannerData));
+                } catch (e) {
+                    console.error("localStorage fallback also failed:", e);
+                }
+            }
+            setIsRunningQuickEvaluation(false);
+        }
+
+    };
 
     const handleDropCourse = (
         targetYear: string,
@@ -639,7 +798,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             for (const yearKey in allSemesters) {
                 for (let idx = 0; idx < allSemesters[yearKey].length; idx++) {
                     const semester = allSemesters[yearKey][idx];
-                    // Skip the source semester
+
                     if (yearKey === sourceYear && idx === sourceSemesterIndex) continue;
                     
                     const exists = semester.courses.some(c => c.course_code === courseCode);
@@ -667,14 +826,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     };
 
                     targetSemester.courses.push(newCourse);
-                    console.log("Added suggested course to target:", newCourse);
-                    
-                    // Mark this course as placed
-                    updatePlannerState({
-                        semesters: newState,
-                        placedCourses: Array.from(new Set([...placedSuggestedCourses, courseCode]))
-                    });
                 }
+
+                updatePlannerState({
+                    semesters: newState,
+                    placedCourses: Array.from(new Set([...placedSuggestedCourses, courseCode]))
+                });
 
                 return;
             }
@@ -688,22 +845,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                     if (courseIndex !== -1) {
                         const [removedCourse] = sourceSemester.courses.splice(courseIndex, 1);
-                        console.log("Successfully removed course:", removedCourse);
 
                         if (targetYear && targetSemesterIndex !== undefined) {
                             const targetSemester = newState[targetYear][targetSemesterIndex];
                             if (targetSemester && Array.isArray(targetSemester.courses)) {
                                 targetSemester.courses.push(removedCourse);
-                                console.log("Added course to target:", removedCourse);
                             }
                         }
-                    } else {
-                        console.error(`Course with ID ${courseId} not found in source semester`);
                     }
                 }
             }
 
-            console.log("=== DROP OPERATION END ===");
             updatePlannerState({ semesters: newState });
     };
 
@@ -959,41 +1111,64 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
                 }
                 placedSuggestedCourses={placedSuggestedCourses}
+                allCompletedCourseCodes={allCompletedCourseCodes}
+                allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                 onRestartOnboarding={onRestartOnboarding}
                 availableSemesters={availableSemesters}
                 onAddCourse={handleDropCourse}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
-                {/* Save button */}
-                <button 
-                    onClick={handleSave}
-                    disabled={!hasUnsavedChanges || isLoading}
-                    className={`fixed bottom-4 right-24 px-6 py-3 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
-                        hasUnsavedChanges
-                            ? 'hover:-translate-y-0.5'
-                            : 'cursor-default'
-                    } text-white font-medium text-sm`}
-                >
-                    {hasUnsavedChanges && (
-                        <div className="absolute -top-0 -right-3 w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
-                    )}
-                    {isLoading ? (
-                        <>
-                            <Loader2 size={20} className="animate-spin" />
-                            <span>Saving...</span>
-                        </>
-                    ) : hasUnsavedChanges ? (
-                        <>
-                            <Save size={20} />
-                            <span>Save</span>
-                        </>
-                    ) : (
-                        <>
-                            <Check size={20} />
-                            <span>Saved</span>
-                        </>
-                    )}
-                </button>
+                {/* Action buttons */}
+                <div className="fixed bottom-4 right-[225px] flex items-center gap-2 z-50">
+                    <button
+                        onClick={runQuickEvaluation}
+                        disabled={isRunningQuickEvaluation || isLoading}
+                        className={`px-6 py-3 rounded-full bg-white border border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-gray-700 font-medium text-sm ${
+                            isRunningQuickEvaluation || isLoading
+                                ? 'cursor-not-allowed opacity-70'
+                                : 'hover:-translate-y-0.5'
+                        }`}
+                        title="Run quick evaluation and refresh suggested courses"
+                    >
+                        {isRunningQuickEvaluation ? (
+                            <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                            <RefreshCw size={16} />
+                        )}
+                        <span>{isRunningQuickEvaluation ? "Running..." : "Suggest Future Classes"}</span>
+                    </button>
+                    {/* Save button */}
+                    <button 
+                        onClick={handleSave}
+                        disabled={!hasUnsavedChanges || isLoading}
+                        className={`fixed bottom-4 right-24 px-6 py-3 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
+                            hasUnsavedChanges
+                                ? 'hover:-translate-y-0.5'
+                                : 'cursor-default'
+                        } text-white font-medium text-sm`}
+                    >
+                        {hasUnsavedChanges && (
+                            <div className="absolute -top-0 -right-3 w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
+                        )}
+                        {isLoading ? (
+                            <>
+                                <Loader2 size={20} className="animate-spin" />
+                                <span>Saving...</span>
+                            </>
+                        ) : hasUnsavedChanges ? (
+                            <>
+                                <Save size={20} />
+                                <span>Save</span>
+                            </>
+                        ) : (
+                            <>
+                                <Check size={20} />
+                                <span>Saved</span>
+                            </>
+                        )}
+                    </button> 
+
+                </div>
                 <button data-tour="help-button" onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
                     <HelpCircle size={18} className="text-white" />
                 </button>
@@ -1010,6 +1185,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         isExpanded={!sidebarCollapsed}
                         onToggleExpanded={toggleSidebar}
                         placedSuggestedCourses={placedSuggestedCourses}
+                        allCompletedCourseCodes={allCompletedCourseCodes}
+                        allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                         onRestartOnboarding={onRestartOnboarding}
                     />
 
@@ -1180,6 +1357,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                                     onRemoveSemester={() => openClearDeleteModal(yearKey, idx, 'delete')}
                                                     onShowError={setError}
                                                     allSuggestedCourses={allSuggestedCourses}
+                                                    allCompletedCourseCodes={allCompletedCourseCodes}
+                                                    allPlannedCourseCodes={allPlannedCourseCodes}
+                                                    allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
+                                                    currentSemesterOrder={semesterOrderByKey[`${yearKey}-${idx}`]}
                                                     studentType={studentType}
                                                     catalogYear={calculateCatalogYear(semester.title)}
                                                     isCollapsed={!!collapsedSemesters[`${yearKey}-${idx}`]}

@@ -36,6 +36,13 @@ const PlannerPage = () => {
   const VITE_EVALUATOR_API = import.meta.env.VITE_EVALUATOR_API;
   const { user } = useAuth();
 
+  const parseRequirementsFromEvaluation = (rawEvaluation: string | null): any[] => {
+    if (!rawEvaluation) return [];
+    const parsed = JSON.parse(rawEvaluation);
+    if (Array.isArray(parsed)) return parsed;
+    return parsed?.results || [];
+  };
+
   // prevent global scroll
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -68,16 +75,13 @@ const PlannerPage = () => {
       const hasEvaluation = localStorage.getItem('evaluation');
       
       if (hasEvaluation) {
-        const evalData = JSON.parse(hasEvaluation);
-        setRequirements(evalData);
+        setRequirements(parseRequirementsFromEvaluation(hasEvaluation));
       }
       
       if (hasPlannerState && hasEvaluation) {
-        // Load evaluation and show planner
         setShowPlanner(true);
         setShowOnboarding(false);
       } else {
-        // Missing planner or evaluation, show onboarding
         setShowOnboarding(true);
         setShowPlanner(false);
       }
@@ -86,6 +90,33 @@ const PlannerPage = () => {
     };
     
     initializePlanner();
+  }, []);
+
+  useEffect(() => {
+    const handlePlannerEvaluationUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ requirements?: any[] }>;
+      const nextRequirements = customEvent.detail?.requirements;
+
+      if (Array.isArray(nextRequirements)) {
+        setRequirements(nextRequirements);
+        return;
+      }
+
+      const cachedEvaluation = localStorage.getItem("evaluation");
+      setRequirements(parseRequirementsFromEvaluation(cachedEvaluation));
+    };
+
+    window.addEventListener(
+      "planner-evaluation-updated",
+      handlePlannerEvaluationUpdated as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "planner-evaluation-updated",
+        handlePlannerEvaluationUpdated as EventListener
+      );
+    };
   }, []);
 
   const syncPlannerFromCloud = async () => {
@@ -166,19 +197,14 @@ const PlannerPage = () => {
         
         if (evalResult.evaluation) {
           localStorage.setItem('evaluation', JSON.stringify(evalResult.evaluation));
-          console.log('Synced evaluation from cloud');
         }
       }
 
       // Handle profile data and sync tutorial status
       if (profileResponse.ok) {
         const profileResult = await profileResponse.json();
-        console.log('ok')
-        
         if (profileResult.profile) {
-          console.log('ok')
           const hasSeenTutorial = profileResult.profile?.['system-fields']?.hasSeenPlannerTutorial;
-          console.log(hasSeenTutorial)     
           if (hasSeenTutorial === true) {
             localStorage.setItem('hasSeenPlannerTutorial', 'true');
           }
@@ -191,6 +217,8 @@ const PlannerPage = () => {
       sessionStorage.setItem('hasCheckedCloudThisSession', 'true');
     }
   };
+  
+  
   
   
 
@@ -357,7 +385,6 @@ const PlannerPage = () => {
       }
   
       const fetchedData = await response.json();
-      console.log("Requirements fetched:", fetchedData);
       const degrees = fetchedData.results || [];
       setRequirements(degrees);
 

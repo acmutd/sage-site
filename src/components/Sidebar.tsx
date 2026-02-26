@@ -44,6 +44,13 @@ interface SidebarProps {
     isExpanded?: boolean;
     onToggleExpanded?: () => void;
     placedSuggestedCourses?: Set<string>;
+    allCompletedCourseCodes?: string[];
+    allPlannedCoursesWithOrder?: Array<{
+        code: string;
+        yearKey: string;
+        semesterIndex: number;
+        semesterOrder: number;
+    }>;
     onRestartOnboarding?: () => void;
 }
 
@@ -53,6 +60,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     isExpanded: externalIsExpanded,
     onToggleExpanded,
     placedSuggestedCourses = new Set(),
+    allCompletedCourseCodes = [],
+    allPlannedCoursesWithOrder = [],
     onRestartOnboarding,
 }) => {
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
@@ -97,7 +106,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         () => ({
             accept: "COURSE",
             drop: (item: any) => {
-                console.log("Dropped on sidebar:", item);
                 if (item.courseId && item.sourceYear !== undefined && item.sourceSemesterIndex !== undefined && onDropCourse) {
                     onDropCourse(item.courseId, item.sourceYear, item.sourceSemesterIndex);
                 }
@@ -162,8 +170,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             [key]: !prev[key],
         }));
     };
-
-    console.log(requirements[0]?.categories?.[0]?.classes);
 
     // Helper function to check if a category has any completion/progress
     const hasCompletion = (category: any): boolean => {
@@ -236,6 +242,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                         placedSuggestedCourses={placedSuggestedCourses}
                         categoryName={category.name}
                         allSuggestedCourses={allSuggestedCourses}
+                        allCompletedCourseCodes={allCompletedCourseCodes}
+                        allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                     />
                 </>
             )}

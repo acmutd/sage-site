@@ -11,6 +11,13 @@ interface PlannerSidebarContentProps {
   transcriptData: any;
   onDropCourse?: (courseId: string, sourceYear: string, sourceSemesterIndex: number) => void;
   placedSuggestedCourses?: Set<string>;
+  allCompletedCourseCodes?: string[];
+  allPlannedCoursesWithOrder?: Array<{
+    code: string;
+    yearKey: string;
+    semesterIndex: number;
+    semesterOrder: number;
+  }>;
   onRestartOnboarding?: () => void;
   availableSemesters?: Array<{yearKey: string, semesterIndex: number, title: string}>;
   onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
@@ -20,6 +27,8 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
   onClose,
   requirements,
   placedSuggestedCourses = new Set(),
+  allCompletedCourseCodes = [],
+  allPlannedCoursesWithOrder = [],
   onRestartOnboarding,
   availableSemesters = [],
   onAddCourse
@@ -207,6 +216,8 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
                 availableSemesters={availableSemesters}
                 onAddCourse={onAddCourse}
                 allSuggestedCourses={allSuggestedCourses}
+                allCompletedCourseCodes={allCompletedCourseCodes}
+                allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
               />
             </>
           )}
