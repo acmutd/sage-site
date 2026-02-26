@@ -129,6 +129,16 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         }
     }, [showWarnings, canHover]);
 
+    useEffect(() => {
+        if (showWarnings && canHover && warningButtonRef.current) {
+            const rect = warningButtonRef.current.getBoundingClientRect();
+            setPopoverPosition({
+                top: rect.bottom + window.scrollY + 8,
+                right: window.innerWidth - rect.right,
+            });
+        }
+    }, [showWarnings, canHover]);
+
     const plannedSemestersByCode = new Map<string, string[]>();
     if (allPlannedCoursesWithOrder.length > 0) {
         allPlannedCoursesWithOrder.forEach((plannedCourse) => {
@@ -166,6 +176,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         const coreqMap = new Map<string, string[][]>();
         const categoryPathMap = new Map<string, string>();
         const suggestedCourseCodes = new Set<string>();
+
 
         allSuggestedCourses.forEach((suggestedCourse: any) => {
             const code = normalizeCourseCode(
@@ -365,6 +376,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         return warnings.length > 0 ? warnings : null;
     };
 
+
     const creditWarnings = getCreditWarnings();
 
     const courseWarningsByCode = new Map<string, Warning[]>();
@@ -421,6 +433,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         }
         onClearSemester();
     };
+    };
 
     const handleRemoveCourse = (courseId: string) => {
         setCourseToRemove(courseId);
@@ -435,6 +448,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         setCourseToRemove(null);
     };
 
+    const [{ isOver, canDrop, projectedWarnings }, drop] = useDrop(() => ({
     const [{ isOver, canDrop, projectedWarnings }, drop] = useDrop(() => ({
         accept: "COURSE",
         drop: (item: any) => {
@@ -641,6 +655,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                 {!canHover && showWarnings && ReactDOM.createPortal(
                                     <>
                                         <div
+                                        <div
                                             className="fixed inset-0 bg-black bg-opacity-30 z-[9998]"
                                             onClick={() => setShowWarnings(false)}
                                         />
@@ -754,12 +769,14 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem
+                                <DropdownMenuItem
                                     className="text-amber-600 focus:text-amber-600 hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-amber-600"
                                     onClick={handleClearClick}
                                 >
                                     <Eraser className="w-4 h-4 mr-2" />
                                     Clear Semester
                                 </DropdownMenuItem>
+                                <DropdownMenuItem
                                 <DropdownMenuItem
                                     className="text-destructive focus:text-destructive hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-destructive"
                                     onClick={onRemoveSemester}
