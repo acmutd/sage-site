@@ -555,7 +555,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const adaptedRequirements = useMemo(() => requirements, [requirements]);
+    const adaptedRequirements = useMemo(
+        () => Array.isArray(requirements) ? requirements : requirements?.results ?? [],
+        [requirements]
+    );
 
     const allSuggestedCourses = useMemo(() => {
         const courses: any[] = [];
@@ -689,8 +692,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         const code = normalizeCourseCode(course.course_code || course.code);
                         if (!code) return;
 
-                        // Push only the code so that it is time agnostic
-                        plannedCoursePlacements.push(`${code}`);
+                        plannedCoursePlacements.push(code);
                     });
                 });
             });
@@ -796,7 +798,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             for (const yearKey in allSemesters) {
                 for (let idx = 0; idx < allSemesters[yearKey].length; idx++) {
                     const semester = allSemesters[yearKey][idx];
-                    // Skip the source semester
                     if (yearKey === sourceYear && idx === sourceSemesterIndex) continue;
                     
                     const exists = semester.courses.some(c => c.course_code === courseCode);
@@ -824,13 +825,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     };
 
                     targetSemester.courses.push(newCourse);
-
-                    // Mark this course as placed
-                    updatePlannerState({
-                        semesters: newState,
-                        placedCourses: Array.from(new Set([...placedSuggestedCourses, courseCode]))
-                    });
                 }
+
+                updatePlannerState({
+                    semesters: newState,
+                    placedCourses: Array.from(new Set([...placedSuggestedCourses, courseCode]))
+                });
 
                 return;
             }

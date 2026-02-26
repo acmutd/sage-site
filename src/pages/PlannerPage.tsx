@@ -75,8 +75,7 @@ const PlannerPage = () => {
       const hasEvaluation = localStorage.getItem('evaluation');
       
       if (hasEvaluation) {
-        const evalData = JSON.parse(hasEvaluation);
-        setRequirements(evalData);
+        setRequirements(parseRequirementsFromEvaluation(hasEvaluation));
       }
       
       if (hasPlannerState && hasEvaluation) {
