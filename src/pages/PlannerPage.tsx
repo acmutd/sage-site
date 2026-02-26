@@ -73,9 +73,15 @@ const PlannerPage = () => {
       
       const hasPlannerState = localStorage.getItem('planner-state');
       const hasEvaluation = localStorage.getItem('evaluation');
-      
+      const hasTranscriptData = localStorage.getItem('transcriptData'); 
+
       if (hasEvaluation) {
         setRequirements(parseRequirementsFromEvaluation(hasEvaluation));
+      }
+
+      if (hasTranscriptData)
+      { 
+        setTranscriptData(JSON.parse(hasTranscriptData));
       }
       
       if (hasPlannerState && hasEvaluation) {
@@ -187,6 +193,16 @@ const PlannerPage = () => {
             }
           } else {
             localStorage.setItem('planner-state', JSON.stringify(cloudData));
+          }
+        }
+        
+        const localDataStr = localStorage.getItem('transcriptData');
+        if (!localDataStr)
+        {
+          if (plannerResult.transcriptData)
+          { 
+            const cloudData = plannerResult.transcriptData;
+            localStorage.setItem('planner-state', JSON.stringify(cloudData));    
           }
         }
       }

@@ -467,6 +467,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 action: 'savePlanner',
                 token,
                 plannerData: plannerData,
+                transcriptData: transcriptData
             }),
         });
 
