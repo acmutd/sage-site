@@ -1119,11 +1119,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
                 {/* Action buttons */}
-                <div className="fixed bottom-4 right-24 flex items-center gap-2 z-50">
+                <div className="fixed bottom-4 right-[225px] flex items-center gap-2 z-50">
                     <button
                         onClick={runQuickEvaluation}
                         disabled={isRunningQuickEvaluation || isLoading}
-                        className={`px-4 py-2 rounded-full bg-white border border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-gray-700 font-medium text-sm ${
+                        className={`px-6 py-3 rounded-full bg-white border border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-gray-700 font-medium text-sm ${
                             isRunningQuickEvaluation || isLoading
                                 ? 'cursor-not-allowed opacity-70'
                                 : 'hover:-translate-y-0.5'
@@ -1141,7 +1141,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     <button 
                         onClick={handleSave}
                         disabled={!hasUnsavedChanges || isLoading}
-                        className={`px-4 py-2 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
+                        className={`fixed bottom-4 right-24 px-6 py-3 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
                             hasUnsavedChanges
                                 ? 'hover:-translate-y-0.5'
                                 : 'cursor-default'
