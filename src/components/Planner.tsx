@@ -452,7 +452,37 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         toast.success('Renamed plan');
     };
 
-    // Handle save to cloud
+    const savePlannerState = async () => {
+        const token = Cookies.get('authToken');
+        if (!token || !user) {
+            throw new Error('Not authenticated');
+        }
+
+        const CRUD_API = import.meta.env.VITE_CRUD_API;
+        const response = await fetch(CRUD_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: user.uid,
+                action: 'savePlanner',
+                token,
+                plannerData: plannerData,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to save planner');
+        }
+
+        try {
+            localStorage.setItem('planner-state', JSON.stringify(plannerData));
+        } catch (e) {
+            console.error('Failed to save to localStorage:', e);
+        }
+
+        setHasUnsavedChanges(false);
+    };
+
     const handleSave = async () => {
         if (!user) {
             toast.error('You must be logged in to save');
@@ -467,30 +497,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
         setIsLoading(true);
         try {
-            const CRUD_API = import.meta.env.VITE_CRUD_API;
-            
-            const response = await fetch(CRUD_API, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user.uid,
-                    action: 'savePlanner',
-                    token,
-                    plannerData: plannerData,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to save planner');
-            }
-
-            // Save to localStorage on successful cloud save
-            try {
-                localStorage.setItem('planner-state', JSON.stringify(plannerData));
-            } catch (error) {
-                console.error('Failed to save to localStorage:', error);
-            }
-            setHasUnsavedChanges(false);
+            await savePlannerState();
             toast.success('Saved your plan');
         } catch (error) {
             toast.error('Failed to save. Try again.');
@@ -674,7 +681,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         Object.keys(allSemesters)
             .sort()
             .forEach((yearKey) => {
-                allSemesters[yearKey].forEach((semester, semesterIndex) => {
+                allSemesters[yearKey].forEach((semester, semIdx) => {
                     semester.courses?.forEach((course: any) => {
                         const status = String(course.status || "").toLowerCase();
                         if (status !== "planned") return;
@@ -682,6 +689,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         const code = normalizeCourseCode(course.course_code || course.code);
                         if (!code) return;
 
+                        // Push only the code so that it is time agnostic
                         plannedCoursePlacements.push(`${code}`);
                     });
                 });
@@ -704,9 +712,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
         setIsRunningQuickEvaluation(true);
         try {
-            // Persist planner state before quick evaluation refreshes suggestions.
-            localStorage.setItem('planner-state', JSON.stringify(plannerData));
+            await savePlannerState();
+        } catch (saveError) {
+            console.warn("Cloud save failed before quick eval, falling back to localStorage:", saveError);
+            try {
+                localStorage.setItem('planner-state', JSON.stringify(plannerData));
+            } catch (e) {
+                console.error("localStorage fallback also failed:", e);
+            }
+        }
 
+        try {
             await evaluatePlannerAndMergeSuggestions({
                 quickEvaluation: true,
                 assumeMinimumGradePass: true,
@@ -716,7 +732,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             setLastQuickEvalPlannedCoursesSignature(plannedCoursesSignature);
         } catch (error) {
             console.error("Quick evaluation failed:", error);
-            toast.error("Could not save planner state or refresh suggested courses");
+            toast.error("Could not refresh suggested courses");
         } finally {
             setIsRunningQuickEvaluation(false);
         }
