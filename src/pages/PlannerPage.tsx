@@ -132,10 +132,6 @@ const PlannerPage = () => {
     const token = Cookies.get('authToken');
     if (!token) {
       sessionStorage.setItem('hasCheckedCloudThisSession', 'true');
-
-    const token = Cookies.get('authToken');
-    if (!token) {
-      sessionStorage.setItem('hasCheckedCloudThisSession', 'true');
       return;
     }
 
@@ -441,6 +437,5 @@ const PlannerPage = () => {
     </div>
   );
 };
-}
 
 export default PlannerPage;
