@@ -1,4 +1,4 @@
-import Cookies from "js-cookie";
+import { auth } from "@/firebase-config";
 
 function getPlannerState(): any {
   const raw = localStorage.getItem("planner-state");
@@ -251,8 +251,10 @@ function mergeEvaluatePlannerSuggestionsIntoLocalEvaluation(
 async function requestPlannerEvaluation(
   options: PlannerEvaluationOptions = {}
 ): Promise<any> {
-  const token = Cookies.get("authToken");
-  if (!token) throw new Error("No auth token found — are you logged in?");
+  const user = auth.currentUser;
+  if (!user) throw new Error("No auth token found — are you logged in?");
+  const token = await user.getIdToken();
+
   const rawTranscript = localStorage.getItem("transcriptData");
   if (!rawTranscript)
     throw new Error("No transcript data found in localStorage");
