@@ -7,7 +7,6 @@ import {
   browserLocalPersistence,
   signOut,
 } from "firebase/auth";
-import Cookies from "js-cookie";
 
 interface AuthContextType {
   user: User | null;
@@ -68,11 +67,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setProfilePicture(
               data.photo_url || `/assets/profile_pics/${data.profile_picture_type}.png`
             );
-            Cookies.set("authToken", token, { expires: 7 });
           } else {
             setUser(null);
             setProfilePicture(null);
-            Cookies.remove("authToken");
           }
 
           setLoading(false);
@@ -92,7 +89,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       await signOut(auth);
       localStorage.clear();
-      Cookies.remove("authToken");
       setUser(null);
     } catch (error) {
       console.error("Logout failed:", error);
