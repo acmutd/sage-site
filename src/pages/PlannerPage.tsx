@@ -6,7 +6,6 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { TouchBackend } from "react-dnd-touch-backend";
 import { MultiBackend, TouchTransition, MouseTransition } from "react-dnd-multi-backend";
 import { useAuth } from "@/context/AuthContext";
-import Cookies from "js-cookie";
 
 // tablet mode 
 const HTML5toTouch = {
@@ -135,7 +134,7 @@ const PlannerPage = () => {
       return;
     }
 
-    const token = Cookies.get('authToken');
+    const token = await user.getIdToken();
     if (!token) {
       sessionStorage.setItem('hasCheckedCloudThisSession', 'true');
       return;

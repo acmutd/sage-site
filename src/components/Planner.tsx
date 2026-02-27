@@ -16,9 +16,9 @@ import { calculateCatalogYear, determineStudentType, isCurrentSemester } from "@
 import YearDivider from "./planner/YearDivider";
 import { useUISnapshot } from "@/hooks/useUISnapshot";
 import { useAuth } from "@/context/AuthContext";
-import Cookies from "js-cookie";
 import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
 import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
+import { auth } from "@/firebase-config";
 
 interface PlannerProps {
     semesters: {
@@ -217,7 +217,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                 // CRUD Update
                 if (user?.uid) {
-                    const token = Cookies.get('authToken');
+                    const token = await user.getIdToken();
                     if (token) {
                         try {
                             const CRUD_API = import.meta.env.VITE_CRUD_API;
@@ -453,10 +453,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     };
 
     const savePlannerState = async () => {
-        const token = Cookies.get('authToken');
-        if (!token || !user) {
-            throw new Error('Not authenticated');
-        }
+        const user = auth.currentUser;
+        if (!user) throw new Error("Not authenticated");
+        const token = await user.getIdToken();
 
         const CRUD_API = import.meta.env.VITE_CRUD_API;
         const response = await fetch(CRUD_API, {
@@ -490,7 +489,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             return;
         }
 
-        const token = Cookies.get('authToken');
+        const token = await user.getIdToken();
         if (!token) {
             toast.error('Authentication token not found');
             return;
