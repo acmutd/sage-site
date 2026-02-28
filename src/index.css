@@ -198,3 +198,15 @@ body {
 .sage-driver-theme * {
   font-family: 'DM Sans', sans-serif;
 }
+
+@keyframes slot-in {
+  0%   { transform: translateY(60%);  opacity: 0; }
+  70%  { transform: translateY(-4%);  opacity: 1; }
+  100% { transform: translateY(0%);   opacity: 1; }
+}
+@keyframes slot-out {
+  0%   { transform: translateY(0%);   opacity: 1; }
+  100% { transform: translateY(-60%); opacity: 0; }
+}
+.slot-in  { animation: slot-in  0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.slot-out { animation: slot-out 0.15s ease-in forwards; }

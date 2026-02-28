@@ -1,11 +1,10 @@
-import * as React from "react";
+import { useMemo, useState, useEffect } from "react";
 import Fuse, { type IFuseOptions } from "fuse.js";
-import { ChevronsUpDown, PlusIcon } from "lucide-react";
+import { ChevronsUpDown, PlusIcon, Search } from "lucide-react";
 import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
@@ -42,10 +41,11 @@ export function Searchbox<T>({
   className,
   fuseThreshold = 0.35,
 }: SearchboxProps<T>) {
-  const [open, setOpen] = React.useState(false);
-  const [query, setQuery] = React.useState("");
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
-  const fuse = React.useMemo(() => {
+  const fuse = useMemo(() => {
     const options: IFuseOptions<T> = {
       keys: searchKeys,
       threshold: fuseThreshold,
@@ -56,16 +56,31 @@ export function Searchbox<T>({
     return new Fuse(items, options);
   }, [items, searchKeys, fuseThreshold]);
 
-  const results = React.useMemo(() => {
+  const results = useMemo(() => {
     if (!query.trim()) return items.slice(0, 8);
     return fuse.search(query).slice(0, 8).map((r) => r.item);
   }, [query, fuse, items]);
 
-  const exactMatch = React.useMemo(
+  const exactMatch = useMemo(
     () => items.some((item) => getLabel(item).toLowerCase() === query.toLowerCase()),
     [items, query, getLabel]
   );
 
+  useEffect(() => {
+    if (items.length === 0) return;
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => {
+        let next;
+        do {
+          next = Math.floor(Math.random() * items.length);
+        } while (next === prev);
+        return next;
+      });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [items]);
+  
+    
   function handleSelect(item: T) {
     onSelect(item);
     setQuery("");
@@ -101,11 +116,24 @@ export function Searchbox<T>({
         align="start"
       >
         <Command shouldFilter={false}>
-          <CommandInput
-            placeholder={placeholder}
-            value={query}
-            onValueChange={setQuery}
-          />
+          <div className="flex items-center border-b px-3 gap-2">
+              <Search size={14} className="opacity-50 shrink-0" />
+              <div className="relative flex-1 overflow-hidden">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="w-full py-2 text-sm bg-transparent outline-none"
+                />
+                {!query && (
+                  <span className="slot-in absolute inset-y-0 left-0 flex items-center text-sm text-muted-foreground pointer-events-none whitespace-nowrap">
+                    Try:&nbsp;
+                    <span key={placeholderIndex} className="slot-in inline-flex items-center text-muted-foreground">
+                      {items.length > 0 ? getLabel(items[placeholderIndex]) : placeholder}
+                    </span>
+                  </span>
+                )}
+              </div>
+            </div>
           <CommandList className="max-h-48 overflow-y-auto">
             {/* Results */}
             {results.length > 0 && (
