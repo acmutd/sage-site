@@ -1,4 +1,3 @@
-//import { PlusIcon } from "lucide-react";
 import React, { useState } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -9,7 +8,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "../components/ui/select";
-import { Combobox } from "./ui/Combobox";
+import { Combobox } from "@/components/ui/Combobox";
 
 interface ProgramValidationBProps {
     program: any; // Add a prop to accept the program being edited
@@ -145,9 +144,9 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                                 </label>
                                 <Combobox<{ name: string }>
                                     items={getTitleOptions()}
-                                    getLabel={(o) => o.name}
+                                    getLabel={(o: { name: string }) => o.name}
                                     searchKeys={["name"]}
-                                    onSelect={(o) => handleFieldChange("title", o.name)}
+                                    onSelect={(o: { name: string }) => handleFieldChange("title", o.name)}
                                     placeholder="Search programs…"
                                     triggerLabel={updatedProgram?.title || "Select program name"}
                                     className="w-full border-slate-300 rounded-sm"
