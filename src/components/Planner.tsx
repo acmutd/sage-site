@@ -106,6 +106,22 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     }
                 },
                 {
+                    element: '[data-tour="plan-toggle"]',
+                    popover: {
+                        title: 'Selecting Plans',
+                        description: 'Here, you can select the many plans you\'ve saved and easily switch to them',
+                        side: "bottom"
+                    }
+                },
+                {
+                    element: '[data-tour="plan-settings"]',
+                    popover: {
+                        title: 'Plan Options',
+                        description: 'Click here to view plan settings, like creating, renaming, duplicating, and deleting plans',
+                        side: "bottom"
+                    }
+                },
+                {
                     element: '[data-tour="semester-area"]',
                     popover: {
                         title: 'Academic Plan',
@@ -131,10 +147,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     onDeselected: () => {
                         if (!dropdownWasOpenedRef.current) {
                             setTimeout(() => {
-                                driverInstance.moveTo(15);
+                                driverInstance.moveTo(17);
                                 setTimeout(() => {
                                     driverInstance.destroy();
-                                    driverInstance.drive(14);
+                                    driverInstance.drive(16);
                                 }, 50);
                             }, 150);
                         }
@@ -194,6 +210,28 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         title: 'Add Year',
                         description: 'Create a new academic year to start future planning.',
                         side: "left"
+                    },
+                    onDeselected: () => {
+                        scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                },
+                {
+                    element: '[data-tour="suggest-future-classes"]',
+                    popover: {
+                        title: 'Suggest Future Classes',
+                        description: 'Want to plan ahead? Pressing this will suggest the next courses to take (assuming you meet requirements of currently suggested ones)',
+                        side: "top"
+                    },
+                    onDeselected: () => {
+                        scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                },
+                {
+                    element: '[data-tour="save-plan"]',
+                    popover: {
+                        title: 'Save Plan',
+                        description: 'Once you\'r happy with your plan, you can save it. You\'ll also be reminded to save by a small yellow dot or if you close the tab without saving',
+                        side: "top"
                     },
                     onDeselected: () => {
                         scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1128,6 +1166,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 ? 'cursor-not-allowed opacity-70'
                                 : 'hover:-translate-y-0.5'
                         }`}
+                        data-tour="suggest-future-classes"
                         title="Run quick evaluation and refresh suggested courses"
                     >
                         {isRunningQuickEvaluation ? (
@@ -1146,6 +1185,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 ? 'hover:-translate-y-0.5'
                                 : 'cursor-default'
                         } text-white font-medium text-sm`}
+                        data-tour="save-plan"
                     >
                         {hasUnsavedChanges && (
                             <div className="absolute -top-0 -right-3 w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
@@ -1222,7 +1262,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     {/* Plan Selector */}
                     <div className="mb-6 flex items-center gap-3">
                         <DropdownMenu>
-                            <DropdownMenuTrigger className="flex items-center gap-3 px-5 py-3 border-2 border-green-400 rounded-2xl text-base bg-white hover:bg-gray-50 shadow-sm font-medium">
+                            <DropdownMenuTrigger data-tour="plan-toggle" className="flex items-center gap-3 px-5 py-3 border-2 border-green-400 rounded-2xl text-base bg-white hover:bg-gray-50 shadow-sm font-medium">
                                 <span>{activePlan?.name || 'Select Plan'}</span>
                                 <ChevronDown size={18} />
                             </DropdownMenuTrigger>
@@ -1240,7 +1280,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         </DropdownMenu>
                         
                         <DropdownMenu>
-                            <DropdownMenuTrigger className="p-2.5 hover:bg-gray-100 rounded-lg transition-colors">
+                            <DropdownMenuTrigger data-tour="plan-settings" className="p-2.5 hover:bg-gray-100 rounded-lg transition-colors">
                                 <Settings size={20} className="text-gray-600" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-white rounded-3xl shadow-lg p-3" align="end" side="right" sideOffset={10} alignOffset={-100}>
