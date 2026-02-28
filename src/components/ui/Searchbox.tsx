@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export interface ComboboxProps<T> {
+export interface SearchboxProps<T> {
   items: T[];
   getLabel: (item: T) => string;
   getDescription?: (item: T) => string | undefined;
@@ -30,7 +30,7 @@ export interface ComboboxProps<T> {
   fuseThreshold?: number;
 }
 
-export function Combobox<T>({
+export function Searchbox<T>({
   items,
   getLabel,
   getDescription,
@@ -41,7 +41,7 @@ export function Combobox<T>({
   triggerLabel = "Add",
   className,
   fuseThreshold = 0.35,
-}: ComboboxProps<T>) {
+}: SearchboxProps<T>) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
 

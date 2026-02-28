@@ -8,7 +8,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "../components/ui/select";
-import { Combobox } from "@/components/ui/Combobox";
+import { Searchbox } from "@/components/ui/SearchBox";
 
 interface ProgramValidationBProps {
     program: any; // Add a prop to accept the program being edited
@@ -142,7 +142,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                                 <label className="font-body-regular text-redesign-stylesdark-text text-sm">
                                     Program name
                                 </label>
-                                <Combobox<{ name: string }>
+                                <Searchbox<{ name: string }>
                                     items={getTitleOptions()}
                                     getLabel={(o: { name: string }) => o.name}
                                     searchKeys={["name"]}
