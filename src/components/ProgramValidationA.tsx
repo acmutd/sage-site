@@ -353,7 +353,7 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
           <button
             onClick={onBack}
             className={isFirstTime 
-              ? "px-8 py-2 bg-accent text-black rounded-lg hover:bg-green-500 transition"
+              ? "px-8 py-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
               : "text-sm text-gray-500 hover:text-gray-700 underline"
             }
           >
@@ -362,7 +362,7 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
         )}
         
         <button
-          className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-green-500 transition"
+          className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
           onClick={handleFinish}
         >
           Next

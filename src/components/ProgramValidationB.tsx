@@ -9,6 +9,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "../components/ui/select";
+import { Combobox } from "./ui/Combobox";
 
 interface ProgramValidationBProps {
     program: any; // Add a prop to accept the program being edited
@@ -22,6 +23,7 @@ interface ProgramValidationBProps {
 const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext, onRemove, onSave, degreeCatalog }) => {
     const [selectedProgramId] = useState<number | null>(program?.id || null);
     const [updatedProgram, setUpdatedProgram] = useState(program); // Local state for the program being edited
+
     const isNewProgram = !program?.id;
 
     const handleFieldChange = (fieldId: string, value: string) => {
@@ -62,23 +64,24 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
         
         const level = updatedProgram?.level?.toLowerCase(); // "undergraduate" or "graduate"
         const type = updatedProgram?.type?.toLowerCase(); // "major", "minor", "certificate"
-        
+        let raw: string[] = [];
+
         if (level === "undergraduate") {
-          if (type === "major") return degreeCatalog.undergraduate?.bachelor || [];
-          if (type === "minor") return degreeCatalog.undergraduate?.minor || [];
-          if (type === "certificate") return degreeCatalog.undergraduate?.certificate || [];
+          if (type === "major") raw = degreeCatalog.undergraduate?.bachelor || [];
+          if (type === "minor") raw = degreeCatalog.undergraduate?.minor || [];
+          if (type === "certificate") raw = degreeCatalog.undergraduate?.certificate || [];
         } else if (level === "graduate") {
           if (type === "major") 
           {
-            return [
+            raw = [
                 ...(degreeCatalog.graduate?.masters || []),
                 ...(degreeCatalog.graduate?.doctorate || [])
             ];
           }
-          if (type === "certificate") return degreeCatalog.graduate?.certificate || [];
+          if (type === "certificate") raw = degreeCatalog.graduate?.certificate || [];
         }
         
-        return [];
+        return raw.map((name: string) => ({ name }));
     };
     
     const formFields = [
@@ -93,12 +96,6 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
           label: "Type of program",
           placeholder: "Select type of program",
           options: getTypeOptions(),
-        },
-        {
-          id: "title",
-          label: "Program name",
-          placeholder: "Select program name",
-          options: getTitleOptions(),
         },
     ];
 
@@ -116,45 +113,46 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                 <Card className="py-3 relative overflow-hidden">
                     <CardContent className="flex items-center">
                         <div className="flex flex-col gap-4 w-full"> {/* Ensure all selects are in a column */}
-                            {formFields.map((field) => (
-                                <div
-                                    key={field.id}
-                                    className="dropdown-container flex flex-col items-start gap-2 w-full"
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    
-                                    <label className="font-body-regular text-redesign-stylesdark-text text-sm">
-                                        {field.label}
-                                    </label>
-
-                                    <Select onValueChange={(value) => handleFieldChange(field.id, value)}
-                                    >
-                                        <SelectTrigger className={`bg-redesign-stylesbg-light rounded-sm border border-slate-300 p-2 ${field.id === "title" ? "w-full" : "w-64"}`}>
-                                            <SelectValue
-                                                placeholder={
-                                                    field.id === "title"
-                                                        ? program.title
-                                                        : field.id === "level"
-                                                            ? program.level
-                                                            : field.id === "type"
-                                                                ? program.type
-                                                                : field.placeholder
-                                                }
-                                                className="text-redesign-stylesplaceholder-secondary-text text-sm"
-                                            />
-                                        </SelectTrigger>
-                                        <SelectContent className="z-[80] bg-white p-1">
-                                            {field.options?.map((option: string, index: number) => (
-                                                <SelectItem key={index} value={option}>
-                                                    {option}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                        {formFields.map((field) => (
+                            <div key={field.id} className="dropdown-container flex flex-col items-start gap-2 w-full"
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <label className="font-body-regular text-redesign-stylesdark-text text-sm">
+                                {field.label}
+                                </label>
+                                <Select onValueChange={(value) => handleFieldChange(field.id, value)}>
+                                <SelectTrigger className="bg-redesign-stylesbg-light rounded-sm border border-slate-300 p-2 w-64">
+                                    <SelectValue
+                                    placeholder={field.id === "level" ? program.level : program.type}
+                                    className="text-redesign-stylesplaceholder-secondary-text text-sm"
+                                    />
+                                </SelectTrigger>
+                                <SelectContent className="z-[80] bg-white p-1">
+                                    {field.options.map((option, index) => (
+                                    <SelectItem key={index} value={option}>{option}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                                </Select>
+                            </div>
                             ))}
-
+                            <div className="dropdown-container flex flex-col items-start gap-2 w-full"
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <label className="font-body-regular text-redesign-stylesdark-text text-sm">
+                                    Program name
+                                </label>
+                                <Combobox<{ name: string }>
+                                    items={getTitleOptions()}
+                                    getLabel={(o) => o.name}
+                                    searchKeys={["name"]}
+                                    onSelect={(o) => handleFieldChange("title", o.name)}
+                                    placeholder="Search programs…"
+                                    triggerLabel={updatedProgram?.title || "Select program name"}
+                                    className="w-full border-slate-300 rounded-sm"
+                                />
+                            </div>
                             <div className="inline-flex items-start gap-4 relative flex-[0_0_auto]">
                                 <Button
                                     variant="link"
