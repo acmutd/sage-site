@@ -216,7 +216,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
 
             {/* <div className="flex justify-end mt-8">
                 <button
-                    className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+                    className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-green-500 transition"
                     onClick={onNext}
                 >
                     Next

@@ -371,11 +371,13 @@ const Profile = () => {
                                                     {profilePictureType === num && googlePhotoURL ? (
                                                         <div className="relative">
                                                             <img src={googlePhotoURL}
+                                                                referrerPolicy="no-referrer"
                                                                 className="w-40 h-40 object-cover rounded-3xl" 
                                                                 draggable={false} />
                                                         </div>
                                                     ) : (
                                                         <img src={`/assets/profile_pics/${num}.png`}
+                                                            referrerPolicy="no-referrer"
                                                             className="w-40 h-40 object-cover" 
                                                             draggable={false} />
                                                     )}
@@ -390,11 +392,13 @@ const Profile = () => {
                                                     {profilePictureType === num && googlePhotoURL ? (
                                                         <div className="relative">
                                                             <img src={googlePhotoURL}
+                                                                referrerPolicy="no-referrer"
                                                                 className="w-40 h-40 object-cover rounded-3xl" 
                                                                 draggable={false} />
                                                         </div>
                                                     ) : (
                                                         <img src={`/assets/profile_pics/${num}.png`}
+                                                            referrerPolicy="no-referrer"
                                                             className="w-40 h-40 object-cover" 
                                                             draggable={false} />
                                                     )}

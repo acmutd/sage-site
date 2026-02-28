@@ -52,7 +52,7 @@ const PlannerPage = () => {
 
   // invoke dark navbar when we're at program spec pipeline
   useEffect(() => {
-    if (showOnboarding) {
+    if (showOnboarding && isFirstTime) {
       document.body.setAttribute('data-onboarding-active', 'true');
     } else {
       document.body.removeAttribute('data-onboarding-active');
@@ -62,7 +62,7 @@ const PlannerPage = () => {
     return () => {
       document.body.removeAttribute('data-onboarding-active');
     };
-  }, [showOnboarding]);
+  }, [showOnboarding, isFirstTime]);
   
   useEffect(() => {
     const initializePlanner = async () => {
@@ -248,7 +248,6 @@ const PlannerPage = () => {
   };
 
   const handleRestartOnboarding = async () => {
-    setShowPlanner(false);
     setShowOnboarding(true);
     setFirstTime(false);
   }
@@ -427,23 +426,40 @@ const PlannerPage = () => {
         <>
           <DndProvider backend={MultiBackend} options={HTML5toTouch}>
             <div>
-              {showOnboarding && (
+              {showOnboarding && isFirstTime && (
                 <Onboarding
                   onClose={handleOnboardingCancel}
                   onFinish={handleFinishOnboarding}
                   setTranscriptData={setTranscriptData}
-                  isFirstTime={isFirstTime}
-                  initialStep={isFirstTime ? "FileUpload" : "Programs"}
+                  isFirstTime={true}
+                  initialStep="FileUpload"
                   transcriptData={transcriptData}
                 />
               )}
               {showPlanner && (
-                <Planner 
-                  semesters={transformedSemesters} 
-                  requirements={requirements} 
-                  transcriptData={transcriptData}
-                  onRestartOnboarding={handleRestartOnboarding}
-                />
+                  <Planner 
+                    semesters={transformedSemesters} 
+                    requirements={requirements} 
+                    transcriptData={transcriptData}
+                    onRestartOnboarding={handleRestartOnboarding}
+                  />
+              )}
+
+              {showOnboarding && !isFirstTime && (
+                    <div
+                      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80] px-4"
+                    >
+                      <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+                        <Onboarding
+                          onClose={handleOnboardingCancel}
+                          onFinish={handleFinishOnboarding}
+                          setTranscriptData={setTranscriptData}
+                          isFirstTime={false}
+                          initialStep="Programs"
+                          transcriptData={transcriptData}
+                        />
+                      </div>
+                    </div>
               )}
             </div>
           </DndProvider>

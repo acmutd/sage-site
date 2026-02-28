@@ -218,7 +218,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onNext, showManualOption = 
             
             <button
               onClick={handleUpload}
-              className="w-auto px-6 sm:px-8 py-1.5 sm:py-2 text-sm sm:text-base bg-accent text-black rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-auto px-6 sm:px-8 py-1.5 sm:py-2 text-sm sm:text-base bg-accent text-black rounded-lg hover:bg-green-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isUploading || !selectedFile}
             >
               {isUploading ? (
