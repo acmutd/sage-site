@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 interface DegreeProgressCardProps {
   title: string;
@@ -129,15 +130,24 @@ interface RequirementProps {
   total: number;
 }
 
-const Requirement: React.FC<RequirementProps> = ({ label, completed, total }) => (
-  <div className="flex justify-between items-center bg-white border border-border rounded-xl px-3 py-1.5 text-sm text-gray-700 gap-6">
-    <span>{label}</span>
-    <span className="flex items-center gap-2 font-medium">
-      {completed}/{total}
-      <span className="w-2.5 h-2.5 bg-green-400 rounded-sm"></span>
-    </span>
-  </div>
-);
+const Requirement: React.FC<RequirementProps> = ({ label, completed, total }) => { 
+    const navigate = useNavigate();
+    return (
+  
+      <div onClick={() => navigate("/planner")} className="flex justify-between items-center bg-white border border-border rounded-xl px-3 py-1.5 text-sm text-gray-700 gap-6 cursor-pointer hover:bg-gray-50 transition-colors duration-150">
+        <span>{label}</span>
+        <span className="flex items-center gap-2 font-medium">
+          {completed}/{total}
+          <div className="w-4 h-5 bg-gray-200 rounded overflow-hidden flex flex-col-reverse">
+            <div 
+              className="w-full bg-green-500 rounded transition-all duration-300"
+              style={{ height: `${(completed / total) * 100}%` }}
+            />
+          </div>
+        </span>
+      </div>
+    );
+  };
 interface ProgressCircleProps {
   percentage: number;
 }
