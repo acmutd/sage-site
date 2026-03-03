@@ -40,7 +40,10 @@ const Profile = () => {
         completed: number;
         total: number;
         percentage: number;
+        startDate: string | null;
+        endDate: string | null;
     }>>([]);
+    const [majorsData, setMajorsData] = useState<Array<{name: string, start_date: string, status: string}>>([]);
     const navigate = useNavigate();
 
     type EvaluatorData = Array<{
@@ -90,7 +93,13 @@ const Profile = () => {
         setCurrentIndex(index);
     };
 
-    function formatCarouselData(evaluatorResponse: EvaluatorData) {
+    const parseYear = (date: string | undefined) => {
+        if (!date) return null;
+        const year = date.split(" ").find(part => /^\d{4}$/.test(part));
+        return year ?? null;
+    }
+
+    function formatCarouselData(evaluatorResponse: EvaluatorData, majors: typeof majorsData) {
         const core = evaluatorResponse.find(d => d.degree === "Core Requirements");
         const degrees = evaluatorResponse.filter(d => d.degree !== "Core Requirements");
 
@@ -99,6 +108,8 @@ const Profile = () => {
         }
     
         return degrees.map(degree => {
+            const matchedMajor = majors.find(m => degree.degree.includes(m.name) || m.name.includes(degree.degree));
+            console.log("degree:", degree.degree, "matched:", matchedMajor, "year: ", matchedMajor?.start_date);
             const majorReq = degree.categories.find(c => c.name.includes("Major Requirements"));
             const electiveReq = degree.categories.find(c => c.name.includes("Elective Requirements"));
     
@@ -115,7 +126,9 @@ const Profile = () => {
                 percentage: Math.round(
                     ((core?.credits_completed ?? 0) + (degree.credits_completed ?? 0)) /
                     ((core?.credits ?? 0) + (degree.credits ?? 0)) * 100
-                )
+                ),
+                startDate: parseYear(matchedMajor?.start_date),
+                endDate: null
             };
         });
     }
@@ -174,6 +187,7 @@ const Profile = () => {
         }
       
         const data = await response.json();
+        setMajorsData(data.majors ?? []);
         console.log(data);
         setName(data.name);
         // setGPA(data.gpa.undergraduate);
@@ -213,7 +227,7 @@ const Profile = () => {
       
           if (evalResponse.ok) {
             const evalData = await evalResponse.json();
-            setCarouselData(formatCarouselData(evalData.evaluation));
+            setCarouselData(formatCarouselData(evalData.evaluation, data.majors ?? []));
           }
     }
 
@@ -227,7 +241,7 @@ const Profile = () => {
 
     return (
         <>
-            <div className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]">
+            <div className="flex bg-bglight py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]">
                 {
                     mobileView ?
                     // mobile view
@@ -289,6 +303,7 @@ const Profile = () => {
                                     completed={carouselData[currentIndex].completed}
                                     total={carouselData[currentIndex].total}
                                     percentage={carouselData[currentIndex].percentage}
+                                    startDate={carouselData[currentIndex].startDate ?? undefined}
                                     active={false}
                                 />
                             )}
@@ -414,6 +429,8 @@ const Profile = () => {
                                             total={card.total}
                                             percentage={card.percentage}
                                             active={false}
+                                            startDate={card.startDate ?? undefined}
+                                            endDate={card.endDate ?? undefined}
                                         />
                                     </div>
                                 ))}
