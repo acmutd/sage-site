@@ -59,7 +59,7 @@ const Onboarding: React.FC<OnboardingProps> = ({
 
   const handleFinish = (updatedTranscript: any) => {
     setTranscriptData(updatedTranscript);
-    onFinish(transcriptData);
+    onFinish(updatedTranscript);
   };
 
   const handleBack = () => {
