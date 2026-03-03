@@ -250,7 +250,6 @@ const ChatBot: React.FC = () => {
     }
 
     if (query.trim().length > 500) {
-      setChatError(`Query uses ${query.trim().length}/500 characters. Please shorten your query.`);
       if (chatContainerRef.current) {
         chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
       }
@@ -654,24 +653,37 @@ const ChatBot: React.FC = () => {
                       </div>
                     </div>
                   </div> */}
-
+                  <div className="relative w-full">
                   <textarea
-                    ref={textareaRef}
-                    rows={1}
-                    placeholder="Ask a question..."
-                    aria-label="Chat input field"
-                    className="w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-y-auto focus:outline-none h-fit max-h-28"
-                    style={{ scrollbarWidth: "none" }}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={handleEnter}
-                    value={query}
-                    disabled={loading}
-                  />
+                      data-tour="chat-input"
+                      ref={textareaRef}
+                      rows={1}
+                      placeholder="Ask a question..."
+                      aria-label="Chat input field"
+                      className={`w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-y-auto focus:outline-none h-fit max-h-28 ${
+                        query.trim().length >= 400 ? "pb-6" : ""
+                      }`}
+                      style={{ scrollbarWidth: "none" }}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={handleEnter}
+                      value={query}
+                      disabled={loading}
+                    />
+                      {query.trim().length >= 400 && (
+                        <div
+                          className={`absolute -bottom-3 right-6 text-xs font-medium pointer-events-none transition-colors duration-150 ${
+                            query.trim().length >= 500 ? "text-red-500" : "text-orange-400"
+                          }`}
+                        >
+                          {query.trim().length} / 500
+                        </div>
+                      )}
+                  </div>
 
                   <button
                     className="flex h-full max-h-[3rem] justify-center items-center aspect-square bg-accent rounded-full hover:bg-buttonhover transition-colors disabled:opacity-50"
                     onClick={handleSendQuery}
-                    disabled={loading || !query.trim()}
+                    disabled={loading || !query.trim() || query.trim().length > 500}
                   >
                     <CornerRightUpIcon size={24} />
                   </button>
@@ -946,20 +958,30 @@ const ChatBot: React.FC = () => {
                       </div>
                     </div>
                   </div>
-
-                  <textarea
-                    data-tour="chat-input"
-                    ref={textareaRef}
-                    rows={1}
-                    placeholder="Ask a question..."
-                    aria-label="Chat input field"
-                    className="w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-y-auto focus:outline-none h-fit max-h-28"
-                    style={{ scrollbarWidth: "none" }}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={handleEnter}
-                    value={query}
-                    disabled={loading}
-                  />
+                  <div className="relative w-full">
+                    <textarea
+                      data-tour="chat-input"
+                      ref={textareaRef}
+                      rows={1}
+                      placeholder="Ask a question..."
+                      aria-label="Chat input field"
+                      className="w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-y-auto focus:outline-none h-fit max-h-28"
+                      style={{ scrollbarWidth: "none" }}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={handleEnter}
+                      value={query}
+                      disabled={loading}
+                    />
+                    {query.trim().length >= 400 && (
+                      <div
+                        className={`absolute bottom-3 right-6 text-xs font-medium pointer-events-none transition-colors duration-150 ${
+                          query.trim().length >= 500 ? "text-red-500" : "text-orange-400"
+                        }`}
+                      >
+                        {query.trim().length} / 500
+                      </div>
+                    )}
+                  </div>
 
                   <button
                     className="flex h-full max-h-[3rem] justify-center items-center aspect-square bg-accent rounded-full hover:bg-buttonhover transition-colors disabled:opacity-50"
