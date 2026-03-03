@@ -855,13 +855,16 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 if (targetSemester && Array.isArray(targetSemester.courses)) {
                     const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
 
-                    const newCourse = {
+                    const newCourse: Record<string, any> = {
                         course_code: course.code || course.course_code,
                         course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
                         credits_planned: course.credits || 3,
                         id: newCourseId,
-                        status: 'planned'
+                        status: 'planned',
                     };
+
+                    if (course.prerequisites) newCourse.prerequisites = course.prerequisites;
+                    if (course['Pre-Requisite']) newCourse['Pre-Requisite'] = course['Pre-Requisite'];
 
                     targetSemester.courses.push(newCourse);
                 }

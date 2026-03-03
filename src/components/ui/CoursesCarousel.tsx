@@ -240,6 +240,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                             <CourseBox
                                 key={`suggested-${startIndex + idx}`}
                                 course={{
+                                    ...course,
                                     course_code: courseCode,
                                     course_name: course.name || course.course_name,
                                     description: course.description,
