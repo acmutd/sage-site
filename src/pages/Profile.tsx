@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef} from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import DegreeProgressCard from "@/components/ui/degreeprogresscard";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import DegreeProgressCard from "@/components/profile/degreeprogresscard";
 import { useAuth } from "../context/AuthContext";
 
 const Profile = () => {
@@ -30,13 +31,17 @@ const Profile = () => {
     const [startDate, setStartDate] = useState("");
     const [carouselData, setCarouselData] = useState<Array<{
         title: string;
-        core: number;
-        major: number;
-        elective: number;
+        coreCompleted: number;
+        coreTotal: number;
+        majorCompleted: number;
+        majorTotal: number;
+        electiveCompleted: number;
+        electiveTotal: number;
         completed: number;
         total: number;
         percentage: number;
     }>>([]);
+    const navigate = useNavigate();
 
     type EvaluatorData = Array<{
         degree: string;
@@ -60,17 +65,25 @@ const Profile = () => {
         getUserInfo();
     }, [user?.photoURL]);
     
+    useEffect(() => {
+        if (!carouselRef.current) return;
+        const W = carouselRef.current.parentElement!.offsetWidth;
+        carouselRef.current.style.transform = `translateX(-${currentIndex * (W / 2 + 8)}px)`;
+    }, [currentIndex]);
+    
     const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
     const cardsPerView = mobileView ? 1 : 2; // Number of cards visible at once
-    const maxIndex = carouselData.length - cardsPerView;
+    const maxIndex = Math.max(0, carouselData.length - cardsPerView);
 
     const goToPrevious = () => {
         setCurrentIndex((prev) => (prev > 0 ? prev - 1 : prev));
     };
 
     const goToNext = () => {
-        setCurrentIndex((prev) => (prev < maxIndex ? prev + 1 : 0));
+        setCurrentIndex((prev) =>
+          prev < maxIndex ? prev + 1 : prev
+        );
     };
 
     const goToSlide = (index: number) => {
@@ -80,31 +93,30 @@ const Profile = () => {
     function formatCarouselData(evaluatorResponse: EvaluatorData) {
         const core = evaluatorResponse.find(d => d.degree === "Core Requirements");
         const degrees = evaluatorResponse.filter(d => d.degree !== "Core Requirements");
-        
-        if (!core || degrees.length === 0) {
-          throw new Error("Invalid evaluator data");
+
+        if (!degrees.length) {
+            return [];
         }
-        
+    
         return degrees.map(degree => {
-          const majorReq = degree.categories.find(c => c.name.includes("Major Requirements"));
-          const electiveReq = degree.categories.find(c => c.name.includes("Elective Requirements"));
-          
-          if (!majorReq || !electiveReq) {
-            throw new Error("Missing major or elective requirements");
-          }
-      
-          return {
-            title: degree.degree,
-            core: core.credits,
-            major: majorReq.credits,
-            elective: electiveReq.credits,
-            completed: core.credits_completed + degree.credits_completed,
-            total: core.credits + degree.credits,
-            percentage: Math.round(
-              ((core.credits_completed + degree.credits_completed) / 
-               (core.credits + degree.credits)) * 100
-            )
-          };
+            const majorReq = degree.categories.find(c => c.name.includes("Major Requirements"));
+            const electiveReq = degree.categories.find(c => c.name.includes("Elective Requirements"));
+    
+            return {
+                title: degree.degree,
+                coreCompleted: core?.credits_completed ?? 0,
+                coreTotal: core?.credits ?? 0,
+                majorCompleted: majorReq?.credits_completed ?? 0,
+                majorTotal: majorReq?.credits ?? 0,
+                electiveCompleted: electiveReq?.credits_completed ?? 0,
+                electiveTotal: electiveReq?.credits ?? 0,
+                completed: (core?.credits_completed ?? 0) + (degree.credits_completed ?? 0),
+                total: (core?.credits ?? 0) + (degree.credits ?? 0),
+                percentage: Math.round(
+                    ((core?.credits_completed ?? 0) + (degree.credits_completed ?? 0)) /
+                    ((core?.credits ?? 0) + (degree.credits ?? 0)) * 100
+                )
+            };
         });
     }
 
@@ -268,9 +280,12 @@ const Profile = () => {
                             {carouselData.length > 0 && (
                                 <DegreeProgressCard
                                     title={carouselData[currentIndex].title}
-                                    core={carouselData[currentIndex].core}
-                                    major={carouselData[currentIndex].major}
-                                    elective={carouselData[currentIndex].elective}
+                                    coreCompleted={carouselData[currentIndex].coreCompleted}
+                                    coreTotal={carouselData[currentIndex].coreTotal}
+                                    majorCompleted={carouselData[currentIndex].majorCompleted}
+                                    majorTotal={carouselData[currentIndex].majorTotal}
+                                    electiveCompleted={carouselData[currentIndex].electiveCompleted}
+                                    electiveTotal={carouselData[currentIndex].electiveTotal}
                                     completed={carouselData[currentIndex].completed}
                                     total={carouselData[currentIndex].total}
                                     percentage={carouselData[currentIndex].percentage}
@@ -380,73 +395,86 @@ const Profile = () => {
                         </div>
 
                         {/* Carousel Section */}
-                        <div className="relative w-full">
-                            {/* Carousel Container */}
-                            <div className="relative w-full max-w-full overflow-hidden rounded-2xl">
-                                {/* Cards */}
-                                <div 
-                                    ref={carouselRef}
-                                    className="flex transition-transform duration-500 ease-in-out gap-4"
-                                    style={{ transform: `translateX(-${2 * currentIndex * (100 / cardsPerView)}%)` }}
+                        <div className="relative w-full overflow-hidden">
+                            <div ref={carouselRef} className="flex gap-4 items-stretch transition-transform duration-300 ease-in-out">
+                                {/* Existing cards */}
+                                {carouselData.map((card, index) => (
+                                    <div key={index} className="flex-shrink-0" style={{
+                                        width: carouselData.length < cardsPerView ? "auto" : "calc(50% - 8px)"
+                                    }}>
+                                        <DegreeProgressCard
+                                            title={card.title}
+                                            coreCompleted={card.coreCompleted}
+                                            coreTotal={card.coreTotal}
+                                            majorCompleted={card.majorCompleted}
+                                            majorTotal={card.majorTotal}
+                                            electiveCompleted={card.electiveCompleted}
+                                            electiveTotal={card.electiveTotal}
+                                            completed={card.completed}
+                                            total={card.total}
+                                            percentage={card.percentage}
+                                            active={false}
+                                        />
+                                    </div>
+                                ))}
+
+                                {carouselData.length < cardsPerView && (
+                                    <div className="flex items-center flex-shrink-0 self-center">
+                                        <button onClick={() => navigate("/planner")} className="w-10 h-10 rounded-full border border-border bg-white flex items-center justify-center hover:bg-gray-100 text-xl text-gray-500">
+                                            <Plus />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {carouselData.length > cardsPerView && (
+                                <>
+                                <button
+                                    onClick={goToPrevious}
+                                    disabled={currentIndex === 0}
+                                    className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30"
                                 >
-                                    {carouselData.map((card, index) => (
-                                        <div 
-                                            key={index} 
-                                            className="flex-shrink-0"
-                                            style={{ width: `calc(${100 / cardsPerView}% - calc(${16 * (cardsPerView - 1) / cardsPerView}px))` }}
-                                        >
-                                            <DegreeProgressCard
-                                                title={card.title}
-                                                core={card.core}
-                                                major={card.major}
-                                                elective={card.elective}
-                                                completed={card.completed}
-                                                total={card.total}
-                                                percentage={card.percentage}
-                                                active={false}
-                                            />
-                                        </div>
+                                    <ChevronLeft className="w-5 h-5" />
+                                </button>
+
+                                <button
+                                    onClick={goToNext}
+                                    disabled={currentIndex === maxIndex}
+                                    className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30"
+                                >
+                                    <ChevronRight className="w-5 h-5" />
+                                </button>
+                                </>
+                            )}
+
+                            {/* Dots below */}
+                            {carouselData.length > cardsPerView && (
+                                <div className="flex justify-center gap-2 mt-4">
+                                    {Array.from({ length: maxIndex + 1 }).map((_, index) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => goToSlide(index)}
+                                            className={`h-3 rounded-full transition-all duration-300 ${
+                                                index === currentIndex ? 'bg-accent w-8' : 'bg-gray-300 w-3 hover:bg-gray-400'
+                                            }`}
+                                        />
                                     ))}
                                 </div>
+                            )}
 
-                                {/* Left Arrow */}
-                                {currentIndex > 0 && (
+                            {/* Single addition of programs */ }
+                            { carouselData.length === 0 && ( 
+                                <div className="flex justify-center items-center h-48">
                                     <button
-                                        onClick={goToPrevious}
-                                        className="absolute left-0 top-1/2 -translate-y-1/2 translate-x-3 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors border border-gray-200 z-10"
-                                        aria-label="Previous cards"
+                                        onClick={() => navigate("/planner")}
+                                        className="w-16 h-16 rounded-full border border-border bg-white 
+                                                    flex items-center justify-center 
+                                                    hover:bg-gray-100 shadow-md transition"
                                     >
-                                        <ChevronLeft className="w-5 h-5 text-gray-700" />
+                                        <Plus className="w-6 h-6 text-gray-500" />
                                     </button>
-                                )}
-
-                                {/* Right Arrow */}
-                                {currentIndex < (maxIndex - 1) && (
-                                    <button
-                                        onClick={goToNext}
-                                        className="absolute right-0 top-1/2 -translate-y-1/2 -translate-x-3 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors border border-gray-200 z-10"
-                                        aria-label="Next cards"
-                                    >
-                                        <ChevronRight className="w-5 h-5 text-gray-700" />
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* Dots Indicator */}
-                            <div className="flex justify-center gap-2 mt-3">
-                                {Array.from({ length: maxIndex }).map((_, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => goToSlide(index)}
-                                        className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                                            index === currentIndex
-                                                ? 'bg-accent w-8'
-                                                : 'bg-gray-300 hover:bg-gray-400'
-                                        }`}
-                                        aria-label={`Go to slide ${index + 1}`}
-                                    />
-                                ))}
-                            </div>
+                                </div>
+                            )}
                         </div>
 
                     </div>
