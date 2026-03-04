@@ -12,6 +12,7 @@ interface RequirementCategoryProps {
     hasSubcategories: boolean;
     children: React.ReactNode;
     isFirstCategory?: boolean;
+    focusLabel?: string;
     categoryKey?: string;
   }
   
@@ -24,10 +25,13 @@ interface RequirementCategoryProps {
     hasSubcategories,
     children,
     isFirstCategory = false,
+    focusLabel,
     categoryKey,
   }) => {
+    const isHighlighted = focusLabel ? title.includes(focusLabel) : false;
+    
     return (
-      <div className="border border-gray-200 rounded-md overflow-hidden" data-category-key={categoryKey}>
+      <div className={`border border-gray-200 rounded-md overflow-hidden ${isHighlighted ? "highlight-pulse" : ""}`} data-category-key={categoryKey}>
         <button
           onClick={onToggle}
           className="w-full flex items-start justify-between gap-3 p-3 hover:bg-gray-50 transition-colors text-left"

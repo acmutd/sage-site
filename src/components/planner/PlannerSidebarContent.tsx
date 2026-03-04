@@ -21,6 +21,7 @@ interface PlannerSidebarContentProps {
   onRestartOnboarding?: () => void;
   availableSemesters?: Array<{yearKey: string, semesterIndex: number, title: string}>;
   onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
+  focusLabel?: string;
 }
 
 const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
@@ -31,7 +32,8 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
   allPlannedCoursesWithOrder = [],
   onRestartOnboarding,
   availableSemesters = [],
-  onAddCourse
+  onAddCourse,
+  focusLabel,
 }) => {
   const [autoExpandedCategories, setAutoExpandedCategories] = React.useState<{ [key: number]: boolean }>({});
   const [expandedSubcategories, setExpandedSubcategories] = React.useState<Record<string, boolean>>({});
@@ -81,6 +83,14 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
     });
     setAutoExpandedCategories(initialExpandedState);
   }, [requirements]);
+
+  React.useEffect(() => {
+    if (!focusLabel) return;
+    setTimeout(() => {
+        document.querySelector('.highlight-pulse')
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+}, [focusLabel]);
 
   React.useEffect(() => {
     const initialState: Record<string, boolean> = {};
@@ -180,6 +190,8 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
       
       return (
         <RequirementCategory
+          categoryKey={currentCatIdx}
+          focusLabel={focusLabel}
           key={currentCatIdx}
           title={displayName}
           completed={category.progress}
