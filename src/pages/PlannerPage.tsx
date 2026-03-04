@@ -69,18 +69,20 @@ const PlannerPage = () => {
     const initializePlanner = async () => {
       setLoading(true);
       
-      await syncPlannerFromCloud();
+      const missingData = !localStorage.getItem('planner-state') || !localStorage.getItem('evaluation');
+      if (missingData) {
+        sessionStorage.removeItem('hasCheckedCloudThisSession');
+      }
       
+      await syncPlannerFromCloud();
+
       const hasPlannerState = localStorage.getItem('planner-state');
       const hasEvaluation = localStorage.getItem('evaluation');
-      const hasTranscriptData = localStorage.getItem('transcriptData'); 
-      
+      const hasTranscriptData = localStorage.getItem('transcriptData');
 
       if (!hasPlannerState || !hasEvaluation) {
         sessionStorage.removeItem(`hasCheckedCloudThisSession`);
       }
-
-      await syncPlannerFromCloud();
 
       if (hasEvaluation) {
         setRequirements(parseRequirementsFromEvaluation(hasEvaluation));
