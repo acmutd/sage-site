@@ -255,12 +255,8 @@ async function requestPlannerEvaluation(
   if (!user) throw new Error("No auth token found — are you logged in?");
   const token = await user.getIdToken();
 
-  const rawTranscript = localStorage.getItem("transcriptData");
-  if (!rawTranscript)
-    throw new Error("No transcript data found in localStorage");
-  const transcriptData = JSON.parse(rawTranscript);
-  const id = transcriptData.id;
-  if (!id) throw new Error("No account ID found in transcript data");
+  const id = user.uid;
+  if (!id) throw new Error("No account ID found for user");
 
   const plannerData = options.plannerStateOverride || getPlannerState();
   const activePlan = plannerData.plans.find(
