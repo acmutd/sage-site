@@ -4,12 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 interface DegreeProgressCardProps {
   title: string;
-  coreCompleted: number;
-  coreTotal: number;
-  majorCompleted: number;
-  majorTotal: number;
-  electiveCompleted: number;
-  electiveTotal: number;
+  categories: { label: string; completed: number; total: number; }[];
   completed: number;
   total: number;
   percentage: number;
@@ -19,7 +14,7 @@ interface DegreeProgressCardProps {
 }
 
 function abbreviateDegree(title: string): string {
-  return title
+  const abbreviated = title
     .replace(/Associate of Arts/gi, "A.A.")
     .replace(/Associate of Science/gi, "A.S.")
     .replace(/Associate of Applied Science/gi, "A.A.S.")
@@ -64,21 +59,18 @@ function abbreviateDegree(title: string): string {
     .replace(/Doctor of Divinity/gi, "D.D.")
     .replace(/Doctor of Business Administration/gi, "D.B.A.")
     .replace(/Doctor of Public Health/gi, "Dr.P.H.")
-    .replace(/ in /gi, " ");
+
+    if (abbreviated === title) return title;
+    return abbreviated.replace(/ in /gi, " ");
 }
 
 const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
   title,
-  coreCompleted,
-  coreTotal,
-  majorCompleted,
-  majorTotal,
-  electiveCompleted,
-  electiveTotal,
   completed,
   total,
   percentage,
   startDate,
+  categories,
   endDate,
   active = false,
 }) => {
@@ -118,7 +110,7 @@ const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
       )}
 
       <div
-        className={`flex flex-row justify-start items-stretch rounded-3xl py-6 px-6 shadow-sm transition-all duration-300 w-fit h-full gap-6
+        className={`flex flex-row justify-start items-stretch rounded-3xl py-6 px-6 shadow-sm transition-all duration-300 w-full max-w-[520px] h-full gap-5
           ${active ? "bg-innercontainer border border-green-300" : "bg-innercontainer border border-border"}
         `}
       >
@@ -135,14 +127,14 @@ const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
           </div>
           <p className="text-sm text-gray-400">{startDate ?? "—"} - {endDate ?? "Present"}</p>
           <div className="flex flex-col gap-2 h-full">
-            <Requirement label="Core Requirements" completed={coreCompleted} total={coreTotal} />
-            <Requirement label="Major Requirements" completed={majorCompleted} total={majorTotal} />
-            <Requirement label="Elective Requirements" completed={electiveCompleted} total={electiveTotal} />
+          {categories.map((cat, i) => (
+            <Requirement key={i} label={cat.label} completed={cat.completed} total={cat.total} />
+          ))}
           </div>
         </div>
 
         {/* Right: White progress box */}
-        <div className="relative border border-border bg-white rounded-3xl p-4 w-[220px] h-[180px] flex-shrink-0 self-end">
+        <div className="relative border border-border bg-white rounded-3xl p-4 w-[40%] h-[180px] flex-shrink-0 self-end">
           <div className="absolute top-3 right-3">
             <ProgressCircle percentage={percentage} />
           </div>
