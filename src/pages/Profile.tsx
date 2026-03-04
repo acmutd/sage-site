@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 const Profile = () => {
     const { user } = useAuth();
     const [mobileView, setMobileView] = useState(false);
+    const [tabletView, setTabletView] = useState(false);
     const [profilepic, setProfilePic] = useState(() => {
         const cached = localStorage.getItem('profilePictureType');
         if (cached) {
@@ -37,8 +38,10 @@ const Profile = () => {
         percentage: number;
         startDate: string | null;
         endDate: string | null;
+        status: string | null;
     }>>([]);
     const [majorsData, setMajorsData] = useState<Array<{name: string, start_date: string, program_level: String, status: string}>>([]);
+    const cardWidthPercent = mobileView ? 69 : tabletView ? 55 : 34;
     const navigate = useNavigate();
 
     type EvaluatorData = Array<{
@@ -64,16 +67,32 @@ const Profile = () => {
     }, [user?.photoURL]);
     
     useEffect(() => {
-        if (!carouselRef.current) return;
-        const W = carouselRef.current.parentElement!.offsetWidth;
-        const cardWidth = W * 0.36;
-        carouselRef.current.style.transform = `translateX(-${currentIndex * cardWidth}px)`;
-    }, [currentIndex]);
+        const updateTransform = () => {
+            if (!carouselRef.current) return;
+            const W = carouselRef.current.parentElement!.offsetWidth;
+            const cardWidth = W * 0.34;
+            carouselRef.current.style.transform = `translateX(-${currentIndex * cardWidth}px)`;
+        };
+
+        updateTransform();
+        window.addEventListener("resize", updateTransform);
+        return () => window.removeEventListener("resize", updateTransform);
+    }, [currentIndex, cardWidthPercent]);
+    
+    useEffect(() => {
+        setCurrentIndex(0);
+    }, [program]);
     
     const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
-    const cardsPerView = mobileView ? 1 : 2; // Number of cards visible at once
-    const maxIndex = Math.max(0, carouselData.length - cardsPerView);
+    const cardsPerView = mobileView ? 1 : tabletView ? 1 : 2; // Number of cards visible at once
+
+    const filteredCarouselData = carouselData.filter(card => {
+        if (program === "All") return true;
+        return card.status!.toLowerCase() === program.toLowerCase();
+    });
+
+    const maxIndex = Math.max(0, filteredCarouselData.length - cardsPerView);
 
     const goToPrevious = () => {
         setCurrentIndex((prev) => (prev > 0 ? prev - 1 : prev));
@@ -105,7 +124,11 @@ const Profile = () => {
             const matchedMajor = majors.find(m => 
                 degree.degree.includes(m.name) || m.name.includes(degree.degree)
             );
-            const isBachelor = matchedMajor?.program_level?.toLowerCase() === "undergraduate";
+            const isBachelor = 
+            matchedMajor?.program_level?.toLowerCase() === "undergraduate" && 
+            !degree.degree.toLowerCase().includes("minor") &&
+            !degree.degree.toLowerCase().includes("certificate") &&
+            !degree.degree.toLowerCase().includes("certification");
 
             const allCategories = [
                 ...(isBachelor && core ? [{ label: "Core Requirements", completed: core.credits_completed, total: core.credits }] : []),
@@ -127,6 +150,7 @@ const Profile = () => {
                 percentage: Math.round((completed / total) * 100),
                 startDate: parseYear(matchedMajor?.start_date),
                 endDate: null,
+                status: matchedMajor?.status ?? "active"
             };
         });
     }
@@ -185,14 +209,17 @@ const Profile = () => {
         }
       
         const data = await response.json();
-        setMajorsData(data.majors ?? []);
-        console.log(data);
+        setMajorsData([
+            ...(data.majors ?? []),
+            ...(data.minors ?? []),
+            ...(data.certifications ?? []),
+        ]);
         setName(data.name);
         // setGPA(data.gpa.undergraduate);
         setUndergraduateHours(data.credit_hours.undergraduate);
         // setMajor(data.majors[0].name);
         setStartDate(data.majors[0].start_date);
-
+        
         //add feature so it checks if data.credit_hours contains graduate that its not 0
         setGraduateHours(0);
 
@@ -225,12 +252,21 @@ const Profile = () => {
       
           if (evalResponse.ok) {
             const evalData = await evalResponse.json();
-            setCarouselData(formatCarouselData(evalData.evaluation, data.majors ?? []));
+            const allPrograms = [
+                ...(data.majors ?? []),
+                ...(data.minors ?? []),
+                ...(data.certifications ?? []),
+            ];
+            setCarouselData(formatCarouselData(evalData.evaluation, allPrograms));
           }
     }
 
     useEffect(() => {
-        const handleResize = () => setMobileView(window.innerWidth < 768);
+        const handleResize = () => { 
+            const w = window.innerWidth;
+            setMobileView(w < 768);
+            setTabletView(w >= 768 && w < 1024);
+        }
         handleResize(); // set on mount
         window.addEventListener("resize", handleResize);
         getUserInfo();
@@ -239,7 +275,7 @@ const Profile = () => {
 
     return (
         <>
-            <div className="flex bg-bglight py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]">
+            <div className="flex bg-bglight py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)] overflow-y-auto">
                 {
                     mobileView ?
                     // mobile view
@@ -303,7 +339,7 @@ const Profile = () => {
                             )}
 
                             {/* Prev/Next buttons */}
-                            <div className="flex justify-between mt-3">
+                            <div className="flex justify-between">
                                 <button
                                     onClick={goToPrevious}
                                     disabled={currentIndex === 0}
@@ -314,22 +350,24 @@ const Profile = () => {
                                 </button>
 
                                 {/* Dots */}
-                                <div className="flex items-center gap-2">
-                                    {carouselData.map((_, index) => (
-                                        <button
-                                            key={index}
-                                            onClick={() => goToSlide(index)}
-                                            className={`h-3 rounded-full transition-all duration-300 ${
-                                                index === currentIndex ? 'bg-accent w-8' : 'bg-gray-300 w-3 hover:bg-gray-400'
-                                            }`}
-                                            aria-label={`Go to slide ${index + 1}`}
-                                        />
-                                    ))}
-                                </div>
+                                {filteredCarouselData.length > 1 && (
+                                    <div className="flex items-center gap-2">
+                                        {filteredCarouselData.map((_, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() => goToSlide(index)}
+                                                className={`h-3 rounded-full transition-all duration-300 ${
+                                                    index === currentIndex ? 'bg-accent w-8' : 'bg-gray-300 w-3 hover:bg-gray-400'
+                                                }`}
+                                                aria-label={`Go to slide ${index + 1}`}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
 
                                 <button
                                     onClick={goToNext}
-                                    disabled={currentIndex === carouselData.length - 1}
+                                    disabled={currentIndex === filteredCarouselData.length - 1}
                                     className="p-2 rounded-full bg-white shadow border border-gray-200 disabled:opacity-30"
                                     aria-label="Next"
                                 >
@@ -407,9 +445,10 @@ const Profile = () => {
                         <div className="relative w-full overflow-hidden">
                             <div ref={carouselRef} className="flex gap-0 items-stretch transition-transform duration-300 ease-in-out">
                                 {/* Existing cards */}
-                                {carouselData.map((card, index) => (
-                                    <div key={index} className="flex-shrink-0 pr-4" style={{
-                                        width: carouselData.length < cardsPerView ? "auto" : "36%"
+                                {filteredCarouselData.map((card, index) => (
+                                    <div key={index} className="flex-shrink-0 pr-4 flex items-start" style={{
+                                        width: filteredCarouselData.length < cardsPerView ? "auto" : `${cardWidthPercent}%`,
+
                                     }}>
                                         <DegreeProgressCard
                                             title={card.title}
@@ -423,19 +462,20 @@ const Profile = () => {
                                         />
                                     </div>
                                 ))}
-                                <div
-                                    className="flex-shrink-0 flex items-center justify-center"
-                                >
-                                    <button
-                                        onClick={() => navigate("/planner")}
-                                        className="w-10 h-10 rounded-full border border-border bg-white flex items-center justify-center hover:bg-gray-100 text-gray-500 shadow-sm"
-                                    >
-                                        <Plus className="w-5 h-5" />
-                                    </button>
-                                </div>
+                                {filteredCarouselData.length > 1 && (
+                                    <div className="flex-shrink-0 flex items-center justify-center self-stretch">
+                                        <button
+                                            onClick={() => navigate("/planner")}
+                                            className="w-10 h-10 rounded-full border border-border bg-white flex items-center justify-center hover:bg-gray-100 text-gray-500 shadow-sm"
+                                        >
+                                            <Plus className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                )}
+
                             </div>
 
-                            {carouselData.length > cardsPerView && (
+                            {filteredCarouselData.length > cardsPerView && (
                                 <>
                                 <button
                                     onClick={goToPrevious}
@@ -456,7 +496,7 @@ const Profile = () => {
                             )}
 
                             {/* Dots below */}
-                            {carouselData.length > cardsPerView && (
+                            {filteredCarouselData.length > cardsPerView && (
                                 <div className="flex justify-center gap-2 mt-2">
                                     {Array.from({ length: maxIndex + 1 }).map((_, index) => (
                                         <button
@@ -471,7 +511,7 @@ const Profile = () => {
                             )}
 
                             {/* Single addition of programs */ }
-                            { carouselData.length === 0 && ( 
+                            {filteredCarouselData.length === 0 && ( 
                                 <div className="flex justify-center items-center h-48">
                                     <button
                                         onClick={() => navigate("/planner")}

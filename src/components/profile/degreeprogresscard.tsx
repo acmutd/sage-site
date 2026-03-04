@@ -109,13 +109,11 @@ const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
         document.body
       )}
 
-      <div
-        className={`flex flex-row justify-start items-stretch rounded-3xl py-6 px-6 shadow-sm transition-all duration-300 w-full max-w-[520px] h-full gap-5
-          ${active ? "bg-innercontainer border border-green-300" : "bg-innercontainer border border-border"}
-        `}
-      >
+<div className={`flex flex-row justify-start items-stretch rounded-3xl py-6 px-6 shadow-sm transition-all duration-300 w-fit min-w-full h-fit max-h-[245px] gap-5
+    ${active ? "bg-innercontainer border border-green-300" : "bg-innercontainer border border-border"}
+`}>
         {/* Left: Title + date + requirements */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
           <div
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
@@ -126,20 +124,20 @@ const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
             </h2>
           </div>
           <p className="text-sm text-gray-400">{startDate ?? "—"} - {endDate ?? "Present"}</p>
-          <div className="flex flex-col gap-2 h-full">
-          {categories.map((cat, i) => (
-            <Requirement key={i} label={cat.label} completed={cat.completed} total={cat.total} />
-          ))}
-          </div>
+            <div className="flex flex-col gap-2 flex-1 overflow-y-auto">
+            {categories.map((cat, i) => (
+              <Requirement key={i} label={cat.label} completed={cat.completed} total={cat.total} />
+            ))}
+            </div>
         </div>
 
         {/* Right: White progress box */}
-        <div className="relative border border-border bg-white rounded-3xl p-4 w-[40%] h-[180px] flex-shrink-0 self-end">
-          <div className="absolute top-3 right-3">
+        <div className="border border-border bg-white rounded-3xl p-6 w-[160px] flex-shrink-0 self-stretch overflow-hidden flex flex-col justify-between">
+        <div className="relative bottom-4 left-12">
             <ProgressCircle percentage={percentage} />
           </div>
-          <div className="absolute bottom-4 left-5 flex flex-col gap-0.5">
-            <p className="text-4xl font-semibold text-gray-900">{completed}</p>
+          <div className="relative bottom-4 right-2 flex flex-col gap-0.5">
+            <p className="text-3xl font-semibold text-gray-900">{completed}</p>
             <p className="text-gray-700 text-sm font-medium">Credit Hours</p>
             <p className="text-green-500 text-sm">of {total} Completed</p>
           </div>
@@ -160,10 +158,10 @@ const Requirement: React.FC<RequirementProps> = ({ label, completed, total }) =>
   return (
     <div
       onClick={() => navigate("/planner")}
-      className="flex justify-between items-center bg-white border border-border rounded-xl px-3 py-1.5 text-sm text-gray-700 gap-6 cursor-pointer hover:bg-gray-50 transition-colors duration-150"
+      className="flex justify-between items-center bg-white border border-border rounded-xl px-3 py-1.5 text-sm text-gray-700 gap-2 cursor-pointer hover:bg-gray-50 transition-colors duration-150"
     >
-      <span>{label}</span>
-      <span className="flex items-center gap-2 font-medium">
+      <span className="truncate min-w-0 flex-1">{label}</span>
+      <span className="flex items-center gap-2 font-medium flex-shrink-0">
         {completed}/{total}
         <div className="w-4 h-5 bg-gray-200 rounded overflow-hidden flex flex-col-reverse">
           <div
@@ -186,7 +184,7 @@ const ProgressCircle: React.FC<ProgressCircleProps> = ({ percentage }) => {
   const offset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div className="relative w-24 h-24">
+    <div className="relative w-20 h-20">
       <svg className="w-full h-full" viewBox="0 0 100 100">
         <circle
           className="text-gray-200"
