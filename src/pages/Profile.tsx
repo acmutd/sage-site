@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 
 const Profile = () => {
     const { user } = useAuth();
+    const [showMissingInfoModal, setShowMissingInfoModal] = useState(false);
     const [mobileView, setMobileView] = useState(false);
     const [tabletView, setTabletView] = useState(false);
     const [profilepic, setProfilePic] = useState(() => {
@@ -252,13 +253,19 @@ const Profile = () => {
       
           if (evalResponse.ok) {
             const evalData = await evalResponse.json();
+            
+            if (evalData.status === "no_transcript") {
+                setShowMissingInfoModal(true);
+                return;
+            }
+            
             const allPrograms = [
                 ...(data.majors ?? []),
                 ...(data.minors ?? []),
                 ...(data.certifications ?? []),
             ];
             setCarouselData(formatCarouselData(evalData.evaluation, allPrograms));
-          }
+        }
     }
 
     useEffect(() => {
@@ -577,6 +584,30 @@ const Profile = () => {
                     </div>
                 )
             }
+            {showMissingInfoModal && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl p-10 shadow-lg flex flex-col items-center text-center gap-6 max-w-md w-full mx-4">
+                        <h2 className="text-xl font-semibold text-gray-900">Missing Profile Information</h2>
+                        <p className="text-gray-500 text-base">
+                            To access your profile, please submit your transcript for the best experience
+                        </p>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => navigate("/")}
+                                className="px-6 py-2.5 rounded-full border border-accent text-textdark font-medium hover:bg-gray-50 transition"
+                            >
+                                Return Home
+                            </button>
+                            <button
+                                onClick={() => navigate("/planner")}
+                                className="px-6 py-2.5 rounded-full bg-accent text-black font-medium hover:bg-buttonhover transition"
+                            >
+                                Submit Transcript
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
