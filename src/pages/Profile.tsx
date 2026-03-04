@@ -1,11 +1,14 @@
-import { useState, useEffect, useRef} from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import DegreeProgressCard from "@/components/ui/degreeprogresscard";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { MoveLeft, MoveRight, Plus } from "lucide-react";
+import DegreeProgressCard from "@/components/profile/degreeprogresscard";
 import { useAuth } from "../context/AuthContext";
 
 const Profile = () => {
     const { user } = useAuth();
+    const [showMissingInfoModal, setShowMissingInfoModal] = useState(false);
     const [mobileView, setMobileView] = useState(false);
+    const [tabletView, setTabletView] = useState(false);
     const [profilepic, setProfilePic] = useState(() => {
         const cached = localStorage.getItem('profilePictureType');
         if (cached) {
@@ -30,22 +33,26 @@ const Profile = () => {
     const [startDate, setStartDate] = useState("");
     const [carouselData, setCarouselData] = useState<Array<{
         title: string;
-        core: number;
-        major: number;
-        elective: number;
+        categories: { label: string; completed: number; total: number; }[];
         completed: number;
         total: number;
         percentage: number;
+        startDate: string | null;
+        endDate: string | null;
+        status: string | null;
     }>>([]);
+    const [majorsData, setMajorsData] = useState<Array<{name: string, start_date: string, program_level: String, status: string}>>([]);
+    const cardWidthPercent = mobileView ? 69 : tabletView ? 55 : 34;
+    const navigate = useNavigate();
 
     type EvaluatorData = Array<{
         degree: string;
         credits: number;
         credits_completed: number;
         categories: Array<{
-          name: string;
-          credits: number;
-          credits_completed: number;
+            name: string;
+            credits: number;
+            credits_completed: number;
         }>;
       }>;
 
@@ -60,51 +67,92 @@ const Profile = () => {
         getUserInfo();
     }, [user?.photoURL]);
     
+    useEffect(() => {
+        const updateTransform = () => {
+            if (!carouselRef.current) return;
+            const W = carouselRef.current.parentElement!.offsetWidth;
+            const cardWidth = W * 0.34;
+            carouselRef.current.style.transform = `translateX(-${currentIndex * cardWidth}px)`;
+        };
+
+        updateTransform();
+        window.addEventListener("resize", updateTransform);
+        return () => window.removeEventListener("resize", updateTransform);
+    }, [currentIndex, cardWidthPercent]);
+    
+    useEffect(() => {
+        setCurrentIndex(0);
+    }, [program]);
+    
     const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
-    const cardsPerView = mobileView ? 1 : 2; // Number of cards visible at once
-    const maxIndex = carouselData.length - cardsPerView;
+    const cardsPerView = mobileView ? 1 : tabletView ? 1 : 2; // Number of cards visible at once
+
+    const filteredCarouselData = carouselData.filter(card => {
+        if (program === "All") return true;
+        return card.status!.toLowerCase() === program.toLowerCase();
+    });
+
+    const maxIndex = Math.max(0, filteredCarouselData.length - cardsPerView);
 
     const goToPrevious = () => {
         setCurrentIndex((prev) => (prev > 0 ? prev - 1 : prev));
     };
 
     const goToNext = () => {
-        setCurrentIndex((prev) => (prev < maxIndex ? prev + 1 : 0));
+        setCurrentIndex((prev) =>
+          prev < maxIndex ? prev + 1 : prev
+        );
     };
 
     const goToSlide = (index: number) => {
         setCurrentIndex(index);
     };
 
-    function formatCarouselData(evaluatorResponse: EvaluatorData) {
+    const parseYear = (date: string | undefined) => {
+        if (!date) return null;
+        const year = date.split(" ").find(part => /^\d{4}$/.test(part));
+        return year ?? null;
+    }
+
+    function formatCarouselData(evaluatorResponse: EvaluatorData, majors: typeof majorsData) {
         const core = evaluatorResponse.find(d => d.degree === "Core Requirements");
         const degrees = evaluatorResponse.filter(d => d.degree !== "Core Requirements");
-        
-        if (!core || degrees.length === 0) {
-          throw new Error("Invalid evaluator data");
-        }
-        
+
+        if (!degrees.length) return [];
+    
         return degrees.map(degree => {
-          const majorReq = degree.categories.find(c => c.name.includes("Major Requirements"));
-          const electiveReq = degree.categories.find(c => c.name.includes("Elective Requirements"));
-          
-          if (!majorReq || !electiveReq) {
-            throw new Error("Missing major or elective requirements");
-          }
-      
-          return {
-            title: degree.degree,
-            core: core.credits,
-            major: majorReq.credits,
-            elective: electiveReq.credits,
-            completed: core.credits_completed + degree.credits_completed,
-            total: core.credits + degree.credits,
-            percentage: Math.round(
-              ((core.credits_completed + degree.credits_completed) / 
-               (core.credits + degree.credits)) * 100
-            )
-          };
+            const matchedMajor = majors.find(m => 
+                degree.degree.includes(m.name) || m.name.includes(degree.degree)
+            );
+            const isBachelor = 
+            matchedMajor?.program_level?.toLowerCase() === "undergraduate" && 
+            !degree.degree.toLowerCase().includes("minor") &&
+            !degree.degree.toLowerCase().includes("certificate") &&
+            !degree.degree.toLowerCase().includes("certification");
+
+            const allCategories = [
+                ...(isBachelor && core ? [{ label: "Core Requirements", completed: core.credits_completed, total: core.credits }] : []),
+                ...degree.categories.map(c => ({
+                    label: c.name.split(":")[0].trim().replace(/^[IVX]+\.\s*/i, ""),
+                    completed: c.credits_completed,
+                    total: c.credits,
+                })),
+            ];
+    
+            const completed = (core?.credits_completed ?? 0) + degree.credits_completed;
+            const total = (core?.credits ?? 0) + degree.credits;
+    
+            return {
+                title: degree.degree,
+                categories: allCategories,
+                completed,
+                total,
+                percentage: Math.round((completed / total) * 100),
+                startDate: parseYear(matchedMajor?.start_date),
+                endDate: null,
+                status: matchedMajor?.status ?? "active"
+            };
         });
     }
 
@@ -162,13 +210,17 @@ const Profile = () => {
         }
       
         const data = await response.json();
-        console.log(data);
+        setMajorsData([
+            ...(data.majors ?? []),
+            ...(data.minors ?? []),
+            ...(data.certifications ?? []),
+        ]);
         setName(data.name);
         // setGPA(data.gpa.undergraduate);
         setUndergraduateHours(data.credit_hours.undergraduate);
         // setMajor(data.majors[0].name);
         setStartDate(data.majors[0].start_date);
-
+        
         //add feature so it checks if data.credit_hours contains graduate that its not 0
         setGraduateHours(0);
 
@@ -201,12 +253,27 @@ const Profile = () => {
       
           if (evalResponse.ok) {
             const evalData = await evalResponse.json();
-            setCarouselData(formatCarouselData(evalData.evaluation));
-          }
+            
+            if (evalData.status === "no_transcript") {
+                setShowMissingInfoModal(true);
+                return;
+            }
+            
+            const allPrograms = [
+                ...(data.majors ?? []),
+                ...(data.minors ?? []),
+                ...(data.certifications ?? []),
+            ];
+            setCarouselData(formatCarouselData(evalData.evaluation, allPrograms));
+        }
     }
 
     useEffect(() => {
-        const handleResize = () => setMobileView(window.innerWidth < 768);
+        const handleResize = () => { 
+            const w = window.innerWidth;
+            setMobileView(w < 768);
+            setTabletView(w >= 768 && w < 1024);
+        }
         handleResize(); // set on mount
         window.addEventListener("resize", handleResize);
         getUserInfo();
@@ -215,7 +282,7 @@ const Profile = () => {
 
     return (
         <>
-            <div className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]">
+            <div className="flex bg-bglight py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)] overflow-y-auto">
                 {
                     mobileView ?
                     // mobile view
@@ -259,7 +326,7 @@ const Profile = () => {
                                     <option value="Active">Active</option>
                                     <option value="Complete">Complete</option>
                                 </select>
-                                <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-textdark rotate-90 pointer-events-none" />
+                                <MoveRight className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-textdark rotate-90 pointer-events-none" />
                             </div>
                         </div>
 
@@ -268,48 +335,50 @@ const Profile = () => {
                             {carouselData.length > 0 && (
                                 <DegreeProgressCard
                                     title={carouselData[currentIndex].title}
-                                    core={carouselData[currentIndex].core}
-                                    major={carouselData[currentIndex].major}
-                                    elective={carouselData[currentIndex].elective}
+                                    categories={carouselData[currentIndex].categories}
                                     completed={carouselData[currentIndex].completed}
                                     total={carouselData[currentIndex].total}
                                     percentage={carouselData[currentIndex].percentage}
+                                    startDate={carouselData[currentIndex].startDate ?? undefined}
+                                    endDate={carouselData[currentIndex].endDate!}
                                     active={false}
                                 />
                             )}
 
                             {/* Prev/Next buttons */}
-                            <div className="flex justify-between mt-3">
+                            <div className="flex justify-between">
                                 <button
                                     onClick={goToPrevious}
                                     disabled={currentIndex === 0}
                                     className="p-2 rounded-full bg-white shadow border border-gray-200 disabled:opacity-30"
                                     aria-label="Previous"
                                 >
-                                    <ChevronLeft className="w-4 h-4 text-gray-700" />
+                                    <MoveLeft className="w-4 h-4 text-gray-700" />
                                 </button>
 
                                 {/* Dots */}
-                                <div className="flex items-center gap-2">
-                                    {carouselData.map((_, index) => (
-                                        <button
-                                            key={index}
-                                            onClick={() => goToSlide(index)}
-                                            className={`h-3 rounded-full transition-all duration-300 ${
-                                                index === currentIndex ? 'bg-accent w-8' : 'bg-gray-300 w-3 hover:bg-gray-400'
-                                            }`}
-                                            aria-label={`Go to slide ${index + 1}`}
-                                        />
-                                    ))}
-                                </div>
+                                {filteredCarouselData.length > 1 && (
+                                    <div className="flex items-center gap-2">
+                                        {filteredCarouselData.map((_, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() => goToSlide(index)}
+                                                className={`h-3 rounded-full transition-all duration-300 ${
+                                                    index === currentIndex ? 'bg-accent w-8' : 'bg-gray-300 w-3 hover:bg-gray-400'
+                                                }`}
+                                                aria-label={`Go to slide ${index + 1}`}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
 
                                 <button
                                     onClick={goToNext}
-                                    disabled={currentIndex === carouselData.length - 1}
+                                    disabled={currentIndex === filteredCarouselData.length - 1}
                                     className="p-2 rounded-full bg-white shadow border border-gray-200 disabled:opacity-30"
                                     aria-label="Next"
                                 >
-                                    <ChevronRight className="w-4 h-4 text-gray-700" />
+                                    <MoveRight className="w-4 h-4 text-gray-700" />
                                 </button>
                             </div>
                         </div>
@@ -380,73 +449,87 @@ const Profile = () => {
                         </div>
 
                         {/* Carousel Section */}
-                        <div className="relative w-full">
-                            {/* Carousel Container */}
-                            <div className="relative w-full max-w-full overflow-hidden rounded-2xl">
-                                {/* Cards */}
-                                <div 
-                                    ref={carouselRef}
-                                    className="flex transition-transform duration-500 ease-in-out gap-4"
-                                    style={{ transform: `translateX(-${2 * currentIndex * (100 / cardsPerView)}%)` }}
-                                >
-                                    {carouselData.map((card, index) => (
-                                        <div 
-                                            key={index} 
-                                            className="flex-shrink-0"
-                                            style={{ width: `calc(${100 / cardsPerView}% - calc(${16 * (cardsPerView - 1) / cardsPerView}px))` }}
+                        <div className="relative w-full overflow-hidden">
+                            <div ref={carouselRef} className="flex gap-0 items-stretch transition-transform duration-300 ease-in-out">
+                                {/* Existing cards */}
+                                {filteredCarouselData.map((card, index) => (
+                                    <div key={index} className="flex-shrink-0 pr-4 flex items-start" style={{
+                                        width: filteredCarouselData.length < cardsPerView ? "auto" : `${cardWidthPercent}%`,
+
+                                    }}>
+                                        <DegreeProgressCard
+                                            title={card.title}
+                                            categories={card.categories}
+                                            completed={card.completed}
+                                            total={card.total}
+                                            percentage={card.percentage}
+                                            startDate={card.startDate ?? undefined}
+                                            endDate={card.endDate!}
+                                            active={false}
+                                        />
+                                    </div>
+                                ))}
+                                {filteredCarouselData.length > 1 && (
+                                    <div className="flex-shrink-0 flex items-center justify-center self-stretch">
+                                        <button
+                                            onClick={() => navigate("/planner")}
+                                            className="w-10 h-10 rounded-full border border-border bg-white flex items-center justify-center hover:bg-gray-100 text-gray-500 shadow-sm"
                                         >
-                                            <DegreeProgressCard
-                                                title={card.title}
-                                                core={card.core}
-                                                major={card.major}
-                                                elective={card.elective}
-                                                completed={card.completed}
-                                                total={card.total}
-                                                percentage={card.percentage}
-                                                active={false}
-                                            />
-                                        </div>
+                                            <Plus className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                )}
+
+                            </div>
+
+                            {filteredCarouselData.length > cardsPerView && (
+                                <>
+                                <button
+                                    onClick={goToPrevious}
+                                    disabled={currentIndex === 0}
+                                    className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30"
+                                >
+                                    <MoveLeft className="w-5 h-5" />
+                                </button>
+
+                                <button
+                                    onClick={goToNext}
+                                    disabled={currentIndex === maxIndex}
+                                    className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30"
+                                >
+                                    <MoveRight className="w-5 h-5" />
+                                </button>
+                                </>
+                            )}
+
+                            {/* Dots below */}
+                            {filteredCarouselData.length > cardsPerView && (
+                                <div className="flex justify-center gap-2 mt-2">
+                                    {Array.from({ length: maxIndex + 1 }).map((_, index) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => goToSlide(index)}
+                                            className={`h-3 rounded-full transition-all duration-300 ${
+                                                index === currentIndex ? 'bg-accent w-8' : 'bg-gray-300 w-3 hover:bg-gray-400'
+                                            }`}
+                                        />
                                     ))}
                                 </div>
+                            )}
 
-                                {/* Left Arrow */}
-                                {currentIndex > 0 && (
+                            {/* Single addition of programs */ }
+                            {filteredCarouselData.length === 0 && ( 
+                                <div className="flex justify-center items-center h-48">
                                     <button
-                                        onClick={goToPrevious}
-                                        className="absolute left-0 top-1/2 -translate-y-1/2 translate-x-3 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors border border-gray-200 z-10"
-                                        aria-label="Previous cards"
+                                        onClick={() => navigate("/planner")}
+                                        className="w-16 h-16 rounded-full border border-border bg-white 
+                                                    flex items-center justify-center 
+                                                    hover:bg-gray-100 shadow-md transition"
                                     >
-                                        <ChevronLeft className="w-5 h-5 text-gray-700" />
+                                        <Plus className="w-6 h-6 text-gray-500" />
                                     </button>
-                                )}
-
-                                {/* Right Arrow */}
-                                {currentIndex < (maxIndex - 1) && (
-                                    <button
-                                        onClick={goToNext}
-                                        className="absolute right-0 top-1/2 -translate-y-1/2 -translate-x-3 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors border border-gray-200 z-10"
-                                        aria-label="Next cards"
-                                    >
-                                        <ChevronRight className="w-5 h-5 text-gray-700" />
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* Dots Indicator */}
-                            <div className="flex justify-center gap-2 mt-3">
-                                {Array.from({ length: maxIndex }).map((_, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => goToSlide(index)}
-                                        className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                                            index === currentIndex
-                                                ? 'bg-accent w-8'
-                                                : 'bg-gray-300 hover:bg-gray-400'
-                                        }`}
-                                        aria-label={`Go to slide ${index + 1}`}
-                                    />
-                                ))}
-                            </div>
+                                </div>
+                            )}
                         </div>
 
                     </div>
@@ -501,6 +584,30 @@ const Profile = () => {
                     </div>
                 )
             }
+            {showMissingInfoModal && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl p-10 shadow-lg flex flex-col items-center text-center gap-6 max-w-md w-full mx-4">
+                        <h2 className="text-xl font-semibold text-gray-900">Missing Profile Information</h2>
+                        <p className="text-gray-500 text-base">
+                            To access your profile, please submit your transcript for the best experience
+                        </p>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => navigate("/")}
+                                className="px-6 py-2.5 rounded-full border border-accent text-textdark font-medium hover:bg-gray-50 transition"
+                            >
+                                Return Home
+                            </button>
+                            <button
+                                onClick={() => navigate("/planner")}
+                                className="px-6 py-2.5 rounded-full bg-accent text-black font-medium hover:bg-buttonhover transition"
+                            >
+                                Submit Transcript
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
