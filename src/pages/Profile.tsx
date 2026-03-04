@@ -3,6 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { MoveLeft, MoveRight, Plus } from "lucide-react";
 import DegreeProgressCard from "@/components/profile/degreeprogresscard";
 import { useAuth } from "../context/AuthContext";
+import SectionSwitcher, { ProfileSection } from "@/components/profile/sectionswitcher";
+import ChatConversationCard from "@/components/profile/chatconversationcard"
+import { chatEventEmitter } from "../utils/chatEventEmitter";
+
+interface Message {
+    role: "user" | "assistant";
+    content: string;
+    timestamp: number;
+}
+
+interface Conversation {
+    conversation_id: string;
+    user_id: string;
+    messages: Message[];
+    title?: string;
+}
 
 const Profile = () => {
     const { user } = useAuth();
@@ -42,6 +58,8 @@ const Profile = () => {
         status: string | null;
     }>>([]);
     const [majorsData, setMajorsData] = useState<Array<{name: string, start_date: string, program_level: String, status: string}>>([]);
+    const [section, setSection] = useState<ProfileSection>("Program Status");
+    const [conversationsData, setConversationsData] = useState<Conversation[]>([]);
     const cardWidthPercent = mobileView ? 69 : tabletView ? 55 : 34;
     const navigate = useNavigate();
 
@@ -79,7 +97,7 @@ const Profile = () => {
         window.addEventListener("resize", updateTransform);
         return () => window.removeEventListener("resize", updateTransform);
     }, [currentIndex, cardWidthPercent]);
-    
+        
     useEffect(() => {
         setCurrentIndex(0);
     }, [program]);
@@ -94,6 +112,26 @@ const Profile = () => {
     });
 
     const maxIndex = Math.max(0, filteredCarouselData.length - cardsPerView);
+
+    // chatbot stuff
+    const [convIndex, setConvIndex] = useState(0);
+    const convCarouselRef = useRef<HTMLDivElement>(null);
+    const maxConvIndex = Math.max(0, conversationsData.length - cardsPerView);
+    const goToConvPrevious = () => setConvIndex((prev) => (prev > 0 ? prev - 1 : prev));
+    const goToConvNext = () => setConvIndex((prev) => (prev < maxConvIndex ? prev + 1 : prev));
+    const goToConvSlide = (index: number) => setConvIndex(index);
+
+    useEffect(() => {
+        const updateTransform = () => {
+            if (!convCarouselRef.current) return;
+            const W = convCarouselRef.current.parentElement!.offsetWidth;
+            const cardWidth = W * (cardWidthPercent / 100);
+            convCarouselRef.current.style.transform = `translateX(-${convIndex * cardWidth}px)`;
+        };
+        updateTransform();
+        window.addEventListener("resize", updateTransform);
+        return () => window.removeEventListener("resize", updateTransform);
+    }, [convIndex, cardWidthPercent]);
 
     const goToPrevious = () => {
         setCurrentIndex((prev) => (prev > 0 ? prev - 1 : prev));
@@ -192,6 +230,7 @@ const Profile = () => {
     
 
     async function getUserInfo() {
+        localStorage.removeItem("chatbot_conversations");
         const token = await user?.getIdToken();
 
         if (!token) throw new Error("Failed to retrieve authentication token.");
@@ -266,6 +305,69 @@ const Profile = () => {
             ];
             setCarouselData(formatCarouselData(evalData.evaluation, allPrograms));
         }
+
+        const cachedConvos = localStorage.getItem("chatbot_conversations");
+        let loadedFromCache = false;
+        
+        if (cachedConvos) {
+            const parsed = JSON.parse(cachedConvos);
+            const cacheAge = Date.now() - (parsed?.timestamp ?? 0);
+            const cacheValid = cacheAge < 1000 * 60 * 60 && parsed?.userId === user?.uid;
+        
+            if (cacheValid && Array.isArray(parsed?.data)) {
+                const sortedCache = [...parsed.data].sort((a: Conversation, b: Conversation) => {
+                    const aTime = new Date(a.messages?.[a.messages.length - 1]?.timestamp || 0).getTime();
+                    const bTime = new Date(b.messages?.[b.messages.length - 1]?.timestamp || 0).getTime();
+                    return bTime - aTime;
+                });
+                setConversationsData(sortedCache);
+                loadedFromCache = true;
+            }
+        }
+
+        if (!loadedFromCache) {
+            const convResponse = await fetch(CRUD_API as string, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId: user?.uid,
+                    action: "getConversations",
+                    token,
+                }),
+            });
+            
+            const parseTs = (ts: any): number => {
+                if (!ts) return 0;
+                if (typeof ts === "number") return ts;
+                return new Date(String(ts).replace(/(\.\d{3})\d+/, "$1")).getTime();
+            };
+
+            
+            if (convResponse.ok) {
+                const convData = await convResponse.json();
+                console.log("conv keys:", Object.keys(convData[0]));
+                console.log("first conv:", JSON.stringify(convData[0], null, 2));
+                const convs = Array.isArray(convData)
+                    ? convData.map((conv: Conversation) => ({
+                        ...conv,
+                        title: conv.title || conv.messages?.[0]?.content || "Untitled Conversation",
+                    }))
+                    : [];
+
+                const sorted = [...convs].sort((a, b) => {
+                    const aTime = parseTs(a.messages?.[a.messages.length - 1]?.timestamp);
+                    const bTime = parseTs(b.messages?.[b.messages.length - 1]?.timestamp);
+                    return bTime - aTime;
+                });
+                setConversationsData(sorted);
+                // Warm the cache so ChatBot benefits too
+                localStorage.setItem("chatbot_conversations", JSON.stringify({
+                    data: sorted,
+                    timestamp: Date.now(),
+                    userId: user?.uid,
+                }));
+            }
+        }
     }
 
     useEffect(() => {
@@ -279,6 +381,36 @@ const Profile = () => {
         getUserInfo();
         return () => window.removeEventListener("resize", handleResize);
     }, []);
+
+    { /* Chatbot Stuff */ }
+    function formatConvoTimestamp(ms: number): string {
+        if (!ms) return "";
+        const date = new Date(ms);
+        const now = new Date();
+        const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays === 0) return `Today, ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+        if (diffDays === 1) return `Yesterday, ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+        return date.toLocaleDateString([], { month: "short", day: "numeric" });
+    }
+    
+    const handleOpenConversation = (conv: Conversation) => {
+        chatEventEmitter.emit("loadConversation", {
+            conversationId: conv.conversation_id,
+            messages: conv.messages,
+            userId: user?.uid,
+        });
+
+        localStorage.setItem(
+            "chatbot_conversation",
+            JSON.stringify({
+                messages: conv.messages,
+                conversation_id: conv.conversation_id,
+                timestamp: Date.now(),
+                cacheUserId: user?.uid ?? null,
+            })
+        );
+        navigate("/chatbot");
+    };
 
     return (
         <>
@@ -421,116 +553,195 @@ const Profile = () => {
                             </div>
                         </div>
 
-                        <div className="flex flex-row justify-between py-[1rem]">
-                            <h2 className="text-3xl">Program Status</h2>
-                            <div className="space-x-4">
-                                <button 
-                                className={`px-8 py-1.5 text-base rounded-lg transition-colors duration-200 ${
-                                    program === "All" 
-                                      ? 'outline outline-2 outline-accent bg-accent text-textdark hover:bg-buttonhover hover:outline-buttonhover' 
-                                      : 'outline outline-2 outline-accent bg-bglight text-textdark hover:border-buttonhover hover:bg-secondary'
-                                }`}
-                                onClick={() => pickProgram("All")}>All</button>
-                                <button 
-                                className={`px-8 py-1.5 text-base rounded-lg transition-colors duration-200 ${
-                                    program === "Active" 
-                                      ? 'outline outline-2 outline-accent bg-accent text-textdark hover:bg-buttonhover hover:outline-buttonhover' 
-                                      : 'outline outline-2 outline-accent bg-bglight text-textdark hover:border-buttonhover hover:bg-secondary'
-                                }`}
-                                onClick={() => pickProgram("Active")}>Active</button>
+                        <div className="flex flex-row justify-between items-center py-[1rem]">
+                            <SectionSwitcher active={section} onChange={setSection} />
+
+                            {/* Only show All/Active/Complete filter when on Program Status */}
+                            {section === "Conversations" ? (
                                 <button
-                                className={`px-8 py-1.5 text-base rounded-lg transition-colors duration-200 ${
-                                    program === "Complete" 
-                                      ? 'outline outline-2 outline-accent bg-accent text-textdark hover:bg-buttonhover hover:outline-buttonhover' 
-                                      : 'outline outline-2 outline-accent bg-bglight text-textdark hover:border-buttonhover hover:bg-secondary'
-                                }`}
-                                onClick={() => pickProgram("Complete")}>Complete</button>
-                            </div>
+                                    onClick={() => navigate("/chatbot")}
+                                    className="px-8 py-1.5 text-base rounded-lg transition-colors duration-200 outline outline-2 outline-accent bg-accent text-textdark hover:bg-buttonhover hover:outline-buttonhover"
+                                >
+                                    + New Chat
+                                </button>
+                            ) : (
+                                <div className="space-x-4">
+                                    <button
+                                        className={`px-8 py-1.5 text-base rounded-lg transition-colors duration-200 ${
+                                            program === "All"
+                                                ? "outline outline-2 outline-accent bg-accent text-textdark hover:bg-buttonhover hover:outline-buttonhover"
+                                                : "outline outline-2 outline-accent bg-bglight text-textdark hover:border-buttonhover hover:bg-secondary"
+                                        }`}
+                                        onClick={() => pickProgram("All")}
+                                    >All</button>
+                                    <button
+                                        className={`px-8 py-1.5 text-base rounded-lg transition-colors duration-200 ${
+                                            program === "Active"
+                                                ? "outline outline-2 outline-accent bg-accent text-textdark hover:bg-buttonhover hover:outline-buttonhover"
+                                                : "outline outline-2 outline-accent bg-bglight text-textdark hover:border-buttonhover hover:bg-secondary"
+                                        }`}
+                                        onClick={() => pickProgram("Active")}
+                                    >Active</button>
+                                    <button
+                                        className={`px-8 py-1.5 text-base rounded-lg transition-colors duration-200 ${
+                                            program === "Complete"
+                                                ? "outline outline-2 outline-accent bg-accent text-textdark hover:bg-buttonhover hover:outline-buttonhover"
+                                                : "outline outline-2 outline-accent bg-bglight text-textdark hover:border-buttonhover hover:bg-secondary"
+                                        }`}
+                                        onClick={() => pickProgram("Complete")}
+                                    >Complete</button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Carousel Section */}
-                        <div className="relative w-full overflow-hidden">
-                            <div ref={carouselRef} className="flex gap-0 items-stretch transition-transform duration-300 ease-in-out">
-                                {/* Existing cards */}
-                                {filteredCarouselData.map((card, index) => (
-                                    <div key={index} className="flex-shrink-0 pr-4 flex items-start" style={{
-                                        width: filteredCarouselData.length < cardsPerView ? "auto" : `${cardWidthPercent}%`,
+                        {section === "Program Status" && ( 
+                            <div className="relative w-full overflow-hidden">
+                                <div ref={carouselRef} className="flex gap-0 items-stretch transition-transform duration-300 ease-in-out">
+                                    {/* Existing cards */}
+                                    {filteredCarouselData.map((card, index) => (
+                                        <div key={index} className="flex-shrink-0 pr-4 flex items-start" style={{
+                                            width: filteredCarouselData.length < cardsPerView ? "auto" : `${cardWidthPercent}%`,
 
-                                    }}>
-                                        <DegreeProgressCard
-                                            title={card.title}
-                                            categories={card.categories}
-                                            completed={card.completed}
-                                            total={card.total}
-                                            percentage={card.percentage}
-                                            startDate={card.startDate ?? undefined}
-                                            endDate={card.endDate!}
-                                            active={false}
-                                        />
-                                    </div>
-                                ))}
-                                {filteredCarouselData.length > 1 && (
-                                    <div className="flex-shrink-0 flex items-center justify-center self-stretch">
-                                        <button
-                                            onClick={() => navigate("/planner")}
-                                            className="w-10 h-10 rounded-full border border-border bg-white flex items-center justify-center hover:bg-gray-100 text-gray-500 shadow-sm"
-                                        >
-                                            <Plus className="w-5 h-5" />
-                                        </button>
+                                        }}>
+                                            <DegreeProgressCard
+                                                title={card.title}
+                                                categories={card.categories}
+                                                completed={card.completed}
+                                                total={card.total}
+                                                percentage={card.percentage}
+                                                startDate={card.startDate ?? undefined}
+                                                endDate={card.endDate!}
+                                                active={false}
+                                            />
+                                        </div>
+                                    ))}
+                                    {filteredCarouselData.length > 1 && (
+                                        <div className="flex-shrink-0 flex items-center justify-center self-stretch">
+                                            <button
+                                                onClick={() => navigate("/planner")}
+                                                className="w-10 h-10 rounded-full border border-border bg-white flex items-center justify-center hover:bg-gray-100 text-gray-500 shadow-sm"
+                                            >
+                                                <Plus className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                </div>
+
+                                {filteredCarouselData.length > cardsPerView && (
+                                    <>
+                                    <button
+                                        onClick={goToPrevious}
+                                        disabled={currentIndex === 0}
+                                        className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30"
+                                    >
+                                        <MoveLeft className="w-5 h-5" />
+                                    </button>
+
+                                    <button
+                                        onClick={goToNext}
+                                        disabled={currentIndex === maxIndex}
+                                        className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30"
+                                    >
+                                        <MoveRight className="w-5 h-5" />
+                                    </button>
+                                    </>
+                                )}
+
+                                {/* Dots below */}
+                                {filteredCarouselData.length > cardsPerView && (
+                                    <div className="flex justify-center gap-2 mt-2">
+                                        {Array.from({ length: maxIndex + 1 }).map((_, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() => goToSlide(index)}
+                                                className={`h-3 rounded-full transition-all duration-300 ${
+                                                    index === currentIndex ? 'bg-accent w-8' : 'bg-gray-300 w-3 hover:bg-gray-400'
+                                                }`}
+                                            />
+                                        ))}
                                     </div>
                                 )}
 
-                            </div>
-
-                            {filteredCarouselData.length > cardsPerView && (
-                                <>
-                                <button
-                                    onClick={goToPrevious}
-                                    disabled={currentIndex === 0}
-                                    className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30"
-                                >
-                                    <MoveLeft className="w-5 h-5" />
-                                </button>
-
-                                <button
-                                    onClick={goToNext}
-                                    disabled={currentIndex === maxIndex}
-                                    className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30"
-                                >
-                                    <MoveRight className="w-5 h-5" />
-                                </button>
-                                </>
-                            )}
-
-                            {/* Dots below */}
-                            {filteredCarouselData.length > cardsPerView && (
-                                <div className="flex justify-center gap-2 mt-2">
-                                    {Array.from({ length: maxIndex + 1 }).map((_, index) => (
+                                {/* Single addition of programs */ }
+                                {filteredCarouselData.length === 0 && ( 
+                                    <div className="flex justify-center items-center h-48">
                                         <button
-                                            key={index}
-                                            onClick={() => goToSlide(index)}
-                                            className={`h-3 rounded-full transition-all duration-300 ${
-                                                index === currentIndex ? 'bg-accent w-8' : 'bg-gray-300 w-3 hover:bg-gray-400'
-                                            }`}
-                                        />
-                                    ))}
+                                            onClick={() => navigate("/planner")}
+                                            className="w-16 h-16 rounded-full border border-border bg-white 
+                                                        flex items-center justify-center 
+                                                        hover:bg-gray-100 shadow-md transition"
+                                        >
+                                            <Plus className="w-6 h-6 text-gray-500" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        {section === "Conversations" && (
+                            <div className="relative w-full overflow-hidden">
+                                <div ref={convCarouselRef} className="flex gap-0 items-stretch transition-transform duration-300 ease-in-out">
+                                    {conversationsData.length > 0 ? (
+                                        conversationsData.map((conv) => {
+                                            const lastMsgTs = conv.messages?.[conv.messages.length - 1]?.timestamp ?? 0;
+                                            return (
+                                                <div
+                                                    key={conv.conversation_id}
+                                                    className="flex-shrink-0 pr-4 flex items-start"
+                                                    style={{ width: `${cardWidthPercent}%` }}
+                                                >
+                                                    <ChatConversationCard
+                                                        title={conv.title || conv.messages?.[0]?.content || "Untitled Conversation"}
+                                                        timestamp={formatConvoTimestamp(lastMsgTs)}
+                                                        messages={conv.messages.slice(0, 3).map((m) => ({ role: m.role, text: m.content }))}
+                                                        onOpen={() => handleOpenConversation(conv)}
+                                                    />
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="flex justify-center items-center h-48 text-textsecondary text-base font-normal w-full">
+                                            No conversations yet — start chatting with SAGE!
+                                        </div>
+                                    )}
                                 </div>
-                            )}
 
-                            {/* Single addition of programs */ }
-                            {filteredCarouselData.length === 0 && ( 
-                                <div className="flex justify-center items-center h-48">
-                                    <button
-                                        onClick={() => navigate("/planner")}
-                                        className="w-16 h-16 rounded-full border border-border bg-white 
-                                                    flex items-center justify-center 
-                                                    hover:bg-gray-100 shadow-md transition"
-                                    >
-                                        <Plus className="w-6 h-6 text-gray-500" />
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                                {conversationsData.length > cardsPerView && (
+                                    <>
+                                        <button
+                                            onClick={goToConvPrevious}
+                                            disabled={convIndex === 0}
+                                            className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30"
+                                        >
+                                            <MoveLeft className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            onClick={goToConvNext}
+                                            disabled={convIndex === maxConvIndex}
+                                            className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30"
+                                        >
+                                            <MoveRight className="w-5 h-5" />
+                                        </button>
+                                    </>
+                                )}
+
+                                {conversationsData.length > cardsPerView && (
+                                    <div className="flex justify-center gap-2 mt-2">
+                                        {Array.from({ length: maxConvIndex + 1 }).map((_, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() => goToConvSlide(index)}
+                                                className={`h-3 rounded-full transition-all duration-300 ${
+                                                    index === convIndex ? "bg-accent w-8" : "bg-gray-300 w-3 hover:bg-gray-400"
+                                                }`}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                     </div>
                 }
