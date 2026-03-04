@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import Sidebar from "./Sidebar";
@@ -60,6 +61,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const [driverObj, setDriverObj] = useState<any>(null);
     const dropdownWasOpenedRef = useRef(false);
     
+    // profile -> sidebar link
+    const location = useLocation();
+    const focusLabel = location.state?.focusLabel as string | undefined;
+
     useEffect(() => {
         const driverInstance = driver({
             showProgress: true,
@@ -1228,6 +1233,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         allCompletedCourseCodes={allCompletedCourseCodes}
                         allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                         onRestartOnboarding={onRestartOnboarding}
+                        focusLabel={focusLabel}
                     />
 
                     <div

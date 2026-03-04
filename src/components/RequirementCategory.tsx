@@ -12,6 +12,7 @@ interface RequirementCategoryProps {
     hasSubcategories: boolean;
     children: React.ReactNode;
     isFirstCategory?: boolean;
+    categoryKey?: string;
   }
   
   const RequirementCategory: React.FC<RequirementCategoryProps> = ({
@@ -22,10 +23,11 @@ interface RequirementCategoryProps {
     onToggle,
     hasSubcategories,
     children,
-    isFirstCategory = false
+    isFirstCategory = false,
+    categoryKey,
   }) => {
     return (
-      <div className="border border-gray-200 rounded-md overflow-hidden">
+      <div className="border border-gray-200 rounded-md overflow-hidden" data-category-key={categoryKey}>
         <button
           onClick={onToggle}
           className="w-full flex items-start justify-between gap-3 p-3 hover:bg-gray-50 transition-colors text-left"

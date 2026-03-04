@@ -52,6 +52,7 @@ interface SidebarProps {
         semesterOrder: number;
     }>;
     onRestartOnboarding?: () => void;
+    focusLabel?: string;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -63,6 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     allCompletedCourseCodes = [],
     allPlannedCoursesWithOrder = [],
     onRestartOnboarding,
+    focusLabel,
 }) => {
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
     const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -164,6 +166,38 @@ const Sidebar: React.FC<SidebarProps> = ({
         setExpandedSubcategories(initialState);
     }, [requirements]);
     
+    // profile -> planner hotlink
+    useEffect(() => {
+        if (!focusLabel) return;
+    
+        // Find and expand the matching category key
+        const newExpanded: Record<string, boolean> = { ...expandedSubcategories };
+    
+        const findAndExpand = (categories: any[], reqIdx: number, parentPath: string = "0") => {
+            categories.forEach((category, catIdx) => {
+                const key = `${reqIdx}-${parentPath}-${catIdx}`;
+                if (category.name === focusLabel) {
+                    newExpanded[key] = true;
+                    // Scroll to it after render
+                    setTimeout(() => {
+                        document.querySelector(`[data-category-key="${key}"]`)
+                            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }, 100);
+                }
+                if (category.categories?.length) {
+                    findAndExpand(category.categories, reqIdx, `${parentPath}-${catIdx}`);
+                }
+            });
+        };
+    
+        requirements.forEach((req, reqIdx) => {
+            setAutoExpandedCategories(prev => ({ ...prev, [reqIdx]: true }));
+            findAndExpand(req.categories, reqIdx);
+        });
+    
+        setExpandedSubcategories(newExpanded);
+    }, [focusLabel]);
+
     const handleToggleSubcategory = (key: string) => {
         setExpandedSubcategories((prev) => ({
             ...prev,
@@ -287,6 +321,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     const partKey = `${currentCatIdx}-part-${i}`;
                     return (
                         <RequirementCategory
+                            categoryKey={currentCatIdx}
                             key={partKey}
                             title={part}
                             // these sections are often misleading when done with '|' and to prevent confusion...this is removed
