@@ -109,9 +109,9 @@ const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
         document.body
       )}
 
-<div className={`flex flex-row justify-start items-stretch rounded-3xl py-6 px-6 shadow-sm transition-all duration-300 w-fit min-w-full h-fit max-h-[245px] gap-5
-    ${active ? "bg-innercontainer border border-green-300" : "bg-innercontainer border border-border"}
-`}>
+      <div className={`flex flex-row justify-start items-stretch rounded-3xl py-6 px-6 shadow-sm transition-all duration-300 w-fit min-w-full h-fit max-h-[245px] gap-5
+          ${active ? "bg-innercontainer border border-green-300" : "bg-innercontainer border border-border"}
+      `}>
         {/* Left: Title + date + requirements */}
         <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
           <div
@@ -157,7 +157,7 @@ const Requirement: React.FC<RequirementProps> = ({ label, completed, total }) =>
   const navigate = useNavigate();
   return (
     <div
-      onClick={() => navigate("/planner")}
+      onClick={() => navigate("/planner", { state: { focusLabel: label } })}
       className="flex justify-between items-center bg-white border border-border rounded-xl px-3 py-1.5 text-sm text-gray-700 gap-2 cursor-pointer hover:bg-gray-50 transition-colors duration-150"
     >
       <span className="truncate min-w-0 flex-1">{label}</span>
