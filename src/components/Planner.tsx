@@ -28,6 +28,10 @@ interface PlannerProps {
     requirements: any;
     transcriptData: any;
     onRestartOnboarding?: () => void;
+    onRegisterConflictHandler?: (
+        cb: (choice: "overwrite" | "select" | "new", degrees: any[], fetchedData: any, targetPlanId?: string) => void,
+        plans: { id: string; name: string }[]
+      ) => void;
 }
 
 interface SavedPlannerState {
@@ -51,7 +55,7 @@ interface PlannerData {
 }
 
 
-const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding }) => {
+const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding, onRegisterConflictHandler }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
     
@@ -367,7 +371,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
         
         const defaultPlanId = crypto.randomUUID();
-        return {
+        const defaultState = {
             plans: [{
                 id: defaultPlanId,
                 name: 'Plan 1',
@@ -377,6 +381,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             }],
             activePlanId: defaultPlanId
         };
+
+        localStorage.setItem('planner-state', JSON.stringify(defaultState));
+        return defaultState;
     });
 
     const activePlan = plannerData.plans.find(p => p.id === plannerData.activePlanId)!;
@@ -384,6 +391,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const placedSuggestedCourses = new Set(activePlan.placedCourses);
 
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [pendingConflictChoice, setPendingConflictChoice] = useState<{
+        choice: "overwrite" | "select" | "new";
+        degrees: any[];
+        fetchedData: any;
+        targetPlanId?: string;
+    } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const updatePlannerState = (updates: Partial<SavedPlannerState>) => {
@@ -548,6 +561,85 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             setIsLoading(false);
         }
     };
+
+    // conflicts for reupload 
+    useEffect(() => {
+        if (!pendingConflictChoice) return;
+        const { choice, targetPlanId } = pendingConflictChoice;
+    
+        if (choice === "overwrite") {
+            // Replace active plan's semesters in place
+            setPlannerData(prev => {
+                const updated: PlannerData = {
+                    ...prev,
+                    plans: prev.plans.map(p =>
+                        p.id === prev.activePlanId
+                            ? { ...p, semesters: initialPlannerState, placedCourses: [], lastModified: Date.now() }
+                            : p
+                    ),
+                };
+                localStorage.setItem("planner-state", JSON.stringify(updated));
+                return updated;
+            });
+            setHasUnsavedChanges(false);
+            toast.success("Current plan updated with new transcript");
+    
+        } else if (choice === "select") {
+            // Replace the user-chosen plan's semesters, switch view to it
+            const planToUpdate = targetPlanId ?? plannerData.activePlanId;
+            setPlannerData(prev => {
+                const updated: PlannerData = {
+                    ...prev,
+                    activePlanId: planToUpdate,
+                    plans: prev.plans.map(p =>
+                        p.id === planToUpdate
+                            ? { ...p, semesters: initialPlannerState, placedCourses: [], lastModified: Date.now() }
+                            : p
+                    ),
+                };
+                localStorage.setItem("planner-state", JSON.stringify(updated));
+                return updated;
+            });
+            setHasUnsavedChanges(false);
+            toast.success("Plan updated with new transcript");
+    
+        } else if (choice === "new") {
+            // Keep all existing plans, add a fresh one and switch to it
+            if (plannerData.plans.length >= 5) {
+                toast.error("Maximum of 5 plans reached — delete one first");
+                setPendingConflictChoice(null);
+                return;
+            }
+            const newPlanId = crypto.randomUUID();
+            setPlannerData(prev => {
+                const updated: PlannerData = {
+                    plans: [...prev.plans, {
+                        id: newPlanId,
+                        name: `Plan ${prev.plans.length + 1} (New Transcript)`,
+                        semesters: initialPlannerState,
+                        placedCourses: [],
+                        lastModified: Date.now(),
+                    }],
+                    activePlanId: newPlanId,
+                };
+                localStorage.setItem("planner-state", JSON.stringify(updated));
+                return updated;
+            });
+            setHasUnsavedChanges(true);
+            toast.success("New plan created with new transcript");
+        }
+    
+        setPendingConflictChoice(null);
+    }, [initialPlannerState, pendingConflictChoice]);
+
+    useEffect(() => {
+        onRegisterConflictHandler?.(
+            (choice, degrees, fetchedData, targetPlanId) => {
+                setPendingConflictChoice({ choice, degrees, fetchedData, targetPlanId });
+            },
+            plannerData.plans.map(p => ({ id: p.id, name: p.name }))
+        );
+    }, [initialPlannerState, plannerData.plans]);
 
     // Warn on page unload if unsaved changes
     useEffect(() => {
