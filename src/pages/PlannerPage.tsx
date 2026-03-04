@@ -65,6 +65,7 @@ const PlannerPage = () => {
   }, [showOnboarding, isFirstTime]);
   
   useEffect(() => {
+    if (!user) return;
     const initializePlanner = async () => {
       setLoading(true);
       
@@ -73,6 +74,13 @@ const PlannerPage = () => {
       const hasPlannerState = localStorage.getItem('planner-state');
       const hasEvaluation = localStorage.getItem('evaluation');
       const hasTranscriptData = localStorage.getItem('transcriptData'); 
+      
+
+      if (!hasPlannerState || !hasEvaluation) {
+        sessionStorage.removeItem(`hasCheckedCloudThisSession`);
+      }
+
+      await syncPlannerFromCloud();
 
       if (hasEvaluation) {
         setRequirements(parseRequirementsFromEvaluation(hasEvaluation));
@@ -201,7 +209,7 @@ const PlannerPage = () => {
           if (plannerResult.transcriptData)
           { 
             const cloudData = plannerResult.transcriptData;
-            localStorage.setItem('planner-state', JSON.stringify(cloudData));    
+            localStorage.setItem('transcriptData', JSON.stringify(cloudData));    
           }
         }
       }
