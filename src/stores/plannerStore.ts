@@ -25,6 +25,11 @@ interface PlannerData {
 }
 
 interface PlannerStore extends PlannerData {
+    // Unsaved Changes Tracking
+    lastSavedState: string | null;
+    markAsSaved: () => void;
+    getHasUnsavedChanges: () => boolean;
+    
     // Plan Management Actions
     switchPlan: (planId: string) => void;
     createNewPlan: (initialPlannerState: any, evaluation: any, customName?: string) => void;
@@ -57,10 +62,26 @@ interface PlannerStore extends PlannerData {
 export const usePlannerStore = create<PlannerStore>()(
     persist(
         immer((set, get) => ({        
-            // Persist middleware loads from localStorage
             plans: [],
-            activePlanId: '',
+            activePlanId: '',            
+            lastSavedState: null,
+
+            // Unsaved Changes Tracking
             
+            markAsSaved: () => {
+                const { plans, activePlanId } = get();
+                const currentState = { plans, activePlanId };
+                set({ lastSavedState: JSON.stringify(currentState) });
+            },
+            
+            getHasUnsavedChanges: () => {
+                const { plans, activePlanId, lastSavedState } = get();
+                if (!lastSavedState) return true;
+                
+                const currentState = JSON.stringify({ plans, activePlanId });
+                return currentState !== lastSavedState;
+            },
+
             // Plan Management Actions
             
             switchPlan: (planId: string) => {

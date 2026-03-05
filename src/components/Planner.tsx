@@ -372,7 +372,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const allSemesters = activePlan?.semesters || {};
     const placedSuggestedCourses = new Set(activePlan?.placedCourses || []);
 
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    // Unsaved changes tracking
+    const hasUnsavedChanges = usePlannerStore(state => state.getHasUnsavedChanges());
+    const markAsSaved = usePlannerStore(state => state.markAsSaved);
+    
     const [pendingConflictChoice, setPendingConflictChoice] = useState<{
         choice: "overwrite" | "select" | "new";
         degrees: any[];
@@ -384,29 +387,24 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     // Plan management functions
     const handleSwitchPlan = (planId: string) => {
         switchPlan(planId);
-        setHasUnsavedChanges(true);
     };
 
     const handleNewPlan = () => {
         const evalRaw = localStorage.getItem('evaluation');
         const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
         createNewPlan(initialPlannerState, evaluation);
-        setHasUnsavedChanges(true);
     };
 
     const handleDuplicatePlan = () => {
         duplicatePlan();
-        setHasUnsavedChanges(true);
     };
 
     const handleDeletePlan = () => {
         deletePlan();
-        setHasUnsavedChanges(true);
     };
 
     const handleRenamePlan = (newName: string) => {
         renamePlan(newName);
-        setHasUnsavedChanges(true);
     };
 
     const savePlannerState = async () => {
@@ -439,7 +437,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             console.error('Failed to save to localStorage:', e);
         }
 
-        setHasUnsavedChanges(false);
+        markAsSaved();
     };
 
     const handleSave = async () => {
@@ -478,7 +476,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 lastModified: Date.now(),
                 evaluation: pendingConflictChoice.fetchedData
             });
-            setHasUnsavedChanges(false);
+            markAsSaved();
             toast.success("Current plan updated with new transcript");
     
         } else if (choice === "select") {
@@ -493,7 +491,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 lastModified: Date.now(),
                 evaluation: pendingConflictChoice.fetchedData
             });
-            setHasUnsavedChanges(false);
+            markAsSaved();
             toast.success("Plan updated with new transcript");
     
         } else if (choice === "new") {
@@ -505,7 +503,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             }
             const newPlanName = `Plan ${plans.length + 1} (New Transcript)`;
             createNewPlan(initialPlannerState, pendingConflictChoice.fetchedData, newPlanName);
-            setHasUnsavedChanges(true);
             toast.success("New plan created with new transcript");
         }
     
@@ -785,13 +782,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             setError(result.error);
             return;
         }
-
-        setHasUnsavedChanges(true);
     };
 
     const handleAddYear = () => {
         addYearAction(allSemesters);
-        setHasUnsavedChanges(true);
     };
 
     const handleClearYear = (yearKey: string) => {
@@ -806,14 +800,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
     const executeClearYear = (yearKey: string) => {
         clearYearAction(yearKey, allSemesters);
-        setHasUnsavedChanges(true);
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
 
     const executeDeleteYear = (yearKey: string) => {
         deleteYearAction(yearKey, allSemesters);
-        setHasUnsavedChanges(true);
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
@@ -827,14 +819,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             return;
         }
         setError(null);
-        setHasUnsavedChanges(true);
     };
 
     const handleClearSemester = (yearKey: string, semesterIndex: number) => {
         if (!semesterToDelete) return;
 
         clearSemesterAction(yearKey, semesterIndex, allSemesters);
-        setHasUnsavedChanges(true);
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
@@ -843,7 +833,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         if (!semesterToDelete) return;
 
         removeSemesterAction(yearKey, semesterIndex, allSemesters);
-        setHasUnsavedChanges(true);
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
