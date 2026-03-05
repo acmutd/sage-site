@@ -699,12 +699,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     }, []);
 
     const adaptedRequirements = useMemo(() => {
+        const fromProp = Array.isArray(requirements) ? requirements : requirements?.results ?? [];
+        if (fromProp.length > 0) return fromProp;
         const planEval = activePlan.evaluation;
         if (planEval) {
             return Array.isArray(planEval) ? planEval : planEval?.results ?? [];
         }
-
-        return Array.isArray(requirements) ? requirements : requirements?.results ?? [];
+        return [];
     }, [activePlan.evaluation, requirements]);
 
     const allSuggestedCourses = useMemo(() => {
@@ -974,6 +975,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                     if (course.prerequisites) newCourse.prerequisites = course.prerequisites;
                     if (course['Pre-Requisite']) newCourse['Pre-Requisite'] = course['Pre-Requisite'];
+                    if (course.corequisites !== undefined) newCourse.corequisites = course.corequisites;
 
                     targetSemester.courses.push(newCourse);
                 }
