@@ -35,22 +35,6 @@ interface PlannerProps {
       ) => void;
 }
 
-interface SavedPlannerState {
-    id: string;
-    name: string;
-    semesters: {
-        [key: string]: {
-            title: string;
-            courses: any[];
-            isFromTranscript?: boolean;
-            isLocked?: boolean;  
-        }[];
-    };
-    placedCourses: string[];
-    lastModified: number;
-    evaluation: any;
-}
-
 
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding, onRegisterConflictHandler }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -365,6 +349,15 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const deletePlan = usePlannerStore(state => state.deletePlan);
     const renamePlan = usePlannerStore(state => state.renamePlan);
     const updateActivePlan = usePlannerStore(state => state.updateActivePlan);
+    
+    // Semester management selectors
+    const addYearAction = usePlannerStore(state => state.addYear);
+    const clearYearAction = usePlannerStore(state => state.clearYear);
+    const deleteYearAction = usePlannerStore(state => state.deleteYear);
+    const addSemesterAction = usePlannerStore(state => state.addSemester);
+    const clearSemesterAction = usePlannerStore(state => state.clearSemester);
+    const removeSemesterAction = usePlannerStore(state => state.removeSemester);
+    const dropCourseAction = usePlannerStore(state => state.dropCourse);
 
     // Initialize store with default plan if empty
     useEffect(() => {
@@ -387,11 +380,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         targetPlanId?: string;
     } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-
-    const updatePlannerState = (updates: Partial<SavedPlannerState>) => {
-        updateActivePlan(updates);
-        setHasUnsavedChanges(true);
-    };
 
     // Plan management functions
     const handleSwitchPlan = (planId: string) => {
@@ -782,154 +770,28 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         courseId?: string,
         isSuggested?: boolean
     ) => {
-            const isRemoval =
-                !course || !targetYear ||
-                targetYear === '' ||
-                targetSemesterIndex === undefined ||
-                targetSemesterIndex === null ||
-                targetSemesterIndex < 0;
+        const result = dropCourseAction({
+            targetYear,
+            targetSemesterIndex,
+            course,
+            sourceYear,
+            sourceSemesterIndex,
+            courseId,
+            isSuggested,
+            allSemesters
+        });
 
-            // --- REMOVAL ---
-            if (isRemoval) {
-                const newState = JSON.parse(JSON.stringify(allSemesters));
-                const sourceSemester = newState[sourceYear]?.[sourceSemesterIndex];
-                if (sourceSemester?.courses) {
-                    const courseIndex = sourceSemester.courses.findIndex(
-                        (c: any) => c.id === courseId
-                    );
-                    if (courseIndex !== -1) {
-                        const removedCourse = sourceSemester.courses[courseIndex];
-                        if (removedCourse.status === 'planned') {
-                            const courseCode = removedCourse.course_code || removedCourse.code;
-                            updatePlannerState({
-                                placedCourses: Array.from(placedSuggestedCourses).filter(c => c !== courseCode)
-                            });
-                        }
-                        sourceSemester.courses.splice(courseIndex, 1);
-                    }
-                }
-                updatePlannerState({ semesters: newState})
-                return;
-            }
+        if (!result.success && result.error) {
+            setError(result.error);
+            return;
+        }
 
-            const courseCode = course.code || course.course_code;
-
-            if (!isSuggested && course.originalLocation) {
-                const isOriginalLocation =
-                    targetYear === course.originalLocation.yearKey &&
-                    targetSemesterIndex === course.originalLocation.semesterIndex;
-
-                if (!isOriginalLocation) {
-                    setError(`${courseCode} can only be moved back to ${allSemesters[course.originalLocation.yearKey][course.originalLocation.semesterIndex].title}`);
-                    return;
-                }
-            }
-            
-            // Check if course exists anywhere else in the plan
-            for (const yearKey in allSemesters) {
-                for (let idx = 0; idx < allSemesters[yearKey].length; idx++) {
-                    const semester = allSemesters[yearKey][idx];
-
-                    if (yearKey === sourceYear && idx === sourceSemesterIndex) continue;
-                    
-                    const exists = semester.courses.some(c => c.course_code === courseCode);
-                    if (exists) {
-                        setError(`${courseCode} is already in ${semester.title}`);
-                        return;
-                    }
-                }
-            }
-
-            // Create deep copies to avoid mutation
-            const newState = JSON.parse(JSON.stringify(allSemesters));
-
-            if (isSuggested) {
-                const targetSemester = newState[targetYear][targetSemesterIndex];
-                if (targetSemester && Array.isArray(targetSemester.courses)) {
-                    const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
-
-                    const newCourse: Record<string, any> = {
-                        course_code: course.code || course.course_code,
-                        course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
-                        credits_planned: course.credits || 3,
-                        id: newCourseId,
-                        status: 'planned',
-                    };
-
-                    if (course.prerequisites) newCourse.prerequisites = course.prerequisites;
-                    if (course['Pre-Requisite']) newCourse['Pre-Requisite'] = course['Pre-Requisite'];
-
-                    targetSemester.courses.push(newCourse);
-                }
-
-                updatePlannerState({
-                    semesters: newState,
-                    placedCourses: Array.from(new Set([...placedSuggestedCourses, courseCode]))
-                });
-
-                return;
-            }
-
-            if (sourceYear && sourceSemesterIndex !== undefined) {
-                const sourceSemester = newState[sourceYear][sourceSemesterIndex];
-                if (sourceSemester && Array.isArray(sourceSemester.courses)) {
-                    const courseIndex = sourceSemester.courses.findIndex(
-                        (c: any) => c.id === courseId
-                    );
-
-                    if (courseIndex !== -1) {
-                        const [removedCourse] = sourceSemester.courses.splice(courseIndex, 1);
-
-                        if (targetYear && targetSemesterIndex !== undefined) {
-                            const targetSemester = newState[targetYear][targetSemesterIndex];
-                            if (targetSemester && Array.isArray(targetSemester.courses)) {
-                                targetSemester.courses.push(removedCourse);
-                            }
-                        }
-                    }
-                }
-            }
-
-            updatePlannerState({ semesters: newState });
-    };
-
-    const getNextYearNumber = () => {
-        const yearNumbers = Object.keys(allSemesters)
-            .map(key => parseInt(key.replace('year', '')))
-            .filter(num => !isNaN(num));
-        if (yearNumbers.length === 0) return 1;
-        return Math.max(...yearNumbers) + 1;
+        setHasUnsavedChanges(true);
     };
 
     const handleAddYear = () => {
-        const nextYearNum = getNextYearNumber();
-        const nextYear = `year${nextYearNum}`;
-
-        let nextFallYear: number;
-
-        if (Object.keys(allSemesters).length === 0) {
-            nextFallYear = new Date().getFullYear();
-        } else {
-            const lastYearKey = Object.keys(allSemesters).sort().pop();
-            if (lastYearKey) {
-                const lastSemesters = allSemesters[lastYearKey];
-                const lastSemester = lastSemesters[lastSemesters.length - 1];
-                const lastYear = parseInt(lastSemester.title.split(' ')[1]);
-
-                nextFallYear = lastSemester.title.includes('Fall') ? lastYear + 1 : lastYear;
-            } else {
-                nextFallYear = new Date().getFullYear();
-            }
-        }
-
-        updatePlannerState({
-            semesters: {
-                ...allSemesters,
-                [nextYear]: [
-                    { title: `Fall ${nextFallYear}`, courses: [], isLocked: false }
-                ]
-            }
-        });
+        addYearAction(allSemesters);
+        setHasUnsavedChanges(true);
     };
 
     const handleClearYear = (yearKey: string) => {
@@ -943,141 +805,36 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     };
 
     const executeClearYear = (yearKey: string) => {
-        const courseCodesToRemove: string[] = [];
-        allSemesters[yearKey].forEach((semester) => {
-            if (!semester.isFromTranscript) {
-                semester.courses?.forEach((course: any) => {
-                    if (course.status === 'planned') {
-                        const code = course.course_code || course.code;
-                        if (code) courseCodesToRemove.push(code);
-                    }
-                });
-            }
-        });
-
-        const newState = JSON.parse(JSON.stringify(allSemesters));
-        newState[yearKey].forEach((semester: any) => {
-            if (!semester.isFromTranscript) {
-                semester.courses = [];
-            }
-        });
-
-        if (courseCodesToRemove.length > 0) {
-            const newPlaced = new Set(placedSuggestedCourses);
-            courseCodesToRemove.forEach(code => newPlaced.delete(code));
-            updatePlannerState({
-                semesters: newState,
-                placedCourses: Array.from(newPlaced)
-            });
-        } else {
-            updatePlannerState({ semesters: newState });
-        }
-        
+        clearYearAction(yearKey, allSemesters);
+        setHasUnsavedChanges(true);
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
 
     const executeDeleteYear = (yearKey: string) => {
-        const courseCodesToRemove: string[] = [];
-        allSemesters[yearKey].forEach((semester) => {
-            semester.courses?.forEach((course: any) => {
-                if (course.status === 'planned') {
-                    const code = course.course_code || course.code;
-                    if (code) courseCodesToRemove.push(code);
-                }
-            });
-        });
-        
-        const newState = { ...allSemesters };
-        delete newState[yearKey];
-        
-        if (courseCodesToRemove.length > 0) {
-            const newPlaced = new Set(placedSuggestedCourses);
-            courseCodesToRemove.forEach(code => newPlaced.delete(code));
-            updatePlannerState({
-                semesters: newState,
-                placedCourses: Array.from(newPlaced)
-            });
-        } else {
-            updatePlannerState({ semesters: newState });
-        }
-            
-            setShowDeleteModal(false);
-            setSemesterToDelete(null);
-        };
+        deleteYearAction(yearKey, allSemesters);
+        setHasUnsavedChanges(true);
+        setShowDeleteModal(false);
+        setSemesterToDelete(null);
+    };
 
     const handleAddSemester = (yearKey: string) => {
-        const yearSemesters = [...allSemesters[yearKey]];
-
-        if (yearSemesters.length >= 3) {
-            setError(`Cannot add more than 3 semesters (Fall, Spring, Summer) to ${yearKey.replace("year", "Year ")}`);
-            return;
-        }
-
-        setError(null);
-
-        const firstSemester = yearSemesters[0];
-        const baseYear = parseInt(firstSemester.title.split(' ')[1]);
-
-        const allPossibleSemesters = [
-            { title: `Fall ${baseYear}`, courses: [], isFromTranscript: false, isLocked: false },
-            { title: `Spring ${baseYear + 1}`, courses: [], isFromTranscript: false, isLocked: false },
-            { title: `Summer ${baseYear + 1}`, courses: [], isFromTranscript: false, isLocked: false }
-        ];
-
-        const existingTitles = yearSemesters.map(s => s.title);
-        const missingSemesters = allPossibleSemesters.filter(
-            sem => !existingTitles.includes(sem.title)
-        );
-
-        if (missingSemesters.length === 0) {
-            return;
-        }
-        
-        const updatedSemesters = [...yearSemesters, missingSemesters[0]];
-        updatedSemesters.sort((a, b) => {
-            const order: Record<string, number> = { 'Fall': 0, 'Spring': 1, 'Summer': 2 };
-            const seasonA = a.title.split(' ')[0];
-            const seasonB = b.title.split(' ')[0];
-            return order[seasonA] - order[seasonB];
-        });
-
-        updatePlannerState({
-            semesters: {
-                ...allSemesters,
-                [yearKey]: updatedSemesters
+        const result = addSemesterAction(yearKey, allSemesters);
+        if (!result.success) {
+            if (result.error) {
+                setError(result.error);
             }
-        });
+            return;
+        }
+        setError(null);
+        setHasUnsavedChanges(true);
     };
 
     const handleClearSemester = (yearKey: string, semesterIndex: number) => {
         if (!semesterToDelete) return;
 
-        const semesterToClear = allSemesters[yearKey]?.[semesterIndex];
-        if (semesterToClear?.courses) {
-            const courseCodesToRemove: string[] = [];
-            semesterToClear.courses.forEach((course: any) => {
-                if (course.status === 'planned') {
-                    const courseCode = course.course_code || course.code;
-                    if (courseCode) {
-                        courseCodesToRemove.push(courseCode);
-                    }
-                }
-            });
-            
-            if (courseCodesToRemove.length > 0) {
-                const newPlaced = new Set(placedSuggestedCourses);
-                courseCodesToRemove.forEach(code => newPlaced.delete(code));
-                updatePlannerState({
-                    placedCourses: Array.from(newPlaced)
-                });
-            }
-        }
-
-        const newState = JSON.parse(JSON.stringify(allSemesters));
-        newState[yearKey][semesterIndex].courses = [];
-        updatePlannerState({ semesters: newState });
-       
+        clearSemesterAction(yearKey, semesterIndex, allSemesters);
+        setHasUnsavedChanges(true);
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
@@ -1085,43 +842,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const handleRemoveSemester = (yearKey: string, semesterIndex: number) => {
         if (!semesterToDelete) return;
 
-        const semesterToRemove = allSemesters[yearKey]?.[semesterIndex];
-        if (semesterToRemove?.courses) {
-            const courseCodesToRemove: string[] = [];
-            semesterToRemove.courses.forEach((course: any) => {
-                if (course.status === 'planned') {
-                    const courseCode = course.course_code || course.code;
-                    if (courseCode) {
-                        courseCodesToRemove.push(courseCode);
-                    }
-                }
-            });
-            
-            if (courseCodesToRemove.length > 0) {
-                const newPlaced = new Set(placedSuggestedCourses);
-                courseCodesToRemove.forEach(code => newPlaced.delete(code));
-                updatePlannerState({
-                   placedCourses: Array.from(newPlaced) 
-                });
-            }
-        }
-        
-        const yearSemesters = [...allSemesters[yearKey]];
-        
-        if (yearSemesters.length === 1) {
-            const newState = { ...allSemesters };
-            delete newState[yearKey];
-            updatePlannerState({ semesters: newState });
-        } else {
-            yearSemesters.splice(semesterIndex, 1);
-            updatePlannerState({
-                semesters: {
-                    ...allSemesters,
-                    [yearKey]: yearSemesters
-                }
-            });
-        }
-        
+        removeSemesterAction(yearKey, semesterIndex, allSemesters);
+        setHasUnsavedChanges(true);
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
