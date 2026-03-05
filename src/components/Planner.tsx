@@ -47,6 +47,7 @@ interface SavedPlannerState {
     };
     placedCourses: string[];
     lastModified: number;
+    evaluation: any;
 }
 
 interface PlannerData {
@@ -371,13 +372,16 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
         
         const defaultPlanId = crypto.randomUUID();
+        const evalRaw = localStorage.getItem('evaluation');
+        const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
         const defaultState = {
             plans: [{
                 id: defaultPlanId,
                 name: 'Plan 1',
                 semesters: initialPlannerState,
                 placedCourses: [],
-                lastModified: Date.now()
+                lastModified: Date.now(),
+                evaluation,
             }],
             activePlanId: defaultPlanId
         };
@@ -427,6 +431,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
 
         const newPlanId = crypto.randomUUID();
+        const evalRaw = localStorage.getItem('evaluation');
+        const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
         const planNumber = plannerData.plans.length + 1;
         
         setPlannerData(prev => ({
@@ -437,7 +443,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     name: `Plan ${planNumber}`,
                     semesters: initialPlannerState,
                     placedCourses: [],
-                    lastModified: Date.now()
+                    lastModified: Date.now(),
+                    evaluation: evaluation
                 }
             ],
             activePlanId: newPlanId
@@ -574,7 +581,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     ...prev,
                     plans: prev.plans.map(p =>
                         p.id === prev.activePlanId
-                            ? { ...p, semesters: initialPlannerState, placedCourses: [], lastModified: Date.now() }
+                            ? { ...p, semesters: initialPlannerState, placedCourses: [], lastModified: Date.now(), evaluation: pendingConflictChoice.fetchedData }
                             : p
                     ),
                 };
@@ -593,7 +600,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     activePlanId: planToUpdate,
                     plans: prev.plans.map(p =>
                         p.id === planToUpdate
-                            ? { ...p, semesters: initialPlannerState, placedCourses: [], lastModified: Date.now() }
+                            ? { ...p, semesters: initialPlannerState, placedCourses: [], lastModified: Date.now(), evaluation: pendingConflictChoice.fetchedData }
                             : p
                     ),
                 };
@@ -619,6 +626,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         semesters: initialPlannerState,
                         placedCourses: [],
                         lastModified: Date.now(),
+                        evaluation: pendingConflictChoice.fetchedData
                     }],
                     activePlanId: newPlanId,
                 };
@@ -690,10 +698,14 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const adaptedRequirements = useMemo(
-        () => Array.isArray(requirements) ? requirements : requirements?.results ?? [],
-        [requirements]
-    );
+    const adaptedRequirements = useMemo(() => {
+        const planEval = activePlan.evaluation;
+        if (planEval) {
+            return Array.isArray(planEval) ? planEval : planEval?.results ?? [];
+        }
+
+        return Array.isArray(requirements) ? requirements : requirements?.results ?? [];
+    }, [activePlan.evaluation, requirements]);
 
     const allSuggestedCourses = useMemo(() => {
         const courses: any[] = [];
@@ -1237,7 +1249,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         <>
             <Toaster position="top-center" richColors />
             <PlannerNavbar
-                key={Object.keys(allSemesters).length}
+                key={plannerData.activePlanId}
                 requirements={adaptedRequirements}
                 expandedCategories={expandedCategories}
                 onToggleCategory={toggleCategory}
@@ -1312,6 +1324,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                 <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex-col gap-4 hidden md:flex">
                     <Sidebar
+                        key={plannerData.activePlanId}
                         requirements={adaptedRequirements}
                         expandedCategories={expandedCategories}
                         onToggleCategory={toggleCategory}

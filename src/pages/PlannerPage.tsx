@@ -192,13 +192,6 @@ const PlannerPage = () => {
     }
   };
 
-  const areDegreesSame = (prev: any[], next: any[]): boolean => {
-    if (prev.length !== next.length) return false;
-    const key = (d: any) => String(d.degreeId ?? d.id ?? d.name ?? "");
-    const prevKeys = new Set(prev.map(key));
-    return next.every((d) => prevKeys.has(key(d)));
-  };
-
   // writes evaluation + transcript to state/localStorage — Planner owns planner-state
   const applyEvaluation = (fetchedData: any, newTranscriptData: any, degrees: any[]) => {
     setRequirements(degrees);
@@ -234,8 +227,8 @@ const PlannerPage = () => {
       const prevDegrees: any[] = prevEvalRaw ? JSON.parse(prevEvalRaw)?.results || [] : [];
       const hasExistingPlan = !!localStorage.getItem("evaluation");
 
-      // existing plan + degrees changed → ask user what to do
-      if (hasExistingPlan && !areDegreesSame(prevDegrees, newDegrees)) {
+      // existing plan...
+      if (hasExistingPlan) {
         // default "select" target to first available plan
         const firstPlan = planListRef.current[0];
         setSelectedPlanId(firstPlan?.id ?? "");
@@ -397,7 +390,7 @@ const PlannerPage = () => {
           {planConflict && (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] px-4">
               <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 flex flex-col gap-4">
-                <h2 className="text-lg font-bold text-gray-900">You already have a degree plan</h2>
+                <h2 className="text-lg font-bold text-gray-900">Program Plan Conflict?</h2>
                 <p className="text-sm text-gray-500">
                   Your new transcript has different degrees, programs, and/or courses. What would you like to do?
                 </p>
