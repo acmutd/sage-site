@@ -285,10 +285,16 @@ const PlannerPage = () => {
   const handleFinishOnboarding = async (data: any) => {
     setShowOnboarding(false);
     setTranscriptData(data);
-    setLoading(true);
-    await fetchRequirements(data);
-    setLoading(false);
-    setShowPlanner(true);
+
+    if (isFirstTime) {
+      setLoading(true);
+      await fetchRequirements(data);
+      setLoading(false);
+      setShowPlanner(true);
+    } else {
+      await fetchRequirements(data);
+      setShowPlanner(true);
+    }
   };
 
   const handleRestartOnboarding = async () => {
