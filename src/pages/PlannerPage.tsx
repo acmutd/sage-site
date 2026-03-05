@@ -169,8 +169,8 @@ const PlannerPage = () => {
             localStorage.setItem('planner-state', JSON.stringify(cloudData));
           }
         }
-        if (!localStorage.getItem('transcriptData') && plannerResult.transcriptData) {
-          localStorage.setItem('transcriptData', JSON.stringify(plannerResult.transcriptData));
+        if (!localStorage.getItem('transcriptData') && plannerResult.transcript_data) {
+          localStorage.setItem('transcriptData', JSON.stringify(plannerResult.transcript_data));
         }
       }
 
