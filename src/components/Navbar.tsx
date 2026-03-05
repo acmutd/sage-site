@@ -113,14 +113,6 @@ const Navbar = () => {
               </li>
               <li>
                 {user ? (
-                  // If user is logged in, show Sign Out button
-                  // <button
-                  //   onClick={logout} // Calls logout function
-                  //   className="bg-destructive text-textlight text-base px-6 py-1.5 rounded-full font-semibold hover:bg-red-700 transition duration-300"
-                  // >
-                  //   Sign Out
-                  // </button>
-                  
                   //if user is loggin in, show menu icon
                   <DropdownMenu>
                     <DropdownMenuTrigger>
@@ -141,18 +133,18 @@ const Navbar = () => {
                         className={`bg-bglight flex flex-col p-2 gap-2 mr-6 items-center rounded-sm z-[90]`}
                       >
                         <DropdownMenuItem className="focus:bg-innercontainer w-full">
-                        <Link
-                        to="/profile"
-                        className={`text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2`}
-                        >
-                        <UserRound className="stroke-accent" />
+                          <Link
+                            to="/profile"
+                            className={`text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2`}
+                          >
+                        <UserRound style={{ width: "20px", height: "20px", minWidth: "20px" }} />
                         Your Profile
                       </Link>
                         </DropdownMenuItem>
 
                         <DropdownMenuItem className="focus:bg-innercontainer w-full">
                           <button
-                            onClick={logout} // Calls logout function
+                            onClick={logout}
                             className="bg-destructive text-textlight text-base px-6 py-1.5 rounded-full font-semibold hover:bg-red-700 transition duration-300"
                           >
                             Sign Out
@@ -209,37 +201,26 @@ const Navbar = () => {
                 </Link>
               </DropdownMenuItem>
 
-              <DropdownMenuItem className="focus:bg-innercontainer w-full">
-                {user ? (
-                  <Link
-                    to="/profile"
-                    className={`text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2`}
-                  >
-                    <UserRound className="stroke-accent" />
-                    Your Profile
-                  </Link>
-                ) : (
-                  <></>
-                )}
-              </DropdownMenuItem>
+              <DropdownMenuContent className="bg-bglight flex flex-col p-3 gap-2 mr-6 rounded-3xl min-w-[200px]">
+                <DropdownMenuItem className="focus:bg-innercontainer w-full rounded-xl">
+                    <Link
+                        to="/profile"
+                        className="text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2"
+                    >
+                        <UserRound className="stroke-accent" />
+                        Your Profile
+                    </Link>
+                </DropdownMenuItem>
 
-              <DropdownMenuItem className="focus:bg-transparent w-full">
-                {user ? (
-                  <button
-                    onClick={logout}
-                    className="bg-destructive w-full text-textlight text-base px-6 py-1.5 rounded-full font-semibold hover:bg-red-700 transition duration-300"
-                  >
-                    Sign Out
-                  </button>
-                ) : (
-                  <Link
-                    to="/login"
-                    className="flex-1 text-center bg-accent text-textdark text-base px-8 py-3 rounded-full font-semibold hover:bg-buttonhover transition duration-300"
-                  >
-                    Login
-                  </Link>
-                )}
-              </DropdownMenuItem>
+                <DropdownMenuItem className="focus:bg-transparent w-full p-0">
+                    <button
+                        onClick={logout}
+                        className="bg-destructive w-full text-white text-base px-6 py-2 rounded-full font-semibold hover:bg-red-700 transition duration-300"
+                    >
+                        Sign Out
+                    </button>
+                </DropdownMenuItem>
+            </DropdownMenuContent>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

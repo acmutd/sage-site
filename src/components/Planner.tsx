@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
-import Sidebar from "./Sidebar";
-import SemesterBox from "./SemesterBox";
+import Sidebar from "@/components/planner/Sidebar";
+import SemesterBox from "@/components/planner/SemesterBox";
 import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2, RefreshCw, ChevronDown, Settings, Pencil, Plus, Copy, Trash2 } from "lucide-react";
 import PlannerNavbar from "./PlannerNavbar";
 import {
@@ -27,6 +28,10 @@ interface PlannerProps {
     requirements: any;
     transcriptData: any;
     onRestartOnboarding?: () => void;
+    onRegisterConflictHandler?: (
+        cb: (choice: "overwrite" | "select" | "new", degrees: any[], fetchedData: any, targetPlanId?: string) => void,
+        plans: { id: string; name: string }[]
+      ) => void;
 }
 
 interface SavedPlannerState {
@@ -42,6 +47,7 @@ interface SavedPlannerState {
     };
     placedCourses: string[];
     lastModified: number;
+    evaluation: any;
 }
 
 interface PlannerData {
@@ -50,7 +56,7 @@ interface PlannerData {
 }
 
 
-const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding }) => {
+const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding, onRegisterConflictHandler }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
     
@@ -60,6 +66,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const [driverObj, setDriverObj] = useState<any>(null);
     const dropdownWasOpenedRef = useRef(false);
     
+    // profile -> sidebar link
+    const location = useLocation();
+    const focusLabel = location.state?.focusLabel as string | undefined;
+
     useEffect(() => {
         const driverInstance = driver({
             showProgress: true,
@@ -362,16 +372,22 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
         
         const defaultPlanId = crypto.randomUUID();
-        return {
+        const evalRaw = localStorage.getItem('evaluation');
+        const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
+        const defaultState = {
             plans: [{
                 id: defaultPlanId,
                 name: 'Plan 1',
                 semesters: initialPlannerState,
                 placedCourses: [],
-                lastModified: Date.now()
+                lastModified: Date.now(),
+                evaluation,
             }],
             activePlanId: defaultPlanId
         };
+
+        localStorage.setItem('planner-state', JSON.stringify(defaultState));
+        return defaultState;
     });
 
     const activePlan = plannerData.plans.find(p => p.id === plannerData.activePlanId)!;
@@ -379,6 +395,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const placedSuggestedCourses = new Set(activePlan.placedCourses);
 
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [pendingConflictChoice, setPendingConflictChoice] = useState<{
+        choice: "overwrite" | "select" | "new";
+        degrees: any[];
+        fetchedData: any;
+        targetPlanId?: string;
+    } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const updatePlannerState = (updates: Partial<SavedPlannerState>) => {
@@ -409,6 +431,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
 
         const newPlanId = crypto.randomUUID();
+        const evalRaw = localStorage.getItem('evaluation');
+        const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
         const planNumber = plannerData.plans.length + 1;
         
         setPlannerData(prev => ({
@@ -419,7 +443,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     name: `Plan ${planNumber}`,
                     semesters: initialPlannerState,
                     placedCourses: [],
-                    lastModified: Date.now()
+                    lastModified: Date.now(),
+                    evaluation: evaluation
                 }
             ],
             activePlanId: newPlanId
@@ -544,6 +569,86 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
     };
 
+    // conflicts for reupload 
+    useEffect(() => {
+        if (!pendingConflictChoice) return;
+        const { choice, targetPlanId } = pendingConflictChoice;
+    
+        if (choice === "overwrite") {
+            // Replace active plan's semesters in place
+            setPlannerData(prev => {
+                const updated: PlannerData = {
+                    ...prev,
+                    plans: prev.plans.map(p =>
+                        p.id === prev.activePlanId
+                            ? { ...p, semesters: initialPlannerState, placedCourses: [], lastModified: Date.now(), evaluation: pendingConflictChoice.fetchedData }
+                            : p
+                    ),
+                };
+                localStorage.setItem("planner-state", JSON.stringify(updated));
+                return updated;
+            });
+            setHasUnsavedChanges(false);
+            toast.success("Current plan updated with new transcript");
+    
+        } else if (choice === "select") {
+            // Replace the user-chosen plan's semesters, switch view to it
+            const planToUpdate = targetPlanId ?? plannerData.activePlanId;
+            setPlannerData(prev => {
+                const updated: PlannerData = {
+                    ...prev,
+                    activePlanId: planToUpdate,
+                    plans: prev.plans.map(p =>
+                        p.id === planToUpdate
+                            ? { ...p, semesters: initialPlannerState, placedCourses: [], lastModified: Date.now(), evaluation: pendingConflictChoice.fetchedData }
+                            : p
+                    ),
+                };
+                localStorage.setItem("planner-state", JSON.stringify(updated));
+                return updated;
+            });
+            setHasUnsavedChanges(false);
+            toast.success("Plan updated with new transcript");
+    
+        } else if (choice === "new") {
+            // Keep all existing plans, add a fresh one and switch to it
+            if (plannerData.plans.length >= 5) {
+                toast.error("Maximum of 5 plans reached — delete one first");
+                setPendingConflictChoice(null);
+                return;
+            }
+            const newPlanId = crypto.randomUUID();
+            setPlannerData(prev => {
+                const updated: PlannerData = {
+                    plans: [...prev.plans, {
+                        id: newPlanId,
+                        name: `Plan ${prev.plans.length + 1} (New Transcript)`,
+                        semesters: initialPlannerState,
+                        placedCourses: [],
+                        lastModified: Date.now(),
+                        evaluation: pendingConflictChoice.fetchedData
+                    }],
+                    activePlanId: newPlanId,
+                };
+                localStorage.setItem("planner-state", JSON.stringify(updated));
+                return updated;
+            });
+            setHasUnsavedChanges(true);
+            toast.success("New plan created with new transcript");
+        }
+    
+        setPendingConflictChoice(null);
+    }, [initialPlannerState, pendingConflictChoice]);
+
+    useEffect(() => {
+        onRegisterConflictHandler?.(
+            (choice, degrees, fetchedData, targetPlanId) => {
+                setPendingConflictChoice({ choice, degrees, fetchedData, targetPlanId });
+            },
+            plannerData.plans.map(p => ({ id: p.id, name: p.name }))
+        );
+    }, [initialPlannerState, plannerData.plans]);
+
     // Warn on page unload if unsaved changes
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -593,10 +698,14 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const adaptedRequirements = useMemo(
-        () => Array.isArray(requirements) ? requirements : requirements?.results ?? [],
-        [requirements]
-    );
+    const adaptedRequirements = useMemo(() => {
+        const planEval = activePlan.evaluation;
+        if (planEval) {
+            return Array.isArray(planEval) ? planEval : planEval?.results ?? [];
+        }
+
+        return Array.isArray(requirements) ? requirements : requirements?.results ?? [];
+    }, [activePlan.evaluation, requirements]);
 
     const allSuggestedCourses = useMemo(() => {
         const courses: any[] = [];
@@ -1143,7 +1252,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         <>
             <Toaster position="top-center" richColors />
             <PlannerNavbar
-                key={Object.keys(allSemesters).length}
+                key={plannerData.activePlanId}
                 requirements={adaptedRequirements}
                 expandedCategories={expandedCategories}
                 onToggleCategory={toggleCategory}
@@ -1218,6 +1327,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                 <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex-col gap-4 hidden md:flex">
                     <Sidebar
+                        key={plannerData.activePlanId}
                         requirements={adaptedRequirements}
                         expandedCategories={expandedCategories}
                         onToggleCategory={toggleCategory}
@@ -1231,6 +1341,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         allCompletedCourseCodes={allCompletedCourseCodes}
                         allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                         onRestartOnboarding={onRestartOnboarding}
+                        focusLabel={focusLabel}
                     />
 
                     <div

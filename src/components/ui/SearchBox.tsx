@@ -39,7 +39,7 @@ export function Searchbox<T>({
   placeholder = "Search…",
   triggerLabel = "Add",
   className,
-  fuseThreshold = 0.35,
+  fuseThreshold = 0.25,
 }: SearchboxProps<T>) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -57,8 +57,8 @@ export function Searchbox<T>({
   }, [items, searchKeys, fuseThreshold]);
 
   const results = useMemo(() => {
-    if (!query.trim()) return items.slice(0, 8);
-    return fuse.search(query).slice(0, 8).map((r) => r.item);
+    if (!query.trim()) return items;
+    return fuse.search(query).map((r) => r.item);
   }, [query, fuse, items]);
 
   const exactMatch = useMemo(
@@ -134,7 +134,7 @@ export function Searchbox<T>({
                 )}
               </div>
             </div>
-          <CommandList className="max-h-48 overflow-y-auto">
+          <CommandList className="max-h-72 overflow-y-auto">
             {/* Results */}
             {results.length > 0 && (
               <CommandGroup>

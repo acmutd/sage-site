@@ -1,8 +1,8 @@
 import { useRef, useEffect, useState } from "react";
-import FileUploader from "./FileUpload";
-import { useAuth } from "../context/AuthContext";
-import ProgramValidationA from "./ProgramValidationA";
-import ClassValidationA from "./ClassValidationA";
+import FileUploader from "@/components/planner/FileUpload";
+import { useAuth } from "@/context/AuthContext";
+import ProgramValidationA from "@/components/planner/ProgramValidationA"
+import ClassValidationA from "@/components/planner/ClassValidationA"
 import { SquareAsterisk } from "lucide-react";
 
 interface OnboardingProps {
@@ -59,7 +59,7 @@ const Onboarding: React.FC<OnboardingProps> = ({
 
   const handleFinish = (updatedTranscript: any) => {
     setTranscriptData(updatedTranscript);
-    onFinish(transcriptData);
+    onFinish(updatedTranscript);
   };
 
   const handleBack = () => {

@@ -1,8 +1,8 @@
 import { Trash2Icon, SaveIcon, Pencil, PlusCircle } from "lucide-react";
 import React, { useState, useRef } from "react";
-import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
-import { Separator } from "../components/ui/separator";
+import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
+import { Separator } from "../ui/separator";
 
 interface ClassValidationAProps {
   onNext: (updatedTranscript: any) => void;
@@ -14,6 +14,9 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
   const courses = transcriptData?.courses || {};
   const [editingSemester, setEditingSemester] = useState<string | null>(null);
   const [editedCourses, setEditedCourses] = useState<any>({});
+  const [localTranscript, setLocalTranscript] = useState(() => 
+    JSON.parse(JSON.stringify(transcriptData)) // deep copy on init
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const handleEdit = (semester: string) => {
@@ -29,15 +32,16 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
 
   const handleSave = () => {
     if (editingSemester) {
+      const updated = JSON.parse(JSON.stringify(transcriptData));
       if (editingSemester === "Transferred Credits") {
-        transcriptData.courses.transfer_credits = editedCourses;
+        updated.courses.transfer_credits = editedCourses;
       } else if (editingSemester === "Test Credits") {
-        transcriptData.courses.test_credits = editedCourses;
+        updated.courses.test_credits = editedCourses;
       } else {
-        transcriptData.courses.utd_classes[editingSemester] = editedCourses;
+        updated.courses.utd_classes[editingSemester] = editedCourses;
       }
 
-      console.log("Updated transcriptData:", transcriptData);
+      setLocalTranscript(updated);
       setEditingSemester(null);
     }
   };
@@ -225,7 +229,7 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
     
             <button
               className="px-8 py-2 bg-green-400 text-gray-900 font-medium rounded-lg hover:bg-green-500 transition"
-              onClick={() => onNext(transcriptData)}
+              onClick={() => onNext(localTranscript)}
             >
               Finish
             </button>

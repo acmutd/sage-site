@@ -1,7 +1,7 @@
 import { Pencil, PlusIcon } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
-import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import ProgramValidationB from "./ProgramValidationB";
 import {
   Select,
@@ -9,7 +9,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../components/ui/select";
+} from '@/components/ui/select'
 import { useAuth } from "@/context/AuthContext";
 
 const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;

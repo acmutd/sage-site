@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { NotebookPen, ArrowLeftToLine, PanelLeftDashed, ArrowRightToLine } from "lucide-react";
 import { useDrop } from "react-dnd";
-import RequirementCategory from "./RequirementCategory";
-import CoursesCarousel from "./ui/CoursesCarousel";
+import RequirementCategory from '@/components/planner/RequirementCategory';
+import CoursesCarousel from '@/components/planner/CoursesCarousel';
 
 interface SidebarProps {
     requirements: {
@@ -52,6 +52,7 @@ interface SidebarProps {
         semesterOrder: number;
     }>;
     onRestartOnboarding?: () => void;
+    focusLabel?: string;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -63,11 +64,13 @@ const Sidebar: React.FC<SidebarProps> = ({
     allCompletedCourseCodes = [],
     allPlannedCoursesWithOrder = [],
     onRestartOnboarding,
+    focusLabel,
 }) => {
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
     const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
     const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
+    const [highlightedKey, setHighlightedKey] = useState<string | null>(null);
 
     // Collect all suggested courses from all categories with their category paths
     const allSuggestedCourses = React.useMemo(() => {
@@ -146,7 +149,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             categories.forEach((category, catIdx) => {
                 const key = `${reqIdx}-${parentIdx}-${catIdx}`;
                 // Auto-expand if category has any progress
-                initialState[key] = category.progress < category.total;
+                initialState[key] = category.progress < category.total && category.total > 0;
                 
                 // Recursively initialize nested categories
                 if (category.categories && category.categories.length > 0) {
@@ -163,6 +166,52 @@ const Sidebar: React.FC<SidebarProps> = ({
         
         setExpandedSubcategories(initialState);
     }, [requirements]);
+    
+    // profile -> planner hotlink
+    useEffect(() => {
+        if (!focusLabel) return;
+    
+        const newExpanded = { ...expandedSubcategories };
+        let foundKey: string | null = null;
+    
+        const findAndExpand = (categories: any[], reqIdx: number, parentPath: string = "0"): boolean => {
+            return categories.some((category, catIdx) => {
+                const key = `${reqIdx}-${parentPath}-${catIdx}`;
+    
+                if (category.name.includes(focusLabel)) {
+                    foundKey = key;
+                    // don't touch newExpanded[key] — don't expand the target itself
+                    return true;
+                }
+    
+                const childMatched = category.categories?.length
+                    ? findAndExpand(category.categories, reqIdx, `${parentPath}-${catIdx}`)
+                    : false;
+    
+                if (childMatched) {
+                    newExpanded[key] = true; // expand ancestor only
+                }
+    
+                return childMatched;
+            });
+        };
+    
+        requirements.forEach((req, reqIdx) => {
+            const matched = findAndExpand(req.categories, reqIdx);
+            if (matched) setAutoExpandedCategories(prev => ({ ...prev, [reqIdx]: true }));
+        });
+    
+        setExpandedSubcategories(newExpanded);
+        if (foundKey) setHighlightedKey(foundKey);
+    }, [focusLabel]);
+    
+    useEffect(() => {
+        if (!highlightedKey) return;
+        const el = document.querySelector(`[data-category-key="${highlightedKey}"]`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        const timer = setTimeout(() => setHighlightedKey(null), 2000);
+        return () => clearTimeout(timer);
+    }, [highlightedKey]);
     
     const handleToggleSubcategory = (key: string) => {
         setExpandedSubcategories((prev) => ({
@@ -287,12 +336,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                     const partKey = `${currentCatIdx}-part-${i}`;
                     return (
                         <RequirementCategory
+                            categoryKey={currentCatIdx}
+                            focusLabel={focusLabel}
                             key={partKey}
                             title={part}
                             // these sections are often misleading when done with '|' and to prevent confusion...this is removed
                             completed={i === 0 ? category.progress : 0}
                             total={i === 0 ? category.total : 0}
-                            isExpanded={expandedSubcategories[partKey] ?? true}
+                            isExpanded={expandedSubcategories[partKey] ?? false}
                             onToggle={() => handleToggleSubcategory(partKey)}
                             hasSubcategories={i < parts.length - 1 || subCategoriesToRender.length > 0}
                         >
@@ -305,6 +356,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             return (
                 <RequirementCategory
                     key={currentCatIdx}
+                    categoryKey={currentCatIdx}
+                    focusLabel={focusLabel}
                     title={displayName}
                     completed={category.progress}
                     total={category.total}

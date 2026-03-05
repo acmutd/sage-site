@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import useFileUpload from "../hooks/useFileUpload";
-import { useAuth } from "../context/AuthContext";
+import useFileUpload from "@/hooks/useFileUpload"
+import { useAuth } from "@/context/AuthContext";
 
 interface FileUploaderProps {
   userId: string;
