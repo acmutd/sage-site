@@ -208,9 +208,9 @@ const PlannerPage = () => {
         const localDataStr = localStorage.getItem('transcriptData');
         if (!localDataStr)
         {
-          if (plannerResult.transcriptData)
+          if (plannerResult.transcript_data)
           { 
-            const cloudData = plannerResult.transcriptData;
+            const cloudData = plannerResult.transcript_data;
             localStorage.setItem('transcriptData', JSON.stringify(cloudData));    
           }
         }
