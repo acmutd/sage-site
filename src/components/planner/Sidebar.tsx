@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { NotebookPen, ArrowLeftToLine, PanelLeftDashed, ArrowRightToLine } from "lucide-react";
 import { useDrop } from "react-dnd";
-import RequirementCategory from "./planner/RequirementCategory";
-import CoursesCarousel from "./planner/CoursesCarousel";
+import RequirementCategory from '@/components/planner/RequirementCategory';
+import CoursesCarousel from '@/components/planner/CoursesCarousel';
 
 interface SidebarProps {
     requirements: {
