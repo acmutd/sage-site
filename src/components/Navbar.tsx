@@ -113,14 +113,6 @@ const Navbar = () => {
               </li>
               <li>
                 {user ? (
-                  // If user is logged in, show Sign Out button
-                  // <button
-                  //   onClick={logout} // Calls logout function
-                  //   className="bg-destructive text-textlight text-base px-6 py-1.5 rounded-full font-semibold hover:bg-red-700 transition duration-300"
-                  // >
-                  //   Sign Out
-                  // </button>
-                  
                   //if user is loggin in, show menu icon
                   <DropdownMenu>
                     <DropdownMenuTrigger>
@@ -152,8 +144,8 @@ const Navbar = () => {
 
                         <DropdownMenuItem className="focus:bg-innercontainer w-full">
                           <button
-                            onClick={logout} // Calls logout function
-                            className="bg-destructive text-textlight text-base px-6 py-1.5 rounded-xl font-semibold hover:bg-red-700 transition duration-300"
+                            onClick={logout}
+                            className="bg-destructive text-textlight text-base px-6 py-1.5 rounded-full font-semibold hover:bg-red-700 transition duration-300"
                           >
                             Sign Out
                           </button>
@@ -164,7 +156,7 @@ const Navbar = () => {
                   // If no user, show Login button
                   <Link
                     to="/login"
-                    className="bg-accent text-textdark text-base px-8 py-2 rounded-xl font-semibold hover:bg-buttonhover transition duration-300"
+                    className="bg-accent text-textdark text-base px-8 py-2 rounded-full font-semibold hover:bg-buttonhover transition duration-300"
                   >
                     Login
                   </Link>
@@ -209,8 +201,8 @@ const Navbar = () => {
                 </Link>
               </DropdownMenuItem>
 
-              <DropdownMenuContent className="bg-bglight flex flex-col p-3 gap-2 mr-6 rounded-xl min-w-[200px]">
-                <DropdownMenuItem className="focus:bg-innercontainer w-full rounded-lg">
+              <DropdownMenuContent className="bg-bglight flex flex-col p-3 gap-2 mr-6 rounded-3xl min-w-[200px]">
+                <DropdownMenuItem className="focus:bg-innercontainer w-full rounded-xl">
                     <Link
                         to="/profile"
                         className="text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2"
