@@ -1,7 +1,7 @@
 import React from "react";
 import { NotebookPen } from "lucide-react";
-import RequirementCategory from "@/components/RequirementCategory";
-import CoursesCarousel from "@/components/ui/CoursesCarousel";
+import RequirementCategory from "@/components/planner/RequirementCategory";
+import CoursesCarousel from "@/components/planner/CoursesCarousel";
 
 interface PlannerSidebarContentProps {
   onClose: () => void;

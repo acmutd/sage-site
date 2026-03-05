@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import FileUploader from "./FileUpload";
 import { useAuth } from "../context/AuthContext";
 import ProgramValidationA from "./ProgramValidationA";
-import ClassValidationA from "./ClassValidationA";
+import ClassValidationA from "./planner/ClassValidationA";
 import { SquareAsterisk } from "lucide-react";
 
 interface OnboardingProps {

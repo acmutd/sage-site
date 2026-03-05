@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
-import Sidebar from "./Sidebar";
-import SemesterBox from "./SemesterBox";
+import Sidebar from "@/components/planner/Sidebar";
+import SemesterBox from "@/components/planner/SemesterBox";
 import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2, RefreshCw, ChevronDown, Settings, Pencil, Plus, Copy, Trash2 } from "lucide-react";
 import PlannerNavbar from "./PlannerNavbar";
 import {

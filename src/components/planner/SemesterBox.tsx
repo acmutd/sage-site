@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Lock, Unlock, MoreVertical, Trash2, Eraser, TriangleAlert, ChevronUp } from "lucide-react";
-import CourseBox from "./CourseBox";
+import CourseBox from "@/components/planner/CourseBox";
 import { useDrop } from "react-dnd";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Course } from "@/types/course";

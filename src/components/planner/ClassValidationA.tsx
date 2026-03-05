@@ -1,8 +1,8 @@
 import { Trash2Icon, SaveIcon, Pencil, PlusCircle } from "lucide-react";
 import React, { useState, useRef } from "react";
-import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
-import { Separator } from "../components/ui/separator";
+import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
+import { Separator } from "../ui/separator";
 
 interface ClassValidationAProps {
   onNext: (updatedTranscript: any) => void;

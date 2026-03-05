@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Onboarding from "@/components/Onboarding";
+import Onboarding from "@/components/planner/Onboarding";
 import Planner from "@/components/Planner";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
