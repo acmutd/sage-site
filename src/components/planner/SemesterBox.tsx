@@ -177,22 +177,27 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         const categoryPathMap = new Map<string, string>();
         const suggestedCourseCodes = new Set<string>();
 
+        const indexCoreqSource = (source: any, code: string) => {
+            suggestedCourseCodes.add(code);
+            const normalizedCoreqGroups = normalizeCorequisiteGroups(source.corequisites);
+            if (normalizedCoreqGroups.length > 0 && !coreqMap.has(code)) {
+                coreqMap.set(code, normalizedCoreqGroups);
+            }
+            if (source.categoryPath && !categoryPathMap.has(code)) {
+                categoryPathMap.set(code, source.categoryPath);
+            }
+        };
 
         allSuggestedCourses.forEach((suggestedCourse: any) => {
-            const code = normalizeCourseCode(
-                suggestedCourse.code || suggestedCourse.course_code
-            );
-            if (code) {
-                suggestedCourseCodes.add(code);
-                const normalizedCoreqGroups = normalizeCorequisiteGroups(
-                    suggestedCourse.corequisites
-                );
-                if (normalizedCoreqGroups.length > 0) {
-                    coreqMap.set(code, normalizedCoreqGroups);
-                }
-                if (suggestedCourse.categoryPath) {
-                    categoryPathMap.set(code, suggestedCourse.categoryPath);
-                }
+            const code = normalizeCourseCode(suggestedCourse.code || suggestedCourse.course_code);
+            if (code) indexCoreqSource(suggestedCourse, code);
+        });
+
+        // Also check the courses within the current semester to preserve data after refresh/reload
+        courses.forEach((course: any) => {
+            const code = normalizeCourseCode(course.course_code);
+            if (code && !coreqMap.has(code) && course.corequisites) {
+                indexCoreqSource(course, code);
             }
         });
 
@@ -246,18 +251,26 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         const prerequisiteMap = new Map<string, string[][]>();
         const categoryPathMap = new Map<string, string>();
 
-        allSuggestedCourses.forEach((suggestedCourse: any) => {
-            const code = normalizeCourseCode(
-                suggestedCourse.code || suggestedCourse.course_code
-            );
-            if (!code) return;
-
-            const prerequisiteGroups = getCoursePrerequisiteGroups(suggestedCourse);
-            if (prerequisiteGroups.length > 0) {
+        const indexPrereqSource = (source: any, code: string) => {
+            const prerequisiteGroups = getCoursePrerequisiteGroups(source);
+            if (prerequisiteGroups.length > 0 && !prerequisiteMap.has(code)) {
                 prerequisiteMap.set(code, prerequisiteGroups);
             }
-            if (suggestedCourse.categoryPath) {
-                categoryPathMap.set(code, suggestedCourse.categoryPath);
+            if (source.categoryPath && !categoryPathMap.has(code)) {
+                categoryPathMap.set(code, source.categoryPath);
+            }
+        };
+
+        allSuggestedCourses.forEach((suggestedCourse: any) => {
+            const code = normalizeCourseCode(suggestedCourse.code || suggestedCourse.course_code);
+            if (code) indexPrereqSource(suggestedCourse, code);
+        });
+
+        // Also check the courses within the current semester to preserve data after refresh/reload
+        courses.forEach((course: any) => {
+            const code = normalizeCourseCode(course.course_code);
+            if (code && !prerequisiteMap.has(code)) {
+                indexPrereqSource(course, code);
             }
         });
 
