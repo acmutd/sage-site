@@ -39,7 +39,7 @@ export function Searchbox<T>({
   placeholder = "Search…",
   triggerLabel = "Add",
   className,
-  fuseThreshold = 0.35,
+  fuseThreshold = 0.25,
 }: SearchboxProps<T>) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
