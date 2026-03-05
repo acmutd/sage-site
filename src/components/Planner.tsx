@@ -20,6 +20,7 @@ import { useAuth } from "@/context/AuthContext";
 import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
 import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
 import { auth } from "@/firebase-config";
+import { usePlannerStore } from "@/stores/plannerStore";
 
 interface PlannerProps {
     semesters: {
@@ -48,11 +49,6 @@ interface SavedPlannerState {
     placedCourses: string[];
     lastModified: number;
     evaluation: any;
-}
-
-interface PlannerData {
-    plans: SavedPlannerState[];
-    activePlanId: string;
 }
 
 
@@ -360,39 +356,28 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return updatedSemesters;
     }, [semesters]);
 
-    const [plannerData, setPlannerData] = useState<PlannerData>(() => {
-        const stored = localStorage.getItem('planner-state');
+    // Zustand store selectors
+    const plans = usePlannerStore(state => state.plans);
+    const activePlanId = usePlannerStore(state => state.activePlanId);
+    const switchPlan = usePlannerStore(state => state.switchPlan);
+    const createNewPlan = usePlannerStore(state => state.createNewPlan);
+    const duplicatePlan = usePlannerStore(state => state.duplicatePlan);
+    const deletePlan = usePlannerStore(state => state.deletePlan);
+    const renamePlan = usePlannerStore(state => state.renamePlan);
+    const updateActivePlan = usePlannerStore(state => state.updateActivePlan);
 
-        if (stored) {
-            try {
-                return JSON.parse(stored);
-            } catch (error) {
-                console.error('Failed to parse localStorage:', error);
-            }
+    // Initialize store with default plan if empty
+    useEffect(() => {
+        if (plans.length === 0) {
+            const evalRaw = localStorage.getItem('evaluation');
+            const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
+            createNewPlan(initialPlannerState, evaluation);
         }
-        
-        const defaultPlanId = crypto.randomUUID();
-        const evalRaw = localStorage.getItem('evaluation');
-        const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
-        const defaultState = {
-            plans: [{
-                id: defaultPlanId,
-                name: 'Plan 1',
-                semesters: initialPlannerState,
-                placedCourses: [],
-                lastModified: Date.now(),
-                evaluation,
-            }],
-            activePlanId: defaultPlanId
-        };
+    }, [plans.length, initialPlannerState, createNewPlan]);
 
-        localStorage.setItem('planner-state', JSON.stringify(defaultState));
-        return defaultState;
-    });
-
-    const activePlan = plannerData.plans.find(p => p.id === plannerData.activePlanId)!;
-    const allSemesters = activePlan.semesters;
-    const placedSuggestedCourses = new Set(activePlan.placedCourses);
+    const activePlan = plans.find(p => p.id === activePlanId);
+    const allSemesters = activePlan?.semesters || {};
+    const placedSuggestedCourses = new Set(activePlan?.placedCourses || []);
 
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [pendingConflictChoice, setPendingConflictChoice] = useState<{
@@ -404,121 +389,44 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const [isLoading, setIsLoading] = useState(false);
 
     const updatePlannerState = (updates: Partial<SavedPlannerState>) => {
-        setPlannerData(prev => ({
-            ...prev,
-            plans: prev.plans.map(p =>
-                p.id === prev.activePlanId
-                    ? { ...p, ...updates, lastModified: Date.now()}
-                    : p
-            )
-        }));
+        updateActivePlan(updates);
         setHasUnsavedChanges(true);
     };
 
     // Plan management functions
     const handleSwitchPlan = (planId: string) => {
-        setPlannerData(prev => ({
-            ...prev,
-            activePlanId: planId
-        }));
+        switchPlan(planId);
         setHasUnsavedChanges(true);
     };
 
     const handleNewPlan = () => {
-        if (plannerData.plans.length >= 5) {
-            toast.error('Maximum of 5 plans allowed');
-            return;
-        }
-
-        const newPlanId = crypto.randomUUID();
         const evalRaw = localStorage.getItem('evaluation');
         const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
-        const planNumber = plannerData.plans.length + 1;
-        
-        setPlannerData(prev => ({
-            plans: [
-                ...prev.plans,
-                {
-                    id: newPlanId,
-                    name: `Plan ${planNumber}`,
-                    semesters: initialPlannerState,
-                    placedCourses: [],
-                    lastModified: Date.now(),
-                    evaluation: evaluation
-                }
-            ],
-            activePlanId: newPlanId
-        }));
+        createNewPlan(initialPlannerState, evaluation);
         setHasUnsavedChanges(true);
-        toast.success('Created new plan');
     };
 
     const handleDuplicatePlan = () => {
-        if (plannerData.plans.length >= 5) {
-            toast.error('Maximum of 5 plans allowed');
-            return;
-        }
-
-        const currentPlan = plannerData.plans.find(p => p.id === plannerData.activePlanId);
-        if (!currentPlan) return;
-
-        const newPlanId = crypto.randomUUID();
-        const duplicatedPlan: SavedPlannerState = {
-            ...JSON.parse(JSON.stringify(currentPlan)), // Deep copy
-            id: newPlanId,
-            name: `${currentPlan.name} (Copy)`,
-            lastModified: Date.now()
-        };
-
-        setPlannerData(prev => ({
-            plans: [...prev.plans, duplicatedPlan],
-            activePlanId: newPlanId
-        }));
+        duplicatePlan();
         setHasUnsavedChanges(true);
-        toast.success('Duplicated plan');
     };
 
     const handleDeletePlan = () => {
-        if (plannerData.plans.length === 1) {
-            toast.error('Cannot delete the last plan');
-            return;
-        }
-
-        const currentIndex = plannerData.plans.findIndex(p => p.id === plannerData.activePlanId);
-        const newActivePlanId = currentIndex > 0 
-            ? plannerData.plans[currentIndex - 1].id 
-            : plannerData.plans[1].id;
-
-        setPlannerData(prev => ({
-            plans: prev.plans.filter(p => p.id !== prev.activePlanId),
-            activePlanId: newActivePlanId
-        }));
+        deletePlan();
         setHasUnsavedChanges(true);
-        toast.success('Deleted plan');
     };
 
     const handleRenamePlan = (newName: string) => {
-        if (!newName.trim()) {
-            toast.error('Plan name cannot be empty');
-            return;
-        }
-
-        setPlannerData(prev => ({
-            ...prev,
-            plans: prev.plans.map(p =>
-                p.id === prev.activePlanId
-                    ? { ...p, name: newName.trim(), lastModified: Date.now() }
-                    : p
-            )
-        }));
+        renamePlan(newName);
         setHasUnsavedChanges(true);
-        toast.success('Renamed plan');
     };
 
     const savePlannerState = async () => {
         const user = auth.currentUser;
         if (!user) throw new Error("Not authenticated");
         const token = await user.getIdToken();
+
+        const currentPlannerData = { plans, activePlanId };
 
         const CRUD_API = import.meta.env.VITE_CRUD_API;
         const response = await fetch(CRUD_API, {
@@ -528,7 +436,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 userId: user.uid,
                 action: 'savePlanner',
                 token,
-                plannerData: plannerData,
+                plannerData: currentPlannerData,
                 transcriptData: transcriptData
             }),
         });
@@ -538,7 +446,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
 
         try {
-            localStorage.setItem('planner-state', JSON.stringify(plannerData));
+            localStorage.setItem('planner-state', JSON.stringify(currentPlannerData));
         } catch (e) {
             console.error('Failed to save to localStorage:', e);
         }
@@ -576,78 +484,54 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     
         if (choice === "overwrite") {
             // Replace active plan's semesters in place
-            setPlannerData(prev => {
-                const updated: PlannerData = {
-                    ...prev,
-                    plans: prev.plans.map(p =>
-                        p.id === prev.activePlanId
-                            ? { ...p, semesters: initialPlannerState, placedCourses: [], lastModified: Date.now(), evaluation: pendingConflictChoice.fetchedData }
-                            : p
-                    ),
-                };
-                localStorage.setItem("planner-state", JSON.stringify(updated));
-                return updated;
+            updateActivePlan({
+                semesters: initialPlannerState,
+                placedCourses: [],
+                lastModified: Date.now(),
+                evaluation: pendingConflictChoice.fetchedData
             });
             setHasUnsavedChanges(false);
             toast.success("Current plan updated with new transcript");
     
         } else if (choice === "select") {
             // Replace the user-chosen plan's semesters, switch view to it
-            const planToUpdate = targetPlanId ?? plannerData.activePlanId;
-            setPlannerData(prev => {
-                const updated: PlannerData = {
-                    ...prev,
-                    activePlanId: planToUpdate,
-                    plans: prev.plans.map(p =>
-                        p.id === planToUpdate
-                            ? { ...p, semesters: initialPlannerState, placedCourses: [], lastModified: Date.now(), evaluation: pendingConflictChoice.fetchedData }
-                            : p
-                    ),
-                };
-                localStorage.setItem("planner-state", JSON.stringify(updated));
-                return updated;
+            const planToUpdate = targetPlanId ?? activePlanId;
+            if (planToUpdate !== activePlanId) {
+                switchPlan(planToUpdate);
+            }
+            updateActivePlan({
+                semesters: initialPlannerState,
+                placedCourses: [],
+                lastModified: Date.now(),
+                evaluation: pendingConflictChoice.fetchedData
             });
             setHasUnsavedChanges(false);
             toast.success("Plan updated with new transcript");
     
         } else if (choice === "new") {
             // Keep all existing plans, add a fresh one and switch to it
-            if (plannerData.plans.length >= 5) {
+            if (plans.length >= 5) {
                 toast.error("Maximum of 5 plans reached — delete one first");
                 setPendingConflictChoice(null);
                 return;
             }
-            const newPlanId = crypto.randomUUID();
-            setPlannerData(prev => {
-                const updated: PlannerData = {
-                    plans: [...prev.plans, {
-                        id: newPlanId,
-                        name: `Plan ${prev.plans.length + 1} (New Transcript)`,
-                        semesters: initialPlannerState,
-                        placedCourses: [],
-                        lastModified: Date.now(),
-                        evaluation: pendingConflictChoice.fetchedData
-                    }],
-                    activePlanId: newPlanId,
-                };
-                localStorage.setItem("planner-state", JSON.stringify(updated));
-                return updated;
-            });
+            const newPlanName = `Plan ${plans.length + 1} (New Transcript)`;
+            createNewPlan(initialPlannerState, pendingConflictChoice.fetchedData, newPlanName);
             setHasUnsavedChanges(true);
             toast.success("New plan created with new transcript");
         }
     
         setPendingConflictChoice(null);
-    }, [initialPlannerState, pendingConflictChoice]);
+    }, [initialPlannerState, pendingConflictChoice, activePlanId, plans.length, switchPlan, updateActivePlan, createNewPlan]);
 
     useEffect(() => {
         onRegisterConflictHandler?.(
             (choice, degrees, fetchedData, targetPlanId) => {
                 setPendingConflictChoice({ choice, degrees, fetchedData, targetPlanId });
             },
-            plannerData.plans.map(p => ({ id: p.id, name: p.name }))
+            plans.map(p => ({ id: p.id, name: p.name }))
         );
-    }, [initialPlannerState, plannerData.plans]);
+    }, [initialPlannerState, plans, onRegisterConflictHandler]);
 
     // Warn on page unload if unsaved changes
     useEffect(() => {
@@ -699,13 +583,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     }, []);
 
     const adaptedRequirements = useMemo(() => {
-        const planEval = activePlan.evaluation;
+        const planEval = activePlan?.evaluation;
         if (planEval) {
             return Array.isArray(planEval) ? planEval : planEval?.results ?? [];
         }
 
         return Array.isArray(requirements) ? requirements : requirements?.results ?? [];
-    }, [activePlan.evaluation, requirements]);
+    }, [activePlan?.evaluation, requirements]);
 
     const allSuggestedCourses = useMemo(() => {
         const courses: any[] = [];
@@ -865,7 +749,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             await evaluatePlannerAndMergeSuggestions({
                 quickEvaluation: true,
                 assumeMinimumGradePass: true,
-                plannerStateOverride: plannerData,
+                plannerStateOverride: { plans, activePlanId },
             });
             toast.success("Suggested courses refreshed");
             setLastQuickEvalPlannedCoursesSignature(plannedCoursesSignature);
@@ -879,7 +763,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             } catch (saveError) {
                 console.warn("Cloud save failed before quick eval, falling back to localStorage:", saveError);
                 try {
-                    localStorage.setItem('planner-state', JSON.stringify(plannerData));
+                    localStorage.setItem('planner-state', JSON.stringify({ plans, activePlanId }));
                 } catch (e) {
                     console.error("localStorage fallback also failed:", e);
                 }
@@ -1252,7 +1136,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         <>
             <Toaster position="top-center" richColors />
             <PlannerNavbar
-                key={plannerData.activePlanId}
+                key={activePlanId}
                 requirements={adaptedRequirements}
                 expandedCategories={expandedCategories}
                 onToggleCategory={toggleCategory}
@@ -1327,7 +1211,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                 <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex-col gap-4 hidden md:flex">
                     <Sidebar
-                        key={plannerData.activePlanId}
+                        key={activePlanId}
                         requirements={adaptedRequirements}
                         expandedCategories={expandedCategories}
                         onToggleCategory={toggleCategory}
@@ -1381,7 +1265,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 <ChevronDown size={18} />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-bglight rounded-2xl">
-                                {plannerData.plans.map(plan => (
+                                {plans.map(plan => (
                                     <DropdownMenuItem 
                                         key={plan.id}
                                         onClick={() => handleSwitchPlan(plan.id)}
@@ -1428,10 +1312,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 
                                 <DropdownMenuItem 
                                     onClick={() => {
-                                        if (plannerData.plans.length === 1) return;
+                                        if (plans.length === 1) return;
                                         setShowPlanDeleteModal(true);
                                     }}
-                                    disabled={plannerData.plans.length === 1}
+                                    disabled={plans.length === 1}
                                     className="text-destructive focus:text-destructive hover:bg-gray-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <Trash2 className="w-4 h-4 mr-2" />
