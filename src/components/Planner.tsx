@@ -847,7 +847,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         <>
             <Toaster position="top-center" richColors />
             <PlannerNavbar
-                key={activePlanId}
                 requirements={adaptedRequirements}
                 expandedCategories={expandedCategories}
                 onToggleCategory={toggleCategory}
@@ -922,7 +921,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                 <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex-col gap-4 hidden md:flex">
                     <Sidebar
-                        key={activePlanId}
                         requirements={adaptedRequirements}
                         expandedCategories={expandedCategories}
                         onToggleCategory={toggleCategory}
