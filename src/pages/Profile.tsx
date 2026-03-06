@@ -230,7 +230,6 @@ const Profile = () => {
     
 
     async function getUserInfo() {
-        localStorage.removeItem("chatbot_conversations");
         const token = await user?.getIdToken();
 
         if (!token) throw new Error("Failed to retrieve authentication token.");
@@ -345,8 +344,6 @@ const Profile = () => {
             
             if (convResponse.ok) {
                 const convData = await convResponse.json();
-                console.log("conv keys:", Object.keys(convData[0]));
-                console.log("first conv:", JSON.stringify(convData[0], null, 2));
                 const convs = Array.isArray(convData)
                     ? convData.map((conv: Conversation) => ({
                         ...conv,
