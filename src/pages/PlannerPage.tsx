@@ -6,6 +6,7 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { TouchBackend } from "react-dnd-touch-backend";
 import { MultiBackend, TouchTransition, MouseTransition } from "react-dnd-multi-backend";
 import { useAuth } from "@/context/AuthContext";
+import { usePlannerStore } from "@/stores/plannerStore";
 
 type PlanConflictOption = "overwrite" | "select" | "new";
 
@@ -164,9 +165,17 @@ const PlannerPage = () => {
             const localData = JSON.parse(localDataStr);
             if ((cloudData.lastModified || 0) > (localData.lastModified || 0)) {
               localStorage.setItem('planner-state', JSON.stringify(cloudData));
+              usePlannerStore.getState().syncFromCloud({
+                plans: cloudData.plans,
+                activePlanId: cloudData.activePlanId
+              });
             }
           } else {
             localStorage.setItem('planner-state', JSON.stringify(cloudData));
+            usePlannerStore.getState().syncFromCloud({
+              plans: cloudData.plans,
+              activePlanId: cloudData.activePlanId
+            });
           }
         }
         if (!localStorage.getItem('transcriptData') && plannerResult.transcript_data) {

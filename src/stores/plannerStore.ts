@@ -57,6 +57,9 @@ interface PlannerStore extends PlannerData {
     
     // Helper to update active plan
     updateActivePlan: (updates: Partial<SavedPlannerState>) => void;
+    
+    // Cloud Sync
+    syncFromCloud: (cloudData: { plans: SavedPlannerState[]; activePlanId: string }) => void;
 }
 
 export const usePlannerStore = create<PlannerStore>()(
@@ -534,6 +537,14 @@ export const usePlannerStore = create<PlannerStore>()(
                     Object.assign(plan, updates);
                     plan.lastModified = Date.now();
                 }
+                });
+            },
+            
+            // Cloud Sync
+            syncFromCloud: (cloudData: { plans: SavedPlannerState[]; activePlanId: string }) => {
+                set((state) => {
+                    state.plans = cloudData.plans;
+                    state.activePlanId = cloudData.activePlanId;
                 });
             },
         })),    
