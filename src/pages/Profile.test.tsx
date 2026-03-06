@@ -68,6 +68,8 @@ const baseProfile = {
   minors: [],
   certifications: [],
   credit_hours: { undergraduate: 60 },
+  gpa: { undergraduate: "3.86", graduate: "0.0" },
+  utd_id: "2021012345",
   profile_picture_type: 1,
 };
 
@@ -161,10 +163,11 @@ describe("Unit — profile info rendering", () => {
     expect(await screen.findByText("Fall 2022")).toBeInTheDocument();
   });
 
-  test("graduate hours default to 0 when not returned by API", async () => {
+  test("graduate card is disabled by default and shows in the swap tray", async () => {
     render(<Profile />);
-    const graduateBox = (await screen.findByText("Graduate")).closest("div");
-    expect(graduateBox).toHaveTextContent("0 Credit Hours");
+    await screen.findByText("Jane Smith");
+    fireEvent.click(screen.getByRole("button", { name: /customize/i }));
+    expect(screen.getByTestId("tray-btn-grad")).toBeInTheDocument();
   });
 });
 
