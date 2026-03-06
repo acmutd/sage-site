@@ -3,6 +3,8 @@ import { NotebookPen, ArrowLeftToLine, PanelLeftDashed, ArrowRightToLine } from 
 import { useDrop } from "react-dnd";
 import RequirementCategory from '@/components/planner/RequirementCategory';
 import CoursesCarousel from '@/components/planner/CoursesCarousel';
+import { getCreditsBreakdownRecursive } from "@/utils/plannerCredits";
+import type { SemestersForCredits } from "@/utils/plannerCredits";
 
 interface SidebarProps {
     requirements: {
@@ -53,11 +55,13 @@ interface SidebarProps {
     }>;
     onRestartOnboarding?: () => void;
     focusLabel?: string;
+    semesters?: SemestersForCredits;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
     requirements,
     onDropCourse,
+    semesters,
     isExpanded: externalIsExpanded,
     onToggleExpanded,
     placedSuggestedCourses = new Set(),
@@ -329,8 +333,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     
             const parts = displayName?.split('|').map((p: string) => p.trim()) || [displayName];
     
+            const creditsBreakdown = semesters ? getCreditsBreakdownRecursive(category, semesters) : undefined;
+
             if (parts.length > 1) {
-                
+
                 // Build from inside out — innermost part gets the content
                 return parts.reduceRight((inner: React.ReactNode, part: string, i: number) => {
                     const partKey = `${currentCatIdx}-part-${i}`;
@@ -346,13 +352,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                             isExpanded={expandedSubcategories[partKey] ?? false}
                             onToggle={() => handleToggleSubcategory(partKey)}
                             hasSubcategories={i < parts.length - 1 || subCategoriesToRender.length > 0}
+                            creditsBreakdown={i === 0 ? creditsBreakdown : undefined}
                         >
                             {inner}
                         </RequirementCategory>
                     );
                 }, content);
             }
-    
+
             return (
                 <RequirementCategory
                     key={currentCatIdx}
@@ -364,6 +371,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     isExpanded={expandedSubcategories[currentCatIdx]}
                     onToggle={() => handleToggleSubcategory(currentCatIdx)}
                     hasSubcategories={subCategoriesToRender.length > 0}
+                    creditsBreakdown={creditsBreakdown}
                 >
                     {content}
                 </RequirementCategory>
@@ -401,7 +409,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </h2>
 
                             <div className="space-y-3 pb-24">
-                                {requirements.map((req, reqIdx) => (
+                                {requirements.map((req, reqIdx) => {
+                                    const reqCreditsBreakdown = semesters ? getCreditsBreakdownRecursive(req, semesters) : undefined;
+                                    return (
                                     <RequirementCategory
                                         key={reqIdx}
                                         title={req.degree}
@@ -416,6 +426,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         }}
                                         hasSubcategories={req.categories && req.categories.length > 0}
                                         isFirstCategory={reqIdx === 0}
+                                        creditsBreakdown={reqCreditsBreakdown}
                                     >
                                         {req.categories && req.categories.length > 0 ? (
                                             renderCategories(req.categories, reqIdx)
@@ -425,7 +436,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             </div>
                                         )}
                                     </RequirementCategory>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     ) : (

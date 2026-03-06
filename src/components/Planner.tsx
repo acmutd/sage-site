@@ -19,6 +19,7 @@ import { useUISnapshot } from "@/hooks/useUISnapshot";
 import { useAuth } from "@/context/AuthContext";
 import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
 import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
+import { getCreditsFromCourseCode } from "@/utils/plannerCredits";
 import { auth } from "@/firebase-config";
 
 interface PlannerProps {
@@ -965,10 +966,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 if (targetSemester && Array.isArray(targetSemester.courses)) {
                     const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
 
+                    const courseCode = course.code || course.course_code;
                     const newCourse: Record<string, any> = {
-                        course_code: course.code || course.course_code,
-                        course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
-                        credits_planned: course.credits || 3,
+                        course_code: courseCode,
+                        course_name: course.name || course.course_name || `${courseCode} Course`,
+                        credits_planned: getCreditsFromCourseCode(courseCode),
                         id: newCourseId,
                         status: 'planned',
                     };
@@ -1268,6 +1270,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 onRestartOnboarding={onRestartOnboarding}
                 availableSemesters={availableSemesters}
                 onAddCourse={handleDropCourse}
+                semesters={allSemesters}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
                 {/* Action buttons */}
@@ -1344,6 +1347,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                         onRestartOnboarding={onRestartOnboarding}
                         focusLabel={focusLabel}
+                        semesters={allSemesters}
                     />
 
                     <div

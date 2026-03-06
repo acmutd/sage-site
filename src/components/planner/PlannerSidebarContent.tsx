@@ -2,6 +2,8 @@ import React from "react";
 import { NotebookPen } from "lucide-react";
 import RequirementCategory from "@/components/planner/RequirementCategory";
 import CoursesCarousel from "@/components/planner/CoursesCarousel";
+import { getCreditsBreakdownRecursive } from "@/utils/plannerCredits";
+import type { SemestersForCredits } from "@/utils/plannerCredits";
 
 interface PlannerSidebarContentProps {
   onClose: () => void;
@@ -22,6 +24,7 @@ interface PlannerSidebarContentProps {
   availableSemesters?: Array<{yearKey: string, semesterIndex: number, title: string}>;
   onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
   focusLabel?: string;
+  semesters?: SemestersForCredits;
 }
 
 const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
@@ -34,6 +37,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
   availableSemesters = [],
   onAddCourse,
   focusLabel,
+  semesters,
 }) => {
   const [autoExpandedCategories, setAutoExpandedCategories] = React.useState<{ [key: number]: boolean }>({});
   const [expandedSubcategories, setExpandedSubcategories] = React.useState<Record<string, boolean>>({});
@@ -165,7 +169,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
 
   const renderCategories = (categories: any[], reqIdx: number, parentPath: string = "0", parentIsOR: boolean = false) => {
     const filteredCategories = filterCategories(categories);
-    
+
     return filteredCategories.map((category, catIdx) => {
       const originalIdx = categories.indexOf(category);
       const currentCatIdx = `${reqIdx}-${parentPath}-${originalIdx}`;
@@ -173,21 +177,23 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
       const categoryName = category.name?.toUpperCase() || '';
       const isOR = categoryName === 'OR';
       const isAND = categoryName === 'AND';
-      
+
       let displayName = category.name;
       if (isOR) {
         displayName = "Track Options";
       } else if (isAND && parentIsOR) {
         displayName = `Track ${catIdx + 1}`;
       }
-      
+
       let subCategoriesToRender = category.categories || [];
       if (isOR && subCategoriesToRender.length > 0) {
-        subCategoriesToRender = subCategoriesToRender.filter((child: any) => 
+        subCategoriesToRender = subCategoriesToRender.filter((child: any) =>
           hasCompletion(child)
         );
       }
-      
+
+      const creditsBreakdown = semesters ? getCreditsBreakdownRecursive(category, semesters) : undefined;
+
       return (
         <RequirementCategory
           categoryKey={currentCatIdx}
@@ -199,6 +205,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
           isExpanded={expandedSubcategories[currentCatIdx]}
           onToggle={() => handleToggleSubcategory(currentCatIdx)}
           hasSubcategories={subCategoriesToRender.length > 0}
+          creditsBreakdown={creditsBreakdown}
         >
           {category.classes && category.classes.length > 0 ? (
               <CoursesCarousel
@@ -261,7 +268,9 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
       </h2>
 
       <div className="space-y-3 pb-6">
-        {requirements.map((req, reqIdx) => (
+        {requirements.map((req, reqIdx) => {
+          const reqCreditsBreakdown = semesters ? getCreditsBreakdownRecursive(req, semesters) : undefined;
+          return (
           <RequirementCategory
             key={reqIdx}
             title={req.degree}
@@ -275,6 +284,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
               }));
             }}
             hasSubcategories={req.categories && req.categories.length > 0}
+            creditsBreakdown={reqCreditsBreakdown}
           >
             {req.categories && req.categories.length > 0 ? (
               renderCategories(req.categories, reqIdx)
@@ -284,7 +294,8 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
               </div>
             )}
           </RequirementCategory>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
