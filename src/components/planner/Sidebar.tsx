@@ -3,7 +3,7 @@ import { NotebookPen, ArrowLeftToLine, PanelLeftDashed, ArrowRightToLine } from 
 import { useDrop } from "react-dnd";
 import RequirementCategory from '@/components/planner/RequirementCategory';
 import CoursesCarousel from '@/components/planner/CoursesCarousel';
-import { getCreditsBreakdownRecursive } from "@/utils/plannerCredits";
+import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/plannerCredits";
 import type { SemestersForCredits } from "@/utils/plannerCredits";
 
 interface SidebarProps {
@@ -333,7 +333,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     
             const parts = displayName?.split('|').map((p: string) => p.trim()) || [displayName];
     
-            const creditsBreakdown = semesters ? getCreditsBreakdownRecursive(category, semesters) : undefined;
+            const completion = semesters ? getCompletionForCategory(category, semesters) : { completed: category.progress, total: category.total, isCreditBased: true };
+            const creditsBreakdown = completion.isCreditBased && semesters ? getCreditsBreakdownRecursive(category, semesters) : undefined;
 
             if (parts.length > 1) {
 
@@ -346,9 +347,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                             focusLabel={focusLabel}
                             key={partKey}
                             title={part}
-                            // these sections are often misleading when done with '|' and to prevent confusion...this is removed
-                            completed={i === 0 ? category.progress : 0}
-                            total={i === 0 ? category.total : 0}
+                            completed={i === 0 ? completion.completed : 0}
+                            total={i === 0 ? completion.total : 0}
                             isExpanded={expandedSubcategories[partKey] ?? false}
                             onToggle={() => handleToggleSubcategory(partKey)}
                             hasSubcategories={i < parts.length - 1 || subCategoriesToRender.length > 0}
@@ -366,8 +366,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                     categoryKey={currentCatIdx}
                     focusLabel={focusLabel}
                     title={displayName}
-                    completed={category.progress}
-                    total={category.total}
+                    completed={completion.completed}
+                    total={completion.total}
                     isExpanded={expandedSubcategories[currentCatIdx]}
                     onToggle={() => handleToggleSubcategory(currentCatIdx)}
                     hasSubcategories={subCategoriesToRender.length > 0}
@@ -410,13 +410,14 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                             <div className="space-y-3 pb-24">
                                 {requirements.map((req, reqIdx) => {
-                                    const reqCreditsBreakdown = semesters ? getCreditsBreakdownRecursive(req, semesters) : undefined;
+                                    const reqCompletion = semesters ? getCompletionForCategory(req, semesters) : { completed: req.progress, total: req.total, isCreditBased: true };
+                                    const reqCreditsBreakdown = reqCompletion.isCreditBased && semesters ? getCreditsBreakdownRecursive(req, semesters) : undefined;
                                     return (
                                     <RequirementCategory
                                         key={reqIdx}
                                         title={req.degree}
-                                        completed={req.progress}
-                                        total={req.total}
+                                        completed={reqCompletion.completed}
+                                        total={reqCompletion.total}
                                         isExpanded={autoExpandedCategories[reqIdx]}
                                         onToggle={() => {
                                             setAutoExpandedCategories((prev) => ({

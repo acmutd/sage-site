@@ -133,3 +133,55 @@ export function getCreditsBreakdownRecursive(
     { ...self }
   );
 }
+
+function hasDirectCourses(category: any): boolean {
+  return !!(category?.classes?.length || category?.suggested?.length);
+}
+
+/**
+ * Result of getCompletionForCategory: completed/total to display, and whether
+ * this section uses credit hours (vs subsection count).
+ */
+export interface CompletionResult {
+  completed: number;
+  total: number;
+  /** If false, display is "N/M subsections completed" style */
+  isCreditBased: boolean;
+}
+
+/**
+ * Compute completion for a category. If the section has direct courses (classes
+ * or suggested), use credit-based completion. If not, use recursive subsection
+ * count: completed = # of subsections where numerator >= denominator.
+ */
+export function getCompletionForCategory(
+  category: any,
+  semesters: SemestersForCredits
+): CompletionResult {
+  const subcats = category?.categories;
+
+  if (hasDirectCourses(category)) {
+    const breakdown = getCreditsBreakdownForCategory(category, semesters);
+    const total = Number(category?.total) || 0;
+    const completed =
+      breakdown.completed + breakdown.inProgress + breakdown.planned;
+    return { completed, total, isCreditBased: true };
+  }
+
+  if (!Array.isArray(subcats) || subcats.length === 0) {
+    return { completed: 0, total: 0, isCreditBased: false };
+  }
+
+  let completedCount = 0;
+  for (const sub of subcats) {
+    const subResult = getCompletionForCategory(sub, semesters);
+    if (subResult.total > 0 && subResult.completed >= subResult.total) {
+      completedCount++;
+    }
+  }
+  return {
+    completed: completedCount,
+    total: subcats.length,
+    isCreditBased: false,
+  };
+}

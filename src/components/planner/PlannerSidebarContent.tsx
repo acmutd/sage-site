@@ -2,7 +2,7 @@ import React from "react";
 import { NotebookPen } from "lucide-react";
 import RequirementCategory from "@/components/planner/RequirementCategory";
 import CoursesCarousel from "@/components/planner/CoursesCarousel";
-import { getCreditsBreakdownRecursive } from "@/utils/plannerCredits";
+import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/plannerCredits";
 import type { SemestersForCredits } from "@/utils/plannerCredits";
 
 interface PlannerSidebarContentProps {
@@ -192,7 +192,8 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
         );
       }
 
-      const creditsBreakdown = semesters ? getCreditsBreakdownRecursive(category, semesters) : undefined;
+      const completion = semesters ? getCompletionForCategory(category, semesters) : { completed: category.progress, total: category.total, isCreditBased: true };
+      const creditsBreakdown = completion.isCreditBased && semesters ? getCreditsBreakdownRecursive(category, semesters) : undefined;
 
       return (
         <RequirementCategory
@@ -200,8 +201,8 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
           focusLabel={focusLabel}
           key={currentCatIdx}
           title={displayName}
-          completed={category.progress}
-          total={category.total}
+          completed={completion.completed}
+          total={completion.total}
           isExpanded={expandedSubcategories[currentCatIdx]}
           onToggle={() => handleToggleSubcategory(currentCatIdx)}
           hasSubcategories={subCategoriesToRender.length > 0}
@@ -269,13 +270,14 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
 
       <div className="space-y-3 pb-6">
         {requirements.map((req, reqIdx) => {
-          const reqCreditsBreakdown = semesters ? getCreditsBreakdownRecursive(req, semesters) : undefined;
+          const reqCompletion = semesters ? getCompletionForCategory(req, semesters) : { completed: req.progress, total: req.total, isCreditBased: true };
+          const reqCreditsBreakdown = reqCompletion.isCreditBased && semesters ? getCreditsBreakdownRecursive(req, semesters) : undefined;
           return (
           <RequirementCategory
             key={reqIdx}
             title={req.degree}
-            completed={req.progress}
-            total={req.total}
+            completed={reqCompletion.completed}
+            total={reqCompletion.total}
             isExpanded={autoExpandedCategories[reqIdx]}
             onToggle={() => {
               setAutoExpandedCategories((prev) => ({
