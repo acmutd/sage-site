@@ -57,7 +57,7 @@ function EditableCardContent({ card, onSave }: { card: Card; onSave: (val: strin
           onBlur={commit}
           className="font-semibold text-sm text-textdark bg-transparent border-0 border-b-2 border-accent outline-none w-full text-center"
         />
-        <span className="text-[10px] text-accent font-semibold">Enter · Esc to cancel</span>
+        <span className="text-[10px] font-semibold">Enter to Save or esc to cancel</span>
       </div>
     );
   }
