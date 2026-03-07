@@ -141,6 +141,10 @@ function extractNewSuggestions(
   return undefined;
 }
 
+function hasAtLeastTwoWords(str: string): boolean {
+  return str.trim().split(/\s+/).filter(Boolean).length >= 2;
+}
+
 function findSuggestionsForCategory(
   categoryName: string,
   normalizedSectionSuggestions: Record<string, SuggestedCourse[]>
@@ -149,10 +153,16 @@ function findSuggestionsForCategory(
   const exact = normalizedSectionSuggestions[normalizedCategory];
   if (Array.isArray(exact)) return exact;
   const entry = Object.entries(normalizedSectionSuggestions).find(
-    ([sectionKey]) =>
-      sectionKey === normalizedCategory ||
-      sectionKey.startsWith(normalizedCategory) ||
-      normalizedCategory.startsWith(sectionKey)
+    ([sectionKey]) => {
+      if (!hasAtLeastTwoWords(sectionKey) || !hasAtLeastTwoWords(normalizedCategory)) {
+        return false;
+      }
+      return (
+        sectionKey === normalizedCategory ||
+        sectionKey.startsWith(normalizedCategory) ||
+        normalizedCategory.startsWith(sectionKey)
+      );
+    }
   );
   return entry && Array.isArray(entry[1]) ? entry[1] : undefined;
 }

@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NotebookPen, ArrowLeftToLine, PanelLeftDashed, ArrowRightToLine } from "lucide-react";
 import { useDrop } from "react-dnd";
 import RequirementCategory from '@/components/planner/RequirementCategory';
 import CoursesCarousel from '@/components/planner/CoursesCarousel';
+import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/plannerCredits";
+import type { SemestersForCredits } from "@/utils/plannerCredits";
 
 interface SidebarProps {
     requirements: {
@@ -53,11 +55,13 @@ interface SidebarProps {
     }>;
     onRestartOnboarding?: () => void;
     focusLabel?: string;
+    semesters?: SemestersForCredits;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
     requirements,
     onDropCourse,
+    semesters,
     isExpanded: externalIsExpanded,
     onToggleExpanded,
     placedSuggestedCourses = new Set(),
@@ -71,6 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
     const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
     const [highlightedKey, setHighlightedKey] = useState<string | null>(null);
+    const prevSuggestedByKeyRef = useRef<Record<string, Set<string>>>({});
 
     // Collect all suggested courses from all categories with their category paths
     const allSuggestedCourses = React.useMemo(() => {
@@ -128,43 +133,131 @@ const Sidebar: React.FC<SidebarProps> = ({
         }
     };
 
-    // parent category
-    useEffect(() => {
-        const initialExpandedState: { [key: number]: boolean } = {};
-        requirements.forEach((req, reqIdx) => {
-            const isIncomplete = req.progress < req.total;
-            const hasSuggestedCourses = req.categories.some(
-                (category: any) => category.suggested && category.suggested.length > 0
-            );
-            const hasContent = req.categories && req.categories.length > 0;
-            initialExpandedState[reqIdx] = (isIncomplete && hasContent) || hasSuggestedCourses;
-        });
-        setAutoExpandedCategories(initialExpandedState);
-      }, [requirements]);
+    // parent category - only expand reqs that have categories with new suggestions
     
-      useEffect(() => {
-        const initialState: Record<string, boolean> = {};
-        
-        const initializeCategories = (categories: any[], reqIdx: number, parentIdx: string = "0") => {
+    useEffect(() => {
+        const getSuggestedCodes = (c: any): Set<string> =>
+            new Set((c?.suggested || []).map((s: any) => String(s.code || s.course_code || "").trim().toUpperCase()).filter((x: string) => !!x));
+
+        const buildSuggestedByKey = (
+            categories: any[],
+            reqIdx: number,
+            parentIdx: string
+        ): Record<string, Set<string>> => {
+            const out: Record<string, Set<string>> = {};
             categories.forEach((category, catIdx) => {
                 const key = `${reqIdx}-${parentIdx}-${catIdx}`;
-                // Auto-expand if category has any progress
-                initialState[key] = category.progress < category.total && category.total > 0;
-                
-                // Recursively initialize nested categories
-                if (category.categories && category.categories.length > 0) {
-                    initializeCategories(category.categories, reqIdx, `${parentIdx}-${catIdx}`);
+                out[key] = getSuggestedCodes(category);
+                if (category.categories?.length) {
+                    Object.assign(out, buildSuggestedByKey(category.categories, reqIdx, `${parentIdx}-${catIdx}`));
                 }
             });
+            return out;
         };
-        
+
+        const newSuggestedByKey: Record<string, Set<string>> = {};
         requirements.forEach((req, reqIdx) => {
-            if (req.categories && req.categories.length > 0) {
-                initializeCategories(req.categories, reqIdx);
+            if (req.categories?.length) {
+                Object.assign(newSuggestedByKey, buildSuggestedByKey(req.categories, reqIdx, "0"));
             }
         });
-        
+
+        const keysWithNewSuggestions = new Set<string>();
+        Object.entries(newSuggestedByKey).forEach(([key, newCodes]) => {
+            const prevCodes = prevSuggestedByKeyRef.current[key];
+            if (!prevCodes) return; // new category, will use initial expansion below
+            if (newCodes.size > prevCodes.size) keysWithNewSuggestions.add(key);
+        });
+        const withAncestors = new Set(keysWithNewSuggestions);
+        keysWithNewSuggestions.forEach((key) => {
+            let k = key;
+            while (true) {
+                const lastDash = k.lastIndexOf("-");
+                if (lastDash <= 0) break;
+                k = k.slice(0, lastDash);
+                withAncestors.add(k);
+            }
+        });
+        const keysToExpand = withAncestors;
+
+        const prevHadAny = Object.keys(prevSuggestedByKeyRef.current).length > 0;
+        prevSuggestedByKeyRef.current = newSuggestedByKey;
+
+        // On initial load: expand every section that has suggested courses (or contains one), plus ancestors
+        const keysWithSuggestedOnInitial = new Set<string>();
+        if (!prevHadAny) {
+            Object.entries(newSuggestedByKey).forEach(([key, codes]) => {
+                if (codes.size > 0) keysWithSuggestedOnInitial.add(key);
+            });
+            keysWithSuggestedOnInitial.forEach((key) => {
+                let k = key;
+                while (true) {
+                    const lastDash = k.lastIndexOf("-");
+                    if (lastDash <= 0) break;
+                    k = k.slice(0, lastDash);
+                    keysWithSuggestedOnInitial.add(k);
+                }
+            });
+        }
+
+        const initializeCategories = (categories: any[], reqIdx: number, parentIdx: string) => {
+            const result: Record<string, boolean> = {};
+            categories.forEach((category, catIdx) => {
+                const key = `${reqIdx}-${parentIdx}-${catIdx}`;
+                const isIncomplete = category.progress < category.total && category.total > 0;
+                const defaultExpanded = prevHadAny
+                    ? isIncomplete
+                    : keysWithSuggestedOnInitial.has(key) || isIncomplete;
+                const gotNewSuggestions = keysToExpand.has(key);
+                let expanded: boolean;
+                if (prevHadAny && expandedSubcategories[key] === false && !gotNewSuggestions) {
+                    expanded = false;
+                } else if (gotNewSuggestions) {
+                    expanded = true;
+                } else if (prevHadAny && key in expandedSubcategories) {
+                    expanded = expandedSubcategories[key];
+                } else {
+                    expanded = defaultExpanded;
+                }
+                result[key] = expanded;
+                if (category.categories?.length) {
+                    Object.assign(result, initializeCategories(category.categories, reqIdx, `${parentIdx}-${catIdx}`));
+                }
+            });
+            return result;
+        };
+
+        const initialState: Record<string, boolean> = {};
+        requirements.forEach((req, reqIdx) => {
+            if (req.categories?.length) {
+                Object.assign(initialState, initializeCategories(req.categories, reqIdx, "0"));
+            }
+        });
+
         setExpandedSubcategories(initialState);
+
+        const reqKeysWithNew = new Set<number>();
+        keysToExpand.forEach((k) => {
+            const reqIdx = parseInt(k.split("-")[0], 10);
+            if (!isNaN(reqIdx)) reqKeysWithNew.add(reqIdx);
+        });
+
+        if (!prevHadAny) {
+            const initialReqState: { [key: number]: boolean } = {};
+            requirements.forEach((req, reqIdx) => {
+                const isIncomplete = req.progress < req.total;
+                const hasSuggested = req.categories?.some((c: any) => c.suggested?.length);
+                const hasContent = !!(req.categories?.length);
+                initialReqState[reqIdx] = (isIncomplete && hasContent) || !!hasSuggested;
+            });
+            setAutoExpandedCategories(initialReqState);
+        } else if (reqKeysWithNew.size > 0) {
+            setAutoExpandedCategories((prev) => {
+                const next = { ...prev };
+                reqKeysWithNew.forEach((idx) => { next[idx] = true; });
+                return next;
+            });
+        }
     }, [requirements]);
     
     // profile -> planner hotlink
@@ -329,8 +422,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     
             const parts = displayName?.split('|').map((p: string) => p.trim()) || [displayName];
     
+            const completion = semesters ? getCompletionForCategory(category, semesters) : { completed: category.progress, total: category.total, isCreditBased: true };
+            const creditsBreakdown = completion.isCreditBased && semesters ? getCreditsBreakdownRecursive(category, semesters) : undefined;
+
             if (parts.length > 1) {
-                
+
                 // Build from inside out — innermost part gets the content
                 return parts.reduceRight((inner: React.ReactNode, part: string, i: number) => {
                     const partKey = `${currentCatIdx}-part-${i}`;
@@ -340,30 +436,31 @@ const Sidebar: React.FC<SidebarProps> = ({
                             focusLabel={focusLabel}
                             key={partKey}
                             title={part}
-                            // these sections are often misleading when done with '|' and to prevent confusion...this is removed
-                            completed={i === 0 ? category.progress : 0}
-                            total={i === 0 ? category.total : 0}
+                            completed={i === 0 ? completion.completed : 0}
+                            total={i === 0 ? completion.total : 0}
                             isExpanded={expandedSubcategories[partKey] ?? false}
                             onToggle={() => handleToggleSubcategory(partKey)}
                             hasSubcategories={i < parts.length - 1 || subCategoriesToRender.length > 0}
+                            creditsBreakdown={i === 0 ? creditsBreakdown : undefined}
                         >
                             {inner}
                         </RequirementCategory>
                     );
                 }, content);
             }
-    
+
             return (
                 <RequirementCategory
                     key={currentCatIdx}
                     categoryKey={currentCatIdx}
                     focusLabel={focusLabel}
                     title={displayName}
-                    completed={category.progress}
-                    total={category.total}
+                    completed={completion.completed}
+                    total={completion.total}
                     isExpanded={expandedSubcategories[currentCatIdx]}
                     onToggle={() => handleToggleSubcategory(currentCatIdx)}
                     hasSubcategories={subCategoriesToRender.length > 0}
+                    creditsBreakdown={creditsBreakdown}
                 >
                     {content}
                 </RequirementCategory>
@@ -401,12 +498,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </h2>
 
                             <div className="space-y-3 pb-24">
-                                {requirements.map((req, reqIdx) => (
+                                {requirements.map((req, reqIdx) => {
+                                    const reqCompletion = semesters ? getCompletionForCategory(req, semesters) : { completed: req.progress, total: req.total, isCreditBased: true };
+                                    const reqCreditsBreakdown = reqCompletion.isCreditBased && semesters ? getCreditsBreakdownRecursive(req, semesters) : undefined;
+                                    return (
                                     <RequirementCategory
                                         key={reqIdx}
                                         title={req.degree}
-                                        completed={req.progress}
-                                        total={req.total}
+                                        completed={reqCompletion.completed}
+                                        total={reqCompletion.total}
                                         isExpanded={autoExpandedCategories[reqIdx]}
                                         onToggle={() => {
                                             setAutoExpandedCategories((prev) => ({
@@ -416,6 +516,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         }}
                                         hasSubcategories={req.categories && req.categories.length > 0}
                                         isFirstCategory={reqIdx === 0}
+                                        creditsBreakdown={reqCreditsBreakdown}
                                     >
                                         {req.categories && req.categories.length > 0 ? (
                                             renderCategories(req.categories, reqIdx)
@@ -425,7 +526,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             </div>
                                         )}
                                     </RequirementCategory>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     ) : (
