@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { ChevronDown, ChevronUp, Info } from "lucide-react";
 import type { CreditsBreakdown } from "@/utils/plannerCredits";
@@ -36,6 +36,7 @@ interface RequirementCategoryProps {
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
     const [canHover, setCanHover] = useState(true);
+    const tooltipOpenTimeRef = useRef(0);
 
     useEffect(() => {
       const checkHover = () => {
@@ -71,9 +72,19 @@ interface RequirementCategoryProps {
       setShowTooltip(false);
     };
 
+    const handleInfoPress = () => {
+      if (!canHover) {
+        setShowTooltip((prev) => {
+          if (!prev) tooltipOpenTimeRef.current = Date.now();
+          return !prev;
+        });
+      }
+    };
+
     const handleInfoClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!canHover) setShowTooltip((prev) => !prev);
+      e.preventDefault();
+      handleInfoPress();
     };
 
     const tooltipContent = hasBreakdown && (
@@ -106,18 +117,20 @@ interface RequirementCategoryProps {
 
     return (
       <div className={`border border-gray-200 rounded-md overflow-hidden ${isHighlighted ? "highlight-pulse" : ""}`} data-category-key={categoryKey}>
-        <button
-          onClick={onToggle}
-          className="w-full flex items-start justify-between gap-3 p-3 hover:bg-gray-50 transition-colors text-left"
-        >
-          <div data-tour={isFirstCategory ? "requirement-category-toggle" : undefined} className="flex items-center gap-2 min-w-0">
-            {isExpanded ? (
-              <ChevronUp className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
-            )}
-            <span className="text-sm font-medium text-gray-800">{title}</span>
-          </div>
+        <div className="flex items-start justify-between gap-3 p-3 hover:bg-gray-50 transition-colors">
+          <button
+            onClick={onToggle}
+            className="flex-1 flex items-center gap-2 min-w-0 text-left"
+          >
+            <div data-tour={isFirstCategory ? "requirement-category-toggle" : undefined} className="flex items-center gap-2 min-w-0">
+              {isExpanded ? (
+                <ChevronUp className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
+              )}
+              <span className="text-sm font-medium text-gray-800">{title}</span>
+            </div>
+          </button>
           {displayTotal > 0 && (
             <div
               data-tour={isFirstCategory ? "requirement-category-progress" : undefined}
@@ -125,19 +138,28 @@ interface RequirementCategoryProps {
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
             >
-              <span className="text-sm font-medium text-gray-600 tabular-nums">
-                {displayValue}/{displayTotal}
-              </span>
-              <div className="w-4 h-5 bg-gray-200 rounded overflow-hidden flex flex-col-reverse">
-                <div
-                  className="w-full bg-green-500 rounded transition-all duration-300"
-                  style={{ height: `${progressPercent}%` }}
-                />
-              </div>
+              <button
+                onClick={onToggle}
+                className="flex items-center gap-2 text-left"
+              >
+                <span className="text-sm font-medium text-gray-600 tabular-nums">
+                  {displayValue}/{displayTotal}
+                </span>
+                <div className="w-4 h-5 bg-gray-200 rounded overflow-hidden flex flex-col-reverse">
+                  <div
+                    className="w-full bg-green-500 rounded transition-all duration-300"
+                    style={{ height: `${progressPercent}%` }}
+                  />
+                </div>
+              </button>
               {hasBreakdown && !canHover && (
                 <button
                   type="button"
                   onClick={handleInfoClick}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    handleInfoPress();
+                  }}
                   className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                   aria-label="Show credit breakdown"
                 >
@@ -146,16 +168,30 @@ interface RequirementCategoryProps {
               )}
             </div>
           )}
-        </button>
+        </div>
 
         {hasBreakdown && showTooltip && ReactDOM.createPortal(
           !canHover ? (
             <>
               <div
                 className="fixed inset-0 bg-black bg-opacity-30 z-[9998]"
-                onClick={() => setShowTooltip(false)}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  if (Date.now() - tooltipOpenTimeRef.current >= 400) {
+                    setShowTooltip(false);
+                  }
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (Date.now() - tooltipOpenTimeRef.current >= 400) {
+                    setShowTooltip(false);
+                  }
+                }}
               />
-              <div className="fixed bottom-0 left-0 right-0 z-[9999] animate-slide-up">
+              <div
+                className="fixed bottom-0 left-0 right-0 z-[9999]"
+                style={{ animation: "slideUp 0.2s cubic-bezier(0.32, 0.72, 0, 1)" }}
+              >
                 {tooltipContent}
               </div>
             </>
