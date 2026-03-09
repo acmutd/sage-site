@@ -374,7 +374,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         <div
                             className="fixed bottom-0 left-0 right-0 z-[9999] animate-slide-up"
                             style={{
-                                animation: 'slideUp 0.3s ease-out'
+                                animation: 'slideUp 0.22s cubic-bezier(0.32, 0.72, 0, 1)'
                             }}
                         >
                             {tooltipContent}

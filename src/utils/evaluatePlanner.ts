@@ -141,6 +141,32 @@ function extractNewSuggestions(
   return undefined;
 }
 
+function hasAtLeastTwoWords(str: string): boolean {
+  return str.trim().split(/\s+/).filter(Boolean).length >= 2;
+}
+
+function findSuggestionsForCategory(
+  categoryName: string,
+  normalizedSectionSuggestions: Record<string, SuggestedCourse[]>
+): SuggestedCourse[] | undefined {
+  const normalizedCategory = normalizeName(categoryName);
+  const exact = normalizedSectionSuggestions[normalizedCategory];
+  if (Array.isArray(exact)) return exact;
+  const entry = Object.entries(normalizedSectionSuggestions).find(
+    ([sectionKey]) => {
+      if (!hasAtLeastTwoWords(sectionKey) || !hasAtLeastTwoWords(normalizedCategory)) {
+        return false;
+      }
+      return (
+        sectionKey === normalizedCategory ||
+        sectionKey.startsWith(normalizedCategory) ||
+        normalizedCategory.startsWith(sectionKey)
+      );
+    }
+  );
+  return entry && Array.isArray(entry[1]) ? entry[1] : undefined;
+}
+
 function mergeDegreeCategorySuggestions(
   categories: any[] = [],
   normalizedSectionSuggestions: Record<string, SuggestedCourse[]>
@@ -150,8 +176,10 @@ function mergeDegreeCategorySuggestions(
   }
 
   return categories.map((category) => {
-    const incomingSuggested =
-      normalizedSectionSuggestions[normalizeName(category.name || "")];
+    const incomingSuggested = findSuggestionsForCategory(
+      category.name || "",
+      normalizedSectionSuggestions
+    );
 
     const mergedCategory = {
       ...category,
@@ -238,6 +266,29 @@ function mergeEvaluatePlannerSuggestionsIntoLocalEvaluation(
   }
 
   if (typeof window !== "undefined") {
+    const rawPlanner = localStorage.getItem("planner-state");
+    if (rawPlanner) {
+      try {
+        const plannerState = JSON.parse(rawPlanner);
+        const activeId = plannerState.activePlanId;
+        const planIndex = plannerState.plans?.findIndex((p: any) => p.id === activeId);
+        if (typeof planIndex === "number" && planIndex >= 0) {
+          const nextPlans = [...(plannerState.plans || [])];
+          nextPlans[planIndex] = {
+            ...nextPlans[planIndex],
+            evaluation: Array.isArray(parsedEvaluation)
+              ? mergedRequirements
+              : { ...parsedEvaluation, results: mergedRequirements },
+          };
+          localStorage.setItem(
+            "planner-state",
+            JSON.stringify({ ...plannerState, plans: nextPlans })
+          );
+        }
+      } catch (_) {
+        // ignore planner-state parse/update errors
+      }
+    }
     window.dispatchEvent(
       new CustomEvent("planner-evaluation-updated", {
         detail: { requirements: mergedRequirements },

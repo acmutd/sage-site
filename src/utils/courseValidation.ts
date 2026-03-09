@@ -1,5 +1,6 @@
 import { Course } from "@/types/course";
 import { Warning } from "@/types/warning";
+import { getCreditsFromCourseCode } from "@/utils/plannerCredits";
 
 export const validateCourseLoad = (
     semesterCourses: Course[], 
@@ -7,7 +8,10 @@ export const validateCourseLoad = (
     catalogYear: number,
     isSummer: boolean
 ): Warning[] => {
-    const totalCredits = semesterCourses.reduce((sum, c) => sum + (c.credits_planned || 0), 0);
+    const totalCredits = semesterCourses.reduce(
+        (sum, c) => sum + getCreditsFromCourseCode(c.course_code ?? (c as any).code),
+        0
+    );
     const warnings: Warning[] = [];
     
     if (studentType === 'undergrad') {

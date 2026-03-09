@@ -19,6 +19,7 @@ import { useUISnapshot } from "@/hooks/useUISnapshot";
 import { useAuth } from "@/context/AuthContext";
 import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
 import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
+import { getCreditsFromCourseCode } from "@/utils/plannerCredits";
 import { auth } from "@/firebase-config";
 import { usePlannerStore } from "@/stores/plannerStore";
 
@@ -568,12 +569,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     }, []);
 
     const adaptedRequirements = useMemo(() => {
+        const fromProp = Array.isArray(requirements) ? requirements : requirements?.results ?? [];
+        if (fromProp.length > 0) return fromProp;
         const planEval = activePlan?.evaluation;
         if (planEval) {
             return Array.isArray(planEval) ? planEval : planEval?.results ?? [];
         }
-
-        return Array.isArray(requirements) ? requirements : requirements?.results ?? [];
+        return [];
     }, [activePlan?.evaluation, requirements]);
 
     const allSuggestedCourses = useMemo(() => {
@@ -860,6 +862,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 onRestartOnboarding={onRestartOnboarding}
                 availableSemesters={availableSemesters}
                 onAddCourse={handleDropCourse}
+                semesters={allSemesters}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
                 {/* Action buttons */}
@@ -935,6 +938,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                         onRestartOnboarding={onRestartOnboarding}
                         focusLabel={focusLabel}
+                        semesters={allSemesters}
                     />
 
                     <div

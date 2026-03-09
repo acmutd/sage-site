@@ -51,6 +51,11 @@ interface SemesterBoxProps {
 }
 
 const normalizeCorequisiteGroups = (corequisites: unknown): string[][] => {
+    if (corequisites == null) return [];
+    if (typeof corequisites === "string") {
+        const normalized = normalizeCourseCode(corequisites);
+        return normalized ? [[normalized]] : [];
+    }
     if (!Array.isArray(corequisites)) return [];
 
     return corequisites

@@ -30,6 +30,7 @@ interface PlannerNavbarProps {
   availableSemesters?: Array<{yearKey: string, semesterIndex: number, title: string}>;
   onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
   onRestartOnboarding?: () => void;
+  semesters?: import("@/utils/plannerCredits").SemestersForCredits;
 }
 
 const PlannerNavbar: React.FC<PlannerNavbarProps> = ({ 
@@ -43,7 +44,8 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
   allPlannedCoursesWithOrder = [],
   onRestartOnboarding,
   availableSemesters,
-  onAddCourse
+  onAddCourse,
+  semesters,
 }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -166,6 +168,7 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
             onRestartOnboarding={onRestartOnboarding}
             onAddCourse={onAddCourse}
             availableSemesters={availableSemesters}
+            semesters={semesters}
           />
         )}
       />
