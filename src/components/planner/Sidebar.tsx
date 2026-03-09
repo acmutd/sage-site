@@ -56,6 +56,7 @@ interface SidebarProps {
     onRestartOnboarding?: () => void;
     focusLabel?: string;
     semesters?: SemestersForCredits;
+    coursebookData?: Record<string, any[]>;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -69,6 +70,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     allPlannedCoursesWithOrder = [],
     onRestartOnboarding,
     focusLabel,
+    coursebookData = {},
 }) => {
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
     const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -386,6 +388,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         allSuggestedCourses={allSuggestedCourses}
                         allCompletedCourseCodes={allCompletedCourseCodes}
                         allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
+                        coursebookData={coursebookData}
                     />
                 </>
             )}

@@ -1,6 +1,6 @@
 import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2, CirclePlus, TriangleAlert } from 'lucide-react';
 import { useDrag } from "react-dnd";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { Course } from '@/types/course';
 import { Warning } from '@/types/warning';
@@ -21,6 +21,28 @@ interface CourseBoxProps {
     onAdd?: () => void;
     onRemove?: () => void;
 }
+
+const DAY_ABBR: Record<string, string> = {
+    Monday: "M", Tuesday: "Tu", Wednesday: "W", Thursday: "Th", Friday: "F"
+};
+
+const DayPips = ({ days }: { days: string }) => {
+    const active = new Set(days.split(",").map(d => d.trim()));
+    return (
+        <div className="flex gap-1">
+            {["Monday","Tuesday","Wednesday","Thursday","Friday"].map(d => (
+                <span key={d} className={`
+                    font-dmsans text-[9px] font-bold w-5 h-5 rounded-sm
+                    flex items-center justify-center
+                    ${active.has(d) ? "bg-accent text-black" : "bg-innercontainer text-textsecondary"}
+                `}>
+                    {DAY_ABBR[d]}
+                </span>
+            ))}
+        </div>
+    );
+};
+
 
 const WarningSection: React.FC<{ warnings: Warning[] }> = ({ warnings }) => {
     const getWarningStyles = (severity: string) => {
@@ -202,13 +224,18 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         inSidebar ? hasPrerequisiteWarning : !!warnings?.length;
 
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
         if (inSidebar && canHover) {
             const rect = e.currentTarget.getBoundingClientRect();
-            setTooltipPosition({
-                top: rect.top,
-                left: rect.right + 10,
-            });
+            setTooltipPosition({ top: rect.top, left: rect.right + 10 });
             setShowTooltip(true);
+        }
+    };
+
+    const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const handleMouseLeave = () => {
+        if (inSidebar) {
+            hideTimeoutRef.current = setTimeout(() => setShowTooltip(false), 200);
         }
     };
 
@@ -218,65 +245,104 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             setShowTooltip(!showTooltip);
         }
     };
-    const handleMouseLeave = () => {
-        if (inSidebar) {
-            setShowTooltip(false);
-        }
-    };
 
-    const tooltipContent = (
-        <div className={`
-            ${!canHover 
-                ? "bg-white text-black rounded-t-2xl p-4 shadow-2xl w-full border-t-2 border-gray-200" 
-                : "bg-white text-black rounded-md p-3 shadow-lg w-56 md:w-64 border border-gray-200"
-            }
-        `}>
-            <h3 className={`font-semibold mb-2 ${!canHover ? "text-base" : "text-sm"} text-gray-900`}>
-                {course.course_name || "No Name Available"}
-            </h3>
-            <div className={`space-y-1 ${!canHover ? "text-sm" : "text-xs"}`}>
-                {course.course_code && (
-                    <div className="flex gap-2">
-                        <span className="text-gray-600 font-medium">Code:</span>
-                        <span className="text-gray-900">{course.course_code}</span>
-                    </div>
-                )}
-                {course.semester && (
-                    <div className="flex gap-2">
-                        <span className="text-gray-600 font-medium">Semester:</span>
-                        <span className="text-gray-900">{course.semester}</span>
-                    </div>
-                )}
-                {course.credits_earned !== undefined && (
-                    <div className="flex gap-2">
-                        <span className="text-gray-600 font-medium">Credits:</span>
-                        <span className="text-gray-900">{course.credits_earned}</span>
-                    </div>
-                )}
-                {course.grade && (
-                    <div className="flex gap-2">
-                        <span className="text-gray-600 font-medium">Grade:</span>
-                        <span className="text-gray-900">{course.grade}</span>
-                    </div>
-                )}
-                {course.status && (
-                    <div className="flex gap-2">
-                        <span className="text-gray-600 font-medium">Status:</span>
-                        <span className="text-gray-900">{course.status}</span>
-                    </div>
-                )}
+    const sections: any[] = 
+        (course.status === "completed" || course.status === "in progress")
+            ? []
+            : (course as any).sections || [];
 
-                {warnings && warnings.length > 0 && (
-                            <WarningSection warnings={warnings} />
+            const tooltipContent = (
+                <div className={`
+                    ${!canHover 
+                        ? "bg-white text-black rounded-t-2xl p-4 shadow-2xl w-full border-t-2 border-gray-200 max-h-[80vh] overflow-y-auto" 
+                        : `bg-white text-black rounded-md p-3 shadow-lg border border-gray-200 ${sections.length > 0 ? "w-[500px] max-h-[400px] overflow-y-auto" : "w-56 md:w-64"}`
+                    }
+                `}>
+                    <h3 className={`font-semibold mb-2 ${!canHover ? "text-base" : "text-sm"} text-gray-900`}>
+                        {course.course_name || "No Name Available"}
+                    </h3>
+                    <div className={`space-y-1 ${!canHover ? "text-sm" : "text-xs"}`}>
+                        {course.course_code && (
+                            <div className="flex gap-2">
+                                <span className="text-gray-600 font-medium">Code:</span>
+                                <span className="text-gray-900">{course.course_code}</span>
+                            </div>
+                        )}
+                        {course.semester && (
+                            <div className="flex gap-2">
+                                <span className="text-gray-600 font-medium">Semester:</span>
+                                <span className="text-gray-900">{course.semester}</span>
+                            </div>
+                        )}
+                        {course.credits_earned !== undefined && (
+                            <div className="flex gap-2">
+                                <span className="text-gray-600 font-medium">Credits:</span>
+                                <span className="text-gray-900">{course.credits_earned}</span>
+                            </div>
+                        )}
+                        {course.grade && (
+                            <div className="flex gap-2">
+                                <span className="text-gray-600 font-medium">Grade:</span>
+                                <span className="text-gray-900">{course.grade}</span>
+                            </div>
+                        )}
+                        {course.status && (
+                            <div className="flex gap-2">
+                                <span className="text-gray-600 font-medium">Status:</span>
+                                <span className="text-gray-900">{course.status}</span>
+                            </div>
                         )}
         
-                {course.description && (
-                    <div className={`mt-2 pt-2 ${!(warnings && warnings.length > 0) ? 'border-t border-gray-300' : ''}`}>
-                        <p className="text-gray-700">{course.description}</p>
+                        {warnings && warnings.length > 0 && (
+                                    <WarningSection warnings={warnings} />
+                                )}
+                
+                        {course.description && (
+                            <div className={`mt-2 pt-2 ${!(warnings && warnings.length > 0) ? 'border-t border-gray-300' : ''}`}>
+                                <p className="text-gray-700">{course.description}</p>
+                            </div>
+                        )}
+
+                        {sections.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-gray-300 ">
+                                <div className="grid py-1" style={{ gridTemplateColumns: "110px 120px 150px 80px" }}>
+                                    {["Section", "Instructor", "Schedule", "Room"].map((h, i) => (
+                                        <span key={h} className="text-[9px] font-bold tracking-widest uppercase text-gray-400"
+                                            style={{ textAlign: i === 4 ? "right" : "left" }}>
+                                            {h}
+                                        </span>
+                                    ))}
+                                </div>
+                                {sections.map((sec: any, i: number) => {
+                                    return (
+                                        <div key={i} className="grid py-2 items-center border-t border-gray-100"
+                                            style={{ gridTemplateColumns: "110px 120px 150px 80px" }}>
+                                            <div>
+                                                <div className="text-xs font-bold tracking-wide">
+                                                    {sec.course_prefix?.toUpperCase()} {sec.course_number}.{sec.section?.trim()}
+                                                </div>
+                                                <div className="text-[10px] text-gray-400">#{sec.class_number}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-xs font-semibold text-gray-800 truncate max-w-[90px]" title={sec.instructors}>{sec.instructors?.split(",")[0].trim()}{sec.instructors?.includes(",") ? " +" : ""}</div>
+                                                <div className="text-[10px] text-gray-400">{sec.activity_type}</div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex gap-1">
+                                                    {sec.days && <DayPips days={sec.days} />}
+                                                </div>
+                                                <span className="text-[10px] text-gray-500">{sec.times_12h?.split(";")[0].trim()}</span>
+                                            </div>
+                                            <div className={`text-xs ${sec.location === "Online" ? "text-[#5AED86] font-semibold" : "text-gray-600"}`}>
+                                                {sec.location.replace("_", " ")}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
-        </div>
+                </div>
     );
 
     return (
@@ -351,11 +417,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                 {!inSidebar && canHover && (
                     <>
                         {/* Tooltip to the right (default) */}
-                        <div className="hidden xl:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none">
+                        <div className="hidden xl:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-auto">
                             {tooltipContent}
                         </div>
                         {/* Tooltip above (for smaller screens where right would overflow) */}
-                        <div className="block xl:hidden absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none">
+                        <div className="block xl:hidden absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-auto">
                             {tooltipContent}
                         </div>
                     </>
@@ -384,12 +450,14 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     // Desktop: Side tooltip
                     inSidebar ? (
                         <div
-                            className="fixed z-[9999] pointer-events-none"
+                            className="fixed z-[9999] pointer-events-auto"
                             style={{
                                 top: `${tooltipPosition.top}px`,
-                                left: `${tooltipPosition.left}px`,
+                                left: `${Math.min(tooltipPosition.left, window.innerWidth - 550)}px`,
                                 transform: 'translateY(-50%)'
                             }}
+                            onMouseEnter={() => { if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current); }}
+                            onMouseLeave={() => setShowTooltip(false)}
                         >
                             {tooltipContent}
                         </div>

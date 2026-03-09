@@ -71,6 +71,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const location = useLocation();
     const focusLabel = location.state?.focusLabel as string | undefined;
 
+    // coursebook data 
+    const [coursebookData, setCoursebookData] = useState<Record<string, any[]>>({});
+
     useEffect(() => {
         const driverInstance = driver({
             showProgress: true,
@@ -312,14 +315,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const { collapsedYears, collapsedSemesters, sidebarCollapsed, expandedCategories } = uiSnapshot;
 
     const [sidebarCollapsedDelayed, setSidebarCollapsedDelayed] = useState(false);
-
-    useEffect(() => {
-        if (sidebarCollapsed) {
-            setTimeout(() => setSidebarCollapsedDelayed(true), 150);
-        } else {
-            setSidebarCollapsedDelayed(false);
-        }
-    }, [sidebarCollapsed]);
 
     const toggleSidebar = () =>
         setUISnapshot(prev => ({ ...prev, sidebarCollapsed: !prev.sidebarCollapsed }));
@@ -792,6 +787,74 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
         return map;
     }, [allSemesters]);
+
+    useEffect(() => {
+        if (sidebarCollapsed) {
+            setTimeout(() => setSidebarCollapsedDelayed(true), 150);
+        } else {
+            setSidebarCollapsedDelayed(false);
+        }
+    }, [sidebarCollapsed]);
+
+    useEffect(() => {
+        const fetchCoursebook = async () => {
+            if (!user) return;
+    
+            // only current semester planned courses + suggested courses
+            const codesToFetch = new Set<string>();
+    
+            // suggested courses from sidebar
+            allSuggestedCourses.forEach((course: any) => {
+                const code = course.course_code || course.code;
+                if (code) codesToFetch.add(code.toLowerCase().replace(/\s+/g, ""));
+            });
+    
+            // planned courses ONLY
+            Object.values(allSemesters).forEach(yearSemesters => {
+                yearSemesters.forEach(semester => {
+                    if (!semester.isFromTranscript) {
+                        semester.courses?.forEach((course: any) => {
+                            const code = course.course_code || course.code;
+                            if (code) codesToFetch.add(code.toLowerCase().replace(/\s+/g, ""));
+                        });
+                    }
+                });
+            });
+    
+            if (codesToFetch.size === 0) return;
+    
+            // delta — only fetch what we don't have yet
+            const newCodes = [...codesToFetch].filter(code => !coursebookData[code]);
+            if (newCodes.length === 0) return;
+    
+            try {
+                const token = await user.getIdToken();
+                const CRUD_API = import.meta.env.VITE_CRUD_API;
+                const base = CRUD_API.replace("/CRUD", "");
+    
+                const res = await fetch(
+                    `${base}/CRUD/coursebook?courses=${newCodes.join(",")}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+    
+                if (!res.ok) return;
+                const sections: any[] = await res.json();
+    
+                const grouped: Record<string, any[]> = {};
+                sections.forEach(sec => {
+                    const key = `${sec.course_prefix}${sec.course_number}`.toLowerCase();
+                    if (!grouped[key]) grouped[key] = [];
+                    grouped[key].push(sec);
+                });
+    
+                setCoursebookData(prev => ({ ...prev, ...grouped }));
+            } catch (err) {
+                console.error("Failed to fetch coursebook data:", err);
+            }
+        };
+    
+        fetchCoursebook();
+    }, [allSuggestedCourses, allSemesters, user]);
 
     const allPlannedCoursesWithOrder = useMemo(() => {
         const courses: Array<{
@@ -1348,6 +1411,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         onRestartOnboarding={onRestartOnboarding}
                         focusLabel={focusLabel}
                         semesters={allSemesters}
+                        coursebookData={coursebookData}
                     />
 
                     <div
