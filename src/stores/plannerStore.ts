@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { toast } from 'sonner';
+import { getCreditsFromCourseCode } from "@/utils/plannerCredits";
 
 interface SavedPlannerState {
     id: string;
@@ -484,10 +485,11 @@ export const usePlannerStore = create<PlannerStore>()(
                         if (targetSemester && Array.isArray(targetSemester.courses)) {
                             const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
 
+                            const courseCode = course.code || course.course_code;
                             const newCourse: Record<string, any> = {
-                                course_code: course.code || course.course_code,
-                                course_name: course.name || course.course_name || `${course.code || course.course_code} Course`,
-                                credits_planned: course.credits || 3,
+                                course_code: courseCode,
+                                course_name: course.name || course.course_name || `${courseCode} Course`,
+                                credits_planned: getCreditsFromCourseCode(courseCode),
                                 id: newCourseId,
                                 status: 'planned',
                             };

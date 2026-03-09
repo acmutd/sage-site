@@ -19,7 +19,6 @@ import { useUISnapshot } from "@/hooks/useUISnapshot";
 import { useAuth } from "@/context/AuthContext";
 import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
 import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
-import { getCreditsFromCourseCode } from "@/utils/plannerCredits";
 import { auth } from "@/firebase-config";
 import { usePlannerStore } from "@/stores/plannerStore";
 
