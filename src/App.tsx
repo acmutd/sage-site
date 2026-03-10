@@ -13,20 +13,44 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignUp";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Planner from "./pages/PlannerPage";
 import PublicRoute from "./components/PublicRoute";
-import Planner from "./pages/Planner";
 import ChatBot from "./pages/ChatBot";
 import Profile from "./pages/Profile";
+import { useEffect, useState } from "react";
 
 // Component to conditionally render navbar based on route
 const ConditionalNavbar = () => {
   const location = useLocation();
+  const [isOnboarding, setIsOnboarding] = useState(false);
+
+  useEffect(() => {
+    const checkOnboarding = () => {
+      setIsOnboarding(document.body.hasAttribute('data-onboarding-active'));
+    };
+    
+    // Check initially
+    checkOnboarding();
+    
+    const observer = new MutationObserver(checkOnboarding);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-onboarding-active'] });
+    
+    return () => observer.disconnect();
+  }, [location]);
   
   // Show ChatBotNavbar only on the chatbot route
   if (location.pathname === "/chatbot") {
     return <ChatBotNavbar />;
   }
   
+  if (location.pathname === "/planner" && isOnboarding) {
+    return <Navbar />;
+  }
+  
+  if (location.pathname === "/planner")
+  { 
+    return null;
+  }
   // Show regular Navbar for all other routes
   return <Navbar />;
 };
@@ -38,60 +62,60 @@ const App = () => {
       <AuthProvider>
         <Router>
           <ConditionalNavbar />
-          <div className="min-h-screen">
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route 
-                path="/login" 
-                element={
-                  <PublicRoute>
-                    <LoginPage />
-                  </PublicRoute>
-                } 
-              />
-              <Route 
-                path="/signup" 
-                element={
-                  <PublicRoute>
-                    <SignupPage />
-                  </PublicRoute>
-                } 
-              />
-              <Route 
-                path="/forgot-password" 
-                element={
-                  <PublicRoute>
-                    <ForgotPasswordPage />
-                  </PublicRoute>
-                } 
-              />
-              <Route
-                path="/planner"
-                element={
-                  <ProtectedRoute>
-                    <Planner />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/chatbot"
-                element={
-                  <ProtectedRoute>
-                    <ChatBot />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
+          <main className="min-h-screen">
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route 
+                  path="/login" 
+                  element={
+                    <PublicRoute>
+                      <LoginPage />
+                    </PublicRoute>
+                  } 
+                />
+                <Route 
+                  path="/signup" 
+                  element={
+                    <PublicRoute>
+                      <SignupPage />
+                    </PublicRoute>
+                  } 
+                />
+                <Route 
+                  path="/forgot-password" 
+                  element={
+                    <PublicRoute>
+                      <ForgotPasswordPage />
+                    </PublicRoute>
+                  } 
+                />
+                <Route
+                  path="/planner"
+                  element={
+                    <ProtectedRoute>
+                      <Planner />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/chatbot"
+                  element={
+                    <ProtectedRoute>
+                      <ChatBot />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+          </main>
         </Router>
       </AuthProvider>
 

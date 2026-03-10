@@ -1,0 +1,21 @@
+export const determineStudentType = (transcriptData: any): 'undergrad' | 'grad' => {
+    // Check if graduate keys exist
+    if (transcriptData?.credit_hours?.graduate || transcriptData?.gpa?.graduate) {
+      return 'grad';
+    }
+    return 'undergrad';
+};
+  
+export const calculateCatalogYear = (semester: string): number => {
+    const [year, season] = semester.split(" ");
+    return season === "Fall" ? parseInt(year) : parseInt(year) - 1;
+};
+
+export const isCurrentSemester = (title: string) => {
+  const now = new Date();
+  const month = now.getMonth(); // 0-11
+  const year = now.getFullYear();
+  
+  const season = month >= 8 ? 'Fall' : month >= 5 ? 'Summer' : 'Spring';
+  return title === `${season} ${year}`;
+};

@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import { driver } from "driver.js";
+import "driver.js/dist/driver.css";
 import { useAuth } from "../context/AuthContext";
 import {
   ArrowLeftToLineIcon,
@@ -56,6 +58,82 @@ const ChatBot: React.FC = () => {
     initialLoad
   } = useChatbot();
   
+  // tutorial overlay 
+  const [driverObj, setDriverObj] = useState<any>(null);
+
+  useEffect(() => {
+        const driverInstance = driver({
+            showProgress: true,
+            showButtons: ['next', 'previous', 'close'],
+            steps: [
+                {
+                    element: '[data-tour="sidebar"]',
+                    popover: {
+                        title: 'Conversation History',
+                        description: 'View and manage your conversation history here. Click on any past conversation to continue it. Hovering over the conversation allows you to manage it.',
+                        side: "right"
+                    }
+                },
+                {
+                    element: '[data-tour="new-chat-expanded"]',
+                    popover: {
+                        title: 'New Chat',
+                        description: 'Start a fresh conversation with SAGE anytime.',
+                        side: "bottom"
+                    }
+                },
+                {
+                    element: '[data-tour="sidebar-collapse"]',
+                    popover: {
+                        title: 'Collapse Sidebar',
+                        description: 'You can collapse the sidebar to expand your chat view. Click again to reopen it.',
+                        side: "bottom"
+                    }
+                },
+                {
+                    element: '[data-tour="chat-input"]',
+                    popover: {
+                        title: 'Ask Questions',
+                        description: 'Type your questions here and press Enter or click the send button to your right.',
+                        side: "top"
+                    }
+                },
+                {
+                    element: '[data-tour="mode-toggle"]',
+                    popover: {
+                        title: 'Mode Toggle',
+                        description: 'Switch between general advising questions and schedule generation mode.',
+                        side: "top"
+                    }
+                },
+                {
+                  element: '[data-tour="help-button"]',
+                  popover: {
+                      title: 'Tutorial',
+                      description: 'Click here to replay the tutorial at any time',
+                      side: "left"
+                  }
+                }
+            ],
+            onDestroyed: () => {
+                localStorage.setItem('hasSeenChatbotTutorial', 'true');
+            },
+            popoverClass: 'sage-driver-theme'
+        });
+        
+        setDriverObj(driverInstance);
+        const hasSeenTutorial = localStorage.getItem('hasSeenChatbotTutorial');
+        if (!hasSeenTutorial) {
+            setTimeout(() => driverInstance.drive(), 500);
+        }
+  }, []);
+  
+  const startTutorial = () => {
+      if (driverObj) {
+          driverObj.drive();
+      }
+  };
+
   // Wrapper function to update conversations and notify mobile navbar
   const updateConversations = (newConversations: Conversation[] | ((prev: Conversation[]) => Conversation[])) => {
     if (typeof newConversations === 'function') {
@@ -549,7 +627,7 @@ const ChatBot: React.FC = () => {
       className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]"
       onClick={handleOutsideClick}
     >
-      <button onClick={() => {}} className="fixed bottom-4 right-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
+      <button data-tour="help-button" aria-label="Chatbot Help" onClick={startTutorial} className="fixed bottom-4 right-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
         <HelpCircle size={18} className="text-white" />
       </button>
       

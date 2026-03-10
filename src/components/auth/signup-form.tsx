@@ -9,7 +9,6 @@ import {
 import { auth } from "@/firebase-config";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import Cookies from "js-cookie";
 import { Toaster, toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -94,7 +93,6 @@ export default function SignupForm(props: {
       setAuthChecking(false);
 
       const token = await user.getIdToken();
-      Cookies.set("authToken", token, { expires: 7 });
 
       props.setLoading(true); // Trigger loading animation for user
 
@@ -134,7 +132,6 @@ export default function SignupForm(props: {
         data.password
       );
       const token = await result.user.getIdToken();
-      Cookies.set("authToken", token, { expires: 7 });
 
       // Email users get random profile_picture_type 1-6 and corresponding image URL
       const profilePictureType = Math.floor(Math.random() * 6) + 1;

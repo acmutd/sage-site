@@ -10,7 +10,6 @@ import {
 import { auth } from "@/firebase-config";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import Cookies from "js-cookie";
 import { Toaster, toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -45,7 +44,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function LoginForm(props: { isMobile: boolean, setLoading: (loading: boolean) => void}) {
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from || "/chatbot";
+  const from = location.state?.from || "/";
   const [loginError, setLoginError] = useState(false);
   const { setAuthChecking } = useAuth();
 
@@ -88,7 +87,6 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
 
       setAuthChecking(false);
       const token = await user.getIdToken();
-      Cookies.set("authToken", token, { expires: 7 });
 
       props.setLoading(true); // Trigger loading animation for user
       
@@ -133,7 +131,6 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
         data.password
       );
       const token = await result.user.getIdToken();
-      Cookies.set("authToken", token, { expires: 7 });
 
       // 1. Try to get the user profile
       const profileRes = await fetch(VITE_CRUD_API, {
