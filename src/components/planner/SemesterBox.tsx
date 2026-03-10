@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Lock, Unlock, MoreVertical, Trash2, Eraser, TriangleAlert, ChevronUp } from "lucide-react";
+import { Lock, Unlock, MoreVertical, Trash2, Eraser, TriangleAlert, ChevronUp, Calendar } from "lucide-react";
 import CourseBox from "@/components/planner/CourseBox";
 import { useDrop } from "react-dnd";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -12,6 +12,7 @@ import {
     normalizeCourseCode,
 } from "@/utils/prerequisiteUtils";
 import ReactDOM from "react-dom";
+import SchedulePlanningModal from "@/components/planner/SchedulePlanningModal";
 
 interface SemesterBoxProps {
     title: string;
@@ -114,8 +115,9 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     const [showWarnings, setShowWarnings] = useState(false);
     const [canHover, setCanHover] = useState(true);
     const [popoverPosition, setPopoverPosition] = useState({ top: 0, right: 0 });
+    const [showSchedulePlanning, setShowSchedulePlanning] = useState(false);
     const warningButtonRef = useRef<HTMLButtonElement>(null);
-
+    
     const handleLockToggle = () => setLocked(prev => !prev);
 
     useEffect(() => {
@@ -799,6 +801,13 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                     <Trash2 className="w-4 h-4 mr-2" />
                                     Remove Semester
                                 </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    className="cursor-pointer hover:bg-gray-100 focus:bg-gray-100 data-[highlighted]:bg-gray-100"
+                                    onClick={() => setShowSchedulePlanning(true)}
+                                >
+                                    <Calendar className="w-4 h-4 mr-2" />
+                                    Plan Schedule
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -860,6 +869,17 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                         </div>
                     </div>
                 </div>
+            )}
+
+            {showSchedulePlanning && (
+                <SchedulePlanningModal
+                    title={title}
+                    courses={courses.map(c => ({
+                        ...c,
+                        sections: coursebookData[c.course_code?.toLowerCase().replace(/\s+/g, '')] || []
+                    }))}
+                    onClose={() => setShowSchedulePlanning(false)}
+                />
             )}
         </div>
     );
