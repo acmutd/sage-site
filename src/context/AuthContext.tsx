@@ -17,6 +17,13 @@ interface AuthContextType {
   setAuthChecking: (checking: boolean) => void;
 }
 
+const loadClarity = (projectId: string) => {
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = `https://www.clarity.ms/tag/${projectId}`;
+  document.head.appendChild(script);
+};
+
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
@@ -47,6 +54,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (user) {
             setUser(user);
             const token = await user.getIdToken();
+
+            if (import.meta.env.MODE !== "development") {
+              loadClarity(import.meta.env.VITE_CLARITY_PROJECT_ID);
+            }
 
             // add in pfp globally to navbar
             const response = await fetch(CRUD_API as string, {
