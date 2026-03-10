@@ -175,6 +175,13 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         [course, sourceYear, sourceSemesterIndex, isFromTranscript, isLocked, isPlaced]
     );
 
+    useEffect(() => {
+        if (isDragging) {
+            setShowTooltip(false);
+            if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+        }
+    }, [isDragging]);
+
     const dragRef = !isFromTranscript && !isPlaced ? drag : null;
 
     const getStatusStyles = () => {
@@ -417,11 +424,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                 {!inSidebar && canHover && (
                     <>
                         {/* Tooltip to the right (default) */}
-                        <div className="hidden xl:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-auto">
+                        <div className="hidden xl:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none">
                             {tooltipContent}
                         </div>
                         {/* Tooltip above (for smaller screens where right would overflow) */}
-                        <div className="block xl:hidden absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-auto">
+                        <div className="block xl:hidden absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none">
                             {tooltipContent}
                         </div>
                     </>
