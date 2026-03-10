@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { driver } from "driver.js";
-import "driver.js/dist/driver.css";
 import Sidebar from "@/components/planner/Sidebar";
 import SemesterBox from "@/components/planner/SemesterBox";
 import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2, RefreshCw, ChevronDown, Settings, Pencil, Plus, Copy, Trash2 } from "lucide-react";
@@ -19,8 +17,9 @@ import { useUISnapshot } from "@/hooks/useUISnapshot";
 import { useAuth } from "@/context/AuthContext";
 import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
 import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
-import { getCreditsFromCourseCode } from "@/utils/plannerCredits";
 import { auth } from "@/firebase-config";
+import { usePlannerStore } from "@/stores/plannerStore";
+import { usePlannerTutorial } from "@/hooks/usePlannerTutorial";
 
 interface PlannerProps {
     semesters: {
@@ -35,27 +34,6 @@ interface PlannerProps {
       ) => void;
 }
 
-interface SavedPlannerState {
-    id: string;
-    name: string;
-    semesters: {
-        [key: string]: {
-            title: string;
-            courses: any[];
-            isFromTranscript?: boolean;
-            isLocked?: boolean;  
-        }[];
-    };
-    placedCourses: string[];
-    lastModified: number;
-    evaluation: any;
-}
-
-interface PlannerData {
-    plans: SavedPlannerState[];
-    activePlanId: string;
-}
-
 
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding, onRegisterConflictHandler }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -64,246 +42,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     // student type 
     const studentType = determineStudentType(transcriptData);
 
-    const [driverObj, setDriverObj] = useState<any>(null);
-    const dropdownWasOpenedRef = useRef(false);
-    
     // profile -> sidebar link
     const location = useLocation();
     const focusLabel = location.state?.focusLabel as string | undefined;
 
-    // coursebook data 
-    const [coursebookData, setCoursebookData] = useState<Record<string, any[]>>({});
-
-    useEffect(() => {
-        const driverInstance = driver({
-            showProgress: true,
-            showButtons: ['next', 'previous', 'close'],
-            steps: [
-                {
-                    element: '[data-tour="sidebar"]',
-                    popover: {
-                        title: 'Sidebar',
-                        description: 'This sidebar shows your degree requirements and suggested courses (when you expand the categories). Scroll down to see all categories',
-                        side: "right"
-                    }
-                },
-                {
-                    element: '[data-tour="edit-plans"]',
-                    popover: {
-                        title: 'Edit Plans',
-                        description: 'You can re-evaluate your degree plan at any time by either uploading a new transcript or by manually filling out your academic history.',
-                        side: "right"
-                    }
-                },
-                {
-                    element: '[data-tour="sidebar-toggle"]',
-                    popover: {
-                        title: 'Expanding/Collapsing Sidebar',
-                        description: 'To give you more room to work with your academic plan, you can collapse the sidebar. To see requirements again, click anywhere in the collapsed sidebar or press the sidebar button to expand',
-                        side: "right"
-                    }
-                },
-                {
-                    element: '[data-tour="requirement-category-toggle"]',
-                    popover: {
-                        title: 'Expanding/Collapsing Categories',
-                        description: 'SAGE automatically collapses completed categories and expands incomplete categories. You can collapse/expand categories at any time.',
-                        side: "right"
-                    }
-                },
-                {
-                    element: '[data-tour="requirement-category-progress"]',
-                    popover: {
-                        title: 'Checking Progress',
-                        description: 'This tracks total progress completed for a degree category (including subcategories)',
-                        side: "right"
-                    }
-                },
-                {
-                    element: '[data-tour="plan-toggle"]',
-                    popover: {
-                        title: 'Selecting Plans',
-                        description: 'Here, you can select the many plans you\'ve saved and easily switch to them',
-                        side: "bottom"
-                    }
-                },
-                {
-                    element: '[data-tour="plan-settings"]',
-                    popover: {
-                        title: 'Plan Options',
-                        description: 'Click here to view plan settings, like creating, renaming, duplicating, and deleting plans',
-                        side: "bottom"
-                    }
-                },
-                {
-                    element: '[data-tour="semester-area"]',
-                    popover: {
-                        title: 'Academic Plan',
-                        description: 'This is your academic plan. Drag courses here to build your schedule.',
-                        side: "top"
-                    }
-                },
-                {
-                    element: '[data-tour="year-toggle"]',
-                    popover: {
-                        title: 'Year Collapse/Expand',
-                        description: 'You can expand/collapse years at any time to focus on the years below.',
-                        side: "top"
-                    }
-                },
-                {
-                    element: '[data-tour="year-option"]',
-                    popover: {
-                        title: 'Year Options',
-                        description: 'You can add a semester, clear all your custom semesters, or remove a year.',
-                        side: "top"
-                    },
-                    onDeselected: () => {
-                        if (!dropdownWasOpenedRef.current) {
-                            setTimeout(() => {
-                                driverInstance.moveTo(17);
-                                setTimeout(() => {
-                                    driverInstance.destroy();
-                                    driverInstance.drive(16);
-                                }, 50);
-                            }, 150);
-                        }
-                    }
-                },
-                {
-                    element: '[data-tour="add-semester"]',
-                    popover: {
-                        title: 'Add Semester',
-                        description: 'Add a semester to this academic year. You can have up to three semesters per year: Fall, Spring, and Summer.',
-                        side: "bottom"
-                    }
-                },
-                {
-                    element: '[data-tour="transcript-semester"]',
-                    popover: {
-                        title: 'Completed Semester',
-                        description: 'These boxes represent a completed semester and aren\'t editable.',
-                        side: "top"
-                    }
-                },
-                {
-                    element: '[data-tour="user-semester"]',
-                    popover: {
-                        title: 'Your Semester',
-                        description: 'These boxes allow you to drag your courses here',
-                        side: "top"
-                    }
-                },
-                {
-                    element: '[data-tour="semester-toggle"]',
-                    popover: {
-                        title: 'Semester Collapse/Expand',
-                        description: 'You can expand/collapse semesters at any time.',
-                        side: "top"
-                    }
-                },
-                {
-                    element: '[data-tour="semester-lock"]',
-                    popover: {
-                        title: 'Semester Lock/Unlock',
-                        description: 'Lock/unlock courses in this semester to prevent/allow changes to them.',
-                        side: "left"
-                    }
-                },
-                {
-                    element: '[data-tour="semester-options"]',
-                    popover: {
-                        title: 'Semester Options',
-                        description: 'You can clear courses or remove the semester entirely.',
-                        side: "left"
-                    }
-                },
-                {
-                    element: '[data-tour="add-year"]',
-                    popover: {
-                        title: 'Add Year',
-                        description: 'Create a new academic year to start future planning.',
-                        side: "left"
-                    },
-                    onDeselected: () => {
-                        scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                },
-                {
-                    element: '[data-tour="suggest-future-classes"]',
-                    popover: {
-                        title: 'Suggest Future Classes',
-                        description: 'Want to plan ahead? Pressing this will suggest the next courses to take (assuming you meet requirements of currently suggested ones)',
-                        side: "top"
-                    },
-                    onDeselected: () => {
-                        scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                },
-                {
-                    element: '[data-tour="save-plan"]',
-                    popover: {
-                        title: 'Save Plan',
-                        description: 'Once you\'r happy with your plan, you can save it. You\'ll also be reminded to save by a small yellow dot or if you close the tab without saving',
-                        side: "top"
-                    },
-                    onDeselected: () => {
-                        scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                },
-                {
-                    element: '[data-tour="help-button"]',
-                    popover: {
-                        title: 'Tutorial',
-                        description: 'Click here to replay the tutorial at any time',
-                        side: "left"
-                    },
-                    onDeselected: () => {
-                        scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                }
-            ],
-            onDestroyed: async () => {
-                localStorage.setItem('hasSeenPlannerTutorial', 'true');
-                dropdownWasOpenedRef.current = false;
-
-                // CRUD Update
-                if (user?.uid) {
-                    const token = await user.getIdToken();
-                    if (token) {
-                        try {
-                            const CRUD_API = import.meta.env.VITE_CRUD_API;
-                            await fetch(CRUD_API, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    userId: user.uid,
-                                    action: 'updateTutorialStatus',
-                                    token,
-                                    tutorialName: 'hasSeenPlannerTutorial',
-                                    seenStatus: true
-                                }),
-                            });
-                        } catch (error) {
-                            console.error('Failed to update tutorial status in cloud:', error);
-                        }
-                    }
-                }
-            },
-            popoverClass: 'sage-driver-theme'
-        });
-
-        setDriverObj(driverInstance);
-
-        const hasSeenTutorial = localStorage.getItem('hasSeenPlannerTutorial');
-        if (!hasSeenTutorial) {
-            setTimeout(() => driverInstance.drive(), 500);
-        }
-    }, []);
-
-    const startTutorial = () => {
-        if (driverObj) driverObj.drive();
-    };
+    const { driverObj, startTutorial, dropdownWasOpenedRef } = usePlannerTutorial({ scrollContainerRef, user });
 
     const [uiSnapshot, setUISnapshot] = useUISnapshot('sage-planner-ui', {
         collapsedYears: {} as Record<string, boolean>,
@@ -356,41 +99,42 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return updatedSemesters;
     }, [semesters]);
 
-    const [plannerData, setPlannerData] = useState<PlannerData>(() => {
-        const stored = localStorage.getItem('planner-state');
+    // Zustand store selectors
+    const plans = usePlannerStore(state => state.plans);
+    const activePlanId = usePlannerStore(state => state.activePlanId);
+    const switchPlan = usePlannerStore(state => state.switchPlan);
+    const createNewPlan = usePlannerStore(state => state.createNewPlan);
+    const duplicatePlan = usePlannerStore(state => state.duplicatePlan);
+    const deletePlan = usePlannerStore(state => state.deletePlan);
+    const renamePlan = usePlannerStore(state => state.renamePlan);
+    const updateActivePlan = usePlannerStore(state => state.updateActivePlan);
+    
+    // Semester management selectors
+    const addYearAction = usePlannerStore(state => state.addYear);
+    const clearYearAction = usePlannerStore(state => state.clearYear);
+    const deleteYearAction = usePlannerStore(state => state.deleteYear);
+    const addSemesterAction = usePlannerStore(state => state.addSemester);
+    const clearSemesterAction = usePlannerStore(state => state.clearSemester);
+    const removeSemesterAction = usePlannerStore(state => state.removeSemester);
+    const dropCourseAction = usePlannerStore(state => state.dropCourse);
 
-        if (stored) {
-            try {
-                return JSON.parse(stored);
-            } catch (error) {
-                console.error('Failed to parse localStorage:', error);
-            }
+    // Initialize store with default plan if empty
+    useEffect(() => {
+        if (plans.length === 0) {
+            const evalRaw = localStorage.getItem('evaluation');
+            const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
+            createNewPlan(initialPlannerState, evaluation);
         }
-        
-        const defaultPlanId = crypto.randomUUID();
-        const evalRaw = localStorage.getItem('evaluation');
-        const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
-        const defaultState = {
-            plans: [{
-                id: defaultPlanId,
-                name: 'Plan 1',
-                semesters: initialPlannerState,
-                placedCourses: [],
-                lastModified: Date.now(),
-                evaluation,
-            }],
-            activePlanId: defaultPlanId
-        };
+    }, [plans.length, initialPlannerState, createNewPlan]);
 
-        localStorage.setItem('planner-state', JSON.stringify(defaultState));
-        return defaultState;
-    });
+    const activePlan = plans.find(p => p.id === activePlanId);
+    const allSemesters = activePlan?.semesters || {};
+    const placedSuggestedCourses = new Set(activePlan?.placedCourses || []);
 
-    const activePlan = plannerData.plans.find(p => p.id === plannerData.activePlanId)!;
-    const allSemesters = activePlan.semesters;
-    const placedSuggestedCourses = new Set(activePlan.placedCourses);
-
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    // Unsaved changes tracking
+    const hasUnsavedChanges = usePlannerStore(state => state.getHasUnsavedChanges());
+    const markAsSaved = usePlannerStore(state => state.markAsSaved);
+    
     const [pendingConflictChoice, setPendingConflictChoice] = useState<{
         choice: "overwrite" | "select" | "new";
         degrees: any[];
@@ -399,122 +143,35 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    const updatePlannerState = (updates: Partial<SavedPlannerState>) => {
-        setPlannerData(prev => ({
-            ...prev,
-            plans: prev.plans.map(p =>
-                p.id === prev.activePlanId
-                    ? { ...p, ...updates, lastModified: Date.now()}
-                    : p
-            )
-        }));
-        setHasUnsavedChanges(true);
-    };
-
     // Plan management functions
     const handleSwitchPlan = (planId: string) => {
-        setPlannerData(prev => ({
-            ...prev,
-            activePlanId: planId
-        }));
-        setHasUnsavedChanges(true);
+        switchPlan(planId);
     };
 
     const handleNewPlan = () => {
-        if (plannerData.plans.length >= 5) {
-            toast.error('Maximum of 5 plans allowed');
-            return;
-        }
-
-        const newPlanId = crypto.randomUUID();
         const evalRaw = localStorage.getItem('evaluation');
         const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
-        const planNumber = plannerData.plans.length + 1;
-        
-        setPlannerData(prev => ({
-            plans: [
-                ...prev.plans,
-                {
-                    id: newPlanId,
-                    name: `Plan ${planNumber}`,
-                    semesters: initialPlannerState,
-                    placedCourses: [],
-                    lastModified: Date.now(),
-                    evaluation: evaluation
-                }
-            ],
-            activePlanId: newPlanId
-        }));
-        setHasUnsavedChanges(true);
-        toast.success('Created new plan');
+        createNewPlan(initialPlannerState, evaluation);
     };
 
     const handleDuplicatePlan = () => {
-        if (plannerData.plans.length >= 5) {
-            toast.error('Maximum of 5 plans allowed');
-            return;
-        }
-
-        const currentPlan = plannerData.plans.find(p => p.id === plannerData.activePlanId);
-        if (!currentPlan) return;
-
-        const newPlanId = crypto.randomUUID();
-        const duplicatedPlan: SavedPlannerState = {
-            ...JSON.parse(JSON.stringify(currentPlan)), // Deep copy
-            id: newPlanId,
-            name: `${currentPlan.name} (Copy)`,
-            lastModified: Date.now()
-        };
-
-        setPlannerData(prev => ({
-            plans: [...prev.plans, duplicatedPlan],
-            activePlanId: newPlanId
-        }));
-        setHasUnsavedChanges(true);
-        toast.success('Duplicated plan');
+        duplicatePlan();
     };
 
     const handleDeletePlan = () => {
-        if (plannerData.plans.length === 1) {
-            toast.error('Cannot delete the last plan');
-            return;
-        }
-
-        const currentIndex = plannerData.plans.findIndex(p => p.id === plannerData.activePlanId);
-        const newActivePlanId = currentIndex > 0 
-            ? plannerData.plans[currentIndex - 1].id 
-            : plannerData.plans[1].id;
-
-        setPlannerData(prev => ({
-            plans: prev.plans.filter(p => p.id !== prev.activePlanId),
-            activePlanId: newActivePlanId
-        }));
-        setHasUnsavedChanges(true);
-        toast.success('Deleted plan');
+        deletePlan();
     };
 
     const handleRenamePlan = (newName: string) => {
-        if (!newName.trim()) {
-            toast.error('Plan name cannot be empty');
-            return;
-        }
-
-        setPlannerData(prev => ({
-            ...prev,
-            plans: prev.plans.map(p =>
-                p.id === prev.activePlanId
-                    ? { ...p, name: newName.trim(), lastModified: Date.now() }
-                    : p
-            )
-        }));
-        setHasUnsavedChanges(true);
-        toast.success('Renamed plan');
+        renamePlan(newName);
     };
 
     const savePlannerState = async () => {
         const user = auth.currentUser;
         if (!user) throw new Error("Not authenticated");
         const token = await user.getIdToken();
+
+        const currentPlannerData = { plans, activePlanId };
 
         const CRUD_API = import.meta.env.VITE_CRUD_API;
         const response = await fetch(CRUD_API, {
@@ -524,7 +181,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 userId: user.uid,
                 action: 'savePlanner',
                 token,
-                plannerData: plannerData,
+                plannerData: currentPlannerData,
                 transcriptData: transcriptData
             }),
         });
@@ -534,12 +191,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
 
         try {
-            localStorage.setItem('planner-state', JSON.stringify(plannerData));
+            localStorage.setItem('planner-state', JSON.stringify(currentPlannerData));
         } catch (e) {
             console.error('Failed to save to localStorage:', e);
         }
 
-        setHasUnsavedChanges(false);
+        markAsSaved();
     };
 
     const handleSave = async () => {
@@ -572,78 +229,53 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     
         if (choice === "overwrite") {
             // Replace active plan's semesters in place
-            setPlannerData(prev => {
-                const updated: PlannerData = {
-                    ...prev,
-                    plans: prev.plans.map(p =>
-                        p.id === prev.activePlanId
-                            ? { ...p, semesters: initialPlannerState, placedCourses: [], lastModified: Date.now(), evaluation: pendingConflictChoice.fetchedData }
-                            : p
-                    ),
-                };
-                localStorage.setItem("planner-state", JSON.stringify(updated));
-                return updated;
+            updateActivePlan({
+                semesters: initialPlannerState,
+                placedCourses: [],
+                lastModified: Date.now(),
+                evaluation: pendingConflictChoice.fetchedData
             });
-            setHasUnsavedChanges(false);
+            markAsSaved();
             toast.success("Current plan updated with new transcript");
     
         } else if (choice === "select") {
             // Replace the user-chosen plan's semesters, switch view to it
-            const planToUpdate = targetPlanId ?? plannerData.activePlanId;
-            setPlannerData(prev => {
-                const updated: PlannerData = {
-                    ...prev,
-                    activePlanId: planToUpdate,
-                    plans: prev.plans.map(p =>
-                        p.id === planToUpdate
-                            ? { ...p, semesters: initialPlannerState, placedCourses: [], lastModified: Date.now(), evaluation: pendingConflictChoice.fetchedData }
-                            : p
-                    ),
-                };
-                localStorage.setItem("planner-state", JSON.stringify(updated));
-                return updated;
+            const planToUpdate = targetPlanId ?? activePlanId;
+            if (planToUpdate !== activePlanId) {
+                switchPlan(planToUpdate);
+            }
+            updateActivePlan({
+                semesters: initialPlannerState,
+                placedCourses: [],
+                lastModified: Date.now(),
+                evaluation: pendingConflictChoice.fetchedData
             });
-            setHasUnsavedChanges(false);
+            markAsSaved();
             toast.success("Plan updated with new transcript");
     
         } else if (choice === "new") {
             // Keep all existing plans, add a fresh one and switch to it
-            if (plannerData.plans.length >= 5) {
+            if (plans.length >= 5) {
                 toast.error("Maximum of 5 plans reached — delete one first");
                 setPendingConflictChoice(null);
                 return;
             }
-            const newPlanId = crypto.randomUUID();
-            setPlannerData(prev => {
-                const updated: PlannerData = {
-                    plans: [...prev.plans, {
-                        id: newPlanId,
-                        name: `Plan ${prev.plans.length + 1} (New Transcript)`,
-                        semesters: initialPlannerState,
-                        placedCourses: [],
-                        lastModified: Date.now(),
-                        evaluation: pendingConflictChoice.fetchedData
-                    }],
-                    activePlanId: newPlanId,
-                };
-                localStorage.setItem("planner-state", JSON.stringify(updated));
-                return updated;
-            });
-            setHasUnsavedChanges(true);
+            const newPlanName = `Plan ${plans.length + 1} (New Transcript)`;
+            createNewPlan(initialPlannerState, pendingConflictChoice.fetchedData, newPlanName);
             toast.success("New plan created with new transcript");
         }
     
         setPendingConflictChoice(null);
-    }, [initialPlannerState, pendingConflictChoice]);
+    }, [initialPlannerState, pendingConflictChoice, activePlanId, plans.length, switchPlan, updateActivePlan, createNewPlan]);
 
     useEffect(() => {
         onRegisterConflictHandler?.(
             (choice, degrees, fetchedData, targetPlanId) => {
                 setPendingConflictChoice({ choice, degrees, fetchedData, targetPlanId });
             },
-            plannerData.plans.map(p => ({ id: p.id, name: p.name }))
+            plans.map(p => ({ id: p.id, name: p.name }))
         );
-    }, [initialPlannerState, plannerData.plans]);
+    }, [initialPlannerState, plans, onRegisterConflictHandler]);
 
     // Warn on page unload if unsaved changes
     useEffect(() => {
@@ -657,7 +289,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [hasUnsavedChanges]);
 
-
+    const [coursebookData, setCoursebookData] = useState<Record<string, any[]>>({});
     const [error, setError] = useState<string | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [semesterToDelete, setSemesterToDelete] = useState<{
@@ -697,12 +329,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const adaptedRequirements = useMemo(() => {
         const fromProp = Array.isArray(requirements) ? requirements : requirements?.results ?? [];
         if (fromProp.length > 0) return fromProp;
-        const planEval = activePlan.evaluation;
+        const planEval = activePlan?.evaluation;
         if (planEval) {
             return Array.isArray(planEval) ? planEval : planEval?.results ?? [];
         }
         return [];
-    }, [activePlan.evaluation, requirements]);
+    }, [activePlan?.evaluation, requirements]);
 
     const allSuggestedCourses = useMemo(() => {
         const courses: any[] = [];
@@ -930,7 +562,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             await evaluatePlannerAndMergeSuggestions({
                 quickEvaluation: true,
                 assumeMinimumGradePass: true,
-                plannerStateOverride: plannerData,
+                plannerStateOverride: { plans, activePlanId },
             });
             toast.success("Suggested courses refreshed");
             setLastQuickEvalPlannedCoursesSignature(plannedCoursesSignature);
@@ -944,7 +576,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             } catch (saveError) {
                 console.warn("Cloud save failed before quick eval, falling back to localStorage:", saveError);
                 try {
-                    localStorage.setItem('planner-state', JSON.stringify(plannerData));
+                    localStorage.setItem('planner-state', JSON.stringify({ plans, activePlanId }));
                 } catch (e) {
                     console.error("localStorage fallback also failed:", e);
                 }
@@ -963,156 +595,25 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         courseId?: string,
         isSuggested?: boolean
     ) => {
-            const isRemoval =
-                !course || !targetYear ||
-                targetYear === '' ||
-                targetSemesterIndex === undefined ||
-                targetSemesterIndex === null ||
-                targetSemesterIndex < 0;
+        const result = dropCourseAction({
+            targetYear,
+            targetSemesterIndex,
+            course,
+            sourceYear,
+            sourceSemesterIndex,
+            courseId,
+            isSuggested,
+            allSemesters
+        });
 
-            // --- REMOVAL ---
-            if (isRemoval) {
-                const newState = JSON.parse(JSON.stringify(allSemesters));
-                const sourceSemester = newState[sourceYear]?.[sourceSemesterIndex];
-                if (sourceSemester?.courses) {
-                    const courseIndex = sourceSemester.courses.findIndex(
-                        (c: any) => c.id === courseId
-                    );
-                    if (courseIndex !== -1) {
-                        const removedCourse = sourceSemester.courses[courseIndex];
-                        if (removedCourse.status === 'planned') {
-                            const courseCode = removedCourse.course_code || removedCourse.code;
-                            updatePlannerState({
-                                placedCourses: Array.from(placedSuggestedCourses).filter(c => c !== courseCode)
-                            });
-                        }
-                        sourceSemester.courses.splice(courseIndex, 1);
-                    }
-                }
-                updatePlannerState({ semesters: newState})
-                return;
-            }
-
-            const courseCode = course.code || course.course_code;
-
-            if (!isSuggested && course.originalLocation) {
-                const isOriginalLocation =
-                    targetYear === course.originalLocation.yearKey &&
-                    targetSemesterIndex === course.originalLocation.semesterIndex;
-
-                if (!isOriginalLocation) {
-                    setError(`${courseCode} can only be moved back to ${allSemesters[course.originalLocation.yearKey][course.originalLocation.semesterIndex].title}`);
-                    return;
-                }
-            }
-            
-            // Check if course exists anywhere else in the plan
-            for (const yearKey in allSemesters) {
-                for (let idx = 0; idx < allSemesters[yearKey].length; idx++) {
-                    const semester = allSemesters[yearKey][idx];
-
-                    if (yearKey === sourceYear && idx === sourceSemesterIndex) continue;
-                    
-                    const exists = semester.courses.some(c => c.course_code === courseCode);
-                    if (exists) {
-                        setError(`${courseCode} is already in ${semester.title}`);
-                        return;
-                    }
-                }
-            }
-
-            // Create deep copies to avoid mutation
-            const newState = JSON.parse(JSON.stringify(allSemesters));
-
-            if (isSuggested) {
-                const targetSemester = newState[targetYear][targetSemesterIndex];
-                if (targetSemester && Array.isArray(targetSemester.courses)) {
-                    const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
-
-                    const courseCode = course.code || course.course_code;
-                    const newCourse: Record<string, any> = {
-                        course_code: courseCode,
-                        course_name: course.name || course.course_name || `${courseCode} Course`,
-                        credits_planned: getCreditsFromCourseCode(courseCode),
-                        id: newCourseId,
-                        status: 'planned',
-                    };
-
-                    if (course.prerequisites) newCourse.prerequisites = course.prerequisites;
-                    if (course['Pre-Requisite']) newCourse['Pre-Requisite'] = course['Pre-Requisite'];
-                    if (course.corequisites !== undefined) newCourse.corequisites = course.corequisites;
-
-                    targetSemester.courses.push(newCourse);
-                }
-
-                updatePlannerState({
-                    semesters: newState,
-                    placedCourses: Array.from(new Set([...placedSuggestedCourses, courseCode]))
-                });
-
-                return;
-            }
-
-            if (sourceYear && sourceSemesterIndex !== undefined) {
-                const sourceSemester = newState[sourceYear][sourceSemesterIndex];
-                if (sourceSemester && Array.isArray(sourceSemester.courses)) {
-                    const courseIndex = sourceSemester.courses.findIndex(
-                        (c: any) => c.id === courseId
-                    );
-
-                    if (courseIndex !== -1) {
-                        const [removedCourse] = sourceSemester.courses.splice(courseIndex, 1);
-
-                        if (targetYear && targetSemesterIndex !== undefined) {
-                            const targetSemester = newState[targetYear][targetSemesterIndex];
-                            if (targetSemester && Array.isArray(targetSemester.courses)) {
-                                targetSemester.courses.push(removedCourse);
-                            }
-                        }
-                    }
-                }
-            }
-
-            updatePlannerState({ semesters: newState });
-    };
-
-    const getNextYearNumber = () => {
-        const yearNumbers = Object.keys(allSemesters)
-            .map(key => parseInt(key.replace('year', '')))
-            .filter(num => !isNaN(num));
-        if (yearNumbers.length === 0) return 1;
-        return Math.max(...yearNumbers) + 1;
+        if (!result.success && result.error) {
+            setError(result.error);
+            return;
+        }
     };
 
     const handleAddYear = () => {
-        const nextYearNum = getNextYearNumber();
-        const nextYear = `year${nextYearNum}`;
-
-        let nextFallYear: number;
-
-        if (Object.keys(allSemesters).length === 0) {
-            nextFallYear = new Date().getFullYear();
-        } else {
-            const lastYearKey = Object.keys(allSemesters).sort().pop();
-            if (lastYearKey) {
-                const lastSemesters = allSemesters[lastYearKey];
-                const lastSemester = lastSemesters[lastSemesters.length - 1];
-                const lastYear = parseInt(lastSemester.title.split(' ')[1]);
-
-                nextFallYear = lastSemester.title.includes('Fall') ? lastYear + 1 : lastYear;
-            } else {
-                nextFallYear = new Date().getFullYear();
-            }
-        }
-
-        updatePlannerState({
-            semesters: {
-                ...allSemesters,
-                [nextYear]: [
-                    { title: `Fall ${nextFallYear}`, courses: [], isLocked: false }
-                ]
-            }
-        });
+        addYearAction(allSemesters);
     };
 
     const handleClearYear = (yearKey: string) => {
@@ -1126,141 +627,32 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     };
 
     const executeClearYear = (yearKey: string) => {
-        const courseCodesToRemove: string[] = [];
-        allSemesters[yearKey].forEach((semester) => {
-            if (!semester.isFromTranscript) {
-                semester.courses?.forEach((course: any) => {
-                    if (course.status === 'planned') {
-                        const code = course.course_code || course.code;
-                        if (code) courseCodesToRemove.push(code);
-                    }
-                });
-            }
-        });
-
-        const newState = JSON.parse(JSON.stringify(allSemesters));
-        newState[yearKey].forEach((semester: any) => {
-            if (!semester.isFromTranscript) {
-                semester.courses = [];
-            }
-        });
-
-        if (courseCodesToRemove.length > 0) {
-            const newPlaced = new Set(placedSuggestedCourses);
-            courseCodesToRemove.forEach(code => newPlaced.delete(code));
-            updatePlannerState({
-                semesters: newState,
-                placedCourses: Array.from(newPlaced)
-            });
-        } else {
-            updatePlannerState({ semesters: newState });
-        }
-        
+        clearYearAction(yearKey, allSemesters);
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
 
     const executeDeleteYear = (yearKey: string) => {
-        const courseCodesToRemove: string[] = [];
-        allSemesters[yearKey].forEach((semester) => {
-            semester.courses?.forEach((course: any) => {
-                if (course.status === 'planned') {
-                    const code = course.course_code || course.code;
-                    if (code) courseCodesToRemove.push(code);
-                }
-            });
-        });
-        
-        const newState = { ...allSemesters };
-        delete newState[yearKey];
-        
-        if (courseCodesToRemove.length > 0) {
-            const newPlaced = new Set(placedSuggestedCourses);
-            courseCodesToRemove.forEach(code => newPlaced.delete(code));
-            updatePlannerState({
-                semesters: newState,
-                placedCourses: Array.from(newPlaced)
-            });
-        } else {
-            updatePlannerState({ semesters: newState });
-        }
-            
-            setShowDeleteModal(false);
-            setSemesterToDelete(null);
-        };
+        deleteYearAction(yearKey, allSemesters);
+        setShowDeleteModal(false);
+        setSemesterToDelete(null);
+    };
 
     const handleAddSemester = (yearKey: string) => {
-        const yearSemesters = [...allSemesters[yearKey]];
-
-        if (yearSemesters.length >= 3) {
-            setError(`Cannot add more than 3 semesters (Fall, Spring, Summer) to ${yearKey.replace("year", "Year ")}`);
-            return;
-        }
-
-        setError(null);
-
-        const firstSemester = yearSemesters[0];
-        const baseYear = parseInt(firstSemester.title.split(' ')[1]);
-
-        const allPossibleSemesters = [
-            { title: `Fall ${baseYear}`, courses: [], isFromTranscript: false, isLocked: false },
-            { title: `Spring ${baseYear + 1}`, courses: [], isFromTranscript: false, isLocked: false },
-            { title: `Summer ${baseYear + 1}`, courses: [], isFromTranscript: false, isLocked: false }
-        ];
-
-        const existingTitles = yearSemesters.map(s => s.title);
-        const missingSemesters = allPossibleSemesters.filter(
-            sem => !existingTitles.includes(sem.title)
-        );
-
-        if (missingSemesters.length === 0) {
-            return;
-        }
-        
-        const updatedSemesters = [...yearSemesters, missingSemesters[0]];
-        updatedSemesters.sort((a, b) => {
-            const order: Record<string, number> = { 'Fall': 0, 'Spring': 1, 'Summer': 2 };
-            const seasonA = a.title.split(' ')[0];
-            const seasonB = b.title.split(' ')[0];
-            return order[seasonA] - order[seasonB];
-        });
-
-        updatePlannerState({
-            semesters: {
-                ...allSemesters,
-                [yearKey]: updatedSemesters
+        const result = addSemesterAction(yearKey, allSemesters);
+        if (!result.success) {
+            if (result.error) {
+                setError(result.error);
             }
-        });
+            return;
+        }
+        setError(null);
     };
 
     const handleClearSemester = (yearKey: string, semesterIndex: number) => {
         if (!semesterToDelete) return;
 
-        const semesterToClear = allSemesters[yearKey]?.[semesterIndex];
-        if (semesterToClear?.courses) {
-            const courseCodesToRemove: string[] = [];
-            semesterToClear.courses.forEach((course: any) => {
-                if (course.status === 'planned') {
-                    const courseCode = course.course_code || course.code;
-                    if (courseCode) {
-                        courseCodesToRemove.push(courseCode);
-                    }
-                }
-            });
-            
-            if (courseCodesToRemove.length > 0) {
-                const newPlaced = new Set(placedSuggestedCourses);
-                courseCodesToRemove.forEach(code => newPlaced.delete(code));
-                updatePlannerState({
-                    placedCourses: Array.from(newPlaced)
-                });
-            }
-        }
-
-        const newState = JSON.parse(JSON.stringify(allSemesters));
-        newState[yearKey][semesterIndex].courses = [];
-        updatePlannerState({ semesters: newState });
-       
+        clearSemesterAction(yearKey, semesterIndex, allSemesters);
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
@@ -1268,43 +660,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const handleRemoveSemester = (yearKey: string, semesterIndex: number) => {
         if (!semesterToDelete) return;
 
-        const semesterToRemove = allSemesters[yearKey]?.[semesterIndex];
-        if (semesterToRemove?.courses) {
-            const courseCodesToRemove: string[] = [];
-            semesterToRemove.courses.forEach((course: any) => {
-                if (course.status === 'planned') {
-                    const courseCode = course.course_code || course.code;
-                    if (courseCode) {
-                        courseCodesToRemove.push(courseCode);
-                    }
-                }
-            });
-            
-            if (courseCodesToRemove.length > 0) {
-                const newPlaced = new Set(placedSuggestedCourses);
-                courseCodesToRemove.forEach(code => newPlaced.delete(code));
-                updatePlannerState({
-                   placedCourses: Array.from(newPlaced) 
-                });
-            }
-        }
-        
-        const yearSemesters = [...allSemesters[yearKey]];
-        
-        if (yearSemesters.length === 1) {
-            const newState = { ...allSemesters };
-            delete newState[yearKey];
-            updatePlannerState({ semesters: newState });
-        } else {
-            yearSemesters.splice(semesterIndex, 1);
-            updatePlannerState({
-                semesters: {
-                    ...allSemesters,
-                    [yearKey]: yearSemesters
-                }
-            });
-        }
-        
+        removeSemesterAction(yearKey, semesterIndex, allSemesters);
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
@@ -1319,7 +675,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         <>
             <Toaster position="top-center" richColors />
             <PlannerNavbar
-                key={plannerData.activePlanId}
                 requirements={adaptedRequirements}
                 expandedCategories={expandedCategories}
                 onToggleCategory={toggleCategory}
@@ -1395,7 +750,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                 <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex-col gap-4 hidden md:flex">
                     <Sidebar
-                        key={plannerData.activePlanId}
                         requirements={adaptedRequirements}
                         expandedCategories={expandedCategories}
                         onToggleCategory={toggleCategory}
@@ -1451,7 +805,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 <ChevronDown size={18} />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-bglight rounded-2xl">
-                                {plannerData.plans.map(plan => (
+                                {plans.map(plan => (
                                     <DropdownMenuItem 
                                         key={plan.id}
                                         onClick={() => handleSwitchPlan(plan.id)}
@@ -1498,10 +852,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 
                                 <DropdownMenuItem 
                                     onClick={() => {
-                                        if (plannerData.plans.length === 1) return;
+                                        if (plans.length === 1) return;
                                         setShowPlanDeleteModal(true);
                                     }}
-                                    disabled={plannerData.plans.length === 1}
+                                    disabled={plans.length === 1}
                                     className="text-destructive focus:text-destructive hover:bg-gray-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <Trash2 className="w-4 h-4 mr-2" />
