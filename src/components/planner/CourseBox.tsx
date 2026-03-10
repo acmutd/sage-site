@@ -22,6 +22,8 @@ interface CourseBoxProps {
     onRemove?: () => void;
 }
 
+let closeActiveTooltip: (() => void) | null = null; // singleton to prevent multi-drags
+
 const DAY_ABBR: Record<string, string> = {
     Monday: "M", Tuesday: "Tu", Wednesday: "W", Thursday: "Th", Friday: "F"
 };
@@ -182,6 +184,12 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         }
     }, [isDragging]);
 
+    useEffect(() => {
+        return () => {
+            if (closeActiveTooltip) closeActiveTooltip = null;
+        };
+    }, []);
+    
     const dragRef = !isFromTranscript && !isPlaced ? drag : null;
 
     const getStatusStyles = () => {
@@ -233,6 +241,9 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
         if (inSidebar && canHover) {
+            if (closeActiveTooltip) closeActiveTooltip();
+            closeActiveTooltip = () => setShowTooltip(false);
+
             const rect = e.currentTarget.getBoundingClientRect();
             setTooltipPosition({ top: rect.top, left: rect.right + 10 });
             setShowTooltip(true);
@@ -242,7 +253,12 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const handleMouseLeave = () => {
         if (inSidebar) {
-            hideTimeoutRef.current = setTimeout(() => setShowTooltip(false), 200);
+            hideTimeoutRef.current = setTimeout(() => {
+                setShowTooltip(false);
+                if (closeActiveTooltip === (() => setShowTooltip(false))) {
+                    closeActiveTooltip = null;
+                }
+            }, 200);
         }
     };
 
