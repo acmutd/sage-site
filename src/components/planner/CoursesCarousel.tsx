@@ -23,6 +23,7 @@ interface CoursesCarouselProps {
         semesterIndex: number;
         semesterOrder: number;
     }>;
+    coursebookData?: Record<string, any[]>;
 }
 
 const normalizeCorequisiteGroups = (corequisites: unknown): string[][] => {
@@ -60,7 +61,8 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
     onAddCourse,
     allSuggestedCourses = [],
     allCompletedCourseCodes = [],
-    allPlannedCoursesWithOrder = []
+    allPlannedCoursesWithOrder = [],
+    coursebookData = {},
 }) => {
     const COURSES_PER_PAGE = 5;
     const [currentPage, setCurrentPage] = useState(0);
@@ -250,7 +252,8 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                     course_name: course.name || course.course_name,
                                     description: course.description,
                                     credits_planned: course.credits,
-                                    id: `suggested-${categoryName}-${courseCode}-${startIndex + idx}`
+                                    id: `suggested-${categoryName}-${courseCode}-${startIndex + idx}`,
+                                    sections: coursebookData[courseCode?.toLowerCase().replace(/\s+/g, "")] || []
                                 }}
                                 status="warning"
                                 icon="info"
