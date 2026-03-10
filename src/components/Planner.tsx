@@ -289,7 +289,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [hasUnsavedChanges]);
 
-
+    const [coursebookData, setCoursebookData] = useState<Record<string, any[]>>({});
     const [error, setError] = useState<string | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [semesterToDelete, setSemesterToDelete] = useState<{
