@@ -238,25 +238,33 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const shouldShowWarningIcon =
         inSidebar ? hasPrerequisiteWarning : !!warnings?.length;
 
+    const isActiveTooltipRef = useRef(false);
+    const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const tooltipAnimatedRef = useRef(false);
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
         if (inSidebar && canHover) {
             if (closeActiveTooltip) closeActiveTooltip();
-            closeActiveTooltip = () => setShowTooltip(false);
-
+            isActiveTooltipRef.current = true;
+            closeActiveTooltip = () => {
+                isActiveTooltipRef.current = false;
+                setShowTooltip(false);
+            };
+    
             const rect = e.currentTarget.getBoundingClientRect();
             setTooltipPosition({ top: rect.top, left: rect.right + 10 });
+            tooltipAnimatedRef.current = false;
             setShowTooltip(true);
         }
     };
-
-    const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    
     const handleMouseLeave = () => {
         if (inSidebar) {
             hideTimeoutRef.current = setTimeout(() => {
                 setShowTooltip(false);
-                if (closeActiveTooltip === (() => setShowTooltip(false))) {
+                if (isActiveTooltipRef.current) {
                     closeActiveTooltip = null;
+                    isActiveTooltipRef.current = false;
                 }
             }, 200);
         }
