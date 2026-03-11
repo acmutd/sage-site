@@ -590,17 +590,12 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                         }`}
                     />
                     <h3 className="text-base font-semibold text-gray-800 truncate">{title}</h3>
-                    {isCollapsed && courses.length > 0 && (
-                        <span className="ml-1.5 flex-shrink-0 text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
-                            {courses.length} course{courses.length !== 1 ? 's' : ''}
-                        </span>
-                    )}
                 </button>
 
                 {!isFromTranscript && (
                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                         {(prerequisiteCollisions || unmetPrerequisites || unmetCorequisites || creditWarnings || (isOver && projectedWarnings)) && (
-                            <div className="relative">
+                            <div className="relative flex items-center">
                                 <button
                                     ref={warningButtonRef}
                                     onMouseEnter={canHover ? () => setShowWarnings(true) : undefined}
@@ -777,6 +772,15 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                         )}
 
                         <button
+                            onClick={() => setShowSchedulePlanning(true)}
+                            data-tour="semester-planner"
+                            className={`hover:bg-gray-100 p-1 rounded ${locked ? "text-gray-700" : "text-gray-400"}`}
+                            title={locked ? "Unlock semester" : "Lock semester"}
+                        >
+                            <Calendar className="w-4 h-4" />
+                        </button>
+
+                        <button
                             onClick={handleLockToggle}
                             data-tour={dataTour ? "semester-lock" : undefined}
                             className={`hover:bg-gray-100 p-1 rounded ${locked ? "text-gray-700" : "text-gray-400"}`}
@@ -784,6 +788,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                         >
                             {locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
                         </button>
+
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <button data-tour={dataTour ? "semester-options" : undefined} className="hover:bg-gray-100 p-1 rounded">
@@ -805,19 +810,18 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                     <Trash2 className="w-4 h-4 mr-2" />
                                     Remove Semester
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    className="cursor-pointer hover:bg-gray-100 focus:bg-gray-100 data-[highlighted]:bg-gray-100"
-                                    onClick={() => setShowSchedulePlanning(true)}
-                                >
-                                    <Calendar className="w-4 h-4 mr-2" />
-                                    Plan Schedule
-                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
                 )}
             </div>
-
+            {isCollapsed && courses.length > 0 && (
+                <div className="mb-3">
+                    <span className="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+                        {courses.length} course{courses.length !== 1 ? 's' : ''}
+                    </span>
+                </div>
+            )}
             {!isCollapsed && (
                 <>
                     {isEmpty ? (

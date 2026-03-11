@@ -99,10 +99,10 @@ export function usePlannerTutorial({ scrollContainerRef, user }: UsePlannerTutor
                     onDeselected: () => {
                         if (!dropdownWasOpenedRef.current) {
                             setTimeout(() => {
-                                driverInstance.moveTo(17);
+                                driverInstance.moveTo(18);
                                 setTimeout(() => {
                                     driverInstance.destroy();
-                                    driverInstance.drive(16);
+                                    driverInstance.drive(17);
                                 }, 50);
                             }, 150);
                         }
@@ -138,6 +138,14 @@ export function usePlannerTutorial({ scrollContainerRef, user }: UsePlannerTutor
                         title: 'Semester Collapse/Expand',
                         description: 'You can expand/collapse semesters at any time.',
                         side: "top"
+                    }
+                },
+                {
+                    element: '[data-tour="semester-planner"]',
+                    popover: {
+                        title: 'Semester Planner',
+                        description: 'Pick your class sections and build a weekly schedule for this semester.',
+                        side: "left"
                     }
                 },
                 {
