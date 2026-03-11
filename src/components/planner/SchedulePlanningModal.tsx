@@ -713,35 +713,63 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                     style={{ accentColor: '#22c55e' }}
                                                                     className="flex-shrink-0" />
 
-                                                                <div className="flex-1 min-w-0 grid gap-2 items-center text-xs"
-                                                                    style={{ gridTemplateColumns: '100px 1fr 1fr 70px' }}>
-                                                                    <div>
-                                                                        <div className="font-semibold text-gray-800">
-                                                                            {sec.course_prefix?.toUpperCase()} {sec.course_number}.{secKey}
+                                                                <div className="flex-1 min-w-0 text-xs">
+                                                                    {/* Mobile: 2-row layout */}
+                                                                    <div className="sm:hidden">
+                                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                                            <span className="font-semibold text-gray-800">
+                                                                                {sec.course_prefix?.toUpperCase()} {sec.course_number}.{secKey}
+                                                                            </span>
+                                                                            <span className="text-gray-400">#{sec.class_number}</span>
+                                                                            {sec.session && <span className="text-[10px] text-blue-500">{sec.session}</span>}
+                                                                            <span className="text-gray-500">·</span>
+                                                                            <span className="font-medium text-gray-700 truncate">
+                                                                                {sec.instructors?.split(',')[0].trim()}{sec.instructors?.includes(',') ? ' +' : ''}
+                                                                            </span>
+                                                                            <span className="text-gray-400">{sec.activity_type}</span>
                                                                         </div>
-                                                                        <div className="text-gray-400">#{sec.class_number}</div>
-                                                                        {sec.session && (
-                                                                            <div className="text-[10px] text-blue-500 mt-0.5">{sec.session}</div>
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="min-w-0">
-                                                                        <div className="font-medium text-gray-700 truncate">
-                                                                            {sec.instructors?.split(',')[0].trim()}
-                                                                            {sec.instructors?.includes(',') ? ' +' : ''}
+                                                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                                            {sec.days && <DayPips days={sec.days} />}
+                                                                            <span className="text-gray-500">{sec.times_12h?.split(';')[0].trim()}</span>
+                                                                            <span className="text-gray-300">·</span>
+                                                                            <span className={`font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
+                                                                                {sec.location?.replace('_', ' ')}
+                                                                            </span>
+                                                                            <span className={`text-[10px] font-medium
+                                                                                ${modality === 'online' ? 'text-green-500' : modality === 'hybrid' ? 'text-blue-500' : 'text-gray-400'}`}>
+                                                                                {modality === 'online' ? 'Online' : modality === 'hybrid' ? 'Hybrid' : 'In Person'}
+                                                                            </span>
                                                                         </div>
-                                                                        <div className="text-gray-400">{sec.activity_type}</div>
                                                                     </div>
-                                                                    <div className="flex flex-col gap-1">
-                                                                        {sec.days && <DayPips days={sec.days} />}
-                                                                        <span className="text-gray-500">{sec.times_12h?.split(';')[0].trim()}</span>
-                                                                    </div>
-                                                                    <div>
-                                                                        <div className={`truncate font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
-                                                                            {sec.location?.replace('_', ' ')}
+
+                                                                    {/* Desktop: original 4-column grid */}
+                                                                    <div className="hidden sm:grid gap-2 items-center"
+                                                                        style={{ gridTemplateColumns: '100px 1fr 1fr 70px' }}>
+                                                                        <div>
+                                                                            <div className="font-semibold text-gray-800">
+                                                                                {sec.course_prefix?.toUpperCase()} {sec.course_number}.{secKey}
+                                                                            </div>
+                                                                            <div className="text-gray-400">#{sec.class_number}</div>
+                                                                            {sec.session && <div className="text-[10px] text-blue-500 mt-0.5">{sec.session}</div>}
                                                                         </div>
-                                                                        <div className={`text-[10px] mt-0.5 font-medium
-                                                                            ${modality === 'online' ? 'text-green-500' : modality === 'hybrid' ? 'text-blue-500' : 'text-gray-400'}`}>
-                                                                            {modality === 'online' ? 'Online' : modality === 'hybrid' ? 'Hybrid' : 'In Person'}
+                                                                        <div className="min-w-0">
+                                                                            <div className="font-medium text-gray-700 truncate">
+                                                                                {sec.instructors?.split(',')[0].trim()}{sec.instructors?.includes(',') ? ' +' : ''}
+                                                                            </div>
+                                                                            <div className="text-gray-400">{sec.activity_type}</div>
+                                                                        </div>
+                                                                        <div className="flex flex-col gap-1">
+                                                                            {sec.days && <DayPips days={sec.days} />}
+                                                                            <span className="text-gray-500">{sec.times_12h?.split(';')[0].trim()}</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className={`truncate font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
+                                                                                {sec.location?.replace('_', ' ')}
+                                                                            </div>
+                                                                            <div className={`text-[10px] mt-0.5 font-medium
+                                                                                ${modality === 'online' ? 'text-green-500' : modality === 'hybrid' ? 'text-blue-500' : 'text-gray-400'}`}>
+                                                                                {modality === 'online' ? 'Online' : modality === 'hybrid' ? 'Hybrid' : 'In Person'}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
