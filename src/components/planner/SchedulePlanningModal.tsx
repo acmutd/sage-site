@@ -224,7 +224,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     const [selectedSections, setSelectedSections] = useState<Record<string, string>>(initialSelectedSections ?? {});
     const [breaks, setBreaks] = useState<Break[]>([]);
     const [showFilters, setShowFilters] = useState(false);
-    const [showPreview, setShowPreview] = useState(true);
+    const [showPreview, setShowPreview] = useState(window.innerWidth >= 640);
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [sessionFilter, setSessionFilter] = useState<string>('all');
     const [modalityFilter, setModalityFilter] = useState<string>('all');
@@ -399,10 +399,8 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     return ReactDOM.createPortal(
         <>
             <div className="fixed inset-0 bg-black bg-opacity-40 z-[9998]" />
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
-                <div
-                    className={`bg-white rounded-xl shadow-2xl w-full max-h-[90vh] flex flex-col pointer-events-auto transition-all duration-300 ${showPreview ? 'max-w-5xl' : 'max-w-2xl'}`}
-                    onClick={e => e.stopPropagation()}>
+                <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
+                    <div className={`bg-white sm:rounded-xl rounded-t-2xl shadow-2xl w-full h-[95vh] sm:h-auto sm:max-h-[90vh] flex flex-col pointer-events-auto transition-all duration-300 ${showPreview ? 'sm:max-w-5xl' : 'sm:max-w-2xl'}`}>
 
                     {/* Header */}
                     <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
@@ -413,7 +411,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                 <p className="text-xs text-gray-500">{title}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
                             {/* Export dropdown */}
                             <div className="relative" ref={exportMenuRef}>
                                 <button
@@ -423,7 +421,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                         ${showExportMenu ? 'bg-accent' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}
                                         disabled:opacity-40 disabled:cursor-not-allowed`}>
                                     <Download className="w-3.5 h-3.5" />
-                                    Export
+                                    <span className="hidden sm:inline">Export</span>
                                 </button>
                                 {showExportMenu && (
                                     <div className="absolute right-0 top-9 z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 w-48"
@@ -460,15 +458,15 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                 className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors
                                     ${showPreview ? 'bg-accent' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                                 <CalendarDays className="w-3.5 h-3.5" />
-                                Preview
+                                <span className="hidden sm:inline">Preview</span>
                             </button>
                             <button onClick={() => setShowFilters(p => !p)}
                                 className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors
                                     ${showFilters ? 'bg-accent' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                                 <SlidersHorizontal className="w-3.5 h-3.5" />
-                                Filters
+                                <span className="hidden sm:inline">Filters</span>
                             </button>
-                            <button onClick={onClose} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400">
+                            <button onClick={onClose} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 flex-shrink-0">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
