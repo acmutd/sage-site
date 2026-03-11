@@ -34,7 +34,7 @@ const DAY_SHORT: Record<string, string> = {
 const GRID_START = 7 * 60;
 const GRID_END = 22 * 60;
 const GRID_DURATION = GRID_END - GRID_START; // 900 min
-const PX_PER_MIN = 1.1;
+const PX_PER_MIN = 1.4;
 const GRID_HEIGHT = GRID_DURATION * PX_PER_MIN;
 
 const COURSE_COLORS = [
@@ -53,8 +53,11 @@ const hexToColorSet = (hex: string): { bg: string; border: string; text: string 
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
-    const bg = `rgba(${r},${g},${b},0.15)`;
-    // darken for text
+    
+    // Mix with white instead of using rgba transparency
+    const mix = (v: number) => Math.round(v * 0.15 + 255 * 0.85);
+    const bg = `rgb(${mix(r)},${mix(g)},${mix(b)})`;
+    
     const darken = (v: number) => Math.max(0, Math.round(v * 0.45));
     const text = `rgb(${darken(r)},${darken(g)},${darken(b)})`;
     return { bg, border: hex, text };
@@ -238,6 +241,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     const [showDatePicker, setShowDatePicker] = useState<'ics' | 'gcal' | null>(null); // <-- added this because we need that session key passed from upstream
     const gridRef = useRef<HTMLDivElement>(null);
     const exportMenuRef = useRef<HTMLDivElement>(null);
+    const gridInnerRef = useRef<HTMLDivElement>(null);
 
     const toggleCollapse = (code: string) =>
         setCollapsedCourses(prev => {
@@ -387,9 +391,9 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     const hourLabels = Array.from({ length: 16 }, (_, i) => i + 7); // 7 to 22
 
     // exports
-    const handleExportPNG = () => { setShowExportMenu(false); if (gridRef.current) exportAsPNG(gridRef.current, title); };
-    const handleExportJPG = () => { setShowExportMenu(false); if (gridRef.current) exportAsJPG(gridRef.current, title); };
-    const handleExportPDF = () => { setShowExportMenu(false); if (gridRef.current) exportAsPDF(gridRef.current, title); };
+    const handleExportPNG = () => { setShowExportMenu(false); exportAsPNG(selectedSectionObjects, courseColorMap, title); };
+    const handleExportJPG = () => { setShowExportMenu(false); exportAsJPG(selectedSectionObjects, courseColorMap, title); };
+    const handleExportPDF = () => { setShowExportMenu(false); exportAsPDF(selectedSectionObjects, courseColorMap, title); };
     const handleExportCSV = () => { setShowExportMenu(false); exportAsCSV(selectedSectionObjects, title); };
 
     return ReactDOM.createPortal(
@@ -416,7 +420,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                     onClick={() => setShowExportMenu(p => !p)}
                                     disabled={selectedSectionObjects.length === 0}
                                     className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors
-                                        ${showExportMenu ? 'bg-green-700 text-white border-green-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}
+                                        ${showExportMenu ? 'bg-accent' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}
                                         disabled:opacity-40 disabled:cursor-not-allowed`}>
                                     <Download className="w-3.5 h-3.5" />
                                     Export
@@ -454,13 +458,13 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                             </div>
                             <button onClick={() => setShowPreview(p => !p)}
                                 className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors
-                                    ${showPreview ? 'bg-green-700 text-white border-green-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                                    ${showPreview ? 'bg-accent' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                                 <CalendarDays className="w-3.5 h-3.5" />
                                 Preview
                             </button>
                             <button onClick={() => setShowFilters(p => !p)}
                                 className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors
-                                    ${showFilters ? 'bg-green-700 text-white border-green-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                                    ${showFilters ? 'bg-accent' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                                 <SlidersHorizontal className="w-3.5 h-3.5" />
                                 Filters
                             </button>
@@ -472,14 +476,14 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
                     {/* Filter bar */}
                     {showFilters && (
-                        <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex gap-4 items-end overflow-x-auto overflow-y-hidden h-[72px] flex-shrink-0">
+                        <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex gap-4 items-end overflow-x-auto overflow-y-hidden flex-shrink-0">
                             <div className="flex flex-col gap-1 flex-shrink-0">
                                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Class Buffer</label>
                                 <div className="flex gap-1 items-center">
                                     {[0, 5, 10, 15, 30].map(min => (
                                         <button key={min} onClick={() => { setClassPadding(min); setCustomPadding(''); }}
                                             className={`text-xs px-2.5 py-1 rounded-md border transition-colors whitespace-nowrap
-                                                ${classPadding === min && customPadding === '' ? 'bg-green-700 text-white border-green-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
+                                                ${classPadding === min && customPadding === '' ? 'bg-accent' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
                                             {min === 0 ? 'None' : `${min}m`}
                                         </button>
                                     ))}
@@ -518,7 +522,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                     {MODALITY_OPTIONS.map(opt => (
                                         <button key={opt.value} onClick={() => setModalityFilter(opt.value)}
                                             className={`text-xs px-2.5 py-1 rounded-md border transition-colors whitespace-nowrap
-                                                ${modalityFilter === opt.value ? 'bg-green-700 text-white border-green-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
+                                                ${modalityFilter === opt.value ? 'bg-accent' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
                                             {opt.label}
                                         </button>
                                     ))}
@@ -530,7 +534,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                     {SORT_OPTIONS.map(opt => (
                                         <button key={opt.value} onClick={() => setSortBy(opt.value)}
                                             className={`text-xs px-2.5 py-1 rounded-md border transition-colors whitespace-nowrap
-                                                ${sortBy === opt.value ? 'bg-green-700 text-white border-green-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
+                                                ${sortBy === opt.value ? 'bg-accent' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
                                             {opt.label}
                                         </button>
                                     ))}
@@ -764,7 +768,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
                         {/* Right: weekly preview */}
                         {showPreview && (
-                            <div ref={gridRef} className="w-96 flex-shrink-0 border-l border-gray-200 flex flex-col overflow-hidden bg-white">
+                            <div ref={gridRef} className="w-[460px] flex-shrink-0 border-l border-gray-200 flex flex-col overflow-visible bg-white">
                                 {/* Day headers - sticky */}
                                 <div className="flex-shrink-0 border-b border-gray-200 bg-gray-50">
                                     <div className="flex">
@@ -779,7 +783,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
                                 {/* Scrollable grid */}
                                 <div className="overflow-y-auto flex-1">
-                                    <div className="flex" style={{ height: GRID_HEIGHT }}>
+                                    <div ref={gridInnerRef} className="flex" style={{ height: GRID_HEIGHT }}>
                                         {/* Time gutter */}
                                         <div className="w-8 flex-shrink-0 relative">
                                             {hourLabels.map(h => (
@@ -797,8 +801,8 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                 {/* Hour lines */}
                                                 {hourLabels.map(h => (
                                                     <div key={h}
-                                                        style={{ position: 'absolute', top: (h * 60 - GRID_START) * PX_PER_MIN, left: 0, right: 0 }}
-                                                        className="border-t border-gray-100" />
+                                                    style={{ position: 'absolute', top: (h * 60 - GRID_START) * PX_PER_MIN, left: 0, right: 0 }}
+                                                    className="border-t border-gray-200" /> 
                                                 ))}
 
                                                 {/* Break blocks */}
@@ -812,7 +816,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                     return (
                                                         <div key={brk.id}
                                                             style={{ position: 'absolute', top, height, left: 1, right: 1, backgroundColor: '#f3f4f6', borderLeft: '2px solid #9ca3af' }}
-                                                            className="rounded-sm overflow-hidden">
+                                                            className="rounded-sm overflow-visible">
                                                             <div className="text-[8px] text-gray-400 font-medium px-1 mt-0.5 truncate">{brk.label}</div>
                                                         </div>
                                                     );
@@ -838,15 +842,18 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                 position: 'absolute', top, height, left: 1, right: 1,
                                                                 backgroundColor: hasConflict ? '#fee2e2' : color.bg,
                                                                 borderLeft: `2px solid ${hasConflict ? '#ef4444' : color.border}`,
+                                                                borderRadius: '5px',
+                                                                
                                                             }}
-                                                            className="rounded-sm overflow-hidden px-1">
+                                                            className="rounded-sm px-1 pt-1.5">
+                                                            {/* NO overflow-hidden anywhere on the container */}
                                                             <div style={{ color: hasConflict ? '#991b1b' : color.text }}
-                                                                className="text-[8px] font-bold leading-tight mt-0.5 truncate">
+                                                                className="text-[11px] font-bold truncate">
                                                                 {sec.course_prefix?.toUpperCase()} {sec.course_number}
                                                             </div>
-                                                            {height > 24 && (
+                                                            {height > 18 && (
                                                                 <div style={{ color: hasConflict ? '#991b1b' : color.text }}
-                                                                    className="text-[7px] opacity-75 leading-tight truncate">
+                                                                    className="text-[10px] opacity-75 truncate">
                                                                     {sec.location?.replace('_', ' ')}
                                                                 </div>
                                                             )}
@@ -880,7 +887,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                             {plannableCourses.filter(p => p.sections.length > 0).length} courses with a section picked
                         </p>
                         <button onClick={() => { onSave?.(selectedSections, colorOverrides); onClose(); }}
-                            className="px-4 py-1.5 text-sm bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors">
+                            className="px-4 py-1.5 text-sm bg-accent rounded-md hover:bg-green-800 transition-colors">
                             Done
                         </button>
                     </div>

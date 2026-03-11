@@ -26,7 +26,6 @@
     "driver.js": "^1.4.0",
     "firebase": "^11.1.0",
     "fuse.js": "^7.1.0",
-    "html2canvas": "^1.4.1",
     "immer": "^11.1.4",
     "js-cookie": "^3.0.5",
     "jspdf": "^4.2.0",

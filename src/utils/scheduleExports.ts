@@ -1,4 +1,3 @@
-import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -31,43 +30,142 @@ const guessModality = (sec: any): string => {
     return 'inperson';
 };
 
-const captureGrid = async (gridEl: HTMLElement) => {
-    const prevOverflow = gridEl.style.overflow;
-    gridEl.style.overflow = 'visible';
-    const canvas = await html2canvas(gridEl, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        scrollY: -window.scrollY,
+// i got fed up with trying to capture the DOM, so let's just draw out the canvas and capture it that way!
+const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Record<string, any>, title: string): HTMLCanvasElement => {
+    const SCALE = 2;
+    const PX_PER_MIN = 1.4;
+    const GRID_START = 7 * 60;
+    const GRID_END = 22 * 60;
+    const GUTTER = 40;
+    const DAY_COUNT = 6;
+    const HEADER_H = 24;
+    const W = 460 * SCALE;
+    const DAY_W = ((460 - GUTTER) / DAY_COUNT) * SCALE;
+    const H = ((GRID_END - GRID_START) * PX_PER_MIN + HEADER_H) * SCALE;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(SCALE, SCALE);
+
+    const realW = W / SCALE;
+    const realH = H / SCALE;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, realW, realH);
+
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const DAY_SHORT: Record<string, string> = { Monday:'Mon', Tuesday:'Tue', Wednesday:'Wed', Thursday:'Thu', Friday:'Fri', Saturday:'Sat' };
+
+    const timeToY = (mins: number) => HEADER_H + (mins - GRID_START) * PX_PER_MIN;
+    const dayToX = (i: number) => GUTTER + i * (DAY_W / SCALE);
+
+    ctx.fillStyle = '#f9fafb';
+    ctx.fillRect(0, 0, realW, HEADER_H);
+    ctx.strokeStyle = '#d1d5db';
+    ctx.lineWidth = 0.75;
+    ctx.beginPath(); ctx.moveTo(0, HEADER_H); ctx.lineTo(realW, HEADER_H); ctx.stroke();
+
+    ctx.fillStyle = '#6b7280';
+    ctx.font = 'bold 9px system-ui';
+    ctx.textAlign = 'center';
+    DAYS.forEach((d, i) => {
+        ctx.fillText(DAY_SHORT[d].toUpperCase(), dayToX(i) + DAY_W / SCALE / 2, HEADER_H - 7);
     });
-    gridEl.style.overflow = prevOverflow;
+
+    for (let h = 7; h <= 22; h++) {
+        const y = timeToY(h * 60);
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(GUTTER, y); ctx.lineTo(realW, y); ctx.stroke();
+
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '8px system-ui';
+        ctx.textAlign = 'right';
+        const label = h === 12 ? '12pm' : h < 12 ? `${h}am` : `${h - 12}pm`;
+        ctx.fillText(label, GUTTER - 2, y + 3);
+    }
+
+    DAYS.forEach((_, i) => {
+        if (i === 0) return;
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 0.75;
+        ctx.beginPath(); ctx.moveTo(dayToX(i), HEADER_H); ctx.lineTo(dayToX(i), realH); ctx.stroke();
+    });
+
+    const parseTime12 = (timeStr: string) => {
+        const match = timeStr.split(';')[0].trim().match(/(\d+):(\d+)\s*(AM|PM)\s*[-–]\s*(\d+):(\d+)\s*(AM|PM)/i);
+        if (!match) return null;
+        const toMin = (h: string, m: string, ap: string) => {
+            let hrs = parseInt(h); const mins = parseInt(m);
+            if (ap.toUpperCase() === 'PM' && hrs !== 12) hrs += 12;
+            if (ap.toUpperCase() === 'AM' && hrs === 12) hrs = 0;
+            return hrs * 60 + mins;
+        };
+        return { start: toMin(match[1], match[2], match[3]), end: toMin(match[4], match[5], match[6]) };
+    };
+
+    selectedSectionObjects.forEach((sec: any) => {
+        const t = parseTime12(sec.times_12h);
+        if (!t) return;
+        const colorKey = `${sec.course_prefix?.toUpperCase()}${sec.course_number}`;
+        const color = courseColorMap[colorKey] || { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' };
+        const days = sec.days?.split(',').map((d: string) => d.trim()) ?? [];
+
+        days.forEach((day: string) => {
+            const di = DAYS.indexOf(day);
+            if (di === -1) return;
+            const x = dayToX(di) + 1;
+            const y = timeToY(Math.max(t.start, GRID_START));
+            const w = DAY_W / SCALE - 2;
+            const h = (Math.min(t.end, GRID_END) - Math.max(t.start, GRID_START)) * PX_PER_MIN;
+
+            ctx.fillStyle = color.bg;
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, h, 3);
+            ctx.fill();
+
+            ctx.fillStyle = color.border;
+            ctx.fillRect(x, y, 2, h);
+
+            ctx.fillStyle = color.text;
+            ctx.font = 'bold 9px system-ui';
+            ctx.textAlign = 'left';
+            ctx.fillText(`${sec.course_prefix?.toUpperCase()} ${sec.course_number}`, x + 4, y + 11, w - 6);
+
+            if (h > 20) {
+                ctx.font = '8px system-ui';
+                ctx.globalAlpha = 0.75;
+                ctx.fillText(sec.location?.replace('_', ' ') ?? '', x + 4, y + 21, w - 6);
+                ctx.globalAlpha = 1;
+            }
+        });
+    });
+
     return canvas;
 };
 
-export const exportAsPNG = async (gridEl: HTMLElement, title: string) => {
-    const canvas = await captureGrid(gridEl);
+export const exportAsPNG = (selectedSectionObjects: any[], courseColorMap: any, title: string) => {
+    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap, title);
     const link = document.createElement('a');
     link.download = `${title.replace(/\s+/g, '_')}_schedule.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
 };
 
-export const exportAsJPG = async (gridEl: HTMLElement, title: string) => {
-    const canvas = await captureGrid(gridEl);
+export const exportAsJPG = (selectedSectionObjects: any[], courseColorMap: any, title: string) => {
+    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap, title);
     const link = document.createElement('a');
     link.download = `${title.replace(/\s+/g, '_')}_schedule.jpg`;
     link.href = canvas.toDataURL('image/jpeg', 0.92);
     link.click();
 };
 
-export const exportAsPDF = async (gridEl: HTMLElement, title: string) => {
-    const canvas = await captureGrid(gridEl);
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [canvas.width / 2, canvas.height / 2],
-    });
-    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
+export const exportAsPDF = (selectedSectionObjects: any[], courseColorMap: any, title: string) => {
+    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap, title);
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width / 2, canvas.height / 2] });
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
     pdf.save(`${title.replace(/\s+/g, '_')}_schedule.pdf`);
 };
 
