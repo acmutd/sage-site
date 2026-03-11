@@ -219,6 +219,8 @@ const PlannerPage = () => {
 
       const token = await user.getIdToken();
       if (!token) throw new Error("Failed to retrieve auth token.");
+      
+      console.log("transcript going into evaluator", transcriptData);
 
       const response = await fetch(VITE_EVALUATOR_API, {
         method: "POST",

@@ -11,6 +11,14 @@ export const calculateCatalogYear = (semester: string): number => {
     return season === "Fall" ? parseInt(year) : parseInt(year) - 1;
 };
 
+export const calculateLatestYear = (): number => {
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
+  const season = month >= 8 ? "Fall" : month >= 5 ? "Summer" : "Spring";
+  return calculateCatalogYear(`${year} ${season}`);
+};
+
 export const isCurrentSemester = (title: string) => {
   const now = new Date();
   const month = now.getMonth(); // 0-11
