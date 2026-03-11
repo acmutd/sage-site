@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { X, TriangleAlert, CheckCircle, Calendar, Plus, Trash2, SlidersHorizontal, ChevronDown, ChevronUp, CalendarDays } from 'lucide-react';
+import { X, TriangleAlert, CheckCircle, Calendar, Plus, Trash2, SlidersHorizontal, ChevronDown, ChevronUp, CalendarDays, Download } from 'lucide-react';
+import { exportAsPNG, exportAsJPG, exportAsPDF, exportAsICS, exportToGoogleCalendar, exportAsCSV } from '@/utils/scheduleExports';
 import { Course } from '@/types/course';
 import ReactDOM from 'react-dom';
+import SemesterDatePickerPopover from './SemesterDatePickPopover';
 
 interface Break {
     id: string;
@@ -15,14 +17,17 @@ interface SchedulePlanningModalProps {
     title: string;
     courses: Course[];
     onClose: () => void;
+    onSave?: (selectedSections: Record<string, string>, colorOverrides: Record<string, string>) => void;
+    initialSelectedSections?: Record<string, string>;
+    initialColorOverrides?: Record<string, string>;
 }
 
 const DAY_ABBR: Record<string, string> = {
-    Monday: "M", Tuesday: "Tu", Wednesday: "W", Thursday: "Th", Friday: "F"
+    Monday: "M", Tuesday: "Tu", Wednesday: "W", Thursday: "Th", Friday: "F", Saturday: "S"
 };
-const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_SHORT: Record<string, string> = {
-    Monday: "Mon", Tuesday: "Tue", Wednesday: "Wed", Thursday: "Thu", Friday: "Fri"
+    Monday: "Mon", Tuesday: "Tue", Wednesday: "Wed", Thursday: "Thu", Friday: "Fri", Saturday: "Sat"
 };
 
 // 7am to 10pm
@@ -212,11 +217,12 @@ const guessModality = (sec: any): 'online' | 'hybrid' | 'inperson' => {
     return 'inperson';
 };
 
-const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, courses, onClose }) => {
-    const [selectedSections, setSelectedSections] = useState<Record<string, string>>({});
+const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, courses, onClose, onSave, initialSelectedSections, initialColorOverrides }) => {
+    const [selectedSections, setSelectedSections] = useState<Record<string, string>>(initialSelectedSections ?? {});
     const [breaks, setBreaks] = useState<Break[]>([]);
     const [showFilters, setShowFilters] = useState(false);
     const [showPreview, setShowPreview] = useState(true);
+    const [showExportMenu, setShowExportMenu] = useState(false);
     const [sessionFilter, setSessionFilter] = useState<string>('all');
     const [modalityFilter, setModalityFilter] = useState<string>('all');
     const [professorFilters, setProfessorFilters] = useState<Record<string, string>>({});
@@ -224,10 +230,14 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     const [newBreak, setNewBreak] = useState<Omit<Break, 'id'>>({ label: '', days: [], startTime: '12:00', endTime: '13:00' });
     const [showBreakForm, setShowBreakForm] = useState(false);
     const [collapsedCourses, setCollapsedCourses] = useState<Set<string>>(new Set());
-    const [colorOverrides, setColorOverrides] = useState<Record<string, string>>({});
+    const [colorOverrides, setColorOverrides] = useState<Record<string, string>>(initialColorOverrides ?? {});
     const [classPadding, setClassPadding] = useState<number>(0);
     const [paddingUnit, setPaddingUnit] = useState<'min' | 'hr'>('min');
     const [customPadding, setCustomPadding] = useState<string>('');
+    const [showDisclaimer, setShowDisclaimer] = useState(true);
+    const [showDatePicker, setShowDatePicker] = useState<'ics' | 'gcal' | null>(null); // <-- added this because we need that session key passed from upstream
+    const gridRef = useRef<HTMLDivElement>(null);
+    const exportMenuRef = useRef<HTMLDivElement>(null);
 
     const toggleCollapse = (code: string) =>
         setCollapsedCourses(prev => {
@@ -235,6 +245,17 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
             next.has(code) ? next.delete(code) : next.add(code);
             return next;
         });
+
+    // Close export menu on outside click
+    useEffect(() => {
+        if (!showExportMenu) return;
+        const handler = (e: MouseEvent) => {
+            if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node))
+                setShowExportMenu(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [showExportMenu]);
 
     const classPaddingMinutes = useMemo(() => {
         if (customPadding !== '') {
@@ -254,7 +275,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
             }));
     }, [courses]);
 
-    // random assign colors
+    // Assign a color to each course by index
     const courseColorMap = useMemo(() => {
         const map: Record<string, typeof COURSE_COLORS[0]> = {};
         plannableCourses.forEach(({ course }, i) => {
@@ -365,6 +386,12 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     // Hour labels for the grid
     const hourLabels = Array.from({ length: 16 }, (_, i) => i + 7); // 7 to 22
 
+    // exports
+    const handleExportPNG = () => { setShowExportMenu(false); if (gridRef.current) exportAsPNG(gridRef.current, title); };
+    const handleExportJPG = () => { setShowExportMenu(false); if (gridRef.current) exportAsJPG(gridRef.current, title); };
+    const handleExportPDF = () => { setShowExportMenu(false); if (gridRef.current) exportAsPDF(gridRef.current, title); };
+    const handleExportCSV = () => { setShowExportMenu(false); exportAsCSV(selectedSectionObjects, title); };
+
     return ReactDOM.createPortal(
         <>
             <div className="fixed inset-0 bg-black bg-opacity-40 z-[9998]" />
@@ -383,6 +410,48 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            {/* Export dropdown */}
+                            <div className="relative" ref={exportMenuRef}>
+                                <button
+                                    onClick={() => setShowExportMenu(p => !p)}
+                                    disabled={selectedSectionObjects.length === 0}
+                                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors
+                                        ${showExportMenu ? 'bg-green-700 text-white border-green-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}
+                                        disabled:opacity-40 disabled:cursor-not-allowed`}>
+                                    <Download className="w-3.5 h-3.5" />
+                                    Export
+                                </button>
+                                {showExportMenu && (
+                                    <div className="absolute right-0 top-9 z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 w-48"
+                                        onClick={e => e.stopPropagation()}>
+                                        <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Image</div>
+                                        <button onClick={handleExportPNG} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">PNG</button>
+                                        <button onClick={handleExportJPG} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">JPG</button>
+                                        <button onClick={handleExportPDF} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">PDF</button>
+                                        <div className="border-t border-gray-100 my-1" />
+                                        <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Calendar</div>
+                                        <div className="relative">
+                                            <button onClick={() => setShowDatePicker('ics')} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">iCal / ICS</button>
+                                            <button onClick={() => setShowDatePicker('gcal')} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">Google Calendar</button>
+                                            {showDatePicker && (
+                                                <SemesterDatePickerPopover
+                                                    onCancel={() => setShowDatePicker(null)}
+                                                    onConfirm={(range) => {
+                                                        if (showDatePicker === 'ics') exportAsICS(selectedSectionObjects, title, range);
+                                                        else exportToGoogleCalendar(selectedSectionObjects, range);
+                                                        setShowDatePicker(null);
+                                                        setShowExportMenu(false);
+                                                    }}
+                                                    // Future: prefillRange={semesterDateRange} when session data exists
+                                                />
+                                            )}
+                                        </div>
+                                        <div className="border-t border-gray-100 my-1" />
+                                        <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Data</div>
+                                        <button onClick={handleExportCSV} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">CSV</button>
+                                    </div>
+                                )}
+                            </div>
                             <button onClick={() => setShowPreview(p => !p)}
                                 className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors
                                     ${showPreview ? 'bg-green-700 text-white border-green-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
@@ -504,7 +573,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                 )}
 
                                 {breaks.map(brk => (
-                                    <div key={brk.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2 mb-1.5 gap-3">
+                                    <div key={brk.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-md px-3 py-2 mb-1.5 gap-3">
                                         <DayToggle selected={brk.days}
                                             onChange={days => setBreaks(prev => prev.map(b => b.id === brk.id ? { ...b, days } : b))} />
                                         <span className="text-xs font-medium text-gray-700 flex-1">{brk.label}</span>
@@ -517,7 +586,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                 ))}
 
                                 {showBreakForm && (
-                                    <div className="bg-white border border-gray-200 rounded-lg px-3 py-3 mt-2 space-y-2.5">
+                                    <div className="bg-white border border-gray-200 rounded-md px-3 py-3 mt-2 space-y-2.5">
                                         <input type="text" placeholder="Label (e.g. Lunch)"
                                             value={newBreak.label}
                                             onChange={e => setNewBreak(p => ({ ...p, label: e.target.value }))}
@@ -675,10 +744,13 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                     </div>
                                                                 </div>
 
-                                                                {(isConflictingSelected || wouldConflictIfSelected) && (
-                                                                    <TriangleAlert className={`w-3.5 h-3.5 flex-shrink-0
-                                                                        ${isConflictingSelected ? 'text-red-500' : 'text-orange-400'}`} />
-                                                                )}
+                                                                <TriangleAlert className={`w-3.5 h-3.5 flex-shrink-0
+                                                                    ${isConflictingSelected
+                                                                        ? 'text-red-500'
+                                                                        : wouldConflictIfSelected
+                                                                            ? 'text-orange-400'
+                                                                            : 'invisible'}`} />
+                                                                
                                                             </label>
                                                         );
                                                     })}
@@ -692,7 +764,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
                         {/* Right: weekly preview */}
                         {showPreview && (
-                            <div className="w-72 flex-shrink-0 border-l border-gray-200 flex flex-col overflow-hidden">
+                            <div ref={gridRef} className="w-96 flex-shrink-0 border-l border-gray-200 flex flex-col overflow-hidden bg-white">
                                 {/* Day headers - sticky */}
                                 <div className="flex-shrink-0 border-b border-gray-200 bg-gray-50">
                                     <div className="flex">
@@ -789,13 +861,25 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                         )}
                     </div>
 
+                    {/* Disclaimer */}
+                    {showDisclaimer && (
+                        <div className="px-5 py-2 bg-amber-50 border-t border-amber-100 flex-shrink-0 flex items-center justify-between gap-3">
+                            <p className="text-[10px] text-amber-700 leading-relaxed">
+                                Section availability is not real-time and is subject to change. Always verify openings in your university's official schedule planner before registering.
+                            </p>
+                            <button onClick={() => setShowDisclaimer(false)} className="text-amber-400 hover:text-amber-600 flex-shrink-0">
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    )}
+
                     {/* Footer */}
                     <div className="px-5 py-3 border-t border-gray-200 flex items-center justify-between bg-gray-50 rounded-b-xl flex-shrink-0">
                         <p className="text-xs text-gray-500">
                             {Object.keys(selectedSections).length} of{' '}
                             {plannableCourses.filter(p => p.sections.length > 0).length} courses with a section picked
                         </p>
-                        <button onClick={onClose}
+                        <button onClick={() => { onSave?.(selectedSections, colorOverrides); onClose(); }}
                             className="px-4 py-1.5 text-sm bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors">
                             Done
                         </button>

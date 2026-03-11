@@ -1,3 +1,4 @@
+import { MoveRight } from "lucide-react";
 import React from "react";
 
 interface Message {
@@ -71,7 +72,7 @@ const ChatConversationCard: React.FC<ChatConversationCardProps> = ({
         <div className="relative bottom-4 right-2 flex flex-col gap-0.5">
           <p className="text-3xl font-semibold text-gray-900">{messages.length}</p>
           <p className="text-gray-700 text-sm font-medium">Messages</p>
-          <p className="text-green-500 text-sm">Continue →</p>
+          <p className="text-green-500 text-sm">Continue</p><MoveRight />
         </div>
       </div>
     </div>

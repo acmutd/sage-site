@@ -25,7 +25,7 @@ interface CourseBoxProps {
 let closeActiveTooltip: (() => void) | null = null; // singleton to prevent multi-drags
 
 const DAY_ABBR: Record<string, string> = {
-    Monday: "M", Tuesday: "Tu", Wednesday: "W", Thursday: "Th", Friday: "F"
+    Monday: "M", Tuesday: "Tu", Wednesday: "W", Thursday: "Th", Friday: "F", Saturday: "S"
 };
 
 const DayPips = ({ days }: { days: string }) => {

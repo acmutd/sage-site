@@ -13,6 +13,8 @@ import {
 } from "@/utils/prerequisiteUtils";
 import ReactDOM from "react-dom";
 import SchedulePlanningModal from "@/components/planner/SchedulePlanningModal";
+import { toast } from "sonner";
+import { usePlannerStore } from "@/stores/plannerStore";
 
 interface SemesterBoxProps {
     title: string;
@@ -117,7 +119,9 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     const [popoverPosition, setPopoverPosition] = useState({ top: 0, right: 0 });
     const [showSchedulePlanning, setShowSchedulePlanning] = useState(false);
     const warningButtonRef = useRef<HTMLButtonElement>(null);
-    
+    const { saveSchedulePlan, plans, activePlanId } = usePlannerStore();
+    const activePlan = plans.find(p => p.id === activePlanId);
+
     const handleLockToggle = () => setLocked(prev => !prev);
 
     useEffect(() => {
@@ -879,6 +883,13 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                         sections: coursebookData[c.course_code?.toLowerCase().replace(/\s+/g, '')] || []
                     }))}
                     onClose={() => setShowSchedulePlanning(false)}
+                    onSave={(sections, colors) => {
+                        saveSchedulePlan(title, sections, colors);
+                        toast.success('Schedule saved!');
+                        setShowSchedulePlanning(false);
+                    }}
+                    initialSelectedSections={activePlan?.schedulePlan?.[title]?.selectedSections}
+                    initialColorOverrides={activePlan?.schedulePlan?.[title]?.colorOverrides}
                 />
             )}
         </div>
