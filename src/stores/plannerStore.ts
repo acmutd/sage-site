@@ -18,6 +18,12 @@ interface SavedPlannerState {
     placedCourses: string[];
     lastModified: number;
     evaluation: any;
+    schedulePlan?: {
+        [semesterTitle: string]: {
+            selectedSections: Record<string, string>; // courseCode to sectionKey
+            colorOverrides: Record<string, string>; // courseCode to hex
+        }
+    };
 }
 
 interface PlannerData {
@@ -56,9 +62,12 @@ interface PlannerStore extends PlannerData {
         allSemesters: any;
     }) => { success: boolean; error?: string };
     
+    // schedule generation 
+    saveSchedulePlan: (semesterTitle: string, selectedSections: Record<string, string>, colorOverrides: Record<string, string>) => void;
+
     // Helper to update active plan
     updateActivePlan: (updates: Partial<SavedPlannerState>) => void;
-    
+
     // Cloud Sync
     syncFromCloud: (cloudData: { plans: SavedPlannerState[]; activePlanId: string }) => void;
 }
@@ -542,6 +551,17 @@ export const usePlannerStore = create<PlannerStore>()(
                 });
             },
             
+            saveSchedulePlan: (semesterTitle, selectedSections, colorOverrides) => {
+                set((state) => {
+                    const plan = state.plans.find(p => p.id === state.activePlanId);
+                    if (plan) {
+                        if (!plan.schedulePlan) plan.schedulePlan = {};
+                        plan.schedulePlan[semesterTitle] = { selectedSections, colorOverrides };
+                        plan.lastModified = Date.now();
+                    }
+                });
+            },
+
             // Cloud Sync
             syncFromCloud: (cloudData: { plans: SavedPlannerState[]; activePlanId: string }) => {
                 set((state) => {
