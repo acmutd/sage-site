@@ -31,7 +31,7 @@ const guessModality = (sec: any): string => {
 };
 
 // i got fed up with trying to capture the DOM, so let's just draw out the canvas and capture it that way!
-const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Record<string, any>, title: string): HTMLCanvasElement => {
+const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Record<string, any>): HTMLCanvasElement => {
     const SCALE = 2;
     const PX_PER_MIN = 1.4;
     const GRID_START = 7 * 60;
@@ -94,18 +94,6 @@ const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Rec
         ctx.beginPath(); ctx.moveTo(dayToX(i), HEADER_H); ctx.lineTo(dayToX(i), realH); ctx.stroke();
     });
 
-    const parseTime12 = (timeStr: string) => {
-        const match = timeStr.split(';')[0].trim().match(/(\d+):(\d+)\s*(AM|PM)\s*[-–]\s*(\d+):(\d+)\s*(AM|PM)/i);
-        if (!match) return null;
-        const toMin = (h: string, m: string, ap: string) => {
-            let hrs = parseInt(h); const mins = parseInt(m);
-            if (ap.toUpperCase() === 'PM' && hrs !== 12) hrs += 12;
-            if (ap.toUpperCase() === 'AM' && hrs === 12) hrs = 0;
-            return hrs * 60 + mins;
-        };
-        return { start: toMin(match[1], match[2], match[3]), end: toMin(match[4], match[5], match[6]) };
-    };
-
     selectedSectionObjects.forEach((sec: any) => {
         const t = parseTime12(sec.times_12h);
         if (!t) return;
@@ -147,7 +135,7 @@ const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Rec
 };
 
 export const exportAsPNG = (selectedSectionObjects: any[], courseColorMap: any, title: string) => {
-    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap, title);
+    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap);
     const link = document.createElement('a');
     link.download = `${title.replace(/\s+/g, '_')}_schedule.png`;
     link.href = canvas.toDataURL('image/png');
@@ -155,7 +143,7 @@ export const exportAsPNG = (selectedSectionObjects: any[], courseColorMap: any, 
 };
 
 export const exportAsJPG = (selectedSectionObjects: any[], courseColorMap: any, title: string) => {
-    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap, title);
+    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap);
     const link = document.createElement('a');
     link.download = `${title.replace(/\s+/g, '_')}_schedule.jpg`;
     link.href = canvas.toDataURL('image/jpeg', 0.92);
@@ -163,7 +151,7 @@ export const exportAsJPG = (selectedSectionObjects: any[], courseColorMap: any, 
 };
 
 export const exportAsPDF = (selectedSectionObjects: any[], courseColorMap: any, title: string) => {
-    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap, title);
+    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap);
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width / 2, canvas.height / 2] });
     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
     pdf.save(`${title.replace(/\s+/g, '_')}_schedule.pdf`);
