@@ -20,6 +20,7 @@ interface CourseBoxProps {
     hasWarningBorder?: boolean;
     onAdd?: () => void;
     onRemove?: () => void;
+    hideSections?: boolean;
 }
 
 let closeActiveTooltip: (() => void) | null = null; // singleton to prevent multi-drags
@@ -123,7 +124,8 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     warnings = null,
     hasWarningBorder = false,
     onAdd,
-    onRemove
+    onRemove,
+    hideSections = false,
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -314,7 +316,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     };
 
     const sections: any[] = 
-        (course.status === "completed" || course.status === "in progress")
+        (hideSections || course.status === "completed" || course.status === "in progress")
             ? []
             : (course as any).sections || [];
 
