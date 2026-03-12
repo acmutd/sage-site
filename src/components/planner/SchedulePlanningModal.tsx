@@ -224,7 +224,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     const [selectedSections, setSelectedSections] = useState<Record<string, string>>(initialSelectedSections ?? {});
     const [breaks, setBreaks] = useState<Break[]>([]);
     const [showFilters, setShowFilters] = useState(false);
-    const [showPreview, setShowPreview] = useState(true);
+    const [showPreview, setShowPreview] = useState(window.innerWidth >= 640);
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [sessionFilter, setSessionFilter] = useState<string>('all');
     const [modalityFilter, setModalityFilter] = useState<string>('all');
@@ -399,10 +399,8 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     return ReactDOM.createPortal(
         <>
             <div className="fixed inset-0 bg-black bg-opacity-40 z-[9998]" />
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
-                <div
-                    className={`bg-white rounded-xl shadow-2xl w-full max-h-[90vh] flex flex-col pointer-events-auto transition-all duration-300 ${showPreview ? 'max-w-5xl' : 'max-w-2xl'}`}
-                    onClick={e => e.stopPropagation()}>
+                <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
+                    <div className={`bg-white sm:rounded-xl rounded-t-2xl shadow-2xl w-full h-[95vh] sm:h-auto sm:max-h-[90vh] flex flex-col pointer-events-auto transition-all duration-300 ${showPreview ? 'sm:max-w-5xl' : 'sm:max-w-2xl'}`}>
 
                     {/* Header */}
                     <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
@@ -413,7 +411,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                 <p className="text-xs text-gray-500">{title}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
                             {/* Export dropdown */}
                             <div className="relative" ref={exportMenuRef}>
                                 <button
@@ -423,7 +421,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                         ${showExportMenu ? 'bg-accent' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}
                                         disabled:opacity-40 disabled:cursor-not-allowed`}>
                                     <Download className="w-3.5 h-3.5" />
-                                    Export
+                                    <span className="hidden sm:inline">Export</span>
                                 </button>
                                 {showExportMenu && (
                                     <div className="absolute right-0 top-9 z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 w-48"
@@ -460,15 +458,15 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                 className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors
                                     ${showPreview ? 'bg-accent' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                                 <CalendarDays className="w-3.5 h-3.5" />
-                                Preview
+                                <span className="hidden sm:inline">Preview</span>
                             </button>
                             <button onClick={() => setShowFilters(p => !p)}
                                 className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors
                                     ${showFilters ? 'bg-accent' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                                 <SlidersHorizontal className="w-3.5 h-3.5" />
-                                Filters
+                                <span className="hidden sm:inline">Filters</span>
                             </button>
-                            <button onClick={onClose} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400">
+                            <button onClick={onClose} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 flex-shrink-0">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
@@ -560,7 +558,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                     <div className="flex flex-row flex-1 overflow-hidden">
 
                         {/* Left: picker */}
-                        <div className="flex-1 overflow-y-auto divide-y divide-gray-100 min-w-0">
+                        <div className={`flex-1 overflow-y-auto divide-y divide-gray-100 min-w-0 ${showPreview ? 'hidden sm:block' : ''}`}>
 
                             {/* Breaks */}
                             <div className="px-5 py-4 bg-gray-50">
@@ -650,7 +648,6 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                 <button onClick={() => toggleCollapse(code)} className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">
                                                     <ChevronUp className={`w-4 h-4 transition-transform ${collapsedCourses.has(code) ? '-rotate-180' : ''}`} />
                                                 </button>
-                                                {/* Color dot matching calendar */}
                                                 {courseColor && (
                                                     <ColorDotPicker
                                                         color={courseColor.border}
@@ -659,7 +656,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                 )}
                                                 <span className="text-sm font-semibold text-gray-900 flex-shrink-0">{code}</span>
                                                 {course.course_name && (
-                                                    <span className="text-xs text-gray-500 line-clamp-1">{course.course_name}</span>
+                                                    <span className="text-xs text-gray-500 truncate hidden sm:block">{course.course_name}</span>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-2 flex-shrink-0">
@@ -668,8 +665,8 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                         <select
                                                             value={professorFilters[code] ?? 'all'}
                                                             onChange={e => setProfessorFilters(prev => ({ ...prev, [code]: e.target.value }))}
-                                                            style={{ width: `${professorDropdownWidth}px` }}
-                                                            className="text-xs border border-gray-200 rounded-md px-2.5 py-1 pr-7 bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-400">
+                                                            style={{ width: window.innerWidth >= 640 ? `${professorDropdownWidth}px` : undefined }}
+                                                            className="text-xs border border-gray-200 rounded-md px-2.5 py-1 pr-7 bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-400 max-w-[120px] sm:max-w-none">
                                                             <option value="all">All Professors</option>
                                                             {courseProfessors.map(p => <option key={p} value={p}>{p}</option>)}
                                                         </select>
@@ -677,12 +674,20 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                     </div>
                                                 )}
                                                 {selectedKey && (
-                                                    <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-medium whitespace-nowrap">
+                                                    <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-medium whitespace-nowrap hidden sm:block">
                                                         {code}.{selectedKey} selected
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
+
+                                        {selectedKey && (
+                                            <div className="sm:hidden mb-2">
+                                                <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-medium">
+                                                    {code}.{selectedKey} selected
+                                                </span>
+                                            </div>
+                                        )}
 
                                         {!collapsedCourses.has(code) && (
                                             filtered.length === 0 ? (
@@ -715,35 +720,63 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                     style={{ accentColor: '#22c55e' }}
                                                                     className="flex-shrink-0" />
 
-                                                                <div className="flex-1 min-w-0 grid gap-2 items-center text-xs"
-                                                                    style={{ gridTemplateColumns: '100px 1fr 1fr 70px' }}>
-                                                                    <div>
-                                                                        <div className="font-semibold text-gray-800">
-                                                                            {sec.course_prefix?.toUpperCase()} {sec.course_number}.{secKey}
+                                                                <div className="flex-1 min-w-0 text-xs">
+                                                                    {/* Mobile: 2-row layout */}
+                                                                    <div className="sm:hidden">
+                                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                                            <span className="font-semibold text-gray-800">
+                                                                                {sec.course_prefix?.toUpperCase()} {sec.course_number}.{secKey}
+                                                                            </span>
+                                                                            <span className="text-gray-400">#{sec.class_number}</span>
+                                                                            {sec.session && <span className="text-[10px] text-blue-500">{sec.session}</span>}
+                                                                            <span className="text-gray-500">·</span>
+                                                                            <span className="font-medium text-gray-700 truncate">
+                                                                                {sec.instructors?.split(',')[0].trim()}{sec.instructors?.includes(',') ? ' +' : ''}
+                                                                            </span>
+                                                                            <span className="text-gray-400">{sec.activity_type}</span>
                                                                         </div>
-                                                                        <div className="text-gray-400">#{sec.class_number}</div>
-                                                                        {sec.session && (
-                                                                            <div className="text-[10px] text-blue-500 mt-0.5">{sec.session}</div>
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="min-w-0">
-                                                                        <div className="font-medium text-gray-700 truncate">
-                                                                            {sec.instructors?.split(',')[0].trim()}
-                                                                            {sec.instructors?.includes(',') ? ' +' : ''}
+                                                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                                            {sec.days && <DayPips days={sec.days} />}
+                                                                            <span className="text-gray-500">{sec.times_12h?.split(';')[0].trim()}</span>
+                                                                            <span className="text-gray-300">·</span>
+                                                                            <span className={`font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
+                                                                                {sec.location?.replace('_', ' ')}
+                                                                            </span>
+                                                                            <span className={`text-[10px] font-medium
+                                                                                ${modality === 'online' ? 'text-green-500' : modality === 'hybrid' ? 'text-blue-500' : 'text-gray-400'}`}>
+                                                                                {modality === 'online' ? 'Online' : modality === 'hybrid' ? 'Hybrid' : 'In Person'}
+                                                                            </span>
                                                                         </div>
-                                                                        <div className="text-gray-400">{sec.activity_type}</div>
                                                                     </div>
-                                                                    <div className="flex flex-col gap-1">
-                                                                        {sec.days && <DayPips days={sec.days} />}
-                                                                        <span className="text-gray-500">{sec.times_12h?.split(';')[0].trim()}</span>
-                                                                    </div>
-                                                                    <div>
-                                                                        <div className={`truncate font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
-                                                                            {sec.location?.replace('_', ' ')}
+
+                                                                    {/* Desktop: original 4-column grid */}
+                                                                    <div className="hidden sm:grid gap-2 items-center"
+                                                                        style={{ gridTemplateColumns: '100px 1fr 1fr 70px' }}>
+                                                                        <div>
+                                                                            <div className="font-semibold text-gray-800">
+                                                                                {sec.course_prefix?.toUpperCase()} {sec.course_number}.{secKey}
+                                                                            </div>
+                                                                            <div className="text-gray-400">#{sec.class_number}</div>
+                                                                            {sec.session && <div className="text-[10px] text-blue-500 mt-0.5">{sec.session}</div>}
                                                                         </div>
-                                                                        <div className={`text-[10px] mt-0.5 font-medium
-                                                                            ${modality === 'online' ? 'text-green-500' : modality === 'hybrid' ? 'text-blue-500' : 'text-gray-400'}`}>
-                                                                            {modality === 'online' ? 'Online' : modality === 'hybrid' ? 'Hybrid' : 'In Person'}
+                                                                        <div className="min-w-0">
+                                                                            <div className="font-medium text-gray-700 truncate">
+                                                                                {sec.instructors?.split(',')[0].trim()}{sec.instructors?.includes(',') ? ' +' : ''}
+                                                                            </div>
+                                                                            <div className="text-gray-400">{sec.activity_type}</div>
+                                                                        </div>
+                                                                        <div className="flex flex-col gap-1">
+                                                                            {sec.days && <DayPips days={sec.days} />}
+                                                                            <span className="text-gray-500">{sec.times_12h?.split(';')[0].trim()}</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className={`truncate font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
+                                                                                {sec.location?.replace('_', ' ')}
+                                                                            </div>
+                                                                            <div className={`text-[10px] mt-0.5 font-medium
+                                                                                ${modality === 'online' ? 'text-green-500' : modality === 'hybrid' ? 'text-blue-500' : 'text-gray-400'}`}>
+                                                                                {modality === 'online' ? 'Online' : modality === 'hybrid' ? 'Hybrid' : 'In Person'}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -766,9 +799,9 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                             })}
                         </div>
 
-                        {/* Right: weekly preview */}
+                        {/* Right: weekly preview*/}
                         {showPreview && (
-                            <div ref={gridRef} className="w-[460px] flex-shrink-0 border-l border-gray-200 flex flex-col overflow-visible bg-white">
+                            <div ref={gridRef} className="flex-1 sm:flex-none sm:w-[460px] flex-shrink-0 border-l border-gray-200 flex flex-col overflow-visible bg-white">
                                 {/* Day headers - sticky */}
                                 <div className="flex-shrink-0 border-b border-gray-200 bg-gray-50">
                                     <div className="flex">
