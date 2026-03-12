@@ -558,7 +558,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                     <div className="flex flex-row flex-1 overflow-hidden">
 
                         {/* Left: picker */}
-                        <div className="flex-1 overflow-y-auto divide-y divide-gray-100 min-w-0">
+                        <div className={`flex-1 overflow-y-auto divide-y divide-gray-100 min-w-0 ${showPreview ? 'hidden sm:block' : ''}`}>
 
                             {/* Breaks */}
                             <div className="px-5 py-4 bg-gray-50">
@@ -648,7 +648,6 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                 <button onClick={() => toggleCollapse(code)} className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">
                                                     <ChevronUp className={`w-4 h-4 transition-transform ${collapsedCourses.has(code) ? '-rotate-180' : ''}`} />
                                                 </button>
-                                                {/* Color dot matching calendar */}
                                                 {courseColor && (
                                                     <ColorDotPicker
                                                         color={courseColor.border}
@@ -657,7 +656,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                 )}
                                                 <span className="text-sm font-semibold text-gray-900 flex-shrink-0">{code}</span>
                                                 {course.course_name && (
-                                                    <span className="text-xs text-gray-500 line-clamp-1">{course.course_name}</span>
+                                                    <span className="text-xs text-gray-500 truncate hidden sm:block">{course.course_name}</span>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-2 flex-shrink-0">
@@ -666,8 +665,8 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                         <select
                                                             value={professorFilters[code] ?? 'all'}
                                                             onChange={e => setProfessorFilters(prev => ({ ...prev, [code]: e.target.value }))}
-                                                            style={{ width: `${professorDropdownWidth}px` }}
-                                                            className="text-xs border border-gray-200 rounded-md px-2.5 py-1 pr-7 bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-400">
+                                                            style={{ width: window.innerWidth >= 640 ? `${professorDropdownWidth}px` : undefined }}
+                                                            className="text-xs border border-gray-200 rounded-md px-2.5 py-1 pr-7 bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-400 max-w-[120px] sm:max-w-none">
                                                             <option value="all">All Professors</option>
                                                             {courseProfessors.map(p => <option key={p} value={p}>{p}</option>)}
                                                         </select>
@@ -675,12 +674,20 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                     </div>
                                                 )}
                                                 {selectedKey && (
-                                                    <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-medium whitespace-nowrap">
+                                                    <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-medium whitespace-nowrap hidden sm:block">
                                                         {code}.{selectedKey} selected
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
+
+                                        {selectedKey && (
+                                            <div className="sm:hidden mb-2">
+                                                <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-medium">
+                                                    {code}.{selectedKey} selected
+                                                </span>
+                                            </div>
+                                        )}
 
                                         {!collapsedCourses.has(code) && (
                                             filtered.length === 0 ? (
@@ -792,9 +799,9 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                             })}
                         </div>
 
-                        {/* Right: weekly preview */}
+                        {/* Right: weekly preview*/}
                         {showPreview && (
-                            <div ref={gridRef} className="w-[460px] flex-shrink-0 border-l border-gray-200 flex flex-col overflow-visible bg-white">
+                            <div ref={gridRef} className="flex-1 sm:flex-none sm:w-[460px] flex-shrink-0 border-l border-gray-200 flex flex-col overflow-visible bg-white">
                                 {/* Day headers - sticky */}
                                 <div className="flex-shrink-0 border-b border-gray-200 bg-gray-50">
                                     <div className="flex">
