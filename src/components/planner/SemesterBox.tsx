@@ -123,10 +123,6 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     const activePlan = plans.find(p => p.id === activePlanId);
     const [_, setHasPulsed] = useState(false);
     const [hasOpenedSchedule, setHasOpenedSchedule] = useState(false);
-    const isSummer = title.toLowerCase().includes('summer');
-    const scheduleState = getScheduleButtonState(courses, studentType, catalogYear, isSummer);
-
-    const prevScheduleState = useRef(scheduleState);
 
     const handleLockToggle = () => setLocked(prev => !prev);
 
@@ -157,14 +153,6 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
             });
         }
     }, [showWarnings, canHover]);
-
-    useEffect(() => {
-        if (prevScheduleState.current !== 'pulse' && scheduleState === 'pulse') {
-            setHasPulsed(false); // reset so animation can fire
-            requestAnimationFrame(() => setHasPulsed(true)); // trigger on next frame
-        }
-        prevScheduleState.current = scheduleState;
-    }, [scheduleState]);
 
     const plannedSemestersByCode = new Map<string, string[]>();
     if (allPlannedCoursesWithOrder.length > 0) {
@@ -466,6 +454,20 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         });
     });
 
+    const isSummer = title.toLowerCase().includes('summer');
+    const hasWarnings = !!(prerequisiteCollisions || unmetPrerequisites || unmetCorequisites || creditWarnings);
+    const scheduleState = getScheduleButtonState(courses, studentType, catalogYear, isSummer);
+
+    const prevScheduleState = useRef(scheduleState);
+
+    useEffect(() => {
+        if (prevScheduleState.current !== 'pulse' && scheduleState === 'pulse') {
+            setHasPulsed(false); // reset so animation can fire
+            requestAnimationFrame(() => setHasPulsed(true)); // trigger on next frame
+        }
+        prevScheduleState.current = scheduleState;
+    }, [scheduleState]);
+
     const handleClearClick = () => {
         if (locked) {
             onShowError?.(`${title} needs to be unlocked to clear courses.`);
@@ -576,6 +578,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         </>
     );
 
+    const effectivelyDisabled = hasWarnings || scheduleState === 'disabled';
     const shouldPulse = scheduleState === 'pulse' && !hasOpenedSchedule;
 
     return (
@@ -789,7 +792,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
 
                         <button
                             onClick={() => {
-                                if (scheduleState !== 'disabled') {
+                                if (!effectivelyDisabled) {
                                     setHasOpenedSchedule(true);
                                     setShowSchedulePlanning(true);
                                 }
@@ -801,11 +804,19 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                 color: '#5AED86'
                             } : undefined}
                             className={`p-1 rounded transition-all
-                                ${scheduleState === 'disabled' ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-gray-100 text-gray-400'}
+                                ${effectivelyDisabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-100 text-gray-400'}
                             `}
-                            title={scheduleState === 'pulse' ? 'Plan your schedule' : 'Add courses to plan schedule'}
+                            title={
+                                hasWarnings
+                                    ? 'Resolve warnings before planning schedule'
+                                    : scheduleState === 'disabled'
+                                    ? 'Exceeds maximum credit hours'
+                                    : scheduleState === 'pulse'
+                                    ? 'Plan your schedule'
+                                    : 'Add courses to plan schedule'
+                            }
                         >
-                            <Calendar className="w-4 h-4" />
+                            <Calendar className={`w-4 h-4 ${effectivelyDisabled ? 'text-gray-300' : ''}`} />
                         </button>
 
                         <button
