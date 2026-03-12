@@ -4,7 +4,7 @@ import CourseBox from "@/components/planner/CourseBox";
 import { useDrop } from "react-dnd";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Course } from "@/types/course";
-import { validateCourseLoad } from '@/utils/courseValidation';
+import { getScheduleButtonState, validateCourseLoad } from '@/utils/courseValidation';
 import { Warning } from "@/types/warning";
 import {
     getCoursePrerequisiteGroups,
@@ -121,6 +121,8 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     const warningButtonRef = useRef<HTMLButtonElement>(null);
     const { saveSchedulePlan, plans, activePlanId } = usePlannerStore();
     const activePlan = plans.find(p => p.id === activePlanId);
+    const [_, setHasPulsed] = useState(false);
+    const [hasOpenedSchedule, setHasOpenedSchedule] = useState(false);
 
     const handleLockToggle = () => setLocked(prev => !prev);
 
@@ -452,6 +454,20 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
         });
     });
 
+    const isSummer = title.toLowerCase().includes('summer');
+    const hasWarnings = !!(prerequisiteCollisions || unmetPrerequisites || unmetCorequisites || creditWarnings);
+    const scheduleState = getScheduleButtonState(courses, studentType, catalogYear, isSummer);
+
+    const prevScheduleState = useRef(scheduleState);
+
+    useEffect(() => {
+        if (prevScheduleState.current !== 'pulse' && scheduleState === 'pulse') {
+            setHasPulsed(false); // reset so animation can fire
+            requestAnimationFrame(() => setHasPulsed(true)); // trigger on next frame
+        }
+        prevScheduleState.current = scheduleState;
+    }, [scheduleState]);
+
     const handleClearClick = () => {
         if (locked) {
             onShowError?.(`${title} needs to be unlocked to clear courses.`);
@@ -561,6 +577,9 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
             )}
         </>
     );
+
+    const effectivelyDisabled = hasWarnings || scheduleState === 'disabled';
+    const shouldPulse = scheduleState === 'pulse' && !hasOpenedSchedule;
 
     return (
         <div
@@ -772,12 +791,32 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                         )}
 
                         <button
-                            onClick={() => setShowSchedulePlanning(true)}
+                            onClick={() => {
+                                if (!effectivelyDisabled) {
+                                    setHasOpenedSchedule(true);
+                                    setShowSchedulePlanning(true);
+                                }
+                            }}
                             data-tour="semester-planner"
-                            className={`hover:bg-gray-100 p-1 rounded ${locked ? "text-gray-700" : "text-gray-400"}`}
-                            title={locked ? "Unlock semester" : "Lock semester"}
+                            disabled={scheduleState === 'disabled'}
+                            style={shouldPulse ? {
+                                animation: 'pulse-green 2s ease-in-out infinite',
+                                color: '#5AED86'
+                            } : undefined}
+                            className={`p-1 rounded transition-all
+                                ${effectivelyDisabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-100 text-gray-400'}
+                            `}
+                            title={
+                                hasWarnings
+                                    ? 'Resolve warnings before planning schedule'
+                                    : scheduleState === 'disabled'
+                                    ? 'Exceeds maximum credit hours'
+                                    : scheduleState === 'pulse'
+                                    ? 'Plan your schedule'
+                                    : 'Add courses to plan schedule'
+                            }
                         >
-                            <Calendar className="w-4 h-4" />
+                            <Calendar className={`w-4 h-4 ${effectivelyDisabled ? 'text-gray-300' : ''}`} />
                         </button>
 
                         <button
@@ -858,6 +897,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                         warnings={courseWarnings.length > 0 ? courseWarnings : null}
                                         hasWarningBorder={hasWarningBorder}
                                         onRemove={() => handleRemoveCourse(course.id || '')}
+                                        hideSections={true}
                                     />
                                 );
                             })}

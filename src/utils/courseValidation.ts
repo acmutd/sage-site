@@ -49,3 +49,27 @@ export const validateCourseLoad = (
     
     return warnings;
 };
+
+export const getScheduleButtonState = (
+    semesterCourses: Course[],
+    studentType: 'undergrad' | 'grad',
+    catalogYear: number,
+    isSummer: boolean
+): 'inactive' | 'pulse' | 'disabled' => {
+    const totalCredits = semesterCourses.reduce(
+        (sum, c) => sum + getCreditsFromCourseCode(c.course_code ?? (c as any).code),
+        0
+    );
+
+    const minFlash = studentType === 'grad'
+        ? (isSummer ? 6 : 9)
+        : (isSummer ? 6 : 12);
+
+    const max = studentType === 'grad'
+        ? 18
+        : isSummer ? 15 : (catalogYear >= 2021 ? 19 : 18);
+
+    if (totalCredits > max) return 'disabled';
+    if (totalCredits >= minFlash) return 'pulse';
+    return 'inactive';
+};

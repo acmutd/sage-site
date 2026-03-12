@@ -210,3 +210,11 @@ body {
 }
 .slot-in  { animation: slot-in  0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 .slot-out { animation: slot-out 0.15s ease-in forwards; }
+
+@keyframes pulse-green {
+  0%, 100% { color: #5AED86; filter: drop-shadow(0 0 0px #5AED86); }
+  50%       { color: #5AED86; filter: drop-shadow(0 0 6px #5AED86); }
+}
+.animate-pulse-green {
+  animation: pulse-green 1s ease-in-out 4;
+}

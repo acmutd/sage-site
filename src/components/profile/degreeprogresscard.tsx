@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 
+
 interface DegreeProgressCardProps {
   title: string;
   categories: { label: string; completed: number; total: number; }[];
@@ -90,6 +91,8 @@ const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
     setShowTooltip(false);
   };
 
+  const cappedPercentage = Math.min(percentage, 100);
+  
   return (
     <>
       {showTooltip && createPortal(
@@ -130,11 +133,11 @@ const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
             ))}
             </div>
         </div>
-
+        
         {/* Right: White progress box */}
         <div className="border border-border bg-white rounded-3xl p-6 w-[160px] flex-shrink-0 self-stretch overflow-hidden flex flex-col justify-between">
         <div className="relative bottom-4 left-12">
-            <ProgressCircle percentage={percentage} />
+            <ProgressCircle percentage={cappedPercentage} />
           </div>
           <div className="relative bottom-4 right-2 flex flex-col gap-0.5">
             <p className="text-3xl font-semibold text-gray-900">{completed}</p>

@@ -25,6 +25,7 @@ interface PlannerSidebarContentProps {
   onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
   focusLabel?: string;
   semesters?: SemestersForCredits;
+  coursebookData?: Record<string, any[]>;
 }
 
 const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
@@ -38,6 +39,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
   onAddCourse,
   focusLabel,
   semesters,
+  coursebookData,
 }) => {
   const [autoExpandedCategories, setAutoExpandedCategories] = React.useState<{ [key: number]: boolean }>({});
   const [expandedSubcategories, setExpandedSubcategories] = React.useState<Record<string, boolean>>({});
@@ -324,6 +326,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
                 allSuggestedCourses={allSuggestedCourses}
                 allCompletedCourseCodes={allCompletedCourseCodes}
                 allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
+                coursebookData={coursebookData}
               />
             </>
           )}

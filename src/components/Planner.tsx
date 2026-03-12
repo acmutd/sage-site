@@ -689,65 +689,64 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 availableSemesters={availableSemesters}
                 onAddCourse={handleDropCourse}
                 semesters={allSemesters}
+                coursebookData={coursebookData}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
                 {/* Action buttons */}
-                <div className="fixed bottom-4 right-[225px] flex items-center gap-2 z-50">
+                <div className="fixed bottom-4 right-4 flex flex-row items-center gap-2 z-50">
+                    {/* Suggest Future Classes */}
                     <button
                         onClick={runQuickEvaluation}
                         disabled={isRunningQuickEvaluation || isLoading}
-                        className={`px-6 py-3 rounded-full bg-white border border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-gray-700 font-medium text-sm ${
+                        className={`px-6 py-3 rounded-full bg-white border border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-gray-700 font-medium text-sm whitespace-nowrap ${
                             isRunningQuickEvaluation || isLoading
                                 ? 'cursor-not-allowed opacity-70'
                                 : 'hover:-translate-y-0.5'
                         }`}
                         data-tour="suggest-future-classes"
-                        title="Run quick evaluation and refresh suggested courses"
+                        title="Suggest Future Classes"
                     >
                         {isRunningQuickEvaluation ? (
-                            <Loader2 size={16} className="animate-spin" />
+                            <Loader2 size={20} className="animate-spin" />
                         ) : (
-                            <RefreshCw size={16} />
+                            <RefreshCw size={20} />
                         )}
-                        <span>{isRunningQuickEvaluation ? "Running..." : "Suggest Future Classes"}</span>
+                        <span className="hidden sm:inline">
+                            {isRunningQuickEvaluation ? "Running..." : "Suggest Future Classes"}
+                        </span>
                     </button>
-                    {/* Save button */}
-                    <button 
+
+                    {/* Save */}
+                    <button
                         onClick={handleSave}
                         disabled={!hasUnsavedChanges || isLoading}
-                        className={`fixed bottom-4 right-24 px-6 py-3 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-50 ${
-                            hasUnsavedChanges
-                                ? 'hover:-translate-y-0.5'
-                                : 'cursor-default'
+                        className={`relative px-6 py-3 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 ${
+                            hasUnsavedChanges ? 'hover:-translate-y-0.5' : 'cursor-default'
                         } text-white font-medium text-sm`}
                         data-tour="save-plan"
+                        title="Save Plan"
                     >
                         {hasUnsavedChanges && (
                             <div className="absolute -top-0 -right-3 w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
                         )}
                         {isLoading ? (
-                            <>
-                                <Loader2 size={20} className="animate-spin" />
-                                <span>Saving...</span>
-                            </>
+                            <><Loader2 size={20} className="animate-spin" /><span className="hidden sm:inline">Saving...</span></>
                         ) : hasUnsavedChanges ? (
-                            <>
-                                <Save size={20} />
-                                <span>Save</span>
-                            </>
+                            <><Save size={20} /><span className="hidden sm:inline">Save</span></>
                         ) : (
-                            <>
-                                <Check size={20} />
-                                <span>Saved</span>
-                            </>
+                            <><Check size={20} /><span className="hidden sm:inline">Saved</span></>
                         )}
-                    </button> 
+                    </button>
 
+                    {/* Help */}
+                    <button
+                        data-tour="help-button"
+                        onClick={startTutorial}
+                        className="hidden sm:flex self-end translate-y-2 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 items-center justify-center"
+                    >
+                        <HelpCircle size={18} className="text-white" />
+                    </button>
                 </div>
-                <button data-tour="help-button" onClick={startTutorial} className="fixed bottom-4 right-12 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
-                    <HelpCircle size={18} className="text-white" />
-                </button>
-
                 <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex-col gap-4 hidden md:flex">
                     <Sidebar
                         requirements={adaptedRequirements}
