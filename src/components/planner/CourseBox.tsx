@@ -127,7 +127,10 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-    
+    const tooltipRef = useRef<HTMLDivElement>(null);
+    const boxRef = useRef<HTMLDivElement>(null);
+    const [flipLeft, setFlipLeft] = useState(false);
+
     // mobile check - does it have a cursor or does it have touch?
     const [canHover, setCanHover] = useState(true);
     useEffect(() => {
@@ -190,6 +193,31 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         };
     }, []);
     
+    useEffect(() => {
+        if (!showTooltip || !tooltipRef.current) return;
+        const rect = tooltipRef.current.getBoundingClientRect();
+        const padding = 8;
+        if (rect.right > window.innerWidth - padding) {
+            setTooltipPosition(prev => ({
+                ...prev,
+                left: prev.left - (rect.right - window.innerWidth + padding)
+            }));
+        }
+        if (rect.bottom > window.innerHeight - padding) {
+            setTooltipPosition(prev => ({
+                ...prev,
+                top: prev.top - (rect.bottom - window.innerHeight + padding)
+            }));
+        }
+    }, [showTooltip]);
+
+    useEffect(() => {
+        if (!boxRef.current) return;
+        const rect = boxRef.current.getBoundingClientRect();
+        setFlipLeft(rect.right + 280 > window.innerWidth);
+    }, []);
+    
+
     const dragRef = !isFromTranscript && !isPlaced ? drag : null;
 
     const getStatusStyles = () => {
@@ -243,7 +271,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const tooltipAnimatedRef = useRef(false);
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-        if (inSidebar && canHover) {
+        if (canHover) {
             if (closeActiveTooltip) closeActiveTooltip();
             isActiveTooltipRef.current = true;
             closeActiveTooltip = () => {
@@ -252,7 +280,15 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             };
     
             const rect = e.currentTarget.getBoundingClientRect();
-            setTooltipPosition({ top: rect.top, left: rect.right + 10 });
+            const tooltipWidth = sections.length > 0 ? 500 : 264;
+            const isRightHalf = rect.right + tooltipWidth + 10 > window.innerWidth;
+    
+            setTooltipPosition({
+                top: rect.top,
+                left: isRightHalf
+                    ? rect.left - tooltipWidth - 10
+                    : rect.right + 10,
+            });
             tooltipAnimatedRef.current = false;
             setShowTooltip(true);
         }
@@ -378,7 +414,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
     return (
         <>
-            <div className={inSidebar ? "relative" : "group relative"}>
+            <div ref={boxRef} className={`${inSidebar ? "relative" : "group relative"} ${flipLeft ? "near-right-edge" : ""}`}>
                 <div
                     ref={dragRef}
                     className={`flex items-center justify-between p-3 rounded-md border-2 ${getStatusStyles()} 
@@ -447,11 +483,10 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                 {/* Tooltip for non-sidebar (inline CSS hover) */}
                 {!inSidebar && canHover && (
                     <>
-                        {/* Tooltip to the right (default) */}
-                        <div className="hidden xl:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none">
+                        <div className="hidden xl:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none
+                            [.near-right-edge_&]:left-auto [.near-right-edge_&]:right-full [.near-right-edge_&]:ml-0 [.near-right-edge_&]:mr-3">
                             {tooltipContent}
                         </div>
-                        {/* Tooltip above (for smaller screens where right would overflow) */}
                         <div className="block xl:hidden absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-[999] opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none">
                             {tooltipContent}
                         </div>
@@ -481,10 +516,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     // Desktop: Side tooltip
                     inSidebar ? (
                         <div
+                           ref={tooltipRef}
                             className="fixed z-[9999] pointer-events-auto"
                             style={{
                                 top: `${tooltipPosition.top}px`,
-                                left: `${Math.min(tooltipPosition.left, window.innerWidth - 550)}px`,
+                                left: `${tooltipPosition.left}px`,
                                 transform: 'translateY(-50%)'
                             }}
                             onMouseEnter={() => { if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current); }}
