@@ -147,7 +147,21 @@ const Onboarding: React.FC<OnboardingProps> = ({
       certifications: updatedPrograms.filter(p => p.type === "Certificate").map(transformToTranscriptData)
     };
     setLocalTranscriptData(updatedTranscript);
-    setModalStep(isFirstTime ? "Classes" : "CatalogYear");
+
+    if (isFirstTime) {
+      setModalStep("Classes");
+    } else {
+      const assignedYear = calculateCatalogYear(updatedTranscript.majors[0]?.start_date);
+      const latestYear = calculateLatestYear();
+  
+      if (assignedYear === latestYear) {
+        // No meaningful choice to offer — skip straight to Classes
+        setCatalogYear("assigned");
+        setModalStep("Classes");
+      } else {
+        setModalStep("CatalogYear");
+      }
+    }
   };
 
   const handleFinish = (updatedTranscript: any) => {
