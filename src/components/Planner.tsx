@@ -752,6 +752,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 onAddCourse={handleDropCourse}
                 semesters={allSemesters}
                 coursebookData={coursebookData}
+                gradesData={gradesData}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
                 {/* Action buttons */}
