@@ -52,12 +52,18 @@ const MessageDisplay = ({ message, messageIndex, conversationId }: MessageDispla
     if (text.indexOf("* ") === 0) {
       wrapper = "li";
       text = text.slice(2);
-    } else if (text.indexOf("# ") === 0) {
-      wrapper = "h1";
-      text = text.slice(2);
+    } else if (text.indexOf("### ") === 0) {
+      wrapper = "h3";
+      text = text.slice(4);
     } else if (text.indexOf("## ") === 0) {
       wrapper = "h2";
       text = text.slice(3);
+    } else if (text.indexOf("# ") === 0) {
+      wrapper = "h1";
+      text = text.slice(2);
+    } else if (/^\d+\.\s/.test(text)) {
+      wrapper = "li";
+      text = text.replace(/^\d+\.\s/, "");
     }
 
     const textBolded: StringOrElement[] = [];
@@ -122,6 +128,8 @@ const MessageDisplay = ({ message, messageIndex, conversationId }: MessageDispla
         return <h1>{outText}</h1>;
       case "h2":
         return <h2>{outText}</h2>;
+      case "h3":
+        return <h3>{outText}</h3>;
       default:
         return <p>{outText}</p>;
     }
