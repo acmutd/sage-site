@@ -41,11 +41,6 @@ async function retrieveDegreeCatalog(transcriptData: any, user: any)
   const catalogAge = parseInt(currentCatalogYear) - parseInt(catalogYear);
   
   if (catalogAge > 6) {
-    console.log(
-      `Catalog ${catalogYear} expired (${catalogAge} years old). ` +
-      `Using current catalog ${currentCatalogYear}. ` +
-      `Consult with academic advisor.`
-    );
     catalogYear = currentCatalogYear;
   }
   const cachedDegreeCatalog = localStorage.getItem(`degree_catalog_${catalogYear}`)

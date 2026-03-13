@@ -267,7 +267,6 @@ const Profile = () => {
       body: JSON.stringify({ userId: user?.uid, action: "updateProfile", token, profile_picture_type: newType }),
     });
     const result = await res.json();
-    console.log("updateProfile response:", result);
     setProfilePictureType(newType);
     localStorage.setItem('profilePictureType', newType.toString());
     window.dispatchEvent(new Event('storage'));

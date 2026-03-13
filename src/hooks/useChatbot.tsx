@@ -234,8 +234,6 @@ export const useChatbot = () => {
         setError(null);
 
         try {
-        console.log('Mobile navbar: Starting rename for conversation:', conversationId, 'to:', newTitle);
-
         // Optimistic state update - same as desktop
         setConversations((prev) => {
             const updated = prev.map((conv) => 
@@ -243,7 +241,6 @@ export const useChatbot = () => {
                 ? { ...conv, title: newTitle, conversation_name: newTitle } 
                 : conv
             );
-            console.log('Mobile navbar: Updated conversations:', updated.length);
             return updated;
         });
 
@@ -259,7 +256,6 @@ export const useChatbot = () => {
                 ),
             };
             localStorage.setItem("chatbot_conversations", JSON.stringify(updatedCache));
-            console.log('Mobile navbar: Updated localStorage cache');
             }
         }
 
@@ -267,7 +263,6 @@ export const useChatbot = () => {
         const token = await user.getIdToken();
         if (!token) throw new Error("Failed to retrieve authentication token.");
 
-        console.log('Mobile navbar: Making API call to rename conversation');
         const response = await fetch(CRUD_API, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
