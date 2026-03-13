@@ -1,56 +1,16 @@
 // Adapted from github.com/acmutd/utd-grades
-import type { Grades } from "@/types/grades";
+import type { GradeDistribution } from "../types/grades";
 
-export interface UserFriendlyGrades {
-  "A+": number;
-  A: number;
-  "A-": number;
-  "B+": number;
-  B: number;
-  "B-": number;
-  "C+": number;
-  C: number;
-  "C-": number;
-  "D+": number;
-  D: number;
-  "D-": number;
-  F: number;
-}
-
-export function extractGrades(section: Grades): UserFriendlyGrades {
-  return {
-    "A+": section.aPlus,
-    A: section.a,
-    "A-": section.aMinus,
-    "B+": section.bPlus,
-    B: section.b,
-    "B-": section.bMinus,
-    "C+": section.cPlus,
-    C: section.c,
-    "C-": section.cMinus,
-    "D+": section.dPlus,
-    D: section.d,
-    "D-": section.dMinus,
-    F: section.f,
-  };
-}
+const GRADE_KEYS = ["A+","A","A-","B+","B","B-","C+","C","C-","D+","D","D-","F"] as const;
+const GRADE_COLORS = [
+  "#22c55e","#4ade80","#86efac","#bef264","#fde047",
+  "#fb923c","#f97316","#ef4444","#dc2626","#b91c1c","#991b1b","#7f1d1d","#450a0a"
+];
 
 export function getColors(keys: string[]): string[] {
-  const colorMap: Record<string, string> = {
-    "A+": "#22c55e",
-    A:   "#4ade80",
-    "A-": "#86efac",
-    "B+": "#bef264",
-    B:   "#fde047",
-    "B-": "#fb923c",
-    "C+": "#f97316",
-    C:   "#ef4444",
-    "C-": "#dc2626",
-    "D+": "#b91c1c",
-    D:   "#991b1b",
-    "D-": "#7f1d1d",
-    F:   "#450a0a",
-  };
+  const colorMap: Record<string, string> = Object.fromEntries(
+    GRADE_KEYS.map((k, i) => [k, GRADE_COLORS[i]])
+  );
   return keys.map((k) => colorMap[k] ?? "#888");
 }
 
@@ -70,18 +30,17 @@ export function getRMPColor(rating: number): string {
   return "#ef4444";
 }
 
-export function getAvgLetterGrade(section: Grades): string {
-  const grades = extractGrades(section);
+export function getAvgLetterGrade(grades: GradeDistribution): string {
   const gradePoints: Record<string, number> = {
-    "A+": 4.0, A: 4.0, "A-": 3.7,
-    "B+": 3.3, B: 3.0, "B-": 2.7,
-    "C+": 2.3, C: 2.0, "C-": 1.7,
-    "D+": 1.3, D: 1.0, "D-": 0.7,
-    F: 0.0,
+    "A+": 4.0, "A": 4.0, "A-": 3.7,
+    "B+": 3.3, "B": 3.0, "B-": 2.7,
+    "C+": 2.3, "C": 2.0, "C-": 1.7,
+    "D+": 1.3, "D": 1.0, "D-": 0.7,
+    "F": 0.0,
   };
   let total = 0, count = 0;
   for (const [letter, n] of Object.entries(grades)) {
-    total += gradePoints[letter] * n;
+    total += (gradePoints[letter] ?? 0) * n;
     count += n;
   }
   if (count === 0) return "N/A";
@@ -94,4 +53,11 @@ export function getAvgLetterGrade(section: Grades): string {
   if (avg >= 2.15) return "C+";
   if (avg >= 1.85) return "C";
   return "C-";
+}
+
+export function getGpaBadgeStyle(avg: string): string {
+  if (avg.startsWith("A")) return "bg-green-50 text-green-800";
+  if (avg.startsWith("B")) return "bg-yellow-50 text-yellow-800";
+  if (avg.startsWith("C")) return "bg-orange-50 text-orange-800";
+  return "bg-red-50 text-red-800";
 }

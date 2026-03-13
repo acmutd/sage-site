@@ -1,26 +1,18 @@
 import { useState } from "react";
-import { ExternalLink, Info } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import GradeChart from "@/components/planner/utdgrades/gradechart";
-import {
-  extractGrades,
-  getAvgLetterGrade,
-  getDifficultyColor,
-  getRMPColor,
-} from "@/utils/grades";
-import type { Grades, RMPInstructor } from "@/types/grades";
+import { getRMPColor, getDifficultyColor, getAvgLetterGrade } from "@/utils/grades";
+import type { InstructorGrades } from "@/types/grades";
 
 type View = "aggregate" | "semester";
 
 interface SectionContentProps {
-  section: Grades;
-  instructor: RMPInstructor | null;
-  courseRating: number | null;
-  relatedSections?: Grades[];
+  instData: InstructorGrades;
 }
 
 function StatCard({ value, label, color }: { value: string; label: string; color?: string }) {
   return (
-    <div className="bg-muted/50 rounded-lg p-3">
+    <div className="bg-muted/100 rounded-md p-3">
       <p className="text-lg font-medium leading-none mb-1" style={color ? { color } : undefined}>
         {value}
       </p>
@@ -29,31 +21,19 @@ function StatCard({ value, label, color }: { value: string; label: string; color
   );
 }
 
-export default function SectionContent({
-  section,
-  instructor,
-  courseRating,
-  relatedSections = [],
-}: SectionContentProps) {
+export default function SectionContent({ instData }: SectionContentProps) {
   const [view, setView] = useState<View>("aggregate");
 
-  const aggGrades = extractGrades(section);
+  const { instructor, semesters, aggregate } = instData;
+  const rmp = instructor.rmp;
+  const tags = rmp?.tags ?? [];
 
-  // Combine all semesters for aggregate view
-  const allSections = [section, ...relatedSections];
-
-  const semesterRows = allSections.map((s) => ({
-    label: `${s.semester.season} ${s.semester.year}`,
-    grades: extractGrades(s),
-    avg: getAvgLetterGrade(s),
-    n: s.totalStudents,
-  }));
-
-  const tags = instructor?.tags ? instructor.tags.split(",").map((t) => t.trim()) : [];
+  const semesterRows = [...semesters].sort((a, b) =>
+    a.year !== b.year ? a.year - b.year : 0
+  );
 
   return (
     <div className="p-4 border-t border-border space-y-4">
-
       {/* Grade distribution */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -78,57 +58,59 @@ export default function SectionContent({
         </div>
 
         {view === "aggregate" ? (
-          <GradeChart grades={aggGrades} totalStudents={section.totalStudents} height={180} />
+          <GradeChart grades={aggregate.grades} totalStudents={aggregate.totalStudents} height={180} />
         ) : (
           <div className="space-y-3">
-            {semesterRows.map((row) => (
-              <div key={row.label} className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground w-24 shrink-0">{row.label}</span>
-                <div className="flex-1">
-                  <GradeChart grades={row.grades} totalStudents={row.n} height={44} />
+            {semesterRows.map((sem) => (
+              <div className="flex items-center gap-3">
+                <div className="w-28 shrink-0">
+                    <span className="text-xs text-muted-foreground">{sem.season} {sem.year}</span>
+                    <p className="text-[10px] text-muted-foreground/60">{sem.totalStudents} students</p>
+                    <p className="text-[10px] font-medium text-muted-foreground">
+                        Avg: {getAvgLetterGrade(sem.grades)}
+                    </p>
                 </div>
-                <span className="text-xs font-medium w-6 text-right shrink-0">{row.avg}</span>
-                <span className="text-xs text-muted-foreground w-12 text-right shrink-0">
-                  n={row.n}
-                </span>
-              </div>
+                <div className="flex-1">
+                    <GradeChart grades={sem.grades} totalStudents={sem.totalStudents} height={80} />
+                </div>
+            </div>
             ))}
           </div>
         )}
       </div>
 
       {/* Professor details */}
-      {instructor && (
+      {rmp && (
         <div>
           <div className="flex items-center gap-2 mb-3">
             <a
-              href={instructor.url ?? "#"}
-              target={instructor.url ? "_blank" : "_self"}
+              href={rmp.url ?? "#"}
+              target={rmp.url ? "_blank" : "_self"}
               rel="noreferrer"
               className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
             >
               Professor details
-              {instructor.url && <ExternalLink className="w-3 h-3" />}
+              {rmp.url && <ExternalLink className="w-3 h-3" />}
             </a>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <StatCard
-              value={instructor.quality_rating?.toString() ?? "N/A"}
+              value={rmp.quality_rating?.toString() ?? "N/A"}
               label="RMP score"
-              color={instructor.quality_rating ? getRMPColor(instructor.quality_rating) : undefined}
+              color={rmp.quality_rating ? getRMPColor(rmp.quality_rating) : undefined}
             />
             <StatCard
-              value={instructor.difficulty_rating?.toString() ?? "N/A"}
+              value={rmp.difficulty_rating?.toString() ?? "N/A"}
               label="Difficulty"
-              color={instructor.difficulty_rating ? getDifficultyColor(instructor.difficulty_rating) : undefined}
+              color={rmp.difficulty_rating ? getDifficultyColor(rmp.difficulty_rating) : undefined}
             />
             <StatCard
-              value={instructor.would_take_again != null ? `${instructor.would_take_again}%` : "N/A"}
+              value={rmp.would_take_again != null ? `${rmp.would_take_again}%` : "N/A"}
               label="Would retake"
             />
             <StatCard
-              value={instructor.ratings_count?.toString() ?? "N/A"}
+              value={rmp.ratings_count?.toString() ?? "N/A"}
               label="Ratings"
             />
           </div>
@@ -145,36 +127,11 @@ export default function SectionContent({
         </div>
       )}
 
-      {/* Course rating */}
-      {courseRating != null && (
-        <div className="flex items-center gap-1.5 pt-1">
-          <span className="text-xs text-muted-foreground">Course rating</span>
-          <span className="text-xs font-medium">{courseRating}/5</span>
-          <span title="Average student grade for this instructor in this course">
-            <Info className="w-3 h-3 text-muted-foreground" />
-          </span>
-        </div>
-      )}
-
       {/* Attribution */}
       <p className="text-xs text-muted-foreground border-t border-border pt-3">
-        Grade data by{" "}
-        <a
-          href="https://utdgrades.com"
-          target="_blank"
-          rel="noreferrer"
-          className="text-green-600 hover:text-green-500 font-medium"
-        >
+        Powered by{" "}
+        <a href="https://utdgrades.com" target="_blank" rel="noreferrer" className="text-green-600 hover:text-green-500 font-medium">
           UTD Grades
-        </a>{" "}
-        · Ratings from{" "}
-        <a
-          href="https://ratemyprofessors.com"
-          target="_blank"
-          rel="noreferrer"
-          className="text-blue-500 hover:text-blue-400 font-medium"
-        >
-          RateMyProfessors
         </a>
       </p>
     </div>

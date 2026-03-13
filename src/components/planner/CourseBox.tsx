@@ -1,9 +1,10 @@
-import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2, CirclePlus, TriangleAlert } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2, CirclePlus, TriangleAlert, Maximize2 } from 'lucide-react';
 import { useDrag } from "react-dnd";
 import { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { Course } from '@/types/course';
 import { Warning } from '@/types/warning';
+import SectionCard from './utdgrades/sectioncard';
 import { getRMPColor } from '@/utils/grades';
 
 interface CourseBoxProps {
@@ -135,6 +136,8 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const tooltipRef = useRef<HTMLDivElement>(null);
     const boxRef = useRef<HTMLDivElement>(null);
     const [flipLeft, setFlipLeft] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [_, setExpandedSectionIndex] = useState<number | null>(null);
 
     // mobile check - does it have a cursor or does it have touch?
     const [canHover, setCanHover] = useState(true);
@@ -389,9 +392,22 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                 : `bg-white text-black rounded-md p-3 shadow-lg border border-gray-200 ${sections.length > 0 ? "w-[560px] max-h-[400px] overflow-y-auto" : "w-56 md:w-64"}`
             }
                 `}>
-            <h3 className={`font-semibold mb-2 ${!canHover ? "text-base" : "text-sm"} text-gray-900`}>
-                {course.course_name || "No Name Available"}
-            </h3>
+            <div className="flex items-start justify-between mb-2">
+                <h3 className={`font-semibold ${!canHover ? "text-base" : "text-sm"} text-gray-900`}>
+                    {course.course_name || "No Name Available"}
+                </h3>
+                {sections.length > 0 && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowModal(true);
+                        }}
+                        className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-gray-700 shrink-0 ml-2"
+                    >
+                        <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+                )}
+            </div>
             <div className={`space-y-1 ${!canHover ? "text-sm" : "text-xs"}`}>
                 {course.course_code && (
                     <div className="flex gap-2">
@@ -619,6 +635,42 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                 ),
                 document.body
             )}
+
+            {showModal && ReactDOM.createPortal(
+                <>
+                    <div
+                        className="fixed inset-0 bg-black/50 z-[10000]"
+                        onClick={() => { setShowModal(false); setExpandedSectionIndex(null); }}
+                    />
+                    <div className="fixed inset-4 md:inset-12 bg-white rounded-2xl z-[10001] flex flex-col shadow-2xl overflow-hidden">
+                        <div className="flex items-start justify-between p-6 border-b border-gray-100">
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-900">{course.course_name}</h2>
+                                <p className="text-sm text-gray-500 mt-0.5">{course.course_code} · {sections.length} section{sections.length !== 1 ? "s" : ""}</p>
+                            </div>
+                            <button
+                                onClick={() => { setShowModal(false); setExpandedSectionIndex(null); }}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500"
+                            >✕</button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                            {sections.map((sec: any, i: number) => {
+                                const instData = getInstructorGrades(sec.instructors);
+                                return (
+                                    <SectionCard
+                                        key={i}
+                                        sec={sec}
+                                        instData={instData ?? null}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </div>
+                </>,
+                document.body
+            )}
+
         </>
     );
 };
