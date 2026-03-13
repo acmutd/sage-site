@@ -567,7 +567,6 @@ const ChatBot: React.FC = () => {
         }
 
         const data = await fetchConversation();
-        console.log("API response:", data);
         if (!Array.isArray(data)) return;
 
         const selectedConversation = data.find((conv) => conv.conversation_id === conversation_id);

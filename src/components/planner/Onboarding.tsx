@@ -26,7 +26,6 @@ interface CatalogYearSelectorProps {
 
 const CatalogYearSelector: React.FC<CatalogYearSelectorProps> = ({ onNext, onBack, transcriptData }) => {
   const [selected, setSelected] = useState<CatalogChoice>("assigned");
-  console.log(transcriptData)
   const assignedYear = calculateCatalogYear(transcriptData?.majors[0].start_date);
   const latestYear = calculateLatestYear();
   
