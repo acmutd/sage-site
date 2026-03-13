@@ -1,5 +1,5 @@
 import { Pencil, PlusIcon } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import ProgramValidationB from "./ProgramValidationB";
@@ -26,11 +26,30 @@ const getCurrentCatalogYear = (): string => {
   
   return currentMonth >= 8 ? currentYear.toString() : (currentYear - 1).toString();
 };
-async function retrieveDegreeCatalog(transcriptData: any, user: any)
-{
+
+async function fetchCatalog(year: string, user: any): Promise<any> {
+  try {
+    const token = await user?.getIdToken();
+    if (!token) throw new Error("Failed to retrieve authentication token.");
+
+    const resolvedYear = year === "latest" ? getCurrentCatalogYear() : year;
+    const response = await fetch(`${CRUD_API}/catalog?year=${resolvedYear}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (response.ok) return await response.json();
+    return null;
+  } catch (error) {
+    console.error(`Error fetching catalog for year ${year}:`, error);
+    return null;
+  }
+}
+
+async function retrieveDegreeCatalog(transcriptData: any, user: any): Promise<any> {
   const activeMajor = transcriptData?.majors?.find((m: any) => m.status === "Active");
   const semesterString = activeMajor?.start_date;
-  
+
   if (!semesterString) {
     console.error("No active major with start date found");
     return null;
@@ -38,46 +57,12 @@ async function retrieveDegreeCatalog(transcriptData: any, user: any)
 
   let catalogYear = calculateCatalogYear(semesterString);
   const currentCatalogYear = getCurrentCatalogYear();
-  const catalogAge = parseInt(currentCatalogYear) - parseInt(catalogYear);
-  
-  if (catalogAge > 6) {
+  if (parseInt(currentCatalogYear) - parseInt(catalogYear) > 6) {
     catalogYear = currentCatalogYear;
   }
-  const cachedDegreeCatalog = localStorage.getItem(`degree_catalog_${catalogYear}`)
-  if (cachedDegreeCatalog)
-  {
-    return JSON.parse(cachedDegreeCatalog);
-  }
 
-  try 
-  {
-    const token = await user?.getIdToken();
-    if (!token) throw new Error("Failed to retrieve authentication token.");
-
-    const degreeCatalogResponse = await fetch(CRUD_API as string, 
-      {
-        "method": "POST",
-        "headers": { "Content-Type": "application/json" },
-        "body": JSON.stringify({
-          userId: user?.uid,
-          action: "getDegreeCatalog",
-          year: catalogYear,
-          token
-        })
-      });
-    
-    if (degreeCatalogResponse.ok)
-    {
-      const degreeCatalogData = await degreeCatalogResponse.json();
-      localStorage.setItem(`degree_catalog_${catalogYear}`, JSON.stringify(degreeCatalogData));
-      return degreeCatalogData;
-    }
-  } catch (error) {
-    console.error("Error fetching degree catalog:", error);
-    return null;
-  }
+  return fetchCatalog(catalogYear, user);
 }
-
 
 const initialProgramsData = [
   {
@@ -118,14 +103,38 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
     level: string | null;
     status: string;
   } | null>(null);
-  const [degreeCatalog, setDegreeCatalog] = useState<any>(null); // Add this
+  const [degreeCatalog, setDegreeCatalog] = useState<any>(null);
+  const [latestCatalog, setLatestCatalog] = useState<any>(null);
+  const [studentCatalogYear, setStudentCatalogYear] = useState<string>("");
+  const latestCatalogYear = getCurrentCatalogYear();
+  const hasFetched = useRef(false);
   
   // mount degree catalog
   useEffect(() => {
-    if (transcriptData && user?.uid) {
-      retrieveDegreeCatalog(transcriptData, user).then(catalog => {
+    if (!transcriptData || !user?.uid || hasFetched.current) return;
+    hasFetched.current = true;
+
+    const activeMajor = transcriptData?.majors?.find((m: any) => m.status === "Active");
+    let resolvedYear = "";
+    if (activeMajor?.start_date) {
+        let year = calculateCatalogYear(activeMajor.start_date);
+        const currentYear = getCurrentCatalogYear();
+        if (parseInt(currentYear) - parseInt(year) > 6) year = currentYear;
+        resolvedYear = year;
+        setStudentCatalogYear(resolvedYear);
+    }
+
+    const isFreshman = resolvedYear === latestCatalogYear;
+
+    retrieveDegreeCatalog(transcriptData, user).then(catalog => {
         setDegreeCatalog(catalog);
-      });
+        if (isFreshman) setLatestCatalog(catalog);
+    });
+
+    if (!isFreshman) {
+        fetchCatalog("latest", user).then(catalog => {
+            setLatestCatalog(catalog);
+        });
     }
   }, [transcriptData, user]);
 
@@ -255,12 +264,15 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
   if (isEditing && editingProgram) {
     return (
       <ProgramValidationB
-        program={editingProgram} // Pass the program being edited
+        program={editingProgram}
         onNext={() => setIsEditing(false)}
         onRemove={handleRemove}
         onSave={handleSave}
-        transcriptData={transcriptData} // Pass the save handler
+        transcriptData={transcriptData}
         degreeCatalog={degreeCatalog}
+        latestCatalog={latestCatalog}
+        studentCatalogYear={studentCatalogYear}
+        latestCatalogYear={latestCatalogYear}
       />
     );
   }
