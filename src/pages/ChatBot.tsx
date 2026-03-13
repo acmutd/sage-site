@@ -21,13 +21,14 @@ import MessageDisplay from "@/components/chatbot/MessageDisplay";
 import { chatEventEmitter } from "../utils/chatEventEmitter";
 import { useChatbot } from "@/hooks/useChatbot";
 
-// ---- Added: Strong types ----
-type Role = "user" | "bot";
+type Role = "user" | "assistant";
 
 interface Message {
   role: Role;
   content: string;
   timestamp: number;
+  type?: "email";
+  variants?: { label: string; subject: string; body: string }[];
 }
 
 interface Conversation {
@@ -39,6 +40,20 @@ interface Conversation {
 }
 
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
+
+// ---- Moved outside component so it's reusable across both cache paths ----
+const hydrateMessages = (msgs: Message[]): Message[] =>
+  msgs.map((msg) => {
+    if (msg.role === "assistant") {
+      try {
+        const parsed = JSON.parse(msg.content);
+        if (parsed?.type === "email") {
+          return { ...msg, type: "email" as const, variants: parsed.variants, content: "" };
+        }
+      } catch { /* plain string, leave as is */ }
+    }
+    return msg;
+  });
 
 const ChatBot: React.FC = () => {
   const { user } = useAuth();
@@ -58,7 +73,6 @@ const ChatBot: React.FC = () => {
     initialLoad
   } = useChatbot();
   
-  // tutorial overlay 
   const [driverObj, setDriverObj] = useState<any>(null);
 
   useEffect(() => {
@@ -134,7 +148,6 @@ const ChatBot: React.FC = () => {
       }
   };
 
-  // Wrapper function to update conversations and notify mobile navbar
   const updateConversations = (newConversations: Conversation[] | ((prev: Conversation[]) => Conversation[])) => {
     if (typeof newConversations === 'function') {
       setConversations((prevConversations) => {
@@ -150,10 +163,8 @@ const ChatBot: React.FC = () => {
     }
   };
 
-  // Wrapper function to update conversation ID and notify mobile navbar
   const updateConversationId = (newId: string | null) => {
     setConversationId(newId);
-    // Emit event to update mobile navbar's active conversation
     chatEventEmitter.emit('activeConversationUpdate', newId);
   };
 
@@ -164,7 +175,6 @@ const ChatBot: React.FC = () => {
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
   const [generateSchedule, setGenerateSchedule] = useState(false);
 
-  // Context menu helpers
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ top: 0, left: 0 });
   const contextButtonRefs = useRef<(HTMLLIElement | null)[]>([]);
@@ -224,7 +234,6 @@ const ChatBot: React.FC = () => {
     }, sidebarDelay);
   };
 
-  // Check if the cached data is still valid
   const isCacheValid = (
     timestamp: number | null | undefined,
     cacheUserId: string | null | undefined,
@@ -240,7 +249,6 @@ const ChatBot: React.FC = () => {
     setShowContextMenu(false);
   };
 
-  // Save conversation data with timestamp to localStorage
   const saveConversationsToCache = (convs: Conversation[]) => {
     localStorage.setItem(
       "chatbot_conversations",
@@ -268,13 +276,10 @@ const ChatBot: React.FC = () => {
       });
     }
 
-    // Generate a new conversation ID
     const newConversationId = `conversation_${uuidv4()}`;
-
     loadConversation(newConversationId, []);
     setIsNewConversation(true);
 
-    // ---- Fixed: use `timestamp` not `timeStamp`
     localStorage.setItem(
       "chatbot_conversation",
       JSON.stringify({
@@ -290,12 +295,11 @@ const ChatBot: React.FC = () => {
     }, 0);
   };
 
-  // Sort the list of conversations by date instead of by the default conversation_id
   const sortConversationsByDate = (convs: Conversation[]): Conversation[] => {
     return [...convs].sort((a, b) => {
       const aTime = new Date(a.messages?.[a.messages.length - 1]?.timestamp || 0).getTime();
       const bTime = new Date(b.messages?.[b.messages.length - 1]?.timestamp || 0).getTime();
-      return bTime - aTime; // Most recent first
+      return bTime - aTime;
     });
   };
 
@@ -312,7 +316,6 @@ const ChatBot: React.FC = () => {
       })
     );
   };
-
 
   const handleEnter = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -393,8 +396,7 @@ const ChatBot: React.FC = () => {
         } else if (response.status === 404) {
           setChatError("This conversation no longer exists.");
           setConversationId(null);
-        }
-        else {
+        } else {
           throw new Error(`Failed to get chatbot response: ${response.status} - ${errorText}`);
         }
         return;
@@ -405,29 +407,36 @@ const ChatBot: React.FC = () => {
         throw new Error("Chatbot API did not return a response.");
       }
 
-      const botMessage: Message = { role: "bot", content: data.response, timestamp: Date.now() };
-      const updatedMessagesWithBot = [...updatedMessagesWithUser, botMessage];
+      const botMessage: Message =
+        data.type === "email"
+          ? {
+              role: "assistant",
+              content: JSON.stringify({ type: "email", variants: data.response.variants }),
+              type: "email",
+              variants: data.response.variants,
+              timestamp: Date.now(),
+            }
+          : {
+              role: "assistant",
+              content: data.response,
+              timestamp: Date.now(),
+            };
 
+      const updatedMessagesWithBot = [...updatedMessagesWithUser, botMessage];
       setMessages(updatedMessagesWithBot);
 
       const currentConvId: string = data.conversation_id || conversation_id || `conversation_${uuidv4()}`;
       updateConversationId(currentConvId);
 
-      // Only prepend the conversation to state/cache if it's new
       updateConversations((prevConversations) => {
         const filtered = prevConversations.filter((conv) => conv.conversation_id !== currentConvId);
-
-        const existingConv = prevConversations.find(
-          (conv) => conv.conversation_id === currentConvId
-        );
-
+        const existingConv = prevConversations.find((conv) => conv.conversation_id === currentConvId);
         const newConv = {
           conversation_id: currentConvId!,
           user_id: user?.uid || "test-user-123",
           messages: updatedMessagesWithBot,
           title: existingConv?.title || updatedMessagesWithBot[0]?.content || "Untitled Conversation",
         };
-
         const updated = sortConversationsByDate([newConv, ...filtered]);
         saveConversationsToCache(updated);
         return updated;
@@ -435,7 +444,6 @@ const ChatBot: React.FC = () => {
 
       if (isNewConversation) setIsNewConversation(false);
 
-      // Update local cache
       localStorage.setItem(
         "chatbot_conversation",
         JSON.stringify({
@@ -453,14 +461,11 @@ const ChatBot: React.FC = () => {
     }
   };
 
-
   useEffect(() => {
     if (window.innerWidth < 768) setMobileView(true);
-
     (async () => {
       await initialLoad();
     })();
-
     adjustTextareaHeight();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -474,27 +479,20 @@ const ChatBot: React.FC = () => {
         }
       }
     };
-    
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [setConversations]);
 
-  // Listen for events from mobile navbar
   useEffect(() => {
-    const handleStartNewChat = () => {
-      startNewChat();
-    };
-
+    const handleStartNewChat = () => { startNewChat(); };
     const handleLoadConversation = (data: { conversationId: string; messages: Message[]; userId?: string }) => {
       loadConversation(data.conversationId, data.messages);
     };
-
     const handleConversationRenamed = (data: { conversationId: string; newTitle: string }) => {
       updateConversations((prev) =>
         prev.map((conv) => (conv.conversation_id === data.conversationId ? { ...conv, title: data.newTitle } : conv))
       );
     };
-
     const handleRequestConversations = () => {
       console.log('ChatBot received request for conversations, sending:', conversations.length, 'conversations');
       chatEventEmitter.emit('conversationUpdate', conversations);
@@ -519,7 +517,6 @@ const ChatBot: React.FC = () => {
     }
   }, [messages]);
 
-  // ---- Fixed: actually call the function on query change ----
   useEffect(() => {
     adjustTextareaHeight();
   }, [query]);
@@ -569,11 +566,13 @@ const ChatBot: React.FC = () => {
             );
 
             if (selectedConversation) {
-              setMessages(selectedConversation.messages || []);
+              // ---- Hydrate email messages from localStorage cache ----
+              const hydratedMessages = hydrateMessages(selectedConversation.messages || []);
+              setMessages(hydratedMessages);
               localStorage.setItem(
                 "chatbot_conversation",
                 JSON.stringify({
-                  messages: selectedConversation.messages || [],
+                  messages: hydratedMessages,
                   conversation_id,
                   timestamp: Date.now(),
                   cacheUserId: user?.uid ?? null,
@@ -585,22 +584,24 @@ const ChatBot: React.FC = () => {
         }
 
         const data = await fetchConversation();
+        console.log("API response:", data);
         if (!Array.isArray(data)) return;
 
         const selectedConversation = data.find((conv) => conv.conversation_id === conversation_id);
         if (selectedConversation) {
-          setMessages(selectedConversation.messages || []);
+          // ---- Hydrate email messages from S3 ----
+          const hydratedMessages = hydrateMessages(selectedConversation.messages || []);
+          setMessages(hydratedMessages);
           localStorage.setItem(
             "chatbot_conversation",
             JSON.stringify({
-              messages: selectedConversation.messages || [],
+              messages: hydratedMessages,
               conversation_id,
               timestamp: Date.now(),
               cacheUserId: user?.uid ?? null,
             })
           );
-        } else
-        { 
+        } else {
           setConversationId(null);
           setMessages([]);
           localStorage.removeItem("chatbot_conversation");
@@ -633,7 +634,7 @@ const ChatBot: React.FC = () => {
       
       {mobileView ? (
         <>
-        <div className="flex justify-center h-full w-full">
+          <div className="flex justify-center h-full w-full">
             <div className="max-w-[80rem] h-full duration-300 ease-in-out flex flex-col flex-1 relative overflow-visible gap-10 bottom-[3rem]">
               <div className="flex flex-col h-full gap-4">
                 <div className="flex flex-col flex-grow-[1] min-h-0 w-full bg-innercontainer rounded-lg border border-border">
@@ -644,7 +645,7 @@ const ChatBot: React.FC = () => {
                   >
                     {messages.length === 0 && !chatLoad && !generateSchedule ? (
                       <div className="w-full max-w-2xl text-left mt-[5rem]">
-                        <h1 className="text-4xl">Hi, I’m Sage.</h1>
+                        <h1 className="text-4xl">Hi, I'm Sage.</h1>
                         <h3 className="text-2xl">What can I help with?</h3>
                         <p className="text-textsecondary mt-8">Here are some example questions that I can help you with:</p>
                         <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
@@ -664,7 +665,7 @@ const ChatBot: React.FC = () => {
                       </div>
                     ) : messages.length === 0 && !chatLoad && generateSchedule ? (
                       <div className="w-full max-w-2xl text-left mt-[5rem]">
-                        <h1>Hi, I’m Sage.</h1>
+                        <h1>Hi, I'm Sage.</h1>
                         <h3>Let's start building your schedule!</h3>
                         <p className="text-textsecondary mt-8">Here are some example queries for the schedule generator that I can help you with:</p>
                         <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
@@ -683,7 +684,9 @@ const ChatBot: React.FC = () => {
                         </ul>
                       </div>
                     ) : (
-                      messages.map((msg, index) => <MessageDisplay key={index} message={msg} />)
+                      messages.map((msg, index) => (
+                        <MessageDisplay key={index} message={msg} messageIndex={index} conversationId={conversation_id} />
+                      ))
                     )}
 
                     {chatLoad && !chatError && (
@@ -695,44 +698,9 @@ const ChatBot: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Query Container */}
                 <div className="w-full flex flex-row gap-4 items-center justify-center">
-                  {/* Mode Toggle */}
-                  {/* <div className="flex flex-row gap-2 p-2 bg-innercontainer border rounded-full border-border">
-                    <div className="relative group/advising">
-                      <button
-                        className={`p-2 rounded-full mr-2 transition-colors duration-200 ${
-                          !generateSchedule ? "bg-accent hover:bg-buttonhover" : "bg-secondary hover:bg-[#A9BFB4]"
-                        }`}
-                        onClick={() => setGenerateSchedule(false)}
-                        aria-label="Ask a general advising question"
-                      >
-                        <GraduationCapIcon size={24} className="stroke-textdark" />
-                      </button>
-                      <div className="group-hover/advising:flex hidden flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-[42%]">
-                        <div className="bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap">Ask a general advising question</div>
-                        <div className="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-bgdark" />
-                      </div>
-                    </div>
-
-                    <div className="relative group/schedule">
-                      <button
-                        className={`p-2 rounded-full transition-colors duration-200 ${
-                          generateSchedule ? "bg-accent hover:bg-buttonhover" : "bg-secondary hover:bg-[#A9BFB4]"
-                        }`}
-                        onClick={() => setGenerateSchedule(true)}
-                        aria-label="Generate your class schedule"
-                      >
-                        <CalendarSearchIcon size={24} className="stroke-textdark" />
-                      </button>
-                      <div className="group-hover/schedule:flex hidden flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-1/2">
-                        <div className=" bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap">Generate your class schedule</div>
-                        <div className="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-bgdark" />
-                      </div>
-                    </div>
-                  </div> */}
                   <div className="relative w-full">
-                  <textarea
+                    <textarea
                       data-tour="chat-input"
                       ref={textareaRef}
                       rows={1}
@@ -747,15 +715,15 @@ const ChatBot: React.FC = () => {
                       value={query}
                       disabled={loading}
                     />
-                      {query.trim().length >= 400 && (
-                        <div
-                          className={`absolute -bottom-3 right-6 text-xs font-medium pointer-events-none transition-colors duration-150 ${
-                            query.trim().length >= 500 ? "text-red-500" : "text-orange-400"
-                          }`}
-                        >
-                          {query.trim().length} / 500
-                        </div>
-                      )}
+                    {query.trim().length >= 400 && (
+                      <div
+                        className={`absolute -bottom-3 right-6 text-xs font-medium pointer-events-none transition-colors duration-150 ${
+                          query.trim().length >= 500 ? "text-red-500" : "text-orange-400"
+                        }`}
+                      >
+                        {query.trim().length} / 500
+                      </div>
+                    )}
                   </div>
 
                   <button
@@ -789,10 +757,7 @@ const ChatBot: React.FC = () => {
                 <div className="flex flex-col gap-8 h-full">
                   <button
                     className="transition-all p-2 rounded-sm text-textdark hover:bg-border w-12 h-12 flex items-center justify-center"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleSidebar();
-                    }}
+                    onClick={(e) => { e.stopPropagation(); toggleSidebar(); }}
                     aria-label="Expand sidebar"
                   >
                     <ArrowRightToLineIcon size={24} />
@@ -800,10 +765,7 @@ const ChatBot: React.FC = () => {
 
                   <button
                     className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      startNewChat();
-                    }}
+                    onClick={(e) => { e.stopPropagation(); startNewChat(); }}
                     aria-label="Start new chat"
                   >
                     <MessageCirclePlusIcon size={24} className="stroke-textdark" />
@@ -853,7 +815,7 @@ const ChatBot: React.FC = () => {
 
                             <div className="relative flex h-full">
                               <button
-                                className="group/menu px-2 h-full group-hover/conversation:opacity-100 opacity-0 "
+                                className="group/menu px-2 h-full group-hover/conversation:opacity-100 opacity-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setMoreOptionsOpenId((prev) => (prev === conv.conversation_id ? null : conv.conversation_id));
@@ -862,18 +824,12 @@ const ChatBot: React.FC = () => {
                                 <Ellipsis className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary" />
                               </button>
 
-                              {/* Context Menu */}
                               {moreOptionsOpenId === conv.conversation_id && showContextMenu && (
                                 <div
                                   className="fixed translate-x-[160%] translate-y-[40%] z-[9999] w-50 bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden transition-opacity duration-150"
                                   style={{ top: contextMenuPosition.top, left: contextMenuPosition.left }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.stopPropagation();
-                                  }}
+                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                                  onMouseEnter={(e) => { e.stopPropagation(); }}
                                 >
                                   <ul className="py-1">
                                     <li>
@@ -921,7 +877,7 @@ const ChatBot: React.FC = () => {
             </div>
 
             {/* Beta Disclaimer */}
-            <div className={`${sidebarCollapsed ? "cursor-pointer rounded-md" : "rounded-full"}  bg-textdark w-full py-3 px-6 flex gap-2 justify-center items-center`} onClick={!sidebarCollapsed ? undefined : toggleSidebar}>
+            <div className={`${sidebarCollapsed ? "cursor-pointer rounded-md" : "rounded-full"} bg-textdark w-full py-3 px-6 flex gap-2 justify-center items-center`} onClick={!sidebarCollapsed ? undefined : toggleSidebar}>
               <SquareAsterisk size={32} className="stroke-accent" />
               <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-textlight text-xs`}>
                 This app is in development. For issues or feedback,
@@ -949,7 +905,7 @@ const ChatBot: React.FC = () => {
                   >
                     {messages.length === 0 && !chatLoad && !generateSchedule ? (
                       <div className="w-full max-w-2xl text-left mt-[5rem]">
-                        <h1>Hi, I’m Sage.</h1>
+                        <h1>Hi, I'm Sage.</h1>
                         <h3>What can I help with?</h3>
                         <p className="text-textsecondary mt-8">Here are some example questions that I can help you with:</p>
                         <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
@@ -969,7 +925,7 @@ const ChatBot: React.FC = () => {
                       </div>
                     ) : messages.length === 0 && !chatLoad && generateSchedule ? (
                       <div className="w-full max-w-2xl text-left mt-[5rem]">
-                        <h1>Hi, I’m Sage.</h1>
+                        <h1>Hi, I'm Sage.</h1>
                         <h3>Let's start building your schedule!</h3>
                         <p className="text-textsecondary mt-8">Here are some example queries for the schedule generator that I can help you with:</p>
                         <ul className="list-disc list-inside text-textsecondary text-sm space-y-1 pl-4 font-dmsans">
@@ -988,7 +944,9 @@ const ChatBot: React.FC = () => {
                         </ul>
                       </div>
                     ) : (
-                      messages.map((msg, index) => <MessageDisplay key={index} message={msg} />)
+                      messages.map((msg, index) => (
+                        <MessageDisplay key={index} message={msg} messageIndex={index} conversationId={conversation_id} />
+                      ))
                     )}
 
                     {chatLoad && !chatError && (
@@ -1002,7 +960,6 @@ const ChatBot: React.FC = () => {
 
                 {/* Query Container */}
                 <div className="w-full flex flex-row gap-4 items-center justify-center">
-                  {/* Mode Toggle */}
                   <div data-tour="mode-toggle" className="flex flex-row gap-2 p-2 bg-innercontainer border rounded-full border-border">
                     <div className="relative group/advising">
                       <button
@@ -1031,11 +988,12 @@ const ChatBot: React.FC = () => {
                         <CalendarSearchIcon size={24} className="stroke-textdark" />
                       </button>
                       <div className="group-hover/schedule:flex hidden flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-1/2">
-                        <div className=" bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap">Generate your class schedule</div>
+                        <div className="bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap">Generate your class schedule</div>
                         <div className="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-bgdark" />
                       </div>
                     </div>
                   </div>
+
                   <div className="relative w-full">
                     <textarea
                       data-tour="chat-input"
@@ -1095,7 +1053,6 @@ const ChatBot: React.FC = () => {
               >
                 Cancel
               </button>
-
               <button
                 className="px-4 py-2 text-sm bg-destructive text-white rounded hover:bg-red-700 disabled:opacity-50"
                 onClick={async (e) => {
@@ -1125,7 +1082,6 @@ const ChatBot: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={handleOutsideClick}>
           <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-4 text-textdark">Rename Chat</h3>
-
             <input
               type="text"
               value={newName}
@@ -1134,7 +1090,6 @@ const ChatBot: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
-
             <div className="flex justify-end gap-4">
               <button
                 className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
@@ -1147,7 +1102,6 @@ const ChatBot: React.FC = () => {
               >
                 Cancel
               </button>
-
               <button
                 className="px-4 py-2 text-sm bg-accent text-textdark rounded hover:text-gray-700 disabled:opacity-50"
                 onClick={async (e) => {

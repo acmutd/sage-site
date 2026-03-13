@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
 interface Message {
-    role: "user" | "bot";
+    role: "user" | "assistant";
     content: string;
     timestamp: number;
   }
