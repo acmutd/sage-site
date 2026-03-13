@@ -463,11 +463,6 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         {sections.map((sec: any, i: number) => {
                             // UTD Grades!!
                             const instData = getInstructorGrades(sec.instructors);
-                            console.log("courseKey:", courseKey);
-                            console.log("gradesData keys:", Object.keys(gradesData));
-                            console.log("courseGrades:", courseGrades);
-                            console.log("courseGrades instructors:", courseGrades?.instructors?.map((i: any) => i.instructor.name));
-                            console.log("sec.instructors:", sec.instructors, "matched:", instData?.instructor?.name);
                             const avg = instData ? getAvgLetter(instData.aggregate?.grades) : null;
                             const rmp = instData?.instructor?.rmp?.quality_rating ?? null;
 
