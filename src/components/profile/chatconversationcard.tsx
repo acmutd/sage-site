@@ -1,15 +1,11 @@
 import { MoveRight } from "lucide-react";
 import React from "react";
-
-interface Message {
-  role: "user" | "assistant";
-  text: string;
-}
+import type { Message } from "@/types/chat";
 
 interface ChatConversationCardProps {
   title: string;
   timestamp: string;
-  messages: Message[];
+  messages: Pick<Message, "role" | "content">[];
   active?: boolean;
   onOpen: () => void;
 }
@@ -47,7 +43,7 @@ const ChatConversationCard: React.FC<ChatConversationCardProps> = ({
                   : "bg-white border-border text-gray-700"
                 }`}
             >
-              <span className="truncate min-w-0 flex-1">{msg.text}</span>
+              <span className="truncate min-w-0 flex-1">{msg.content}</span>
             </div>
           ))}
         </div>

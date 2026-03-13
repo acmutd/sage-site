@@ -1,21 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { Conversation } from "@/types/chat"
 
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
-
-interface Message {
-    role: "user" | "bot";
-    content: string;
-    timestamp: number;
-  }
-  
-interface Conversation {
-    conversation_id: string;
-    user_id: string;
-    messages: Message[];
-    title?: string;
-    conversation_name?: string;
-}
 
 export const useChatbot = () => {
     const { user } = useAuth();
