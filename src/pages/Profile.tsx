@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import SectionSwitcher, { ProfileSection } from "@/components/profile/sectionswitcher";
 import ChatConversationCard from "@/components/profile/chatconversationcard"
 import { chatEventEmitter } from "../utils/chatEventEmitter";
+import { Conversation } from "@/types/chat"
 
 interface Card {
   id: string;
@@ -67,19 +68,6 @@ function EditableCardContent({ card, onSave }: { card: Card; onSave: (val: strin
     <h3 className="group-hover:underline group-hover:decoration-dotted group-hover:underline-offset-2 transition-all">{card.label}</h3>
     </div>
   );
-}
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  timestamp: number;
-}
-
-interface Conversation {
-  conversation_id: string;
-  user_id: string;
-  messages: Message[];
-  title?: string;
 }
 
 const Profile = () => {
@@ -700,7 +688,7 @@ const Profile = () => {
                           <ChatConversationCard
                             title={conv.title || conv.messages?.[0]?.content || "Untitled Conversation"}
                             timestamp={formatConvoTimestamp(lastMsgTs)}
-                            messages={conv.messages.slice(0, 3).map((m) => ({ role: m.role, text: m.content }))}
+                            messages={conv.messages.slice(0, 3)}
                             onOpen={() => handleOpenConversation(conv)}
                           />
                         </div>

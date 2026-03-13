@@ -3,20 +3,7 @@ import { useEffect, useState } from "react";
 import { useChatbot } from "@/hooks/useChatbot"
 import { useAuth } from "@/context/AuthContext";
 import { chatEventEmitter } from "@/utils/chatEventEmitter";
-
-interface Message {
-  role: "user" | "bot";
-  content: string;
-  timestamp: number;
-}
-
-interface Conversation {
-  conversation_id: string;
-  user_id: string;
-  messages: Message[];
-  title?: string;
-  conversation_name?: string;
-}
+import type { Conversation } from "@/types/chat";
 
 interface ChatSidebarContentProps {
   onClose: () => void;

@@ -1,15 +1,7 @@
 import { ReactNode } from "react";
 import EmailVariantCard from "./EmailVariantCard";
+import type { Message } from "@/types/chat";
 
-type Role = "user" | "assistant";
-
-interface Message {
-  role: Role;
-  content: string;
-  timestamp: number;
-  type?: "email";
-  variants?: { label: string; subject: string; body: string }[];
-}
 
 interface MessageDisplayProps {
   message: Message;

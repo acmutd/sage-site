@@ -20,24 +20,7 @@ import { v4 as uuidv4 } from "uuid";
 import MessageDisplay from "@/components/chatbot/MessageDisplay";
 import { chatEventEmitter } from "../utils/chatEventEmitter";
 import { useChatbot } from "@/hooks/useChatbot";
-
-type Role = "user" | "assistant";
-
-interface Message {
-  role: Role;
-  content: string;
-  timestamp: number;
-  type?: "email";
-  variants?: { label: string; subject: string; body: string }[];
-}
-
-interface Conversation {
-  conversation_id: string;
-  user_id: string;
-  messages: Message[];
-  title?: string;
-  conversation_name?: string;
-}
+import { Message, Conversation } from "@/types/chat";
 
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
