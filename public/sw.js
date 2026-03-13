@@ -1,5 +1,26 @@
 const CACHE_NAME = 'sage-cacher-v1';
-const CACHED_URLS = ['CRUD/coursebook'];
+const CACHED_URLS = ['CRUD/coursebook', 'CRUD/utdgrades'];
+
+function normalizeCacheKey(url) {
+    const u = new URL(url);
+    const courses = u.searchParams.get('courses');
+    if (courses) {
+        u.searchParams.set('courses', courses.split(',').sort().join(','));
+    }
+    return u.toString();
+}
+
+function isCacheStale(cachedResponse) {
+    const expires = cachedResponse.headers.get('expires');
+    if (!expires) {
+        const cachedDate = cachedResponse.headers.get('sw-cached-date');
+        const cached_time = new Date(cachedDate);
+        const now = new Date();
+        return cached_time.getMonth() !== now.getMonth() || 
+               cached_time.getFullYear() !== now.getFullYear();
+    }
+    return new Date() >= new Date(expires);
+}
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();
@@ -19,24 +40,17 @@ self.addEventListener('fetch', (event) => {
 
     event.respondWith(
         caches.open(CACHE_NAME).then(async cache => {
-            const cacheKey = new Request(event.request.url);
+            const cacheKey = new Request(normalizeCacheKey(event.request.url));
             const cached = await cache.match(cacheKey);
             
             if (cached) {
-                const cachedDate = cached.headers.get('sw-cached-date');
-                if (cachedDate) {
-                    const cached_time = new Date(cachedDate);
-                    const now = new Date();
-                    if (cached_time.getMonth() === now.getMonth() && 
-                        cached_time.getFullYear() === now.getFullYear()) {
-                        return cached;
-                    }
+                if (!isCacheStale(cached)) {
+                    return cached;
                 }
             }
 
             const response = await fetch(event.request);
             if (response.ok) {
-                // Clone and add our own cache date header
                 const body = await response.arrayBuffer();
                 const newHeaders = new Headers(response.headers);
                 newHeaders.set('sw-cached-date', new Date().toISOString());

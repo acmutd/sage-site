@@ -290,6 +290,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     }, [hasUnsavedChanges]);
 
     const [coursebookData, setCoursebookData] = useState<Record<string, any[]>>({});
+    const [gradesData, setGradesData] = useState<Record<string, any>>({});
     const [error, setError] = useState<string | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [semesterToDelete, setSemesterToDelete] = useState<{
@@ -304,7 +305,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const [showRenameModal, setShowRenameModal] = useState(false);
     const [showPlanDeleteModal, setShowPlanDeleteModal] = useState(false);
     const [newPlanName, setNewPlanName] = useState("");
-
+    const gradesFetchedRef = useRef<Set<string>>(new Set());
+    const coursebookFetchedRef = useRef<Set<string>>(new Set());
     const errorRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -456,9 +458,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             if (codesToFetch.size === 0) return;
     
             // delta — only fetch what we don't have yet
-            const newCodes = [...codesToFetch].filter(code => !coursebookData[code]);
+            const newCodes = [...codesToFetch].filter(
+                code => !coursebookData[code] && !coursebookFetchedRef.current.has(code)
+            );
             if (newCodes.length === 0) return;
     
+            newCodes.forEach(code => coursebookFetchedRef.current.add(code));
+
             try {
                 const token = await user.getIdToken();
                 const CRUD_API = import.meta.env.VITE_CRUD_API;
@@ -481,11 +487,67 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     
                 setCoursebookData(prev => ({ ...prev, ...grouped }));
             } catch (err) {
+                newCodes.forEach(code => coursebookFetchedRef.current.delete(code));
                 console.error("Failed to fetch coursebook data:", err);
             }
         };
     
         fetchCoursebook();
+    }, [allSuggestedCourses, allSemesters, user]);
+
+    useEffect(() => {
+        const fetchGrades = async () => {
+            if (!user) return;
+    
+            const codesToFetch = new Set<string>();
+    
+            allSuggestedCourses.forEach((course: any) => {
+                const code = course.course_code || course.code;
+                if (code) codesToFetch.add(code.toUpperCase().replace(/\s+/g, ""));
+            });
+    
+            Object.values(allSemesters).forEach(yearSemesters => {
+                yearSemesters.forEach(semester => {
+                    if (!semester.isFromTranscript) {
+                        semester.courses?.forEach((course: any) => {
+                            const code = course.course_code || course.code;
+                            if (code) codesToFetch.add(code.toUpperCase().replace(/\s+/g, ""));
+                        });
+                    }
+                });
+            });
+    
+            if (codesToFetch.size === 0) return;
+    
+            // delta — only fetch what we don't have yet
+            const newCodes = [...codesToFetch].filter(
+                code => !gradesData[code] && !gradesFetchedRef.current.has(code)
+            );
+            if (newCodes.length === 0) return;
+
+            newCodes.forEach(code => gradesFetchedRef.current.add(code));
+    
+            try {
+                const token = await user.getIdToken();
+                const CRUD_API = import.meta.env.VITE_CRUD_API;
+                const base = CRUD_API.replace("/CRUD", "");
+    
+                const res = await fetch(
+                    `${base}/CRUD/utdgrades?courses=${newCodes.join(",")}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+    
+                if (!res.ok) return;
+                const data = await res.json();
+    
+                setGradesData(prev => ({ ...prev, ...data }));
+            } catch (err) {
+                newCodes.forEach(code => gradesFetchedRef.current.delete(code));
+                console.error("Failed to fetch grades data:", err);
+            }
+        };
+    
+        fetchGrades();
     }, [allSuggestedCourses, allSemesters, user]);
 
     const allPlannedCoursesWithOrder = useMemo(() => {
@@ -765,6 +827,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         focusLabel={focusLabel}
                         semesters={allSemesters}
                         coursebookData={coursebookData}
+                        gradesData={gradesData}
                     />
 
                     <div
