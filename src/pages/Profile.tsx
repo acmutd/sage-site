@@ -267,6 +267,13 @@ const Profile = () => {
       body: JSON.stringify({ userId: user?.uid, action: "updateProfile", token, profile_picture_type: newType }),
     });
     const result = await res.json();
+    if (!res.ok) {
+      console.error("Failed to update profile:", result.error);
+      setProfilePictureType(currentType);
+      localStorage.setItem('profilePictureType', currentType.toString());
+      setProfilePic(currentType === 0 && googlePhotoURL ? googlePhotoURL : `/assets/profile_pics/${currentType}.png`);
+      return;
+    }
     setProfilePictureType(newType);
     localStorage.setItem('profilePictureType', newType.toString());
     window.dispatchEvent(new Event('storage'));
