@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, MoveLeft, MoveRight, Pencil, Plus, SaveIcon, Sparkles, X } from "lucide-react";
+import { Check, GripVertical, MoveLeft, MoveRight, Pencil, Plus, SaveIcon, Sparkles, X } from "lucide-react";
 import DegreeProgressCard from "@/components/profile/degreeprogresscard";
 import { useAuth } from "../context/AuthContext";
 import SectionSwitcher, { ProfileSection } from "@/components/profile/sectionswitcher";
@@ -510,7 +510,7 @@ const Profile = () => {
 
                 <div className="flex-1">
                   {/* ── Same grid layout as before, now driven by `enabledCards` ── */}
-                  <div className="grid grid-cols-3 gap-4 sm:gap-6 md:gap-8">
+                  <div className="grid grid-cols-3 gap-6 sm:gap-8 md:gap-10">
                     {enabledCards.map((card, i) => {
                       const isDragOver = dragOverIndex === i && dragIndex !== i;
                       const isFlashed  = savedFlash === card.id;
@@ -538,12 +538,12 @@ const Profile = () => {
                           {/* Edit-mode controls */}
                           {isEditing && (
                             <>
-                              <span className="absolute top-2 left-2.5 text-gray-300 text-xs cursor-grab select-none">⠿</span>
+                              <GripVertical className="absolute top-2 left-2 w-5 h-5 text-gray-400 cursor-grab" />
                               <button
                                 data-testid="card-remove-btn"
                                 onClick={() => toggleCard(card.id)}
-                                className="absolute top-2 right-2 w-4 h-4 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center hover:bg-red-600 leading-none"
-                              ><X className="w-2.5 h-2.5 stroke-white" /></button>
+                                className="absolute top-2 right-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center hover:bg-red-600 leading-none"
+                              ><X className="w-8.5 h-8.5 stroke-white" /></button>
                             </>
                           )}
 
@@ -571,7 +571,7 @@ const Profile = () => {
                   {isEditing && disabledCards.length > 0 && (
                     <div
                       data-testid="card-tray"
-                      className="mt-4 border-2 border-dashed border-green-200 rounded-2xl px-4 py-3 bg-green-50"
+                      className="mt-4 border-2 border-dashed border-gray-300 rounded-2xl px-4 py-3 bg-gray-50"
                       style={{ animation: "fadeSlide 0.2s ease" }}
                     >
                       <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
@@ -580,7 +580,7 @@ const Profile = () => {
                       <p className="text-[11px] text-gray-400 mb-2">
                         Remove a card first to swap it if three already exist. Cards with a pencil let you edit that card.
                       </p>
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                         {disabledCards.map((card) => {
                           const atMax = enabledCards.length >= MAX_CARDS;
                           return (
@@ -589,17 +589,17 @@ const Profile = () => {
                                 key={card.id}
                                 onClick={() => toggleCard(card.id)}
                                 disabled={atMax}
-                                className={`px-3 py-2 rounded-xl border-2 text-left text-sm transition-all ${
-                                atMax
-                                  ? "border-gray-200 bg-gray-50 opacity-40 cursor-not-allowed"
-                                  : "border-card-bord bg-white hover:border-accent hover:bg-green-50"
-                              }`}
+                                className={`px-3 py-2 rounded-xl border-2 text-left text-sm transition-all flex-shrink-0 w-32 ${
+                                  atMax
+                                      ? "border-gray-200 bg-gray-50 opacity-40 cursor-not-allowed"
+                                      : "border-card-bord bg-white hover:border-accent hover:bg-green-50"
+                                }`}
                             >
-                              <div className="font-bold text-textdark flex items-center gap-1">
+                              <div className="font-semibold text-sm text-textdark flex items-center gap-1">
                                 {card.label}
                                 {card.editable && <span className="text-[9px] text-accent font-extrabold"><Pencil size={10}/></span>}
                               </div>
-                              <div className="text-[10px] text-gray-400 mt-0.5">{card.sublabel}</div>
+                              <div className="text-[11px] text-gray-500 mt-0.5">{card.sublabel}</div>
                             </button>
                           );
                         })}
