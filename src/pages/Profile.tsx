@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, MoveLeft, MoveRight, Pencil, Plus, SaveIcon, Sparkles, X } from "lucide-react";
+import { Check, GripVertical, MoveLeft, MoveRight, Pencil, Plus, SaveIcon, Sparkles, X } from "lucide-react";
 import DegreeProgressCard from "@/components/profile/degreeprogresscard";
 import { useAuth } from "../context/AuthContext";
 import SectionSwitcher, { ProfileSection } from "@/components/profile/sectionswitcher";
@@ -510,7 +510,7 @@ const Profile = () => {
 
                 <div className="flex-1">
                   {/* ── Same grid layout as before, now driven by `enabledCards` ── */}
-                  <div className="grid grid-cols-3 gap-4 sm:gap-6 md:gap-8">
+                  <div className="grid grid-cols-3 gap-6 sm:gap-8 md:gap-10">
                     {enabledCards.map((card, i) => {
                       const isDragOver = dragOverIndex === i && dragIndex !== i;
                       const isFlashed  = savedFlash === card.id;
@@ -538,12 +538,12 @@ const Profile = () => {
                           {/* Edit-mode controls */}
                           {isEditing && (
                             <>
-                              <span className="absolute top-2 left-2.5 text-gray-300 text-xs cursor-grab select-none">⠿</span>
+                              <GripVertical className="absolute top-2 left-2 w-5 h-5 text-gray-400 cursor-grab" />
                               <button
                                 data-testid="card-remove-btn"
                                 onClick={() => toggleCard(card.id)}
-                                className="absolute top-2 right-2 w-4 h-4 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center hover:bg-red-600 leading-none"
-                              ><X className="w-2.5 h-2.5 stroke-white" /></button>
+                                className="absolute top-2 right-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center hover:bg-red-600 leading-none"
+                              ><X className="w-8.5 h-8.5 stroke-white" /></button>
                             </>
                           )}
 
