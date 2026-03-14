@@ -38,6 +38,8 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({
         setUpdatedProgram((prev: any) => ({
             ...prev,
             [fieldId]: value,
+            ...(fieldId === "level" ? { type: "", title: "" } : {}),
+            ...(fieldId === "type" ? { title: "" } : {}),
         }));
     };
 
@@ -157,19 +159,21 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({
                             )}
 
                             {formFields.map((field) => (
-                                <div key={field.id} className="dropdown-container flex flex-col items-start gap-2 w-full"
+                                <div 
+                                    key={`${field.id}-${useLatest ? "latest" : "assigned"}-${field.id === "type" ? updatedProgram.level : ""}`}
+                                    className="dropdown-container flex flex-col items-start gap-2 w-full"
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <label className="font-body-regular text-redesign-stylesdark-text text-sm">
                                         {field.label}
                                     </label>
-                                    <Select onValueChange={(value) => handleFieldChange(field.id, value)}>
+                                    <Select 
+                                        value={updatedProgram[field.id] || undefined}
+                                        onValueChange={(value) => handleFieldChange(field.id, value)}
+                                    >
                                         <SelectTrigger className="bg-redesign-stylesbg-light rounded-sm border border-slate-300 p-2 w-64">
-                                            <SelectValue
-                                                placeholder={field.id === "level" ? program.level : program.type}
-                                                className="text-redesign-stylesplaceholder-secondary-text text-sm"
-                                            />
+                                            <SelectValue placeholder={field.id === "level" ? program.level : program.type} />
                                         </SelectTrigger>
                                         <SelectContent className="z-[80] bg-white p-1">
                                             {field.options.map((option, index) => (
@@ -188,6 +192,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({
                                     Program name
                                 </label>
                                 <Searchbox<{ name: string }>
+                                    key={useLatest ? "latest" : "assigned"}
                                     items={getTitleOptions()}
                                     getLabel={(o: { name: string }) => o.name}
                                     searchKeys={["name"]}
