@@ -11,92 +11,114 @@ import {
 import { Searchbox } from "@/components/ui/SearchBox";
 
 interface ProgramValidationBProps {
-    program: any; // Add a prop to accept the program being edited
+    program: any;
     onNext: () => void;
-    onRemove: (id: number) => void; // Add onRemove prop
-    onSave: (updatedProgram: any) => void; // Add onSave prop
+    onRemove: (id: number) => void;
+    onSave: (updatedProgram: any) => void;
     transcriptData: any;
     degreeCatalog: any;
+    latestCatalog: any;
+    studentCatalogYear: string;
+    latestCatalogYear: string;
 }
 
-const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext, onRemove, onSave, degreeCatalog }) => {
+const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ 
+    program, onNext, onRemove, onSave, 
+    degreeCatalog, latestCatalog, 
+    studentCatalogYear, latestCatalogYear 
+}) => {
     const [selectedProgramId] = useState<number | null>(program?.id || null);
-    const [updatedProgram, setUpdatedProgram] = useState(program); // Local state for the program being edited
+    const [updatedProgram, setUpdatedProgram] = useState(program);
+    const [useLatest, setUseLatest] = useState(false);
 
+    const activeCatalog = useLatest ? latestCatalog : degreeCatalog;
     const isNewProgram = !program?.id;
 
     const handleFieldChange = (fieldId: string, value: string) => {
         setUpdatedProgram((prev: any) => ({
             ...prev,
             [fieldId]: value,
-        })); // Update the local program state
+            ...(fieldId === "level" ? { type: "", title: "" } : {}),
+            ...(fieldId === "type" ? { title: "" } : {}),
+        }));
+    };
+
+    // reset level/type/title when toggling so stale selections don't carry over
+    const handleToggle = () => {
+        setUseLatest(prev => !prev);
+        setUpdatedProgram((prev: any) => ({
+            ...prev,
+            level: "",
+            type: "",
+            title: "",
+        }));
     };
 
     const getLevelOptions = () => {
-        if (!degreeCatalog) return [];
+        if (!activeCatalog) return [];
         const levels = [];
-        if (degreeCatalog.undergraduate) levels.push("Undergraduate");
-        if (degreeCatalog.graduate) levels.push("Graduate");
+        if (activeCatalog.undergraduate) levels.push("Undergraduate");
+        if (activeCatalog.graduate) levels.push("Graduate");
         return levels;
     };
-    
+
     const getTypeOptions = () => {
-        if (!degreeCatalog) return [];
-        
+        if (!activeCatalog) return [];
         const level = updatedProgram?.level?.toLowerCase();
         const types = [];
-        
         if (level === "undergraduate") {
-          if (degreeCatalog.undergraduate?.bachelor) types.push("Major");
-          if (degreeCatalog.undergraduate?.minor) types.push("Minor");
-          if (degreeCatalog.undergraduate?.certificate) types.push("Certificate");
+            if (activeCatalog.undergraduate?.bachelor) types.push("Major");
+            if (activeCatalog.undergraduate?.minor) types.push("Minor");
+            if (activeCatalog.undergraduate?.certificate) types.push("Certificate");
         } else if (level === "graduate") {
-          if (degreeCatalog.graduate?.masters || degreeCatalog.graduate?.doctorate) types.push("Major");
-          if (degreeCatalog.graduate?.certificate) types.push("Certificate");
+            if (activeCatalog.graduate?.masters || activeCatalog.graduate?.doctorate) types.push("Major");
+            if (activeCatalog.graduate?.certificate) types.push("Certificate");
         }
-        
         return types;
     };
-    
-    const getTitleOptions = () => {
-        if (!degreeCatalog) return [];
-        
-        const level = updatedProgram?.level?.toLowerCase(); // "undergraduate" or "graduate"
-        const type = updatedProgram?.type?.toLowerCase(); // "major", "minor", "certificate"
-        let raw: string[] = [];
 
+    const getTitleOptions = () => {
+        if (!activeCatalog) return [];
+        const level = updatedProgram?.level?.toLowerCase();
+        const type = updatedProgram?.type?.toLowerCase();
+        let raw: string[] = [];
         if (level === "undergraduate") {
-          if (type === "major") raw = degreeCatalog.undergraduate?.bachelor || [];
-          if (type === "minor") raw = degreeCatalog.undergraduate?.minor || [];
-          if (type === "certificate") raw = degreeCatalog.undergraduate?.certificate || [];
+            if (type === "major") raw = activeCatalog.undergraduate?.bachelor || [];
+            if (type === "minor") raw = activeCatalog.undergraduate?.minor || [];
+            if (type === "certificate") raw = activeCatalog.undergraduate?.certificate || [];
         } else if (level === "graduate") {
-          if (type === "major") 
-          {
-            raw = [
-                ...(degreeCatalog.graduate?.masters || []),
-                ...(degreeCatalog.graduate?.doctorate || [])
-            ];
-          }
-          if (type === "certificate") raw = degreeCatalog.graduate?.certificate || [];
+            if (type === "major") {
+                raw = [
+                    ...(activeCatalog.graduate?.masters || []),
+                    ...(activeCatalog.graduate?.doctorate || [])
+                ];
+            }
+            if (type === "certificate") raw = activeCatalog.graduate?.certificate || [];
         }
-        
         return raw.map((name: string) => ({ name }));
     };
-    
+
     const formFields = [
         {
-          id: "level",
-          label: "Level of Study",
-          placeholder: "Select level of study",
-          options: getLevelOptions(),
+            id: "level",
+            label: "Level of Study",
+            placeholder: "Select level of study",
+            options: getLevelOptions(),
         },
         {
-          id: "type",
-          label: "Type of program",
-          placeholder: "Select type of program",
-          options: getTypeOptions(),
+            id: "type",
+            label: "Type of program",
+            placeholder: "Select type of program",
+            options: getTypeOptions(),
         },
     ];
+
+    const handleSave = () => {
+        onSave({
+            ...updatedProgram,
+            catalog_year: useLatest ? latestCatalogYear : studentCatalogYear,
+        });
+    };
 
     return (
         <div>
@@ -111,30 +133,57 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
             <div className="flex flex-col gap-4 bg-gray-100 p-2 rounded-sm">
                 <Card className="py-3 relative overflow-hidden">
                     <CardContent className="flex items-center">
-                        <div className="flex flex-col gap-4 w-full"> {/* Ensure all selects are in a column */}
-                        {formFields.map((field) => (
-                            <div key={field.id} className="dropdown-container flex flex-col items-start gap-2 w-full"
-                                onMouseDown={(e) => e.stopPropagation()}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <label className="font-body-regular text-redesign-stylesdark-text text-sm">
-                                {field.label}
-                                </label>
-                                <Select onValueChange={(value) => handleFieldChange(field.id, value)}>
-                                <SelectTrigger className="bg-redesign-stylesbg-light rounded-sm border border-slate-300 p-2 w-64">
-                                    <SelectValue
-                                    placeholder={field.id === "level" ? program.level : program.type}
-                                    className="text-redesign-stylesplaceholder-secondary-text text-sm"
-                                    />
-                                </SelectTrigger>
-                                <SelectContent className="z-[80] bg-white p-1">
-                                    {field.options.map((option, index) => (
-                                    <SelectItem key={index} value={option}>{option}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                                </Select>
+                        <div className="flex flex-col gap-4 w-full">
+
+                            {/* Catalog year toggle - (if you aren't a freshman) */}
+                            {studentCatalogYear !== latestCatalogYear && (
+                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <span className={!useLatest ? "text-gray-800 font-medium" : ""}>
+                                    My catalog ({studentCatalogYear})
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={handleToggle}
+                                    className={`relative w-10 h-5 rounded-full transition-colors ${
+                                        useLatest ? "bg-accent" : "bg-gray-300"
+                                    }`}
+                                >
+                                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                                        useLatest ? "translate-x-5" : "translate-x-0"
+                                    }`} />
+                                </button>
+                                <span className={useLatest ? "text-gray-800 font-medium" : ""}>
+                                    Latest ({latestCatalogYear})
+                                </span>
                             </div>
+                            )}
+
+                            {formFields.map((field) => (
+                                <div 
+                                    key={`${field.id}-${useLatest ? "latest" : "assigned"}-${field.id === "type" ? updatedProgram.level : ""}`}
+                                    className="dropdown-container flex flex-col items-start gap-2 w-full"
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <label className="font-body-regular text-redesign-stylesdark-text text-sm">
+                                        {field.label}
+                                    </label>
+                                    <Select 
+                                        value={updatedProgram[field.id] || undefined}
+                                        onValueChange={(value) => handleFieldChange(field.id, value)}
+                                    >
+                                        <SelectTrigger className="bg-redesign-stylesbg-light rounded-sm border border-slate-300 p-2 w-64">
+                                            <SelectValue placeholder={field.id === "level" ? program.level : program.type} />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-[80] bg-white p-1">
+                                            {field.options.map((option, index) => (
+                                                <SelectItem key={index} value={option}>{option}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             ))}
+
                             <div className="dropdown-container flex flex-col items-start gap-2 w-full"
                                 onMouseDown={(e) => e.stopPropagation()}
                                 onClick={(e) => e.stopPropagation()}
@@ -143,6 +192,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                                     Program name
                                 </label>
                                 <Searchbox<{ name: string }>
+                                    key={useLatest ? "latest" : "assigned"}
                                     items={getTitleOptions()}
                                     getLabel={(o: { name: string }) => o.name}
                                     searchKeys={["name"]}
@@ -152,20 +202,16 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                                     className="w-full border-slate-300 rounded-sm"
                                 />
                             </div>
+
                             <div className="inline-flex items-start gap-4 relative flex-[0_0_auto]">
                                 <Button
                                     variant="link"
                                     className="inline-flex items-center justify-center relative flex-[0_0_auto] p-0 h-auto"
-                                    onClick={onNext} 
+                                    onClick={() => { handleSave(); onNext(); }}
                                 >
-                                    <div className="relative w-fit mt-[-1.00px] [font-family:'DM_Sans',Helvetica] font-normal text-redesign-stylesdark-text text-base tracking-[0] leading-4 whitespace-nowrap">
-                                        <span 
-                                        className="font-[number:var(--body-regular-font-weight)] text-blue-600 leading-[var(--body-regular-line-height)] underline font-body-regular [font-style:var(--body-regular-font-style)] tracking-[var(--body-regular-letter-spacing)] text-[length:var(--body-regular-font-size)]"
-                                        onClick={() => onSave(updatedProgram)}
-                                        >
-                                            Save
-                                        </span>
-                                    </div>
+                                    <span className="font-[number:var(--body-regular-font-weight)] text-blue-600 leading-[var(--body-regular-line-height)] underline font-body-regular text-[length:var(--body-regular-font-size)]">
+                                        Save
+                                    </span>
                                 </Button>
 
                                 <Button
@@ -173,11 +219,9 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                                     className="inline-flex items-center justify-center relative flex-[0_0_auto] p-0 h-auto"
                                     onClick={onNext}
                                 >
-                                    <div className="relative w-fit mt-[-1.00px] [font-family:'DM_Sans',Helvetica] font-normal text-transparent text-base tracking-[0] leading-4 whitespace-nowrap">
-                                        <span className="font-[number:var(--body-regular-font-weight)] text-gray-600 leading-[var(--body-regular-line-height)] underline font-body-regular [font-style:var(--body-regular-font-style)] tracking-[var(--body-regular-letter-spacing)] text-[length:var(--body-regular-font-size)]">
-                                            Cancel
-                                        </span>
-                                    </div>
+                                    <span className="font-[number:var(--body-regular-font-weight)] text-gray-600 leading-[var(--body-regular-line-height)] underline font-body-regular text-[length:var(--body-regular-font-size)]">
+                                        Cancel
+                                    </span>
                                 </Button>
 
                                 {!isNewProgram && (
@@ -190,35 +234,16 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ program, onNext
                                             }
                                         }}
                                     >
-                                        <div className="relative w-fit mt-[-1.00px] [font-family:'DM_Sans',Helvetica] font-normal text-transparent text-base tracking-[0] leading-4 whitespace-nowrap">
-                                            <span className="font-[number:var(--body-regular-font-weight)] text-[#da0000] leading-[var(--body-regular-line-height)] underline font-body-regular [font-style:var(--body-regular-font-style)] tracking-[var(--body-regular-letter-spacing)] text-[length:var(--body-regular-font-size)]">
-                                                Remove
-                                            </span>
-                                        </div>
+                                        <span className="font-[number:var(--body-regular-font-weight)] text-[#da0000] leading-[var(--body-regular-line-height)] underline font-body-regular text-[length:var(--body-regular-font-size)]">
+                                            Remove
+                                        </span>
                                     </Button>
                                 )}
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-
-                {/* <Button
-                    variant="outline"
-                    className="flex items-center gap-2 border-dashed border-gray-400 border w-full justify-start text-gray-600 rounded-sm"
-                >
-                    <PlusIcon size={16} />
-                    Add program
-                </Button> */}
             </div>
-
-            {/* <div className="flex justify-end mt-8">
-                <button
-                    className="w-auto px-8 p-2 bg-accent text-black rounded-lg hover:bg-green-500 transition"
-                    onClick={onNext}
-                >
-                    Next
-                </button>
-            </div> */}
         </div>
     );
 };

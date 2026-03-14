@@ -1,5 +1,5 @@
 const CACHE_NAME = 'sage-cacher-v1';
-const CACHED_URLS = ['CRUD/coursebook', 'CRUD/utdgrades'];
+const CACHED_URLS = ['CRUD/coursebook', 'CRUD/utdgrades', 'CRUD/catalog'];
 
 function normalizeCacheKey(url) {
     const u = new URL(url);
