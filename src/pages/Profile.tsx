@@ -571,7 +571,7 @@ const Profile = () => {
                   {isEditing && disabledCards.length > 0 && (
                     <div
                       data-testid="card-tray"
-                      className="mt-4 border-2 border-dashed border-green-200 rounded-2xl px-4 py-3 bg-green-50"
+                      className="mt-4 border-2 border-dashed border-gray-300 rounded-2xl px-4 py-3 bg-gray-50"
                       style={{ animation: "fadeSlide 0.2s ease" }}
                     >
                       <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
@@ -580,7 +580,7 @@ const Profile = () => {
                       <p className="text-[11px] text-gray-400 mb-2">
                         Remove a card first to swap it if three already exist. Cards with a pencil let you edit that card.
                       </p>
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                         {disabledCards.map((card) => {
                           const atMax = enabledCards.length >= MAX_CARDS;
                           return (
@@ -589,17 +589,17 @@ const Profile = () => {
                                 key={card.id}
                                 onClick={() => toggleCard(card.id)}
                                 disabled={atMax}
-                                className={`px-3 py-2 rounded-xl border-2 text-left text-sm transition-all ${
-                                atMax
-                                  ? "border-gray-200 bg-gray-50 opacity-40 cursor-not-allowed"
-                                  : "border-card-bord bg-white hover:border-accent hover:bg-green-50"
-                              }`}
+                                className={`px-3 py-2 rounded-xl border-2 text-left text-sm transition-all flex-shrink-0 w-32 ${
+                                  atMax
+                                      ? "border-gray-200 bg-gray-50 opacity-40 cursor-not-allowed"
+                                      : "border-card-bord bg-white hover:border-accent hover:bg-green-50"
+                                }`}
                             >
-                              <div className="font-bold text-textdark flex items-center gap-1">
+                              <div className="font-semibold text-sm text-textdark flex items-center gap-1">
                                 {card.label}
                                 {card.editable && <span className="text-[9px] text-accent font-extrabold"><Pencil size={10}/></span>}
                               </div>
-                              <div className="text-[10px] text-gray-400 mt-0.5">{card.sublabel}</div>
+                              <div className="text-[11px] text-gray-500 mt-0.5">{card.sublabel}</div>
                             </button>
                           );
                         })}
