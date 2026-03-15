@@ -142,7 +142,19 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const [flipLeft, setFlipLeft] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [_, setExpandedSectionIndex] = useState<number | null>(null);
+    const [isNarrowSidebar, setIsNarrowSidebar] = useState(inSidebar && window.innerWidth < 1024);
 
+    useEffect(() => {
+        if (!inSidebar) return;
+        const handleResize = () => {
+            const narrow = window.innerWidth < 1024;
+            setIsNarrowSidebar(narrow);
+            if (!narrow) setShowTooltip(false); // close drawer when expanding
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [inSidebar]);
+    
     // mobile check - does it have a cursor or does it have touch?
     const [canHover, setCanHover] = useState(true);
     useEffect(() => {
@@ -282,7 +294,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
         if (!canHover) return;
-        if (inSidebar && window.innerWidth < 1024) return;
+        if (inSidebar && isNarrowSidebar) return;
 
         if (closeActiveTooltip) closeActiveTooltip();
         isActiveTooltipRef.current = true;
@@ -311,7 +323,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     };
 
     const handleMouseLeave = () => {
-        if (inSidebar && window.innerWidth < 1024) return;
+        if (inSidebar && isNarrowSidebar) return;
         if (inSidebar) {
             hideTimeoutRef.current = setTimeout(() => {
                 setShowTooltip(false);
@@ -325,7 +337,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
     const handleInfoClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!canHover || (inSidebar && window.innerWidth < 1024)) {
+        if (!canHover || (inSidebar && isNarrowSidebar)) {
             setShowTooltip(!showTooltip);
         }
     };
@@ -398,11 +410,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
     const tooltipContent = (
         <div className={`
-                    ${!canHover
-                ? "bg-white text-black rounded-t-2xl p-4 shadow-2xl w-full border-t-2 border-gray-200 max-h-[80vh] overflow-y-auto"
-                : `bg-white text-black rounded-md p-3 shadow-lg border border-gray-200 ${sections.length > 0 ? "w-[560px] max-h-[400px] overflow-y-auto" : "w-56 md:w-64"}`
+            ${(!canHover || isNarrowSidebar)
+                ? "bg-white text-black rounded-t-2xl p-4 shadow-2xl w-full border-t-2 border-gray-200 max-h-[80vh] overflow-y-auto scrollbar-hide"
+                : `bg-white text-black rounded-md p-3 shadow-lg border border-gray-200 ${sections.length > 0 ? "w-[min(560px,90vw)] max-h-[400px] overflow-y-auto" : "w-56 md:w-64"}`
             }
-                `}>
+        `}>
             <div className="flex items-start justify-between mb-2">
                 <h3 className={`font-semibold ${!canHover ? "text-base" : "text-sm"} text-gray-900`}>
                     {course.course_name || "No Name Available"}
@@ -473,7 +485,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                 )}
 
                 {sections.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-gray-300 overflow-x-auto overflow-y-visible">
+                    <div className="mt-2 pt-2 border-t border-gray-300 overflow-x-auto overflow-y-visible scrollbar-hide">
                         <div className="grid py-1 min-w-[480px]" style={{ gridTemplateColumns: "1fr 1.2fr 1.4fr 0.8fr 0.6fr" }}>
                             {["Section", "Instructor", "Schedule", "Room", "Grades"].map((h, i) => (
                                 <span key={h} className="text-[9px] font-bold tracking-widest uppercase text-gray-400"
@@ -577,7 +589,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                         {shouldReplaceSidebarInfoIcon
                             ? getWarningIndicatorIcon()
-                            : (canHover && !(inSidebar && window.innerWidth < 1024)) && getIcon()}
+                            : (canHover && !(inSidebar && isNarrowSidebar)) && getIcon()}
                         {!shouldReplaceSidebarInfoIcon && shouldShowWarningIcon && getWarningIndicatorIcon()}
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
@@ -589,7 +601,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 Planned
                             </span>
                         )}
-                        {(!canHover || (inSidebar && window.innerWidth < 1024)) && (
+                        {(!canHover || (inSidebar && isNarrowSidebar)) && (
                             <button
                                 onClick={handleInfoClick}
                                 className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -616,7 +628,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
             {/* Tooltip for sidebar (portal) */}
             {((inSidebar && showTooltip) || (!canHover && showTooltip)) && ReactDOM.createPortal(
-                (!canHover || window.innerWidth < 1024) ? (
+                (!canHover || isNarrowSidebar) ? (
                     // Mobile: Bottom sheet with overlay
                     <>
                         <div
@@ -659,7 +671,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         className="fixed inset-0 bg-black/50 z-[10000]"
                         onClick={() => { setShowModal(false); setExpandedSectionIndex(null); }}
                     />
-                    <div className="fixed inset-4 md:inset-12 bg-white rounded-2xl z-[10001] flex flex-col shadow-2xl overflow-hidden">
+                    <div className="fixed inset-4 md:inset-12 bg-white rounded-2xl z-[10001] flex flex-col shadow-2xl overflow-hidden max-w-full">
                         <div className="flex items-start justify-between p-6 border-b border-gray-100">
                             <div>
                                 <h2 className="text-lg font-semibold text-gray-900">{course.course_name}</h2>
@@ -671,17 +683,19 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                             >✕</button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 space-y-3">
-                            {sections.map((sec: any, i: number) => {
-                                const instData = getInstructorGrades(sec.instructors);
-                                return (
-                                    <SectionCard
-                                        key={i}
-                                        sec={sec}
-                                        instData={instData ?? null}
-                                    />
-                                );
-                            })}
+                        <div className="flex-1 overflow-y-auto overflow-x-auto p-6 space-y-3">
+                            <div className="overflow-x-auto">
+                                {sections.map((sec: any, i: number) => {
+                                    const instData = getInstructorGrades(sec.instructors);
+                                    return (
+                                        <SectionCard
+                                            key={i}
+                                            sec={sec}
+                                            instData={instData ?? null}
+                                        />
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </>,
