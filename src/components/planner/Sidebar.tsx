@@ -224,6 +224,19 @@ const Sidebar: React.FC<SidebarProps> = ({
                     expanded = defaultExpanded;
                 }
                 result[key] = expanded;
+                const parts = (category.name || '').split('|').map((p: string) => p.trim());
+                if (parts.length > 1) {
+                    parts.forEach((_: string, i: number) => {
+                        const partKey = `${key}-part-${i}`;
+                        if (gotNewSuggestions) {
+                            result[partKey] = true;
+                        } else if (!(partKey in expandedSubcategories)) {
+                            result[partKey] = defaultExpanded;
+                        } else {
+                            result[partKey] = expandedSubcategories[partKey];
+                        }
+                    });
+                }
                 if (category.categories?.length) {
                     Object.assign(result, initializeCategories(category.categories, reqIdx, `${parentIdx}-${catIdx}`));
                 }
@@ -527,6 +540,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         hasSubcategories={req.categories && req.categories.length > 0}
                                         isFirstCategory={reqIdx === 0}
                                         creditsBreakdown={reqCreditsBreakdown}
+                                        footnote={(req as any).footnote}
+                                        rules={(req as any).rules}
                                     >
                                         {req.categories && req.categories.length > 0 ? (
                                             renderCategories(req.categories, reqIdx)
