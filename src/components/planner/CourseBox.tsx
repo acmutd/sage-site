@@ -282,7 +282,8 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
         if (!canHover) return;
-    
+        if (inSidebar && window.innerWidth < 1024) return;
+
         if (closeActiveTooltip) closeActiveTooltip();
         isActiveTooltipRef.current = true;
         closeActiveTooltip = () => {
@@ -310,6 +311,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     };
 
     const handleMouseLeave = () => {
+        if (inSidebar && window.innerWidth < 1024) return;
         if (inSidebar) {
             hideTimeoutRef.current = setTimeout(() => {
                 setShowTooltip(false);
@@ -323,7 +325,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
     const handleInfoClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!canHover) {
+        if (!canHover || (inSidebar && window.innerWidth < 1024)) {
             setShowTooltip(!showTooltip);
         }
     };
@@ -471,8 +473,8 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                 )}
 
                 {sections.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-gray-300 ">
-                        <div className="grid py-1" style={{ gridTemplateColumns: "110px 120px 150px 80px 60px" }}>
+                    <div className="mt-2 pt-2 border-t border-gray-300 overflow-x-auto overflow-y-visible">
+                        <div className="grid py-1 min-w-[480px]" style={{ gridTemplateColumns: "1fr 1.2fr 1.4fr 0.8fr 0.6fr" }}>
                             {["Section", "Instructor", "Schedule", "Room", "Grades"].map((h, i) => (
                                 <span key={h} className="text-[9px] font-bold tracking-widest uppercase text-gray-400"
                                     style={{ textAlign: i === 4 ? "right" : "left" }}>
@@ -488,7 +490,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
                             return (
                                 <div key={i} className="grid py-2 items-center border-t border-gray-100"
-                                    style={{ gridTemplateColumns: "110px 120px 150px 80px 60px" }}>
+                                    style={{ gridTemplateColumns: "1fr 1.2fr 1.4fr 0.8fr 0.6fr" }}>
                                     <div>
                                         <div className="text-xs font-bold tracking-wide">
                                         {sec.course_prefix?.toUpperCase() ?? ""} {sec.course_number ?? ""}.{sec.section?.trim() ?? ""}
@@ -575,7 +577,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                         {shouldReplaceSidebarInfoIcon
                             ? getWarningIndicatorIcon()
-                            : canHover && getIcon()}
+                            : (canHover && !(inSidebar && window.innerWidth < 1024)) && getIcon()}
                         {!shouldReplaceSidebarInfoIcon && shouldShowWarningIcon && getWarningIndicatorIcon()}
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
@@ -587,7 +589,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 Planned
                             </span>
                         )}
-                        {!canHover && (
+                        {(!canHover || (inSidebar && window.innerWidth < 1024)) && (
                             <button
                                 onClick={handleInfoClick}
                                 className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -614,7 +616,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
             {/* Tooltip for sidebar (portal) */}
             {((inSidebar && showTooltip) || (!canHover && showTooltip)) && ReactDOM.createPortal(
-                !canHover ? (
+                (!canHover || window.innerWidth < 1024) ? (
                     // Mobile: Bottom sheet with overlay
                     <>
                         <div
