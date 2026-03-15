@@ -448,6 +448,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                             onToggle={() => handleToggleSubcategory(partKey)}
                             hasSubcategories={i < parts.length - 1 || subCategoriesToRender.length > 0}
                             creditsBreakdown={i === 0 ? creditsBreakdown : undefined}
+                            footnote={i === 0 ? category.footnote : undefined}
+                            rules={i === 0 ? category.rules : undefined}
                         >
                             {inner}
                         </RequirementCategory>
@@ -467,6 +469,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                     onToggle={() => handleToggleSubcategory(currentCatIdx)}
                     hasSubcategories={subCategoriesToRender.length > 0}
                     creditsBreakdown={creditsBreakdown}
+                    footnote={category.footnote}
+                    rules={category.rules}
                 >
                     {content}
                 </RequirementCategory>

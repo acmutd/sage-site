@@ -15,6 +15,8 @@ interface RequirementCategoryProps {
     isFirstCategory?: boolean;
     focusLabel?: string;
     categoryKey?: string;
+    footnote?: string[] | null;
+    rules?: string[] | null;
     /** When provided, displays credits completed + in progress + planned, with hover tooltip */
     creditsBreakdown?: CreditsBreakdown;
   }
@@ -30,6 +32,8 @@ interface RequirementCategoryProps {
     isFirstCategory = false,
     focusLabel,
     categoryKey,
+    footnote,
+    rules,
     creditsBreakdown,
   }) => {
     const isHighlighted = focusLabel ? title.includes(focusLabel) : false;
@@ -37,6 +41,8 @@ interface RequirementCategoryProps {
     const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
     const [canHover, setCanHover] = useState(true);
     const tooltipOpenTimeRef = useRef(0);
+    const [showFootnotePopup, setShowFootnotePopup] = useState(false);
+    const footnoteButtonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
       const checkHover = () => {
@@ -129,6 +135,30 @@ interface RequirementCategoryProps {
                 <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
               )}
               <span className="text-sm font-medium text-gray-800">{title}</span>
+              {!!(footnote?.length || rules?.length) && (
+              <div className="relative flex-shrink-0">
+                <button
+                  ref={footnoteButtonRef}
+                  className="w-4 h-4 rounded-full border border-gray-300 text-[10px] text-gray-400 flex items-center justify-center hover:bg-gray-100"
+                  onMouseEnter={(e) => { e.stopPropagation(); canHover && setShowFootnotePopup(true); }}
+                  onMouseLeave={() => canHover && setShowFootnotePopup(false)}
+                  onClick={(e) => { e.stopPropagation(); !canHover && setShowFootnotePopup(p => !p); }}
+                >?</button>
+                {showFootnotePopup && ReactDOM.createPortal(
+                    <div
+                        className="fixed bg-white border border-gray-200 rounded-md shadow-lg p-3 z-[9999] text-xs space-y-2 w-64"
+                        style={{
+                          top: (footnoteButtonRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
+                            left: footnoteButtonRef.current?.getBoundingClientRect().left,
+                        }}
+                    >
+                        {footnote?.map((f, i) => <p key={i} className="text-gray-500 italic">{f}</p>)}
+                        {rules?.map((r, i) => <p key={i} className="text-gray-500 italic">{r}</p>)}
+                    </div>,
+                    document.body
+                )}
+              </div>
+            )}
             </div>
           </button>
           {displayTotal > 0 && (
