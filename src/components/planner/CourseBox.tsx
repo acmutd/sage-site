@@ -281,27 +281,32 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const tooltipAnimatedRef = useRef(false);
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-        if (canHover) {
-            if (closeActiveTooltip) closeActiveTooltip();
-            isActiveTooltipRef.current = true;
-            closeActiveTooltip = () => {
-                isActiveTooltipRef.current = false;
-                setShowTooltip(false);
-            };
-
-            const rect = e.currentTarget.getBoundingClientRect();
-            const tooltipWidth = sections.length > 0 ? 500 : 264;
-            const isRightHalf = rect.right + tooltipWidth + 10 > window.innerWidth;
-
-            setTooltipPosition({
-                top: rect.top,
-                left: isRightHalf
-                    ? rect.left - tooltipWidth - 10
-                    : rect.right + 10,
-            });
-            tooltipAnimatedRef.current = false;
-            setShowTooltip(true);
-        }
+        if (!canHover) return;
+    
+        if (closeActiveTooltip) closeActiveTooltip();
+        isActiveTooltipRef.current = true;
+        closeActiveTooltip = () => {
+            isActiveTooltipRef.current = false;
+            setShowTooltip(false);
+        };
+    
+        const rect = e.currentTarget.getBoundingClientRect();
+        const tooltipWidth = sections.length > 0 ? 500 : 264;
+        const padding = 8;
+    
+        const spaceRight = window.innerWidth - rect.right - padding;
+        const spaceLeft = rect.left - padding;
+    
+        // Prefer right; only flip left if it genuinely doesn't fit AND left has more room
+        const goLeft = spaceRight < tooltipWidth && spaceLeft > spaceRight;
+    
+        const left = goLeft
+            ? Math.max(padding, rect.left - tooltipWidth - 10)  // clamp so it never goes off-screen left
+            : Math.min(rect.right + 10, window.innerWidth - tooltipWidth - padding); // clamp right
+    
+        setTooltipPosition({ top: rect.top, left });
+        tooltipAnimatedRef.current = false;
+        setShowTooltip(true);
     };
 
     const handleMouseLeave = () => {

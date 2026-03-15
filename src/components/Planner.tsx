@@ -17,7 +17,6 @@ import { useUISnapshot } from "@/hooks/useUISnapshot";
 import { useAuth } from "@/context/AuthContext";
 import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
 import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
-import { auth } from "@/firebase-config";
 import { usePlannerStore } from "@/stores/plannerStore";
 import { usePlannerTutorial } from "@/hooks/usePlannerTutorial";
 
@@ -88,7 +87,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         Object.keys(updatedSemesters).forEach((yearKey) => {
             updatedSemesters[yearKey] = updatedSemesters[yearKey].map((semester, semIdx) => ({
                 ...semester,
-                isFromTranscript: true, // Mark all semesters as from transcriptData
+                isFromTranscript: true,
                 isLocked: false,
                 courses: semester.courses.map(course => ({
                     ...course,
@@ -118,14 +117,26 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const removeSemesterAction = usePlannerStore(state => state.removeSemester);
     const dropCourseAction = usePlannerStore(state => state.dropCourse);
 
-    // Initialize store with default plan if empty
+    // idempotent init guard to prevent double making of plans
+    const planInitializedRef = useRef(false);
+
     useEffect(() => {
-        if (plans.length === 0) {
+        if (plans.length === 0 && !planInitializedRef.current) {
+            planInitializedRef.current = true;
             const evalRaw = localStorage.getItem('evaluation');
             const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
             createNewPlan(initialPlannerState, evaluation);
         }
     }, [plans.length, initialPlannerState, createNewPlan]);
+
+    useEffect(() => {
+        if (plans.length === 0) return;
+        try {
+            localStorage.setItem('planner-state', JSON.stringify({ plans, activePlanId }));
+        } catch (e) {
+            console.warn('localStorage sync failed:', e);
+        }
+    }, [plans, activePlanId]);
 
     const activePlan = plans.find(p => p.id === activePlanId);
     const allSemesters = activePlan?.semesters || {};
@@ -163,11 +174,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     };
 
     const handleRenamePlan = (newName: string) => {
-        renamePlan(newName);
+        const trimmed = newName.trim();
+        if (!trimmed) return;
+        renamePlan(trimmed);
     };
 
     const savePlannerState = async () => {
-        const user = auth.currentUser;
         if (!user) throw new Error("Not authenticated");
         const token = await user.getIdToken();
 
@@ -228,7 +240,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         const { choice, targetPlanId } = pendingConflictChoice;
     
         if (choice === "overwrite") {
-            // Replace active plan's semesters in place
             updateActivePlan({
                 semesters: initialPlannerState,
                 placedCourses: [],
@@ -239,7 +250,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             toast.success("Current plan updated with new transcript");
     
         } else if (choice === "select") {
-            // Replace the user-chosen plan's semesters, switch view to it
             const planToUpdate = targetPlanId ?? activePlanId;
             if (planToUpdate !== activePlanId) {
                 switchPlan(planToUpdate);
@@ -254,7 +264,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             toast.success("Plan updated with new transcript");
     
         } else if (choice === "new") {
-            // Keep all existing plans, add a fresh one and switch to it
             if (plans.length >= 5) {
                 toast.error("Maximum of 5 plans reached — delete one first");
                 setPendingConflictChoice(null);
@@ -266,7 +275,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
     
         setPendingConflictChoice(null);
-    }, [initialPlannerState, pendingConflictChoice, activePlanId, plans.length, switchPlan, updateActivePlan, createNewPlan]);
+    }, [pendingConflictChoice, activePlanId, plans.length, switchPlan, updateActivePlan, createNewPlan]);
 
     useEffect(() => {
         onRegisterConflictHandler?.(
@@ -275,7 +284,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             },
             plans.map(p => ({ id: p.id, name: p.name }))
         );
-    }, [initialPlannerState, plans, onRegisterConflictHandler]);
+    }, [plans, onRegisterConflictHandler]);
 
     // Warn on page unload if unsaved changes
     useEffect(() => {
@@ -434,16 +443,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         const fetchCoursebook = async () => {
             if (!user) return;
     
-            // only current semester planned courses + suggested courses
             const codesToFetch = new Set<string>();
     
-            // suggested courses from sidebar
             allSuggestedCourses.forEach((course: any) => {
                 const code = course.course_code || course.code;
                 if (code) codesToFetch.add(code.toLowerCase().replace(/\s+/g, ""));
             });
     
-            // planned courses ONLY
             Object.values(allSemesters).forEach(yearSemesters => {
                 yearSemesters.forEach(semester => {
                     if (!semester.isFromTranscript) {
@@ -457,13 +463,14 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     
             if (codesToFetch.size === 0) return;
     
-            // delta — only fetch what we don't have yet
             const newCodes = [...codesToFetch].filter(
                 code => !coursebookData[code] && !coursebookFetchedRef.current.has(code)
             );
             if (newCodes.length === 0) return;
     
             newCodes.forEach(code => coursebookFetchedRef.current.add(code));
+
+            const controller = new AbortController();
 
             try {
                 const token = await user.getIdToken();
@@ -472,7 +479,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     
                 const res = await fetch(
                     `${base}/CRUD/coursebook?courses=${newCodes.join(",")}`,
-                    { headers: { Authorization: `Bearer ${token}` } }
+                    { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
                 );
     
                 if (!res.ok) return;
@@ -486,10 +493,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 });
     
                 setCoursebookData(prev => ({ ...prev, ...grouped }));
-            } catch (err) {
+            } catch (err: any) {
+                if (err.name === 'AbortError') return;
                 newCodes.forEach(code => coursebookFetchedRef.current.delete(code));
                 console.error("Failed to fetch coursebook data:", err);
             }
+
+            return () => controller.abort();
         };
     
         fetchCoursebook();
@@ -519,13 +529,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     
             if (codesToFetch.size === 0) return;
     
-            // delta — only fetch what we don't have yet
             const newCodes = [...codesToFetch].filter(
                 code => !gradesData[code] && !gradesFetchedRef.current.has(code)
             );
             if (newCodes.length === 0) return;
 
             newCodes.forEach(code => gradesFetchedRef.current.add(code));
+            const controller = new AbortController();
     
             try {
                 const token = await user.getIdToken();
@@ -534,17 +544,20 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     
                 const res = await fetch(
                     `${base}/CRUD/utdgrades?courses=${newCodes.join(",")}`,
-                    { headers: { Authorization: `Bearer ${token}` } }
+                    { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
                 );
     
                 if (!res.ok) return;
                 const data = await res.json();
     
                 setGradesData(prev => ({ ...prev, ...data }));
-            } catch (err) {
+            } catch (err: any) {
+                if (err.name === 'AbortError') return;
                 newCodes.forEach(code => gradesFetchedRef.current.delete(code));
                 console.error("Failed to fetch grades data:", err);
             }
+
+            return () => controller.abort();
         };
     
         fetchGrades();
@@ -607,6 +620,14 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return plannedCoursePlacements.join("|");
     }, [allSemesters]);
 
+    const firstUserSemesterKey = useMemo(() => {
+        for (const yearKey of Object.keys(allSemesters)) {
+            const idx = allSemesters[yearKey].findIndex(s => !s.isFromTranscript);
+            if (idx !== -1) return `${yearKey}-${idx}`;
+        }
+        return null;
+    }, [allSemesters]);
+
     const runQuickEvaluation = async () => {
         if (!plannedCoursesSignature) {
             toast.info("Plan more courses from the sidebar to suggest more classes.");
@@ -645,7 +666,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             }
             setIsRunningQuickEvaluation(false);
         }
-
     };
 
     const handleDropCourse = (
@@ -657,6 +677,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         courseId?: string,
         isSuggested?: boolean
     ) => {
+        if (!course && !courseId) return;
+
         const result = dropCourseAction({
             targetYear,
             targetSemesterIndex,
@@ -672,6 +694,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             setError(result.error);
             return;
         }
+
+        // Clear any lingering error on a successful drop
+        setError(null);
     };
 
     const handleAddYear = () => {
@@ -712,16 +737,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     };
 
     const handleClearSemester = (yearKey: string, semesterIndex: number) => {
-        if (!semesterToDelete) return;
-
         clearSemesterAction(yearKey, semesterIndex, allSemesters);
         setShowDeleteModal(false);
         setSemesterToDelete(null);
     };
 
     const handleRemoveSemester = (yearKey: string, semesterIndex: number) => {
-        if (!semesterToDelete) return;
-
         removeSemesterAction(yearKey, semesterIndex, allSemesters);
         setShowDeleteModal(false);
         setSemesterToDelete(null);
@@ -986,7 +1007,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                                 <SemesterBox
                                                     key={idx}
                                                     {...semester}
-                                                    data-tour={!semester.isFromTranscript && !document.querySelector('[data-tour="user-semester"]') ? "user-semester" : "transcript-semester"}
+                                                    data-tour={`${yearKey}-${idx}` === firstUserSemesterKey ? "user-semester" : "transcript-semester"}
                                                     yearKey={yearKey}
                                                     semesterIndex={idx}
                                                     isFromTranscript={semester.isFromTranscript || false}
@@ -1046,6 +1067,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                     value={newPlanName}
                                     onChange={(e) => setNewPlanName(e.target.value)}
                                     className="border px-3 py-2 rounded w-full mb-4"
+                                    maxLength={50}
                                     autoFocus
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
