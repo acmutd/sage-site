@@ -265,6 +265,8 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 warnings={displayedWarnings}
                                 onAdd={() => handleAddClick({...course, course_code: courseCode, code: courseCode})}
                                 gradesData={gradesData}
+                                footnotes={course.footnote}
+                                rules={course.rules}
                             />
                         );
                     } else {

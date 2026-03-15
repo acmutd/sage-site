@@ -24,6 +24,8 @@ interface CourseBoxProps {
     onRemove?: () => void;
     hideSections?: boolean;
     gradesData?: Record<string, any>;
+    footnotes?: string[] | null;
+    rules?: string[] | null;
 }
 
 let closeActiveTooltip: (() => void) | null = null; // singleton to prevent multi-drags
@@ -130,6 +132,8 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     onRemove,
     hideSections = false,
     gradesData = {},
+    footnotes = [],
+    rules = [],
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -447,6 +451,17 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                 {course.description && (
                     <div className={`mt-2 pt-2 ${!(warnings && warnings.length > 0) ? 'border-t border-gray-300' : ''}`}>
                         <p className="text-gray-700">{course.description}</p>
+                    </div>
+                )}
+
+                {(footnotes?.length || rules?.length) && (
+                    <div className="mt-2 pt-2 border-t border-gray-300 space-y-1">
+                        {footnotes?.map((f, i) => (
+                            <p key={i} className="text-gray-500 italic">{f}</p>
+                        ))}
+                        {rules?.map((r, i) => (
+                            <p key={i} className="text-gray-500 italic">{r}</p>
+                        ))}
                     </div>
                 )}
 

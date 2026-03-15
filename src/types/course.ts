@@ -26,4 +26,6 @@ export interface Course {
     section?: string;
     sections?: any[];
     class_number?: string;
+    footnote?: string[] | null;
+    rules?: string[] | null;
 }
