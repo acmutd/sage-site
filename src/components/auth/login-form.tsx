@@ -27,9 +27,16 @@ import { Separator } from "@/components/ui/separator";
 const VITE_CRUD_API = import.meta.env.VITE_CRUD_API;
 
 const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
-const isAllowedInDev = (email: string | null): boolean => {
-  if (ENVIRONMENT !== 'development') return true; // prod env automatically falls through dev env check
+const isEmailAllowedInDev = (email: string | null): boolean => {
+  if (ENVIRONMENT !== 'development') return true;
   return email?.toLowerCase().endsWith('@acmutd.co') || false;
+};
+
+const isUserAllowedInDev = async (user: any): Promise<boolean> => {
+  if (ENVIRONMENT !== 'development') return true;
+  if (user.email?.toLowerCase().endsWith('@acmutd.co')) return true;
+  const tokenResult = await user.getIdTokenResult();
+  return tokenResult.claims?.alumniACMDev === true;
 };
 
 const formSchema = z.object({
@@ -78,7 +85,7 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
         return;
       }
 
-      if (!isAllowedInDev(email)) {
+      if (!await isUserAllowedInDev(user)) {
         toast.error("Development access restricted to @acmutd.co emails only.");
         await user.delete();
         setAuthChecking(false);
@@ -118,7 +125,7 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
   };
 
   async function onSubmit(data: FormValues) {
-    if (!isAllowedInDev(data.email)) {
+    if (!isEmailAllowedInDev(data.email)) {
       toast.error("Development access restricted to @acmutd.co emails only.");
       return;
     }
