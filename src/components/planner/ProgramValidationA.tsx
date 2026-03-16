@@ -15,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
 const calculateCatalogYear = (semester: string): string => {
+  if (!semester) return getCurrentCatalogYear();
   const [year, season] = semester.split(" ");
   return season === "Fall" ? year : (parseInt(year) - 1).toString();
 };

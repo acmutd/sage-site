@@ -5,6 +5,7 @@ import ProgramValidationA from "@/components/planner/ProgramValidationA"
 import ClassValidationA from "@/components/planner/ClassValidationA"
 import { SquareAsterisk } from "lucide-react";
 import { calculateCatalogYear, calculateLatestYear } from "@/utils/studentInfo";
+import { toast } from "sonner";
 
 interface OnboardingProps {
   onClose: () => void;
@@ -139,6 +140,12 @@ const Onboarding: React.FC<OnboardingProps> = ({
       start_date: program.start_date,
       concentration: program.concentration
     });
+    const majors = updatedPrograms.filter(p => p.type === "Major");
+    if (majors.length === 0) {
+        toast.error("Please add at least one major before continuing.");
+        return;
+    }
+    
     const updatedTranscript = {
       ...transcriptData,
       majors: updatedPrograms.filter(p => p.type === "Major").map(transformToTranscriptData),
