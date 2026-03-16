@@ -6,6 +6,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
+  getAdditionalUserInfo,
 } from "firebase/auth";
 import { auth } from "@/firebase-config";
 import { useAuth } from "@/context/AuthContext";
@@ -78,23 +79,26 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+      const isNewUser = getAdditionalUserInfo(result)?.isNewUser ?? false;
       const email =
         user.email ||
         user.providerData.find((p) => p.providerId === "google.com")?.email;
 
-      if (!email) {
-        toast.error("Email is unavailable. Please try again.");
-        await user.delete();
-        setAuthChecking(false);
-        return;
-      }
-
-      if (!await isUserAllowedInDev(user, email)) {
-        toast.error("Development access restricted to @acmutd.co emails only.");
-        await user.delete();
-        setAuthChecking(false);
-        return;
-      }
+        if (!email) {
+          toast.error("Email is unavailable. Please try again.");
+          if (isNewUser) await user.delete();
+          else await auth.signOut();
+          setAuthChecking(false);
+          return;
+        }
+        
+        if (!await isUserAllowedInDev(user, email)) {
+          toast.error("Development access restricted to @acmutd.co emails only or via special permision.");
+          if (isNewUser) await user.delete();
+          else await auth.signOut();
+          setAuthChecking(false);
+          return;
+        }
 
       setAuthChecking(false);
       const token = await user.getIdToken();
@@ -191,7 +195,7 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
 
   return (
     <>
-      <Toaster position="top-center" richColors />
+      <Toaster position="top-center" richColors closeButton />
       <div>
             {
               props.isMobile ? <div className="w-full space-y-6 pb-4">
