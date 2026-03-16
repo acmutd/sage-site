@@ -703,9 +703,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             toast.success("Suggested courses refreshed");
             setLastQuickEvalPlannedCoursesSignature(plannedCoursesSignature);
 
-        } catch (error) {
-            console.error("Quick evaluation failed:", error);
-            toast.error("Could not refresh suggested courses");
+        } catch (error: any) {
+            if (error?.status === 429 || error?.message?.includes('429')) {
+                toast.warning("You've hit the daily evaluation limit. Try again tomorrow.");
+            } else {
+                toast.error("Could not refresh suggested courses");
+            }
         } finally {
             try {
                 await savePlannerState();
