@@ -785,7 +785,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
     return (
         <>
-            <Toaster position="top-center" richColors />
+            <Toaster position="top-center" richColors closeButton />
             <PlannerNavbar
                 requirements={adaptedRequirements}
                 expandedCategories={expandedCategories}
