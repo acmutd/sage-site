@@ -1014,7 +1014,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 <div key={yearKey}>
                                     
                                     <YearDivider
-                                        yearLabel={yearKey.replace("year", "Year ")}
+                                        yearLabel={(() => {
+                                        const firstTitle = allSemesters[yearKey]?.[0]?.title;
+                                        const year = firstTitle?.match(/\d{4}/)?.[0];
+                                        const nextYear = year ? String(Number(year) + 1) : null;
+                                        return year && nextYear ? `${year} – ${nextYear}` : yearKey.replace("year", "Year ");
+                                        })()}
                                         yearKey={yearKey}
                                         isEntirelyUserCreated={isEntirelyUserCreated}
                                         hasUserCoursesToClear={hasUserCoursesToClear}
