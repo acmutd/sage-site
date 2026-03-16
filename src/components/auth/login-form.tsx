@@ -32,13 +32,17 @@ const isEmailAllowedInDev = (email: string | null): boolean => {
   return email?.toLowerCase().endsWith('@acmutd.co') || false;
 };
 
-const isUserAllowedInDev = async (user: any): Promise<boolean> => {
+const isUserAllowedInDev = async (user: any, resolvedEmail?: string): Promise<boolean> => {
   if (ENVIRONMENT !== 'development') return true;
-  if (user.email?.toLowerCase().endsWith('@acmutd.co')) return true;
-  const tokenResult = await user.getIdTokenResult();
-  return tokenResult.claims?.alumniACMDev === true;
+  const emailToCheck = resolvedEmail || user.email;
+  if (emailToCheck?.toLowerCase().endsWith('@acmutd.co')) return true;
+  try {
+      const tokenResult = await user.getIdTokenResult();
+      return tokenResult.claims?.alumniACMDev === true;
+  } catch {
+      return false;
+  }
 };
-
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z
@@ -85,7 +89,7 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
         return;
       }
 
-      if (!await isUserAllowedInDev(user)) {
+      if (!await isUserAllowedInDev(user, email)) {
         toast.error("Development access restricted to @acmutd.co emails only.");
         await user.delete();
         setAuthChecking(false);
@@ -216,7 +220,6 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
                             type="email"
                             className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                             {...field}
-                            disabled={ENVIRONMENT === 'development'}
                             onChange={(e) => {
                               setLoginError(false);
                               field.onChange(e);
@@ -241,7 +244,6 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
                             placeholder="Enter password"
                             type="password"
                             className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"                          
-                            disabled={ENVIRONMENT === 'development'}
                             onChange={(e) => {
                               setLoginError(false);
                               field.onChange(e);
@@ -254,7 +256,6 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
                   />
                   <Button
                     type="submit"
-                    disabled={ENVIRONMENT === 'development'}
                     className="w-full h-[2.5rem] rounded-full bg-accent hover:bg-buttonhover text-[15px] text-textdark"
                   >
                     Log in
@@ -320,7 +321,6 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
                           type="email"
                           className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                           {...field}
-                          disabled={ENVIRONMENT === 'development'}
                           onChange={(e) => {
                             setLoginError(false);
                             field.onChange(e);
@@ -345,7 +345,6 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
                           type="password"
                           className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                           {...field}
-                          disabled={ENVIRONMENT === 'development'}
                           onChange={(e) => {
                             setLoginError(false);
                             field.onChange(e);
@@ -358,7 +357,6 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
                 />
                 <Button
                   type="submit"
-                  disabled={ENVIRONMENT === 'development'}
                   className="w-full h-[2.5rem] rounded-full bg-accent hover:bg-buttonhover text-[15px] text-textdark"
                 >
                   Log in
