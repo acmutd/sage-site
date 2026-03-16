@@ -592,6 +592,30 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         fetchGrades();
     }, [allSuggestedCourses, allSemesters, user]);
 
+    const hasInitializedCollapse = useRef(false);
+
+    useEffect(() => {
+        if (hasInitializedCollapse.current) return;
+        if (Object.keys(allSemesters).length === 0) return;
+      
+        hasInitializedCollapse.current = true;
+      
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const academicYearStart = currentMonth >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+      
+        const yearKeys = Object.keys(allSemesters);
+        const newCollapsedYears: Record<string, boolean> = {};
+      
+        yearKeys.forEach((yearKey) => {
+          const firstTitle = allSemesters[yearKey][0]?.title;
+          const yearNum = Number(firstTitle?.match(/\d{4}/)?.[0]);
+          newCollapsedYears[yearKey] = !!yearNum && yearNum < academicYearStart;
+        });
+      
+        setUISnapshot(prev => ({ ...prev, collapsedYears: newCollapsedYears }));
+      }, [allSemesters]);
+    
     const allPlannedCoursesWithOrder = useMemo(() => {
         const courses: Array<{
             code: string;
