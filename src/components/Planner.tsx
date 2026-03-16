@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Toaster, toast } from "sonner";
-import { calculateCatalogYear, determineStudentType, isCurrentSemester } from "@/utils/studentInfo";
+import { calculateCatalogYear, calculateLatestYear, determineStudentType, isCurrentSemester } from "@/utils/studentInfo";
 import YearDivider from "./planner/YearDivider";
 import { useUISnapshot } from "@/hooks/useUISnapshot";
 import { useAuth } from "@/context/AuthContext";
@@ -1000,8 +1000,20 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                    </div>
 
+                        {transcriptData?.catalogYear && (
+                            <span data-tour="evaluation-message" className="text-xs text-gray-500 border border-gray-200 rounded-full px-3 py-1.5 bg-white whitespace-nowrap">
+                                Evaluated against{" "}
+                                <span className="font-semibold text-gray-700">
+                                    {transcriptData.catalogYear === "latest"
+                                        ? `${calculateLatestYear()}–${calculateLatestYear() + 1}`
+                                        : `${calculateCatalogYear(transcriptData?.majors?.[0]?.start_date)}–${calculateCatalogYear(transcriptData?.majors?.[0]?.start_date) + 1}`
+                                    } catalog
+                                </span>
+                            </span>
+                        )}
+                    </div>
+                    
                     {error && (
                         <div
                             ref={errorRef}

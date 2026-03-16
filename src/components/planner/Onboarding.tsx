@@ -25,7 +25,7 @@ interface CatalogYearSelectorProps {
 }
 
 const CatalogYearSelector: React.FC<CatalogYearSelectorProps> = ({ onNext, onBack, transcriptData }) => {
-  const [selected, setSelected] = useState<CatalogChoice>("assigned");
+  const [selected, setSelected] = useState<CatalogChoice>("latest");
   const assignedYear = calculateCatalogYear(transcriptData?.majors[0].start_date);
   const latestYear = calculateLatestYear();
   
@@ -113,7 +113,7 @@ const Onboarding: React.FC<OnboardingProps> = ({
   const { user } = useAuth();
 
   const [modalStep, setModalStep] = useState<"FileUpload" | "Programs" | "CatalogYear" | "Classes">(initialStep);
-  const [catalogYear, setCatalogYear] = useState<"assigned" | "latest">("assigned");
+  const [catalogYear, setCatalogYear] = useState<"assigned" | "latest">("latest");
   const [transcriptData, setLocalTranscriptData] = useState(initialTranscriptData || null);
 
   const handleFileUploadNext = (data: any) => {
