@@ -502,7 +502,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                     {isExpanded ? (
                         <div className="p-6 pt-8">
                             <div className="flex items-center justify-between mb-6">
-                                <button data-tour="edit-plans" aria-label="Edit Degree Plans" className="flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700" onClick={onRestartOnboarding}>
+                                <button data-tour="edit-plans" aria-label="Edit Degree Plans" className="flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700" onClick={() => {
+                                    if (document.querySelector('.driver-active-element')) return;
+                                    onRestartOnboarding?.();
+                                }}>
                                     <NotebookPen size={20} strokeWidth={2} />
                                     <span>Edit plans</span>
                                 </button>
@@ -510,7 +513,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     data-tour="sidebar-toggle"
                                     aria-label="Planner Sidebar Toggle"
                                     className="p-2 hover:bg-gray-200 rounded"
-                                    onClick={handleToggleSidebar}
+                                    onClick={() => {
+                                        if (document.querySelector('.driver-active-element')) return;
+                                        handleToggleSidebar();
+                                    }}
                                 >
                                     <ArrowLeftToLine className="w-5 h-5 text-gray-500" />
                                 </button>
@@ -570,19 +576,25 @@ const Sidebar: React.FC<SidebarProps> = ({
                             }}
                         >    
                             <button
+                                data-tour="sidebar-toggle"
                                 aria-label="Expand sidebar"
                                 className="p-2 hover:bg-gray-200 rounded"
                                 onClick={(e) => {
                                     e.stopPropagation();
+                                    if (document.querySelector('.driver-active-element')) return;
                                     handleToggleSidebar();
                                 }}
                             >
                                 <ArrowRightToLine size={24} className="w-5 h-5 text-gray-500" />
                             </button>
                             <button 
+                                data-tour="edit-plans"
                                 className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
                                 aria-label="Edit Degree Plans"
-                                onClick={onRestartOnboarding}
+                                onClick={() => {
+                                    if (document.querySelector('.driver-active-element')) return; // ← block during tutorial
+                                    onRestartOnboarding?.();
+                                }}
                             >
                                 <NotebookPen className="w-5 h-5" strokeWidth={2} />
                             </button>

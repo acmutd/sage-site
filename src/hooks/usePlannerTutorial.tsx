@@ -6,11 +6,17 @@ import type { User } from "firebase/auth";
 interface UsePlannerTutorialOptions {
     scrollContainerRef: React.RefObject<HTMLDivElement>;
     user: User | null | undefined;
+    onForceExpandSidebar?: () => void;
 }
 
-export function usePlannerTutorial({ scrollContainerRef, user }: UsePlannerTutorialOptions) {
+export function usePlannerTutorial({ scrollContainerRef, user, onForceExpandSidebar }: UsePlannerTutorialOptions) {
+    onHighlightStarted: () => {
+        onForceExpandSidebar?.();
+    }
     const [driverObj, setDriverObj] = useState<any>(null);
     const dropdownWasOpenedRef = useRef(false);
+    const userRef = useRef(user);
+    useEffect(() => { userRef.current = user; }, [user]);
 
     useEffect(() => {
         const driverInstance = driver({
@@ -214,8 +220,9 @@ export function usePlannerTutorial({ scrollContainerRef, user }: UsePlannerTutor
                 dropdownWasOpenedRef.current = false;
 
                 // CRUD Update
-                if (user?.uid) {
-                    const token = await user.getIdToken();
+                const currentUser = userRef.current;
+                if (currentUser?.uid) {
+                    const token = await currentUser.getIdToken();
                     if (token) {
                         try {
                             const CRUD_API = import.meta.env.VITE_CRUD_API;
@@ -223,7 +230,7 @@ export function usePlannerTutorial({ scrollContainerRef, user }: UsePlannerTutor
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
-                                    userId: user.uid,
+                                    userId: currentUser.uid,
                                     action: 'updateTutorialStatus',
                                     token,
                                     tutorialName: 'hasSeenPlannerTutorial',

@@ -45,7 +45,36 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const location = useLocation();
     const focusLabel = location.state?.focusLabel as string | undefined;
 
-    const { driverObj, startTutorial, dropdownWasOpenedRef } = usePlannerTutorial({ scrollContainerRef, user });
+    // keyboard shortcuts 
+    const undo = usePlannerStore(state => state.undo);
+    const redo = usePlannerStore(state => state.redo);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const isMac = navigator.platform.toUpperCase().includes('MAC');
+            const ctrl = isMac ? e.metaKey : e.ctrlKey;
+            if (!ctrl) return;
+    
+            const tag = (e.target as HTMLElement).tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    
+            if (e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+                toast.info('Undone');
+            }
+            if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) {
+                e.preventDefault();
+                redo();
+                toast.info('Redone');
+            }
+        };
+    
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [undo, redo]);
+
+    const { driverObj, startTutorial, dropdownWasOpenedRef } = usePlannerTutorial({ scrollContainerRef, user, onForceExpandSidebar: () => { if (sidebarCollapsed) toggleSidebar(); }});
 
     const [uiSnapshot, setUISnapshot] = useUISnapshot('sage-planner-ui', {
         collapsedYears: {} as Record<string, boolean>,
