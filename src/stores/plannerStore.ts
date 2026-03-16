@@ -70,6 +70,12 @@ interface PlannerStore extends PlannerData {
 
     // Cloud Sync
     syncFromCloud: (cloudData: { plans: SavedPlannerState[]; activePlanId: string }) => void;
+
+    // history stack
+    past: SavedPlannerState[][];
+    future: SavedPlannerState[][];
+    undo: () => void;
+    redo: () => void;
 }
 
 export const usePlannerStore = create<PlannerStore>()(
@@ -78,6 +84,8 @@ export const usePlannerStore = create<PlannerStore>()(
             plans: [],
             activePlanId: '',            
             lastSavedState: null,
+            past: [],
+            future: [],
 
             // Unsaved Changes Tracking
             
@@ -95,6 +103,26 @@ export const usePlannerStore = create<PlannerStore>()(
                 return currentState !== lastSavedState;
             },
 
+            undo: () => {
+                set((state) => {
+                    if (state.past.length === 0) return;
+                    const previous = state.past[state.past.length - 1];
+                    state.future = [JSON.parse(JSON.stringify(state.plans)), ...state.future.slice(0, 49)];
+                    state.past = state.past.slice(0, -1);
+                    state.plans = previous;
+                });
+            },
+
+            redo: () => {
+                set((state) => {
+                    if (state.future.length === 0) return;
+                    const next = state.future[0];
+                    state.past = [...state.past.slice(-49), JSON.parse(JSON.stringify(state.plans))];
+                    state.future = state.future.slice(1);
+                    state.plans = next;
+                });
+            },
+            
             // Plan Management Actions
             
             switchPlan: (planId: string) => {
@@ -216,6 +244,8 @@ export const usePlannerStore = create<PlannerStore>()(
                 }
 
                 set((state) => {
+                    state.past = [...state.past.slice(-49), JSON.parse(JSON.stringify(state.plans))];
+                    state.future = [];
                     const plan = state.plans.find(p => p.id === state.activePlanId);
                     if (plan) {
                         plan.semesters = {
@@ -243,6 +273,8 @@ export const usePlannerStore = create<PlannerStore>()(
                 });
 
                 set((state) => {
+                    state.past = [...state.past.slice(-49), JSON.parse(JSON.stringify(state.plans))];
+                    state.future = [];
                     const plan = state.plans.find(p => p.id === state.activePlanId);
                     if (plan) {
                         // Clear courses in non-transcript semesters
@@ -276,6 +308,8 @@ export const usePlannerStore = create<PlannerStore>()(
                 });
 
                 set((state) => {
+                    state.past = [...state.past.slice(-49), JSON.parse(JSON.stringify(state.plans))];
+                    state.future = [];                
                     const plan = state.plans.find(p => p.id === state.activePlanId);
                     if (plan) {
                         // Remove the year
@@ -330,6 +364,8 @@ export const usePlannerStore = create<PlannerStore>()(
                 });
 
                 set((state) => {
+                    state.past = [...state.past.slice(-49), JSON.parse(JSON.stringify(state.plans))];
+                    state.future = [];
                     const plan = state.plans.find(p => p.id === state.activePlanId);
                     if (plan) {
                         plan.semesters[yearKey] = updatedSemesters;
@@ -354,6 +390,8 @@ export const usePlannerStore = create<PlannerStore>()(
                 }
 
                 set((state) => {
+                    state.past = [...state.past.slice(-49), JSON.parse(JSON.stringify(state.plans))];
+                    state.future = [];
                     const plan = state.plans.find(p => p.id === state.activePlanId);
                     if (plan) {
                         plan.semesters[yearKey][semesterIndex].courses = [];
@@ -383,6 +421,8 @@ export const usePlannerStore = create<PlannerStore>()(
                 }
 
                 set((state) => {
+                    state.past = [...state.past.slice(-49), JSON.parse(JSON.stringify(state.plans))];
+                    state.future = [];
                     const plan = state.plans.find(p => p.id === state.activePlanId);
                     if (plan) {
                         const yearSemesters = [...plan.semesters[yearKey]];
@@ -429,6 +469,8 @@ export const usePlannerStore = create<PlannerStore>()(
                 // Removal
                 if (isRemoval) {
                     set((state) => {
+                        state.past = [...state.past.slice(-49), JSON.parse(JSON.stringify(state.plans))];
+                        state.future = [];
                         const plan = state.plans.find(p => p.id === state.activePlanId);
                         if (!plan) return;
                         

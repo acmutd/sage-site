@@ -297,6 +297,8 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
           onToggle={() => handleToggleSubcategory(currentCatIdx)}
           hasSubcategories={subCategoriesToRender.length > 0}
           creditsBreakdown={creditsBreakdown}
+          footnote={category.footnote}
+          rules={category.rules} 
         >
           {category.classes && category.classes.length > 0 ? (
               <CoursesCarousel
@@ -379,6 +381,8 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
             }}
             hasSubcategories={req.categories && req.categories.length > 0}
             creditsBreakdown={reqCreditsBreakdown}
+            footnote={(req as any).footnote}  // ← add
+            rules={(req as any).rules} 
           >
             {req.categories && req.categories.length > 0 ? (
               renderCategories(req.categories, reqIdx)

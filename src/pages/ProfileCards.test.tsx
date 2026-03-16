@@ -84,6 +84,7 @@ function addCardFromTray(cardId: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  vi.stubEnv('VITE_CRUD_API', 'http://localhost:3000/CRUD');
   Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 1280 });
   global.fetch = makeFetch();
 });
@@ -91,6 +92,7 @@ beforeEach(() => {
 afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
 describe("Customize mode — toggling", () => {

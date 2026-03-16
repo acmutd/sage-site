@@ -142,7 +142,19 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const [flipLeft, setFlipLeft] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [_, setExpandedSectionIndex] = useState<number | null>(null);
+    const [isNarrowSidebar, setIsNarrowSidebar] = useState(inSidebar && window.innerWidth < 1024);
 
+    useEffect(() => {
+        if (!inSidebar) return;
+        const handleResize = () => {
+            const narrow = window.innerWidth < 1024;
+            setIsNarrowSidebar(narrow);
+            if (!narrow) setShowTooltip(false); // close drawer when expanding
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [inSidebar]);
+    
     // mobile check - does it have a cursor or does it have touch?
     const [canHover, setCanHover] = useState(true);
     useEffect(() => {
@@ -281,30 +293,37 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const tooltipAnimatedRef = useRef(false);
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-        if (canHover) {
-            if (closeActiveTooltip) closeActiveTooltip();
-            isActiveTooltipRef.current = true;
-            closeActiveTooltip = () => {
-                isActiveTooltipRef.current = false;
-                setShowTooltip(false);
-            };
+        if (!canHover) return;
+        if (inSidebar && isNarrowSidebar) return;
 
-            const rect = e.currentTarget.getBoundingClientRect();
-            const tooltipWidth = sections.length > 0 ? 500 : 264;
-            const isRightHalf = rect.right + tooltipWidth + 10 > window.innerWidth;
-
-            setTooltipPosition({
-                top: rect.top,
-                left: isRightHalf
-                    ? rect.left - tooltipWidth - 10
-                    : rect.right + 10,
-            });
-            tooltipAnimatedRef.current = false;
-            setShowTooltip(true);
-        }
+        if (closeActiveTooltip) closeActiveTooltip();
+        isActiveTooltipRef.current = true;
+        closeActiveTooltip = () => {
+            isActiveTooltipRef.current = false;
+            setShowTooltip(false);
+        };
+    
+        const rect = e.currentTarget.getBoundingClientRect();
+        const tooltipWidth = sections.length > 0 ? Math.min(560, window.innerWidth * 0.9) : 264;
+        const padding = 8;
+    
+        const spaceRight = window.innerWidth - rect.right - padding;
+        const spaceLeft = rect.left - padding;
+    
+        // Prefer right; only flip left if it genuinely doesn't fit AND left has more room
+        const goLeft = spaceRight < tooltipWidth && spaceLeft > spaceRight;
+    
+        const left = goLeft
+            ? Math.max(padding, rect.left - tooltipWidth - 10)  // clamp so it never goes off-screen left
+            : Math.min(rect.right + 10, window.innerWidth - tooltipWidth - padding); // clamp right
+    
+        setTooltipPosition({ top: rect.top, left });
+        tooltipAnimatedRef.current = false;
+        setShowTooltip(true);
     };
 
     const handleMouseLeave = () => {
+        if (inSidebar && isNarrowSidebar) return;
         if (inSidebar) {
             hideTimeoutRef.current = setTimeout(() => {
                 setShowTooltip(false);
@@ -318,7 +337,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
     const handleInfoClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!canHover) {
+        if (!canHover || (inSidebar && isNarrowSidebar)) {
             setShowTooltip(!showTooltip);
         }
     };
@@ -391,11 +410,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
     const tooltipContent = (
         <div className={`
-                    ${!canHover
-                ? "bg-white text-black rounded-t-2xl p-4 shadow-2xl w-full border-t-2 border-gray-200 max-h-[80vh] overflow-y-auto"
-                : `bg-white text-black rounded-md p-3 shadow-lg border border-gray-200 ${sections.length > 0 ? "w-[560px] max-h-[400px] overflow-y-auto" : "w-56 md:w-64"}`
+            ${(!canHover || isNarrowSidebar)
+                ? "bg-white text-black rounded-t-2xl p-4 shadow-2xl w-full border-t-2 border-gray-200 max-h-[80vh] overflow-y-auto scrollbar-hide"
+                : `bg-white text-black rounded-md p-3 shadow-lg border border-gray-200 ${sections.length > 0 ? "w-[min(560px,90vw)] max-h-[400px] overflow-y-auto" : "w-56 md:w-64"}`
             }
-                `}>
+        `}>
             <div className="flex items-start justify-between mb-2">
                 <h3 className={`font-semibold ${!canHover ? "text-base" : "text-sm"} text-gray-900`}>
                     {course.course_name || "No Name Available"}
@@ -454,7 +473,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     </div>
                 )}
 
-                {(footnotes?.length || rules?.length) && (
+                {((footnotes?.length ?? 0) > 0 || (rules?.length ?? 0) > 0) && (
                     <div className="mt-2 pt-2 border-t border-gray-300 space-y-1">
                         {footnotes?.map((f, i) => (
                             <p key={i} className="text-gray-500 italic">{f}</p>
@@ -466,59 +485,139 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                 )}
 
                 {sections.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-gray-300 ">
-                        <div className="grid py-1" style={{ gridTemplateColumns: "110px 120px 150px 80px 60px" }}>
-                            {["Section", "Instructor", "Schedule", "Room", "Grades"].map((h, i) => (
-                                <span key={h} className="text-[9px] font-bold tracking-widest uppercase text-gray-400"
-                                    style={{ textAlign: i === 4 ? "right" : "left" }}>
-                                    {h}
-                                </span>
-                            ))}
-                        </div>
-                        {sections.map((sec: any, i: number) => {
-                            // UTD Grades!!
-                            const instData = getInstructorGrades(sec.instructors);
-                            const avg = instData ? getAvgLetter(instData.aggregate?.grades) : null;
-                            const rmp = instData?.instructor?.rmp?.quality_rating ?? null;
-
-                            return (
-                                <div key={i} className="grid py-2 items-center border-t border-gray-100"
-                                    style={{ gridTemplateColumns: "110px 120px 150px 80px 60px" }}>
-                                    <div>
-                                        <div className="text-xs font-bold tracking-wide">
-                                        {sec.course_prefix?.toUpperCase() ?? ""} {sec.course_number ?? ""}.{sec.section?.trim() ?? ""}
+                    <div className="mt-2 pt-2 border-t border-gray-300">
+                        {/* Mobile: stacked cards */}
+                        <div className="sm:hidden space-y-2">
+                            {sections.map((sec: any, i: number) => {
+                                const instData = getInstructorGrades(sec.instructors);
+                                const avg = instData ? getAvgLetter(instData.aggregate?.grades) : null;
+                                const rmp = instData?.instructor?.rmp?.quality_rating ?? null;
+                                return (
+                                    <div key={i} className="border-t border-gray-100 pt-2 space-y-1">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="text-xs font-bold tracking-wide">
+                                                    {sec.course_prefix?.toUpperCase() ?? ""} {sec.course_number ?? ""}.{sec.section?.trim() ?? ""}
+                                                </div>
+                                                <div className="text-[10px] text-gray-400">#{sec.class_number}</div>
+                                            </div>
+                                            <div className="flex flex-col gap-1 items-end">
+                                                {avg && (
+                                                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${getGpaBadgeStyle(avg)}`}>
+                                                        {avg} avg
+                                                    </span>
+                                                )}
+                                                {rmp && (() => {
+                                                    const color = getRMPColor(rmp);
+                                                    const isLight = (hex: string) => {
+                                                        const r = parseInt(hex.slice(1,3), 16);
+                                                        const g = parseInt(hex.slice(3,5), 16);
+                                                        const b = parseInt(hex.slice(5,7), 16);
+                                                        return (r * 0.299 + g * 0.587 + b * 0.114) > 180;
+                                                    };
+                                                    const textColor = isLight(color) ? '#854d0e' : color;
+                                                    return (
+                                                        <span
+                                                            className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                                                            style={{
+                                                                color: textColor,
+                                                                backgroundColor: `${color}18`,
+                                                                border: `1px solid ${color}30`,
+                                                            }}
+                                                        >
+                                                            {rmp} ★
+                                                        </span>
+                                                    );
+                                                })()}
+                                            </div>
                                         </div>
-                                        <div className="text-[10px] text-gray-400">#{sec.class_number}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs font-semibold text-gray-800 truncate max-w-[90px]" title={sec.instructors}>{sec.instructors?.split(",")[0].trim()}{sec.instructors?.includes(",") ? " +" : ""}</div>
+                                        <div className="text-xs font-semibold text-gray-800">
+                                            {sec.instructors?.split(",")[0].trim()}{sec.instructors?.includes(",") ? " +" : ""}
+                                        </div>
                                         <div className="text-[10px] text-gray-400">{sec.activity_type}</div>
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <div className="flex gap-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
                                             {sec.days && <DayPips days={sec.days} />}
+                                            <span className="text-[10px] text-gray-500">{sec.times_12h?.split(";")[0].trim()}</span>
                                         </div>
-                                        <span className="text-[10px] text-gray-500">{sec.times_12h?.split(";")[0].trim()}</span>
+                                        <div className={`text-xs ${sec.location === "Online" ? "text-[#5AED86] font-semibold" : "text-gray-600"}`}>
+                                            {sec.location.replace("_", " ")}
+                                        </div>
                                     </div>
-                                    <div className={`text-xs ${sec.location === "Online" ? "text-[#5AED86] font-semibold" : "text-gray-600"}`}>
-                                        {sec.location.replace("_", " ")}
-                                    </div>
-                                    <div className="flex flex-col gap-1 items-end">
-                                        {avg && (
+                                );
+                            })}
+                        </div>
+
+                        {/* Desktop: scrollable grid */}
+                        <div className="hidden sm:block overflow-x-auto scrollbar-hide">
+                            <div className="grid py-1 min-w-[480px]" style={{ gridTemplateColumns: "1fr 1.2fr 1.4fr 0.8fr 0.6fr" }}>
+                                {["Section", "Instructor", "Schedule", "Room", "Grades"].map((h, i) => (
+                                    <span key={h} className="text-[9px] font-bold tracking-widest uppercase text-gray-400"
+                                        style={{ textAlign: i === 4 ? "right" : "left" }}>
+                                        {h}
+                                    </span>
+                                ))}
+                            </div>
+                            {sections.map((sec: any, i: number) => {
+                                const instData = getInstructorGrades(sec.instructors);
+                                const avg = instData ? getAvgLetter(instData.aggregate?.grades) : null;
+                                const rmp = instData?.instructor?.rmp?.quality_rating ?? null;
+                                return (
+                                    <div key={i} className="grid py-2 items-center border-t border-gray-100 min-w-[480px]"
+                                        style={{ gridTemplateColumns: "1fr 1.2fr 1.4fr 0.8fr 0.6fr" }}>
+                                        <div>
+                                            <div className="text-xs font-bold tracking-wide">
+                                                {sec.course_prefix?.toUpperCase() ?? ""} {sec.course_number ?? ""}.{sec.section?.trim() ?? ""}
+                                            </div>
+                                            <div className="text-[10px] text-gray-400">#{sec.class_number}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs font-semibold text-gray-800 truncate max-w-[90px]" title={sec.instructors}>
+                                                {sec.instructors?.split(",")[0].trim()}{sec.instructors?.includes(",") ? " +" : ""}
+                                            </div>
+                                            <div className="text-[10px] text-gray-400">{sec.activity_type}</div>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex gap-1">
+                                                {sec.days && <DayPips days={sec.days} />}
+                                            </div>
+                                            <span className="text-[10px] text-gray-500">{sec.times_12h?.split(";")[0].trim()}</span>
+                                        </div>
+                                        <div className={`text-xs ${sec.location === "Online" ? "text-[#5AED86] font-semibold" : "text-gray-600"}`}>
+                                            {sec.location.replace("_", " ")}
+                                        </div>
+                                        <div className="flex flex-col gap-1 items-end">
+                                            {avg && (
                                                 <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${getGpaBadgeStyle(avg)}`}>
                                                     {avg} avg
                                                 </span>
-                                        )}
-                                        {rmp && (
-                                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50"
-                                                    style={{ color: getRMPColor(rmp) }}>
-                                                    {rmp} ★
-                                                </span>
-                                        )}
+                                            )}
+                                            {rmp && (() => {
+                                                    const color = getRMPColor(rmp);
+                                                    const isLight = (hex: string) => {
+                                                        const r = parseInt(hex.slice(1,3), 16);
+                                                        const g = parseInt(hex.slice(3,5), 16);
+                                                        const b = parseInt(hex.slice(5,7), 16);
+                                                        return (r * 0.299 + g * 0.587 + b * 0.114) > 180;
+                                                    };
+                                                    const textColor = isLight(color) ? '#854d0e' : color;
+                                                    return (
+                                                        <span
+                                                            className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                                                            style={{
+                                                                color: textColor,
+                                                                backgroundColor: `${color}18`,
+                                                                border: `1px solid ${color}30`,
+                                                            }}
+                                                        >
+                                                            {rmp} ★
+                                                        </span>
+                                                    );
+                                            })()}
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
             </div>
@@ -570,7 +669,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                         {shouldReplaceSidebarInfoIcon
                             ? getWarningIndicatorIcon()
-                            : canHover && getIcon()}
+                            : (canHover && !(inSidebar && isNarrowSidebar)) && getIcon()}
                         {!shouldReplaceSidebarInfoIcon && shouldShowWarningIcon && getWarningIndicatorIcon()}
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
@@ -582,7 +681,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 Planned
                             </span>
                         )}
-                        {!canHover && (
+                        {(!canHover || (inSidebar && isNarrowSidebar)) && (
                             <button
                                 onClick={handleInfoClick}
                                 className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -609,7 +708,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
             {/* Tooltip for sidebar (portal) */}
             {((inSidebar && showTooltip) || (!canHover && showTooltip)) && ReactDOM.createPortal(
-                !canHover ? (
+                (!canHover || isNarrowSidebar) ? (
                     // Mobile: Bottom sheet with overlay
                     <>
                         <div
@@ -652,7 +751,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         className="fixed inset-0 bg-black/50 z-[10000]"
                         onClick={() => { setShowModal(false); setExpandedSectionIndex(null); }}
                     />
-                    <div className="fixed inset-4 md:inset-12 bg-white rounded-2xl z-[10001] flex flex-col shadow-2xl overflow-hidden">
+                    <div className="fixed inset-4 md:inset-12 bg-white rounded-2xl z-[10001] flex flex-col shadow-2xl overflow-hidden max-w-full">
                         <div className="flex items-start justify-between p-6 border-b border-gray-100">
                             <div>
                                 <h2 className="text-lg font-semibold text-gray-900">{course.course_name}</h2>
@@ -664,17 +763,19 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                             >✕</button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 space-y-3">
-                            {sections.map((sec: any, i: number) => {
-                                const instData = getInstructorGrades(sec.instructors);
-                                return (
-                                    <SectionCard
-                                        key={i}
-                                        sec={sec}
-                                        instData={instData ?? null}
-                                    />
-                                );
-                            })}
+                        <div className="flex-1 overflow-y-auto overflow-x-auto p-6 space-y-3">
+                            <div className="overflow-x-auto">
+                                {sections.map((sec: any, i: number) => {
+                                    const instData = getInstructorGrades(sec.instructors);
+                                    return (
+                                        <SectionCard
+                                            key={i}
+                                            sec={sec}
+                                            instData={instData ?? null}
+                                        />
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </>,

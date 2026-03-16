@@ -25,7 +25,7 @@ export function getDifficultyColor(difficulty: number): string {
 export function getRMPColor(rating: number): string {
   if (rating >= 4.5) return "#22c55e";
   if (rating >= 3.75) return "#4ade80";
-  if (rating >= 3) return "#fde047";
+  if (rating >= 3) return "#eab308";
   if (rating >= 2) return "#fb923c";
   return "#ef4444";
 }
