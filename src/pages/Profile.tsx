@@ -115,6 +115,9 @@ const Profile = () => {
   const [savedFlash, setSavedFlash]             = useState<string | null>(null);
   const dragNode = useRef<HTMLDivElement | null>(null);
 
+  // loading/err state
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const enabledCards  = cards.filter((c) => c.enabled);
   const disabledCards = cards.filter((c) => !c.enabled);
 
@@ -140,16 +143,36 @@ const Profile = () => {
   const handleDragEnter = (_e: React.DragEvent, index: number) => {
     if (index !== dragIndex) setDragOverIndex(index);
   };
+
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const handleDragEnd = () => {
     if (dragNode.current) dragNode.current.style.opacity = "1";
     if (dragOverIndex !== null && dragOverIndex !== dragIndex && dragIndex !== null) {
-      const enabled  = cards.filter((c) => c.enabled);
-      const disabled = cards.filter((c) => !c.enabled);
-      const moved = enabled.splice(dragIndex, 1)[0];
-      enabled.splice(dragOverIndex, 0, moved);
-      setCards([...enabled, ...disabled]);
-      setJustDropped(moved.id);
-      setTimeout(() => setJustDropped(null), 600);
+        const enabled  = cards.filter((c) => c.enabled);
+        const disabled = cards.filter((c) => !c.enabled);
+        const moved = enabled.splice(dragIndex, 1)[0];
+        enabled.splice(dragOverIndex, 0, moved);
+        const newCards = [...enabled, ...disabled];
+        setCards(newCards);
+        setJustDropped(moved.id);
+        setTimeout(() => setJustDropped(null), 600);
+
+        // ← persist card order
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(async () => {
+            const token = await user?.getIdToken();
+            if (!token || !CRUD_API) return;
+            await fetch(CRUD_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user?.uid,
+                    action: 'updateProfile',
+                    token,
+                    card_order: newCards.map(c => ({ id: c.id, enabled: c.enabled }))
+                })
+            });
+        }, 800);
     }
     setDragIndex(null);
     setDragOverIndex(null);
@@ -173,7 +196,7 @@ const Profile = () => {
 
   useEffect(() => {
     const updateTransform = () => {
-      if (!carouselRef.current) return;
+      if (!carouselRef.current || !carouselRef.current.parentElement) return;
       const W = carouselRef.current.parentElement!.offsetWidth;
       const cardWidth = W * 0.34;
       carouselRef.current.style.transform = `translateX(-${currentIndex * cardWidth}px)`;
@@ -203,7 +226,7 @@ const Profile = () => {
 
   useEffect(() => {
     const update = () => {
-      if (!convCarouselRef.current) return;
+      if (!convCarouselRef.current || !convCarouselRef.current.parentElement) return;
       const W = convCarouselRef.current.parentElement!.offsetWidth;
       const cardWidth = W * (cardWidthPercent / 100);
       convCarouselRef.current.style.transform = `translateX(-${convIndex * cardWidth}px)`;
@@ -261,6 +284,10 @@ const Profile = () => {
     const token = await user?.getIdToken();
     const currentType = parseInt(localStorage.getItem('profilePictureType') ?? '1');
     const newType = currentType === picNumber ? (googlePhotoURL ? 0 : 1) : picNumber;
+    if (!CRUD_API) {
+      setLoadError('API missing!');
+      return;
+    }
     const res = await fetch(CRUD_API as string, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -285,91 +312,131 @@ const Profile = () => {
   function pickProgram(prog: string) { setProgram(prog); }
 
   async function getUserInfo() {
-    const token = await user?.getIdToken();
-    if (!token) throw new Error("Failed to retrieve authentication token.");
-    const response = await fetch(CRUD_API as string, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user?.uid, action: "getProfile", token }),
-    });
-    if (!response.ok) throw new Error("Failed to fetch user info");
-    const data = await response.json();
-
-    setMajorsData([...(data.majors ?? []), ...(data.minors ?? []), ...(data.certifications ?? [])]);
-    setName(data.name);
-
-    const ug = data.credit_hours.undergraduate ?? 0;
-    setCards((prev) =>
-      prev.map((c) => {
-        if (c.id === "undergrad") return { ...c, label: `${ug} Credit Hours` };
-        if (c.id === "grad")      return { ...c, label: `0 Credit Hours` };
-        if (c.id === "startdate") return { ...c, label: data.majors[0].start_date || "—" };
-        if (c.id === "gpaundergrad") return {...c, label: data.gpa.undergraduate || "-"};
-        if (c.id === "gpagrad") return {...c, label: data.gpa.graduate || "-"};
-        if (c.id === "utdid") return {...c, label: data.utd_id};
-        return c;
-      })
-    );
-
-    const picType = data.profile?.["user-fields"]?.profile_picture_type ?? data.profile_picture_type ?? 1;
-    setProfilePictureType(picType);
-    localStorage.setItem('profilePictureType', picType.toString());
-    if (user?.photoURL) setGooglePhotoURL(user.photoURL);
-    if (picType === 0 && user?.photoURL) setProfilePic(user.photoURL);
-    else setProfilePic(`/assets/profile_pics/${picType}.png`);
-
-    const evalResponse = await fetch(CRUD_API as string, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user?.uid, action: "getEvaluation", token }),
-    });
-    if (evalResponse.ok) {
-      const evalData = await evalResponse.json();
-      if (evalData.status === "no_transcript") { setShowMissingInfoModal(true); return; }
-      const allPrograms = [...(data.majors ?? []), ...(data.minors ?? []), ...(data.certifications ?? [])];
-      setCarouselData(formatCarouselData(evalData.evaluation, allPrograms));
-    }
-
-    const cachedConvos = localStorage.getItem("chatbot_conversations");
-    let loadedFromCache = false;
-    if (cachedConvos) {
-      const parsed = JSON.parse(cachedConvos);
-      const cacheAge   = Date.now() - (parsed?.timestamp ?? 0);
-      const cacheValid = cacheAge < 1000 * 60 * 60 && parsed?.userId === user?.uid;
-      if (cacheValid && Array.isArray(parsed?.data)) {
-        const sortedCache = [...parsed.data].sort((a: Conversation, b: Conversation) => {
-          const aTime = new Date(a.messages?.[a.messages.length - 1]?.timestamp || 0).getTime();
-          const bTime = new Date(b.messages?.[b.messages.length - 1]?.timestamp || 0).getTime();
-          return bTime - aTime;
-        });
-        setConversationsData(sortedCache);
-        loadedFromCache = true;
+    setLoadError(null);
+    try 
+    { 
+      const token = await user?.getIdToken();
+      if (!token) throw new Error("Failed to retrieve authentication token.");
+      if (!CRUD_API) {
+        setLoadError('API missing!');
+        return;
       }
-    }
-    if (!loadedFromCache) {
-      const convResponse = await fetch(CRUD_API as string, {
+      const response = await fetch(CRUD_API as string, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user?.uid, action: "getConversations", token }),
+        body: JSON.stringify({ userId: user?.uid, action: "getProfile", token }),
       });
-      const parseTs = (ts: any): number => {
-        if (!ts) return 0;
-        if (typeof ts === "number") return ts;
-        return new Date(String(ts).replace(/(\.\d{3})\d+/, "$1")).getTime();
-      };
-      if (convResponse.ok) {
-        const convData = await convResponse.json();
-        const convs = Array.isArray(convData)
-          ? convData.map((conv: Conversation) => ({ ...conv, title: conv.title || conv.messages?.[0]?.content || "Untitled Conversation" }))
-          : [];
-        const sorted = [...convs].sort((a, b) => {
-          const aTime = parseTs(a.messages?.[a.messages.length - 1]?.timestamp);
-          const bTime = parseTs(b.messages?.[b.messages.length - 1]?.timestamp);
-          return bTime - aTime;
-        });
-        setConversationsData(sorted);
-        localStorage.setItem("chatbot_conversations", JSON.stringify({ data: sorted, timestamp: Date.now(), userId: user?.uid }));
+      if (!response.ok) throw new Error("Failed to fetch user info");
+      const data = await response.json();
+
+      setMajorsData([...(data.majors ?? []), ...(data.minors ?? []), ...(data.certifications ?? [])]);
+      setName(data.name);
+
+      const ug = data.credit_hours.undergraduate ?? 0;
+      setCards((prev) =>
+        prev.map((c) => {
+          if (c.id === "undergrad") return { ...c, label: `${ug} Credit Hours` };
+          if (c.id === "grad")      return { ...c, label: `0 Credit Hours` };
+          if (c.id === "startdate") return { ...c, label: data.majors[0].start_date || "—" };
+          if (c.id === "gpaundergrad") return {...c, label: data.gpa.undergraduate || "-"};
+          if (c.id === "gpagrad") return {...c, label: data.gpa.graduate || "-"};
+          if (c.id === "utdid") return {...c, label: data.utd_id};
+          return c;
+        })
+      );
+
+      const savedOrder = data.profile?.["user-fields"]?.card_order;
+      if (savedOrder?.length) {
+          setCards(prev => {
+              const mapped = savedOrder
+                  .map((saved: { id: string; enabled: boolean }) => {
+                      const card = prev.find(c => c.id === saved.id);
+                      return card ? { ...card, enabled: saved.enabled } : null;
+                  })
+                  .filter(Boolean);
+              const savedIds = new Set(savedOrder.map((s: any) => s.id));
+              const unsaved = prev.filter(c => !savedIds.has(c.id));
+              return [...mapped, ...unsaved];
+          });
       }
+
+      const picType = data.profile?.["user-fields"]?.profile_picture_type ?? data.profile_picture_type ?? 1;
+      if (user?.photoURL) setGooglePhotoURL(user.photoURL);
+      if (picType !== profilePictureType) {
+          setProfilePictureType(picType);
+          localStorage.setItem('profilePictureType', picType.toString());
+          if (picType === 0 && user?.photoURL) setProfilePic(user.photoURL);
+          else setProfilePic(`/assets/profile_pics/${picType}.png`);
+      }
+
+      if (!CRUD_API) {
+        setLoadError('API missing');
+        return;
+      }
+
+      const evalResponse = await fetch(CRUD_API as string, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user?.uid, action: "getEvaluation", token }),
+      });
+      if (evalResponse.ok) {
+        const evalData = await evalResponse.json();
+        if (evalData.status === "no_transcript") { setShowMissingInfoModal(true); return; }
+        const allPrograms = [...(data.majors ?? []), ...(data.minors ?? []), ...(data.certifications ?? [])];
+        setCarouselData(formatCarouselData(evalData.evaluation, allPrograms));
+      }
+
+      const cachedConvos = localStorage.getItem("chatbot_conversations");
+      let loadedFromCache = false;
+      if (cachedConvos) {
+        const parsed = JSON.parse(cachedConvos);
+        const cacheAge   = Date.now() - (parsed?.timestamp ?? 0);
+        const cacheValid = cacheAge < 1000 * 60 * 60 && parsed?.userId === user?.uid;
+        if (cacheValid && Array.isArray(parsed?.data)) {
+          const sortedCache = [...parsed.data].sort((a: Conversation, b: Conversation) => {
+            const aTime = new Date(a.messages?.[a.messages.length - 1]?.timestamp || 0).getTime();
+            const bTime = new Date(b.messages?.[b.messages.length - 1]?.timestamp || 0).getTime();
+            return bTime - aTime;
+          });
+          setConversationsData(sortedCache);
+          loadedFromCache = true;
+        }
+      }
+      if (!loadedFromCache) {
+        if (!CRUD_API) {
+          setLoadError('API missing');
+          return;
+        }
+        const convResponse = await fetch(CRUD_API as string, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user?.uid, action: "getConversations", token }),
+        });
+        const parseTs = (ts: any): number => {
+          if (!ts) return 0;
+          if (typeof ts === "number")
+          {
+            return ts < 1e12 ? ts * 1000 : ts;
+          }
+          if (ts?.seconds) return ts.seconds * 1000; 
+          return new Date(String(ts).replace(/(\.\d{3})\d+/, "$1")).getTime();
+        };
+        if (convResponse.ok) {
+          const convData = await convResponse.json();
+          const convs = Array.isArray(convData)
+            ? convData.map((conv: Conversation) => ({ ...conv, title: conv.title || conv.messages?.[0]?.content || "Untitled Conversation" }))
+            : [];
+          const sorted = [...convs].sort((a, b) => {
+            const aTime = parseTs(a.messages?.[a.messages.length - 1]?.timestamp);
+            const bTime = parseTs(b.messages?.[b.messages.length - 1]?.timestamp);
+            return bTime - aTime;
+          });
+          setConversationsData(sorted);
+          localStorage.setItem("chatbot_conversations", JSON.stringify({ data: sorted, timestamp: Date.now(), userId: user?.uid }));
+        }
+      }
+    } catch (err) {
+      setLoadError('Failed to load profile. Please refresh.');
     }
   }
 
@@ -378,17 +445,20 @@ const Profile = () => {
       const w = window.innerWidth;
       setMobileView(w < 768);
       setTabletView(w >= 768 && w < 1024);
+      setConvIndex(0);
+      setCurrentIndex(0);
     };
     handleResize();
     window.addEventListener("resize", handleResize);
-    getUserInfo();
     return () => window.removeEventListener("resize", handleResize);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function formatConvoTimestamp(ms: number): string {
     if (!ms) return "";
-    const date = new Date(ms);
+    const normalized = ms < 1e12 ? ms * 1000 : ms;
+    if (!normalized) return "";
+    const date = new Date(normalized);
     const now   = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays === 0) return `Today, ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
@@ -408,6 +478,12 @@ const Profile = () => {
         @keyframes savedPop  { 0%{transform:scale(1)} 40%{transform:scale(1.02)} 100%{transform:scale(1)} }
         @keyframes fadeSlide { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
+
+      {loadError && (
+                  <div className="fixed top-[4.2rem] left-0 right-0 z-50 bg-red-50 border-b border-red-200 px-6 py-2 text-sm text-red-600 text-center">
+                      {loadError} — <button onClick={getUserInfo} className="underline">retry</button>
+                  </div>
+      )}
 
       <div className="flex bg-bglight py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)] overflow-y-auto">
         {mobileView ? (
@@ -430,15 +506,15 @@ const Profile = () => {
             <div className="flex flex-row justify-between items-center">
               <h2 className="text-xl font-semibold">Program Status</h2>
               <div className="relative">
-                <select value={program} onChange={(e) => pickProgram(e.target.value)}
-                  className="appearance-none border border-card-bord rounded-full pl-4 pr-8 py-1.5 text-sm bg-white text-textdark cursor-pointer">
-                  <option value="All">All</option>
-                  <option value="Active">Active</option>
-                  <option value="Complete">Complete</option>
-                </select>
-                <MoveRight className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-textdark rotate-90 pointer-events-none" />
+                  <select value={program} onChange={(e) => pickProgram(e.target.value)}
+                      className="appearance-none border border-card-bord rounded-full pl-4 pr-8 py-1.5 text-sm bg-white text-textdark cursor-pointer">
+                      <option value="All">All</option>
+                      <option value="Active">Active</option>
+                      <option value="Complete">Complete</option>
+                  </select>
+                  <MoveRight className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-textdark rotate-90 pointer-events-none" />
               </div>
-            </div>
+          </div>
 
             <div className="relative w-full">
               {carouselData.length > 0 && (
