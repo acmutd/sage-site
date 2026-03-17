@@ -244,6 +244,7 @@ const ChatBot: React.FC = () => {
   };
 
   const startNewChat = () => {
+    setChatError(null);
     if (messages.length > 0 && conversation_id) {
       updateConversations((prevConversations) => {
         if (!Array.isArray(prevConversations)) return [];
@@ -262,6 +263,10 @@ const ChatBot: React.FC = () => {
     const newConversationId = `conversation_${uuidv4()}`;
     loadConversation(newConversationId, []);
     setIsNewConversation(true);
+
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = 0;
+    }
 
     localStorage.setItem(
       "chatbot_conversation",
@@ -622,7 +627,7 @@ const ChatBot: React.FC = () => {
                 <div className="flex flex-col flex-grow-[1] min-h-0 w-full bg-innercontainer rounded-lg border border-border">
                   <div
                     ref={chatContainerRef}
-                    className="p-8 overflow-y-auto space-y-2 flex flex-col items-center"
+                    className="p-8 overflow-y-auto space-y-2 flex flex-col items-center flex-1 min-h-0"
                     style={{ scrollbarWidth: "none" }}
                   >
                     {messages.length === 0 && !chatLoad && !generateSchedule ? (
@@ -692,7 +697,11 @@ const ChatBot: React.FC = () => {
                         query.trim().length >= 400 ? "pb-6" : ""
                       }`}
                       style={{ scrollbarWidth: "none" }}
-                      onChange={(e) => setQuery(e.target.value)}
+                      onChange={(e) => 
+                      {
+                        setQuery(e.target.value);
+                        if (chatError) setChatError(null);
+                      }}
                       onKeyDown={handleEnter}
                       value={query}
                       disabled={loading}
