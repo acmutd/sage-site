@@ -325,8 +325,18 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
             }
             return true;
         });
-        if (sortBy === 'professor') result = [...result].sort((a, b) => (a.instructors || '').localeCompare(b.instructors || ''));
-        else if (sortBy === 'location') result = [...result].sort((a, b) => (a.location || '').localeCompare(b.location || ''));
+        if (sortBy === 'professor') result = [...result].sort((a, b) => {
+            const aProf = (Array.isArray(a.instructors) ? a.instructors.join(', ') : (a.instructors || ''));
+            const bProf = (Array.isArray(b.instructors) ? b.instructors.join(', ') : (b.instructors || ''));
+            return aProf.localeCompare(bProf);
+        });
+        
+        else if (sortBy === 'location') result = [...result].sort((a, b) => {
+            const aLoc = (Array.isArray(a.location) ? a.location.join(', ') : (a.location || ''));
+            const bLoc = (Array.isArray(b.location) ? b.location.join(', ') : (b.location || ''));
+            return aLoc.localeCompare(bLoc);
+        });        
+        
         return result;
     };
 

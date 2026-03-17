@@ -2,12 +2,15 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import Sidebar from "@/components/planner/Sidebar";
 import SemesterBox from "@/components/planner/SemesterBox";
-import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2, RefreshCw, ChevronDown, Settings, Pencil, Plus, Copy, Trash2 } from "lucide-react";
+import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2, RefreshCw, ChevronDown, Settings, Pencil, Plus, Copy, Trash2, Download } from "lucide-react";
 import PlannerNavbar from "./PlannerNavbar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Toaster, toast } from "sonner";
@@ -19,6 +22,7 @@ import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
 import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
 import { usePlannerStore } from "@/stores/plannerStore";
 import { usePlannerTutorial } from "@/hooks/usePlannerTutorial";
+import { exportPlanAsCSV, exportPlanAsJPG, exportPlanAsPDF, exportPlanAsPNG } from "@/utils/planExport";
 
 interface PlannerProps {
     semesters: {
@@ -1006,6 +1010,23 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                     <Trash2 className="w-4 h-4 mr-2" />
                                     Delete plan
                                 </DropdownMenuItem>
+
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Export plan
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent className="bg-white rounded-2xl shadow-lg p-2">
+                                        <DropdownMenuItem onClick={() => activePlan && exportPlanAsPNG(activePlan)}
+                                            className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">PNG</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => activePlan && exportPlanAsJPG(activePlan)}
+                                            className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">JPG</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => activePlan && exportPlanAsPDF(activePlan)}
+                                            className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">PDF</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => activePlan && exportPlanAsCSV(activePlan)}
+                                            className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">CSV</DropdownMenuItem>
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuSub>
                             </DropdownMenuContent>
                         </DropdownMenu>
 
@@ -1077,6 +1098,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                         semesterCount={allSemesters[yearKey].length}
                                         courseCount={totalCourses}
                                         hasCurrentSemester={hasCurrentSemester}
+                                        activePlan={activePlan}
                                     />
 
                                     {!isYearCollapsed && (

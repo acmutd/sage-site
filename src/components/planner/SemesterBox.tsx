@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Lock, Unlock, MoreVertical, Trash2, Eraser, TriangleAlert, ChevronUp, Calendar } from "lucide-react";
+import { Lock, Unlock, MoreVertical, Trash2, Eraser, TriangleAlert, ChevronUp, Calendar, Download } from "lucide-react";
 import CourseBox from "@/components/planner/CourseBox";
 import { useDrop } from "react-dnd";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Course } from "@/types/course";
 import { getScheduleButtonState, validateCourseLoad } from '@/utils/courseValidation';
 import { Warning } from "@/types/warning";
@@ -15,6 +15,7 @@ import ReactDOM from "react-dom";
 import SchedulePlanningModal from "@/components/planner/SchedulePlanningModal";
 import { toast } from "sonner";
 import { usePlannerStore } from "@/stores/plannerStore";
+import { exportSemesterAsCSV, exportSemesterAsJPG, exportSemesterAsPDF, exportSemesterAsPNG } from "@/utils/planExport";
 
 interface SemesterBoxProps {
     title: string;
@@ -851,6 +852,22 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                     <Trash2 className="w-4 h-4 mr-2" />
                                     Remove Semester
                                 </DropdownMenuItem>
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Export Semester
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent className="bg-white rounded-2xl shadow-lg p-2">
+                                        <DropdownMenuItem onClick={() => activePlan && exportSemesterAsPNG(activePlan, title)}
+                                            className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">PNG</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => activePlan && exportSemesterAsJPG(activePlan, title)}
+                                            className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">JPG</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => activePlan && exportSemesterAsPDF(activePlan, title)}
+                                            className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">PDF</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => activePlan && exportSemesterAsCSV(activePlan, title)}
+                                            className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">CSV</DropdownMenuItem>
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuSub>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
