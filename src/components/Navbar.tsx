@@ -66,15 +66,19 @@ const Navbar = () => {
     updateProfilePicture();
 
     window.addEventListener('storage', updateProfilePicture);
-    
-    return () => window.removeEventListener('storage', updateProfilePicture);
+    window.addEventListener('profilePictureUpdated', updateProfilePicture);
+    return () => 
+    { 
+      window.removeEventListener('storage', updateProfilePicture);
+      window.removeEventListener('profilePictureUpdated', updateProfilePicture);
+    }
   }, [user?.photoURL])
 
   return (
     <AuthProvider>
       {/* Standard navbar */}
       <>
-        {ENVIRONMENT === 'development' && (
+        {ENVIRONMENT !== 'development' && (
             <div className="fixed top-0 left-0 right-0 h-4 bg-purple-600 text-white text-center text-xs font-medium z-[200] shadow-sm flex items-center justify-center">
               Dev Environment
             </div>
@@ -83,7 +87,7 @@ const Navbar = () => {
         <nav className={`
           ${isInWebapp && !isOnboardingActive ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
           py-2.5 px-6 fixed w-full z-[70] hidden md:block
-          ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
+          ${ENVIRONMENT !== 'development' ? 'top-4' : 'top-0'}
         `}>
             
           <div className="flex items-center justify-between w-full">

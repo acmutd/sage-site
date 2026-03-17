@@ -303,12 +303,14 @@ const Profile = () => {
       console.error("Failed to update profile:", result.error);
       setProfilePictureType(currentType);
       localStorage.setItem('profilePictureType', currentType.toString());
+      window.dispatchEvent(new Event('profilePictureUpdated'));
       setProfilePic(currentType === 0 && googlePhotoURL ? googlePhotoURL : `/assets/profile_pics/${currentType}.png`);
       return;
     }
     setProfilePictureType(newType);
     localStorage.setItem('profilePictureType', newType.toString());
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('profilePictureUpdated'));
     if (newType === 0 && googlePhotoURL) setProfilePic(googlePhotoURL);
     else setProfilePic(`/assets/profile_pics/${newType}.png`);
     setIsPopUpOpen(false);
@@ -340,6 +342,7 @@ const Profile = () => {
       if (googleURL) setGooglePhotoURL(googleURL);
       setProfilePictureType(picType);
       localStorage.setItem('profilePictureType', picType.toString());
+      window.dispatchEvent(new Event('profilePictureUpdated'));
       if (picType === 0 && googleURL) setProfilePic(googleURL);
       else setProfilePic(`/assets/profile_pics/${picType}.png`);
 
