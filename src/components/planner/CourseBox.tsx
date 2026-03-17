@@ -35,7 +35,9 @@ const DAY_ABBR: Record<string, string> = {
 };
 
 const DayPips = ({ days }: { days: string }) => {
-    const active = new Set(days.split(",").map(d => d.trim()));
+    const active = new Set(
+        Array.isArray(days) ? days.map(d => String(d).trim()) : String(days).split(",").map(d => d.trim())
+    );
     return (
         <div className="flex gap-1">
             {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(d => (
@@ -383,29 +385,41 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         return "bg-red-50 text-red-800";
     };
 
-    const getInstructorGrades = (instructorName: string) => {
-        if (!courseGrades?.instructors || !instructorName) return null;
+    const getInstructorString = (instructors: any): string => {
+        if (!instructors) return "";
+        if (Array.isArray(instructors)) return instructors[0] ?? "";
+        return String(instructors);
+    };
+
+    const getInstructorGrades = (instructorName: any) => {
+        const nameStr = Array.isArray(instructorName)
+            ? (instructorName[0] ?? "")
+            : String(instructorName ?? "");
     
-        const normalize = (name: string) => name.toLowerCase().replace(/[^a-z\s]/g, "").trim();
+        if (!courseGrades?.instructors || !nameStr) return null;
     
-        // extract last and first from "Last, First M" format
+        const normalize = (name: any): string => {
+            if (!name || typeof name !== "string") return "";
+            return name.toLowerCase().replace(/[^a-z\s]/g, "").trim();
+        };
+    
         const parseName = (name: string) => {
             if (name.includes(",")) {
                 const [last, firstPart] = name.split(",").map(s => s.trim());
-                const first = firstPart.split(" ")[0]; // drop middle initial
+                const first = firstPart.split(" ")[0];
                 return { first: normalize(first), last: normalize(last) };
             }
             const parts = normalize(name).split(" ");
-            return { first: parts[0], last: parts[parts.length - 1] };
+            return { first: parts[0] ?? "", last: parts[parts.length - 1] ?? "" };
         };
     
-        const input = parseName(instructorName);
+        const input = parseName(nameStr);
     
         return courseGrades.instructors.find((inst: any) => {
-            const instName = inst.instructor.name ?? "";
+            const instName = inst.instructor?.name ?? "";
             const parsed = parseName(instName);
             return input.first === parsed.first && input.last === parsed.last;
-        });
+        }) ?? null;
     };
 
     const tooltipContent = (
@@ -489,7 +503,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         {/* Mobile: stacked cards */}
                         <div className="sm:hidden space-y-2">
                             {sections.map((sec: any, i: number) => {
-                                const instData = getInstructorGrades(sec.instructors);
+                                const instData = getInstructorGrades(getInstructorString(sec.instructors));
                                 const avg = instData ? getAvgLetter(instData.aggregate?.grades) : null;
                                 const rmp = instData?.instructor?.rmp?.quality_rating ?? null;
                                 return (
@@ -532,7 +546,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                             </div>
                                         </div>
                                         <div className="text-xs font-semibold text-gray-800">
-                                            {sec.instructors?.split(",")[0].trim()}{sec.instructors?.includes(",") ? " +" : ""}
+                                            {(() => { const s = getInstructorString(sec.instructors); const first = s.split(",")[0].trim(); return s.includes(",") ? `${first} +` : first; })()}
                                         </div>
                                         <div className="text-[10px] text-gray-400">{sec.activity_type}</div>
                                         <div className="flex items-center gap-2 flex-wrap">
@@ -572,7 +586,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                         </div>
                                         <div>
                                             <div className="text-xs font-semibold text-gray-800 truncate max-w-[90px]" title={sec.instructors}>
-                                                {sec.instructors?.split(",")[0].trim()}{sec.instructors?.includes(",") ? " +" : ""}
+                                               {(() => { const s = getInstructorString(sec.instructors); const first = s.split(",")[0].trim(); return s.includes(",") ? `${first} +` : first; })()}
                                             </div>
                                             <div className="text-[10px] text-gray-400">{sec.activity_type}</div>
                                         </div>
@@ -766,7 +780,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         <div className="flex-1 overflow-y-auto overflow-x-auto p-6 space-y-3">
                             <div className="overflow-x-auto">
                                 {sections.map((sec: any, i: number) => {
-                                    const instData = getInstructorGrades(sec.instructors);
+                                    const instData = getInstructorGrades(getInstructorString(sec.instructors));
                                     return (
                                         <SectionCard
                                             key={i}

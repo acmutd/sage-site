@@ -10,10 +10,10 @@ interface CoursebookSection {
   course_number: string;
   section: string;
   class_number: string;
-  instructors: string;
+  instructors: any;
   activity_type: string;
-  days: string;
-  times_12h: string;
+  days: any;
+  times_12h: any;
   location: string;
 }
 
@@ -27,13 +27,28 @@ const DAY_ABBR: Record<string, string> = {
   Monday: "M", Tuesday: "Tu", Wednesday: "W", Thursday: "Th", Friday: "F"
 };
 
+// normalizing fields that used to be a comma/semicolon-separated string but may now be an array
+const toStr = (val: any): string => {
+  if (!val) return "";
+  if (Array.isArray(val)) return val[0] ?? "";
+  return String(val);
+};
+
 export default function SectionCard({ sec, instData }: SectionCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const avg = instData ? getAvgLetterGrade(instData.aggregate.grades) : null;
   const rmp = instData?.instructor?.rmp?.quality_rating ?? null;
   const wouldRetake = instData?.instructor?.rmp?.would_take_again ?? null;
-  const activeDays = new Set(sec.days?.split(",").map(d => d.trim()) ?? []);
+
+  const daysStr = toStr(sec.days);
+  const activeDays = new Set(daysStr ? daysStr.split(",").map(d => d.trim()) : []);
+
+  const instructorsStr = toStr(sec.instructors);
+  const firstInstructor = instructorsStr.split(",")[0].trim();
+
+  const timesStr = toStr(sec.times_12h);
+  const firstTime = timesStr.split(";")[0].trim();
 
   return (
     <div className={cn("rounded-xl border border-border bg-card transition-all", expanded && "ring-1 ring-border")}>
@@ -49,7 +64,7 @@ export default function SectionCard({ sec, instData }: SectionCardProps) {
             <span className="text-xs text-muted-foreground">#{sec.class_number}</span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {sec.instructors?.split(",")[0].trim()} · {sec.activity_type}
+            {firstInstructor} · {sec.activity_type}
           </p>
           <div className="flex gap-1 mt-1.5">
             {DAYS.map(d => (
@@ -62,7 +77,7 @@ export default function SectionCard({ sec, instData }: SectionCardProps) {
             ))}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {sec.times_12h?.split(";")[0].trim()} · {sec.location?.replace("_", " ")}
+            {firstTime} · {sec.location?.replace("_", " ")}
           </p>
         </div>
 
