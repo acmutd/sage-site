@@ -304,7 +304,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
             if (sessionFilter !== 'all' && sec.session !== sessionFilter) return false;
             if (modalityFilter !== 'all' && guessModality(sec) !== modalityFilter) return false;
             if (profFilter !== 'all') {
-                const profs = (sec.instructors || '').split(',').map((p: string) => p.trim());
+                const profs = (Array.isArray(sec.instructors) ? sec.instructors : (sec.instructors || '').split(',')).map((p: string) => p.trim());
                 if (!profs.includes(profFilter)) return false;
             }
             return true;
@@ -637,7 +637,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
                                 const courseProfessors = [...new Set(
                                     sections.flatMap((sec: any) =>
-                                        (sec.instructors || '').split(',').map((p: string) => p.trim()).filter(Boolean)
+                                        (Array.isArray(sec.instructors) ? sec.instructors : (sec.instructors || '').split(',')).map((p: string) => p.trim()).filter(Boolean)
                                     )
                                 )].sort();
 
@@ -731,7 +731,12 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                             {sec.session && <span className="text-[10px] text-blue-500">{sec.session}</span>}
                                                                             <span className="text-gray-500">·</span>
                                                                             <span className="font-medium text-gray-700 truncate">
-                                                                                {sec.instructors?.split(',')[0].trim()}{sec.instructors?.includes(',') ? ' +' : ''}
+                                                                                {(() => {
+                                                                                    const instList = Array.isArray(sec.instructors)
+                                                                                        ? sec.instructors
+                                                                                        : (sec.instructors || '').split(',').map((p: string) => p.trim()).filter(Boolean);
+                                                                                    return instList.length > 0 ? `${instList[0]}${instList.length > 1 ? ' +' : ''}` : '';
+                                                                                })()}
                                                                             </span>
                                                                             <span className="text-gray-400">{sec.activity_type}</span>
                                                                         </div>
