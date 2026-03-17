@@ -1052,10 +1052,17 @@ const ChatBot: React.FC = () => {
                   setDeleting(true);
                   try {
                     await deleteConversation(conversationToDelete);
+
+                    setMessages([]);
+                    updateConversationId(null);
+                    setChatError(null);
+                    localStorage.removeItem("chatbot_conversation");
+                    
                     setShowDeleteModal(false);
                     setConversationToDelete(null);
                   } catch (err) {
                     console.error("Failed to delete:", err);
+                    setChatError("Failed to delete conversation. Please try again.");
                   } finally {
                     setDeleting(false);
                   }
