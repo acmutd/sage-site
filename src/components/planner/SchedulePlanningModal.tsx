@@ -20,6 +20,7 @@ interface SchedulePlanningModalProps {
     onSave?: (selectedSections: Record<string, string>, colorOverrides: Record<string, string>) => void;
     initialSelectedSections?: Record<string, string>;
     initialColorOverrides?: Record<string, string>;
+    coursebookSemester?: string | null;
 }
 
 const DAY_ABBR: Record<string, string> = {
@@ -119,7 +120,11 @@ const ColorDotPicker = ({ color, onChange }: { color: string; onChange: (hex: st
     );
 };
 
+const getTime = (t: any) => (Array.isArray(t) ? t[0] : (t || '')).split(';')[0].trim();
+
 const parseTime12 = (timeStr: string): { start: number; end: number } | null => {
+    const raw = Array.isArray(timeStr) ? timeStr[0] : timeStr;
+    if (!raw) return null;
     const trimmed = timeStr.split(';')[0].trim();
     const match = trimmed.match(/(\d+):(\d+)\s*(AM|PM)\s*[-–]\s*(\d+):(\d+)\s*(AM|PM)/i);
     if (!match) return null;
@@ -141,8 +146,10 @@ const parseTime24 = (t: string): number => {
     return h * 60 + (m || 0);
 };
 
-const parseDays = (days: string): Set<string> =>
-    new Set(days.split(',').map(d => d.trim()).filter(Boolean));
+const parseDays = (days: string | string[]): Set<string> => {
+    if (Array.isArray(days)) return new Set(days.map(d => d.trim()).filter(Boolean));
+    return new Set(days.split(',').map(d => d.trim()).filter(Boolean));
+};
 
 const timesOverlap = (s1: number, e1: number, s2: number, e2: number) =>
     s1 < e2 && s2 < e1;
@@ -220,7 +227,16 @@ const guessModality = (sec: any): 'online' | 'hybrid' | 'inperson' => {
     return 'inperson';
 };
 
-const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, courses, onClose, onSave, initialSelectedSections, initialColorOverrides }) => {
+const formatCoursebookSemester = (sem: string | null): string | null => {
+    if (!sem) return null;
+    const match = sem.match(/^(\d{2})([suf])$/);
+    if (!match) return null;
+    const year = `20${match[1]}`;
+    const name = { s: "Spring", u: "Summer", f: "Fall" }[match[2]] ?? "";
+    return `${name} ${year}`;
+};
+
+const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, courses, onClose, onSave, initialSelectedSections, initialColorOverrides, coursebookSemester }) => {
     const [selectedSections, setSelectedSections] = useState<Record<string, string>>(initialSelectedSections ?? {});
     const [breaks, setBreaks] = useState<Break[]>([]);
     const [showFilters, setShowFilters] = useState(false);
@@ -745,7 +761,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                         </div>
                                                                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                                             {sec.days && <DayPips days={sec.days} />}
-                                                                            <span className="text-gray-500">{sec.times_12h?.split(';')[0].trim()}</span>
+                                                                            <span className="text-gray-500">{getTime(sec.times_12h)}</span>
                                                                             <span className="text-gray-300">·</span>
                                                                             <span className={`font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
                                                                                 {sec.location?.replace('_', ' ')}
@@ -780,7 +796,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                         </div>
                                                                         <div className="flex flex-col gap-1">
                                                                             {sec.days && <DayPips days={sec.days} />}
-                                                                            <span className="text-gray-500">{sec.times_12h?.split(';')[0].trim()}</span>
+                                                                            <span className="text-gray-500">{getTime(sec.times_12h)}</span>
                                                                         </div>
                                                                         <div>
                                                                             <div className={`truncate font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
@@ -918,7 +934,9 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                     {showDisclaimer && (
                         <div className="px-5 py-2 bg-amber-50 border-t border-amber-100 flex-shrink-0 flex items-center justify-between gap-3">
                             <p className="text-[10px] text-amber-700 leading-relaxed">
-                                Section availability is not real-time and is subject to change. Always verify openings in your university's official schedule planner before registering.
+                                Section availability is not real-time and is subject to change.
+                                {coursebookSemester && ` Currently showing ${formatCoursebookSemester(coursebookSemester)} sections; course offerings may be limited.`}
+                                {" "}Always verify openings in your university's official schedule planner before registering.
                             </p>
                             <button onClick={() => setShowDisclaimer(false)} className="text-amber-400 hover:text-amber-600 flex-shrink-0">
                                 <X className="w-3 h-3" />

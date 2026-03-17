@@ -52,6 +52,7 @@ interface SemesterBoxProps {
     'data-tour'?: string;
     isCurrentSemester?: boolean;
     coursebookData?: Record<string, any[]>;
+    coursebookSemester?: string | null;
 }
 
 const normalizeCorequisiteGroups = (corequisites: unknown): string[][] => {
@@ -110,6 +111,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     'data-tour': dataTour,
     isCurrentSemester = false,
     coursebookData = {},
+    coursebookSemester,
 }) => {
     const [locked, setLocked] = useState(isLocked);
     const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -888,6 +890,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                             ...course,
                                             sections: coursebookData[course.course_code?.toLowerCase().replace(/\s+/g, "")] || []
                                         }}
+                                        coursebookSemester={coursebookSemester}
                                         sourceYear={yearKey}
                                         sourceSemesterIndex={semesterIndex}
                                         isFromTranscript={isFromTranscript}
@@ -934,6 +937,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                     }}
                     initialSelectedSections={activePlan?.schedulePlan?.[title]?.selectedSections}
                     initialColorOverrides={activePlan?.schedulePlan?.[title]?.colorOverrides}
+                    coursebookSemester={coursebookSemester}
                 />
             )}
         </div>

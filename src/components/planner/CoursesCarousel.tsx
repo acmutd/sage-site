@@ -25,6 +25,7 @@ interface CoursesCarouselProps {
     }>;
     coursebookData?: Record<string, any[]>;
     gradesData?: Record<string, any>;
+    coursebookSemester?: string | null;
 }
 
 const normalizeCorequisiteGroups = (corequisites: unknown): string[][] => {
@@ -65,6 +66,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
     allPlannedCoursesWithOrder = [],
     coursebookData = {},
     gradesData = {},
+    coursebookSemester,
 }) => {
     const COURSES_PER_PAGE = 5;
     const [currentPage, setCurrentPage] = useState(0);
@@ -265,6 +267,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 warnings={displayedWarnings}
                                 onAdd={() => handleAddClick({...course, course_code: courseCode, code: courseCode})}
                                 gradesData={gradesData}
+                                coursebookSemester={coursebookSemester}
                                 footnotes={course.footnote}
                                 rules={course.rules}
                             />

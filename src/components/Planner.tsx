@@ -328,6 +328,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     }, [hasUnsavedChanges]);
 
     const [coursebookData, setCoursebookData] = useState<Record<string, any[]>>({});
+    const [coursebookSemester, setCoursebookSemester] = useState<string | null>(null);
     const [gradesData, setGradesData] = useState<Record<string, any>>({});
     const [error, setError] = useState<string | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -512,8 +513,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 );
     
                 if (!res.ok) return;
-                const sections: any[] = await res.json();
-    
+                const data = await res.json();
+                const sections: any[] = data.sections;
+                const semester = data.semester;
+                if (semester) setCoursebookSemester(semester);
+
                 const grouped: Record<string, any[]> = {};
                 sections.forEach(sec => {
                     const key = `${sec.course_prefix}${sec.course_number}`.toLowerCase();
@@ -905,6 +909,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         focusLabel={focusLabel}
                         semesters={allSemesters}
                         coursebookData={coursebookData}
+                        coursebookSemester={coursebookSemester}
                         gradesData={gradesData}
                     />
 
@@ -1101,6 +1106,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                                     isCollapsed={!!collapsedSemesters[`${yearKey}-${idx}`]}
                                                     onToggleCollapse={() => toggleSemesterCollapse(yearKey, idx)}
                                                     coursebookData={coursebookData}
+                                                    coursebookSemester={coursebookSemester}
                                                     isCurrentSemester={isCurrentSemester(semester.title)}
                                                 />
                                             ))}

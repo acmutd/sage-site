@@ -26,9 +26,19 @@ interface CourseBoxProps {
     gradesData?: Record<string, any>;
     footnotes?: string[] | null;
     rules?: string[] | null;
+    coursebookSemester?: string | null;
 }
 
 let closeActiveTooltip: (() => void) | null = null; // singleton to prevent multi-drags
+
+const formatCoursebookSemester = (sem: string | null): string | null => {
+    if (!sem) return null;
+    const match = sem.match(/^(\d{2})([suf])$/);
+    if (!match) return null;
+    const year = `20${match[1]}`;
+    const name = { s: "Spring", u: "Summer", f: "Fall" }[match[2]] ?? "";
+    return `${name} ${year}`;
+};
 
 const DAY_ABBR: Record<string, string> = {
     Monday: "M", Tuesday: "Tu", Wednesday: "W", Thursday: "Th", Friday: "F", Saturday: "S"
@@ -136,6 +146,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     gradesData = {},
     footnotes = [],
     rules = [],
+    coursebookSemester,
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -429,21 +440,25 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                 : `bg-white text-black rounded-md p-3 shadow-lg border border-gray-200 ${sections.length > 0 ? "w-[min(560px,90vw)] max-h-[400px] overflow-y-auto" : "w-56 md:w-64"}`
             }
         `}>
-            <div className="flex items-start justify-between mb-2">
-                <h3 className={`font-semibold ${!canHover ? "text-base" : "text-sm"} text-gray-900`}>
+            <div className="flex items-start justify-between mb-2 min-w-0 gap-2">
+                <h3 className={`font-semibold ${!canHover ? "text-base" : "text-sm"} text-gray-900 truncate`}>
                     {course.course_name || "No Name Available"}
                 </h3>
-                {sections.length > 0 && (
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setShowModal(true);
-                        }}
-                        className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-gray-700 shrink-0 ml-2"
-                    >
-                        <Maximize2 className="w-3.5 h-3.5" />
-                    </button>
-                )}
+                <div className="flex items-center gap-1 shrink-0">
+                    {coursebookSemester && sections.length > 0 && (
+                        <span className="inline-flex items-center text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                            {formatCoursebookSemester(coursebookSemester)} — availability differs
+                        </span>
+                    )}
+                    {sections.length > 0 && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setShowModal(true); }}
+                            className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-gray-700"
+                        >
+                            <Maximize2 className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                </div>
             </div>
             <div className={`space-y-1 ${!canHover ? "text-sm" : "text-xs"}`}>
                 {course.course_code && (
