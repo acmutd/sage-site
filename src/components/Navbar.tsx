@@ -200,27 +200,26 @@ const Navbar = () => {
                   Start a chat
                 </Link>
               </DropdownMenuItem>
-
-              <DropdownMenuContent className="bg-bglight flex flex-col p-3 gap-2 mr-6 rounded-3xl min-w-[200px]">
-                <DropdownMenuItem className="focus:bg-innercontainer w-full rounded-xl">
-                    <Link
-                        to="/profile"
-                        className="text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2"
-                    >
-                        <UserRound className="stroke-accent" />
-                        Your Profile
+              {user ? (
+                <>
+                  <DropdownMenuItem className="focus:bg-innercontainer w-full">
+                    <Link to="/profile" className="text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2">
+                      <UserRound className="stroke-accent" /> Your Profile
                     </Link>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem className="focus:bg-transparent w-full p-0">
-                    <button
-                        onClick={logout}
-                        className="bg-destructive w-full text-white text-base px-6 py-2 rounded-full font-semibold hover:bg-red-700 transition duration-300"
-                    >
-                        Sign Out
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="focus:bg-transparent w-full p-0">
+                    <button onClick={logout} className="bg-destructive w-full text-white text-base px-6 py-2 rounded-full font-semibold hover:bg-red-700 transition duration-300">
+                      Sign Out
                     </button>
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <DropdownMenuItem className="focus:bg-transparent w-full p-0">
+                  <Link to="/login" className="bg-accent w-full text-center text-textdark text-base px-6 py-2 rounded-full font-semibold hover:bg-buttonhover transition duration-300">
+                    Login
+                  </Link>
                 </DropdownMenuItem>
-            </DropdownMenuContent>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
