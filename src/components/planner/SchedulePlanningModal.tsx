@@ -317,11 +317,14 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     const professorDropdownWidth = useMemo(() => {
         let maxLen = 'All Professors'.length;
         plannableCourses.forEach(({ sections }) =>
-            sections.forEach((sec: any) =>
-                (sec.instructors || '').split(',').forEach((p: string) => {
+            sections.forEach((sec: any) => {
+                const profs: string[] = Array.isArray(sec.instructors)
+                    ? sec.instructors
+                    : (sec.instructors || '').split(',');
+                profs.forEach((p: string) => {
                     maxLen = Math.max(maxLen, p.trim().length);
-                })
-            )
+                });
+            })
         );
         return maxLen * 7 + 48;
     }, [plannableCourses]);
@@ -766,7 +769,12 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                         </div>
                                                                         <div className="min-w-0">
                                                                             <div className="font-medium text-gray-700 truncate">
-                                                                                {sec.instructors?.split(',')[0].trim()}{sec.instructors?.includes(',') ? ' +' : ''}
+                                                                                {(() => {
+                                                                                    const profs = Array.isArray(sec.instructors)
+                                                                                        ? sec.instructors
+                                                                                        : (sec.instructors || '').split(',').map((p: string) => p.trim()).filter(Boolean);
+                                                                                    return profs.length > 0 ? `${profs[0]}${profs.length > 1 ? ' +' : ''}` : '';
+                                                                                })()}
                                                                             </div>
                                                                             <div className="text-gray-400">{sec.activity_type}</div>
                                                                         </div>
