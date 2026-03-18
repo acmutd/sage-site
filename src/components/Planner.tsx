@@ -621,30 +621,35 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         fetchGrades();
     }, [allSuggestedCourses, allSemesters, user]);
 
-    const hasInitializedCollapse = useRef(false);
+    const initializedYearKeysRef = useRef<Set<string>>(new Set());
 
     useEffect(() => {
-        if (hasInitializedCollapse.current) return;
         if (Object.keys(allSemesters).length === 0) return;
-
-        hasInitializedCollapse.current = true;
-
+    
         const now = new Date();
         const currentMonth = now.getMonth();
         const academicYearStart = currentMonth >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-
-        const yearKeys = Object.keys(allSemesters);
-        const newCollapsedYears: Record<string, boolean> = {};
-
-        yearKeys.forEach((yearKey) => {
+    
+        const unprocessedKeys = Object.keys(allSemesters).filter(
+            k => !initializedYearKeysRef.current.has(k)
+        );
+        if (unprocessedKeys.length === 0) return;
+    
+        unprocessedKeys.forEach(k => initializedYearKeysRef.current.add(k));
+    
+        const additions: Record<string, boolean> = {};
+        unprocessedKeys.forEach((yearKey) => {
             const firstTitle = allSemesters[yearKey][0]?.title;
             const yearNum = Number(firstTitle?.match(/\d{4}/)?.[0]);
-            newCollapsedYears[yearKey] = !!yearNum && yearNum < academicYearStart;
+            additions[yearKey] = !!yearNum && yearNum < academicYearStart;
         });
-
-        setUISnapshot(prev => ({ ...prev, collapsedYears: newCollapsedYears }));
+    
+        setUISnapshot(prev => ({
+            ...prev,
+            collapsedYears: { ...prev.collapsedYears, ...additions },
+        }));
     }, [allSemesters]);
-
+    
     const allPlannedCoursesWithOrder = useMemo(() => {
         const courses: Array<{
             code: string;
@@ -1157,13 +1162,15 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                                 />
                                             ))}
 
-                                            <button
-                                                onClick={() => handleAddSemester(yearKey)}
-                                                className="hidden md:flex flex-col items-center justify-center gap-2 w-[300px] h-[300px] self-start rounded-2xl border-2 border-dashed border-gray-300 text-gray-400 hover:border-green-400 hover:text-green-500 transition-colors"
-                                            >
-                                                <Plus className="w-5 h-5" />
-                                                <span className="text-sm font-medium">Add Semester</span>
-                                            </button>
+                                            {allSemesters[yearKey].length < 3 && (
+                                                <button
+                                                    onClick={() => handleAddSemester(yearKey)}
+                                                    className="hidden md:flex flex-col items-center justify-center gap-2 w-[300px] h-[300px] self-start rounded-2xl border-2 border-dashed border-gray-300 text-gray-400 hover:border-green-400 hover:text-green-500 transition-colors"
+                                                >
+                                                    <Plus className="w-5 h-5" />
+                                                    <span className="text-sm font-medium">Add Semester</span>
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
