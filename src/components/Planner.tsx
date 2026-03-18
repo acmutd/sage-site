@@ -394,13 +394,27 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
     const adaptedRequirements = useMemo(() => {
         const fromProp = Array.isArray(requirements) ? requirements : requirements?.results ?? [];
-        if (fromProp.length > 0) return fromProp;
-        const planEval = activePlan?.evaluation;
-        if (planEval) {
-            return Array.isArray(planEval) ? planEval : planEval?.results ?? [];
+        const base = fromProp.length > 0 ? fromProp : (() => {
+            const planEval = activePlan?.evaluation;
+            if (planEval) return Array.isArray(planEval) ? planEval : planEval?.results ?? [];
+            return [];
+        })();
+        
+        if (studentType === "grad") {
+            return base.filter((req: any) => (req.degree ?? req.name) !== "Core Requirements");
         }
-        return [];
-    }, [activePlan?.evaluation, requirements]);
+
+        if (studentType === "undergrad") {
+            const hasBachelor = base.some((req: any) => 
+                (req.degree ?? req.name)?.includes("Bachelor")
+            );
+            if (!hasBachelor) {
+                return base.filter((req: any) => (req.degree ?? req.name) !== "Core Requirements");
+            }
+        }
+    
+        return base;
+    }, [activePlan?.evaluation, requirements, studentType]);
 
     const allSuggestedCourses = useMemo(() => {
         const courses: any[] = [];
@@ -649,7 +663,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             collapsedYears: { ...prev.collapsedYears, ...additions },
         }));
     }, [allSemesters]);
-    
+
     const allPlannedCoursesWithOrder = useMemo(() => {
         const courses: Array<{
             code: string;

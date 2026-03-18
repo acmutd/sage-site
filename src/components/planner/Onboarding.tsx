@@ -27,7 +27,9 @@ interface CatalogYearSelectorProps {
 
 const CatalogYearSelector: React.FC<CatalogYearSelectorProps> = ({ onNext, onBack, transcriptData }) => {
   const [selected, setSelected] = useState<CatalogChoice>("latest");
-  const assignedYear = calculateCatalogYear(transcriptData?.majors[0].start_date);
+  const assignedYear = calculateCatalogYear(
+    transcriptData?.majors[0]?.start_date ?? transcriptData?.certifications[0]?.start_date
+  );
   const latestYear = calculateLatestYear();
   
   const details: Record<CatalogChoice, { year: string; label: string; desc: string; tag: string }> = {
@@ -141,7 +143,8 @@ const Onboarding: React.FC<OnboardingProps> = ({
       concentration: program.concentration
     });
     const majors = updatedPrograms.filter(p => p.type === "Major");
-    if (majors.length === 0) {
+    const certs = updatedPrograms.filter(p => p.type === "Certificate");
+    if (majors.length === 0 && certs.length === 0) {
         toast.error("Please add at least one major before continuing.");
         return;
     }
@@ -157,7 +160,7 @@ const Onboarding: React.FC<OnboardingProps> = ({
     if (isFirstTime) {
       setModalStep("Classes");
     } else {
-      const assignedYear = calculateCatalogYear(updatedTranscript.majors[0]?.start_date);
+      const assignedYear = calculateCatalogYear(updatedTranscript.majors[0]?.start_date ?? updatedTranscript.certifications[0]?.start_date);
       const latestYear = calculateLatestYear();
   
       if (assignedYear === latestYear) {
@@ -179,7 +182,10 @@ const Onboarding: React.FC<OnboardingProps> = ({
   const handleBack = () => {
     if (modalStep === "Programs") setModalStep("FileUpload");
     else if (modalStep === "CatalogYear") setModalStep("Programs");
-    else if (modalStep === "Classes") setModalStep(isFirstTime ? "Programs" : "CatalogYear");
+    else if (modalStep === "Classes") {
+      const isCertOnly = transcriptData?.majors?.length === 0 && transcriptData?.certifications?.length > 0;
+      setModalStep(isFirstTime || isCertOnly ? "Programs" : "CatalogYear");
+    }
   };
 
   const handleOutsideClick = (e: MouseEvent) => {

@@ -7,6 +7,7 @@ export const determineStudentType = (transcriptData: any): 'undergrad' | 'grad' 
 };
   
 export const calculateCatalogYear = (semester: string): number => {
+    if (!semester) return calculateLatestYear();
     const [year, season] = semester.split(" ");
     return season === "Fall" ? parseInt(year) : parseInt(year) - 1;
 };
