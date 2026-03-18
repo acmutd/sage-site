@@ -207,7 +207,7 @@ const Onboarding: React.FC<OnboardingProps> = ({
   const modalCard = (
     <div
       ref={modalRef}
-      className="bg-white rounded-[18px] shadow-2xl w-full max-w-3xl relative max-h-[70vh] sm:max-h-[85vh] flex flex-col"
+      className="bg-white rounded-[18px] shadow-2xl w-full max-w-3xl relative max-h-[90svh] sm:max-h-[85vh] flex flex-col"
     >
       {!isFirstTime && (
         <button
@@ -265,7 +265,7 @@ const Onboarding: React.FC<OnboardingProps> = ({
   return (
     <>
       <div 
-        className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+        className="fixed inset-0 z-[60] flex items-center justify-center px-4 pt-16"
         style={{ background: 'radial-gradient(circle at center, #111111 0%, #181818 100%)' }}
       >
         {modalCard}
