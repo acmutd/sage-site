@@ -11,12 +11,14 @@ interface ClassValidationAProps {
 }
 
 const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, transcriptData }) => {
-  const courses = transcriptData?.courses || {};
   const [editingSemester, setEditingSemester] = useState<string | null>(null);
   const [editedCourses, setEditedCourses] = useState<any>({});
   const [localTranscript, setLocalTranscript] = useState(() => 
     JSON.parse(JSON.stringify(transcriptData)) // deep copy on init
   );
+
+  const courses = localTranscript?.courses || {};
+
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const handleEdit = (semester: string) => {
