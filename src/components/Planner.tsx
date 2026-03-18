@@ -1132,6 +1132,14 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                                     isCurrentSemester={isCurrentSemester(semester.title)}
                                                 />
                                             ))}
+
+                                            <button
+                                                onClick={() => handleAddSemester(yearKey)}
+                                                className="hidden md:flex flex-col items-center justify-center gap-2 w-[300px] h-[300px] self-start rounded-2xl border-2 border-dashed border-gray-300 text-gray-400 hover:border-green-400 hover:text-green-500 transition-colors"
+                                                >
+                                                <Plus className="w-5 h-5" />
+                                                <span className="text-sm font-medium">Add Semester</span>
+                                            </button>
                                         </div>
                                     )}
                                 </div>

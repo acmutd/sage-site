@@ -91,7 +91,7 @@ const YearDivider: React.FC<YearDividerProps> = ({
                         {onAddSemester && (
                             <DropdownMenuItem 
                                 data-tour="add-semester"
-                                className="text-[#3eb369] focus:text-[#3eb369] hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-[#3eb369]"
+                                className="md:hidden text-[#3eb369] focus:text-[#3eb369] hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-[#3eb369]"
                                 onClick={() => onAddSemester(yearKey)}
                             >
                                 <Plus className="w-4 h-4 mr-2" />
