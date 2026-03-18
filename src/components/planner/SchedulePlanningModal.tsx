@@ -429,7 +429,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
         <>
             <div className="fixed inset-0 bg-black bg-opacity-40 z-[9998]" />
                 <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
-                    <div className={`bg-white sm:rounded-xl rounded-t-2xl shadow-2xl w-full h-[95vh] sm:h-auto sm:max-h-[90vh] flex flex-col pointer-events-auto transition-all duration-300 ${showPreview ? 'sm:max-w-5xl' : 'sm:max-w-2xl'}`}>
+                    <div style={{ WebkitOverflowScrolling: 'touch' }} className={`bg-white sm:rounded-xl rounded-t-2xl shadow-2xl w-full h-[95dvh] sm:h-auto sm:max-h-[90vh] flex flex-col pointer-events-auto transition-all duration-300 ${showPreview ? 'sm:max-w-5xl' : 'sm:max-w-2xl'}`}>
 
                     {/* Header */}
                     <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
