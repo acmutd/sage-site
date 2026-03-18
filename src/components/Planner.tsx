@@ -41,6 +41,8 @@ interface PlannerProps {
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding, onRegisterConflictHandler }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { user, allowedYears } = useAuth();
+    const hasAutoSaved = useRef(false);
+    const lastSavedState = usePlannerStore(state => state.lastSavedState);
 
     // student type 
     const studentType = determineStudentType(transcriptData);
@@ -216,6 +218,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         if (!user) throw new Error("Not authenticated");
         const token = await user.getIdToken();
 
+        const { plans, activePlanId } = usePlannerStore.getState();
         const currentPlannerData = { plans, activePlanId };
 
         const CRUD_API = import.meta.env.VITE_CRUD_API;
@@ -243,6 +246,18 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
         markAsSaved();
     };
+
+    useEffect(() => {
+        if (
+            plans.length === 1 &&
+            !hasAutoSaved.current &&
+            lastSavedState === null &&
+            user
+        ) {
+            hasAutoSaved.current = true;
+            savePlannerState().catch(e => console.error('Auto-save failed!', e));
+        }
+    }, [plans.length, lastSavedState, user]);
 
     const handleSave = async () => {
         if (!user) {
