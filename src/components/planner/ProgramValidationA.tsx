@@ -92,6 +92,14 @@ interface ProgramValidationAProps {
   isFirstTime?: boolean;
 }
 
+const getCurrentSemester = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const season = month >= 8 ? "Fall" : month >= 4 ? "Summer" : "Spring";
+  return `${year} ${season}`;
+};
+
 const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, onBack, dropdownRef, isFirstTime = true
 }) => {
   const { user } = useAuth();
@@ -208,8 +216,11 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
         )
       );
     } else {
-      // Add new program
-      const newProgram = { ...updatedProgram, id: Date.now() }; // Generate a unique ID
+      const newProgram = { 
+        ...updatedProgram, 
+        id: Date.now(),
+        start_date: updatedProgram.start_date ?? getCurrentSemester(),
+      };
       setProgramsData((prev) => [...prev, newProgram]);
     }
     setIsEditing(false); // Exit "Edit" mode
