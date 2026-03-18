@@ -265,7 +265,7 @@ const Onboarding: React.FC<OnboardingProps> = ({
   return (
     <>
       <div 
-        className="fixed inset-0 z-[60] flex items-center justify-center px-4 pt-16"
+        className="fixed inset-0 z-[60] flex items-center justify-center px-4 pt-16 pb-16"
         style={{ background: 'radial-gradient(circle at center, #111111 0%, #181818 100%)' }}
       >
         {modalCard}

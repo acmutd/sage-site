@@ -5,13 +5,13 @@ import SemesterBox from "@/components/planner/SemesterBox";
 import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2, RefreshCw, ChevronDown, Settings, Pencil, Plus, Copy, Trash2, Download } from "lucide-react";
 import PlannerNavbar from "./PlannerNavbar";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
+    DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Toaster, toast } from "sonner";
 import { calculateCatalogYear, calculateLatestYear, determineStudentType, isCurrentSemester } from "@/utils/studentInfo";
@@ -34,14 +34,14 @@ interface PlannerProps {
     onRegisterConflictHandler?: (
         cb: (choice: "overwrite" | "select" | "new", degrees: any[], fetchedData: any, targetPlanId?: string) => void,
         plans: { id: string; name: string }[]
-      ) => void;
+    ) => void;
 }
 
 
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding, onRegisterConflictHandler }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const { user } = useAuth();
-    
+    const { user, allowedYears } = useAuth();
+
     // student type 
     const studentType = determineStudentType(transcriptData);
 
@@ -58,10 +58,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             const isMac = navigator.platform.toUpperCase().includes('MAC');
             const ctrl = isMac ? e.metaKey : e.ctrlKey;
             if (!ctrl) return;
-    
+
             const tag = (e.target as HTMLElement).tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-    
+
             if (e.key === 'z' && !e.shiftKey) {
                 e.preventDefault();
                 undo();
@@ -73,12 +73,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 toast.info('Redone');
             }
         };
-    
+
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [undo, redo]);
 
-    const { driverObj, startTutorial, dropdownWasOpenedRef } = usePlannerTutorial({ scrollContainerRef, user, onForceExpandSidebar: () => { if (sidebarCollapsed) toggleSidebar(); }});
+    const { driverObj, startTutorial, dropdownWasOpenedRef } = usePlannerTutorial({ scrollContainerRef, user, onForceExpandSidebar: () => { if (sidebarCollapsed) toggleSidebar(); } });
 
     const [uiSnapshot, setUISnapshot] = useUISnapshot('sage-planner-ui', {
         collapsedYears: {} as Record<string, boolean>,
@@ -140,7 +140,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const deletePlan = usePlannerStore(state => state.deletePlan);
     const renamePlan = usePlannerStore(state => state.renamePlan);
     const updateActivePlan = usePlannerStore(state => state.updateActivePlan);
-    
+
     // Semester management selectors
     const addYearAction = usePlannerStore(state => state.addYear);
     const clearYearAction = usePlannerStore(state => state.clearYear);
@@ -178,7 +178,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     // Unsaved changes tracking
     const hasUnsavedChanges = usePlannerStore(state => state.getHasUnsavedChanges());
     const markAsSaved = usePlannerStore(state => state.markAsSaved);
-    
+
     const [pendingConflictChoice, setPendingConflictChoice] = useState<{
         choice: "overwrite" | "select" | "new";
         degrees: any[];
@@ -271,7 +271,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     useEffect(() => {
         if (!pendingConflictChoice) return;
         const { choice, targetPlanId } = pendingConflictChoice;
-    
+
         if (choice === "overwrite") {
             updateActivePlan({
                 semesters: initialPlannerState,
@@ -281,7 +281,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             });
             markAsSaved();
             toast.success("Current plan updated with new transcript");
-    
+
         } else if (choice === "select") {
             const planToUpdate = targetPlanId ?? activePlanId;
             if (planToUpdate !== activePlanId) {
@@ -295,7 +295,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             });
             markAsSaved();
             toast.success("Plan updated with new transcript");
-    
+
         } else if (choice === "new") {
             if (plans.length >= 5) {
                 toast.error("Maximum of 5 plans reached — delete one first");
@@ -306,7 +306,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             createNewPlan(initialPlannerState, pendingConflictChoice.fetchedData, newPlanName);
             toast.success("New plan created with new transcript");
         }
-    
+
         setPendingConflictChoice(null);
     }, [pendingConflictChoice, activePlanId, plans.length, switchPlan, updateActivePlan, createNewPlan]);
 
@@ -336,6 +336,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const [gradesData, setGradesData] = useState<Record<string, any>>({});
     const [error, setError] = useState<string | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    
+    // when we want "educational" worthy students to use SAGE
+    const [showExtendYearsModal, setShowExtendYearsModal] = useState(false);
+    const [requestedYears, setRequestedYears] = useState(12);
+    const [extendRequestSent, setExtendRequestSent] = useState(false);
+
     const [semesterToDelete, setSemesterToDelete] = useState<{
         yearKey: string;
         semesterIndex?: number;
@@ -476,14 +482,14 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     useEffect(() => {
         const fetchCoursebook = async () => {
             if (!user) return;
-    
+
             const codesToFetch = new Set<string>();
-    
+
             allSuggestedCourses.forEach((course: any) => {
                 const code = course.course_code || course.code;
                 if (code) codesToFetch.add(code.toLowerCase().replace(/\s+/g, ""));
             });
-    
+
             Object.values(allSemesters).forEach(yearSemesters => {
                 yearSemesters.forEach(semester => {
                     if (!semester.isFromTranscript) {
@@ -494,14 +500,14 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     }
                 });
             });
-    
+
             if (codesToFetch.size === 0) return;
-    
+
             const newCodes = [...codesToFetch].filter(
                 code => !coursebookData[code] && !coursebookFetchedRef.current.has(code)
             );
             if (newCodes.length === 0) return;
-    
+
             newCodes.forEach(code => coursebookFetchedRef.current.add(code));
 
             const controller = new AbortController();
@@ -510,12 +516,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 const token = await user.getIdToken();
                 const CRUD_API = import.meta.env.VITE_CRUD_API;
                 const base = CRUD_API.replace("/CRUD", "");
-    
+
                 const res = await fetch(
                     `${base}/CRUD/coursebook?courses=${newCodes.join(",")}`,
                     { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
                 );
-    
+
                 if (!res.ok) return;
                 const data = await res.json();
                 const sections: any[] = data.sections;
@@ -528,7 +534,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     if (!grouped[key]) grouped[key] = [];
                     grouped[key].push(sec);
                 });
-    
+
                 setCoursebookData(prev => ({ ...prev, ...grouped }));
             } catch (err: any) {
                 if (err.name === 'AbortError') return;
@@ -538,21 +544,21 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
             return () => controller.abort();
         };
-    
+
         fetchCoursebook();
     }, [allSuggestedCourses, allSemesters, user]);
 
     useEffect(() => {
         const fetchGrades = async () => {
             if (!user) return;
-    
+
             const codesToFetch = new Set<string>();
-    
+
             allSuggestedCourses.forEach((course: any) => {
                 const code = course.course_code || course.code;
                 if (code) codesToFetch.add(code.toUpperCase().replace(/\s+/g, ""));
             });
-    
+
             Object.values(allSemesters).forEach(yearSemesters => {
                 yearSemesters.forEach(semester => {
                     if (!semester.isFromTranscript) {
@@ -563,9 +569,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     }
                 });
             });
-    
+
             if (codesToFetch.size === 0) return;
-    
+
             const newCodes = [...codesToFetch].filter(
                 code => !gradesData[code] && !gradesFetchedRef.current.has(code)
             );
@@ -573,20 +579,20 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
             newCodes.forEach(code => gradesFetchedRef.current.add(code));
             const controller = new AbortController();
-    
+
             try {
                 const token = await user.getIdToken();
                 const CRUD_API = import.meta.env.VITE_CRUD_API;
                 const base = CRUD_API.replace("/CRUD", "");
-    
+
                 const res = await fetch(
                     `${base}/CRUD/utdgrades?courses=${newCodes.join(",")}`,
                     { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
                 );
-    
+
                 if (!res.ok) return;
                 const data = await res.json();
-    
+
                 setGradesData(prev => ({ ...prev, ...data }));
             } catch (err: any) {
                 if (err.name === 'AbortError') return;
@@ -596,7 +602,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
             return () => controller.abort();
         };
-    
+
         fetchGrades();
     }, [allSuggestedCourses, allSemesters, user]);
 
@@ -605,25 +611,25 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     useEffect(() => {
         if (hasInitializedCollapse.current) return;
         if (Object.keys(allSemesters).length === 0) return;
-      
+
         hasInitializedCollapse.current = true;
-      
+
         const now = new Date();
         const currentMonth = now.getMonth();
         const academicYearStart = currentMonth >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-      
+
         const yearKeys = Object.keys(allSemesters);
         const newCollapsedYears: Record<string, boolean> = {};
-      
+
         yearKeys.forEach((yearKey) => {
-          const firstTitle = allSemesters[yearKey][0]?.title;
-          const yearNum = Number(firstTitle?.match(/\d{4}/)?.[0]);
-          newCollapsedYears[yearKey] = !!yearNum && yearNum < academicYearStart;
+            const firstTitle = allSemesters[yearKey][0]?.title;
+            const yearNum = Number(firstTitle?.match(/\d{4}/)?.[0]);
+            newCollapsedYears[yearKey] = !!yearNum && yearNum < academicYearStart;
         });
-      
+
         setUISnapshot(prev => ({ ...prev, collapsedYears: newCollapsedYears }));
-      }, [allSemesters]);
-    
+    }, [allSemesters]);
+
     const allPlannedCoursesWithOrder = useMemo(() => {
         const courses: Array<{
             code: string;
@@ -764,7 +770,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     };
 
     const handleAddYear = () => {
-        addYearAction(allSemesters);
+        const yearCount = Object.keys(allSemesters).length;
+        if (yearCount >= allowedYears) {
+            setShowExtendYearsModal(true);
+            return;
+        }
+        addYearAction(allSemesters, allowedYears);
     };
 
     const handleClearYear = (yearKey: string) => {
@@ -846,11 +857,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     <button
                         onClick={runQuickEvaluation}
                         disabled={isRunningQuickEvaluation || isLoading}
-                        className={`px-6 py-3 rounded-full bg-white border border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-gray-700 font-medium text-sm whitespace-nowrap ${
-                            isRunningQuickEvaluation || isLoading
+                        className={`px-6 py-3 rounded-full bg-white border border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-gray-700 font-medium text-sm whitespace-nowrap ${isRunningQuickEvaluation || isLoading
                                 ? 'cursor-not-allowed opacity-70'
                                 : 'hover:-translate-y-0.5'
-                        }`}
+                            }`}
                         data-tour="suggest-future-classes"
                         title="Suggest Future Classes"
                     >
@@ -868,9 +878,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     <button
                         onClick={handleSave}
                         disabled={!hasUnsavedChanges || isLoading}
-                        className={`relative px-6 py-3 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 ${
-                            hasUnsavedChanges ? 'hover:-translate-y-0.5' : 'cursor-default'
-                        } text-white font-medium text-sm`}
+                        className={`relative px-6 py-3 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 ${hasUnsavedChanges ? 'hover:-translate-y-0.5' : 'cursor-default'
+                            } text-white font-medium text-sm`}
                         data-tour="save-plan"
                         title="Save Plan"
                     >
@@ -924,10 +933,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         tabIndex={sidebarCollapsed ? 0 : undefined}
                         aria-label={sidebarCollapsed ? "Expand sidebar" : undefined}
                         onKeyDown={sidebarCollapsed ? (e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            toggleSidebar();
-                          }
+                            if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                toggleSidebar();
+                            }
                         } : undefined}
                     >
                         <SquareAsterisk size={32} className="stroke-green-400 flex-shrink-0" />
@@ -955,7 +964,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-bglight rounded-2xl">
                                 {plans.map(plan => (
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                         key={plan.id}
                                         onClick={() => handleSwitchPlan(plan.id)}
                                         className="focus:bg-innercontainer cursor-pointer"
@@ -965,13 +974,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 ))}
                             </DropdownMenuContent>
                         </DropdownMenu>
-                        
+
                         <DropdownMenu>
                             <DropdownMenuTrigger data-tour="plan-settings" className="p-2.5 hover:bg-gray-100 rounded-lg transition-colors">
                                 <Settings size={20} className="text-gray-600" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-white rounded-3xl shadow-lg p-3" align="end" side="right" sideOffset={10} alignOffset={-100}>
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                     onClick={handleNewPlan}
                                     className="text-[#3eb369] focus:text-[#3eb369] hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-[#3eb369]"
                                 >
@@ -979,7 +988,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                     Create new plan
                                 </DropdownMenuItem>
 
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                     onClick={() => {
                                         setNewPlanName(activePlan?.name || '');
                                         setShowRenameModal(true);
@@ -989,17 +998,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                     <Pencil className="w-4 h-4 mr-2" />
                                     Rename plan
                                 </DropdownMenuItem>
-                                
-                                
-                                <DropdownMenuItem 
+
+
+                                <DropdownMenuItem
                                     onClick={handleDuplicatePlan}
                                     className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100"
                                 >
                                     <Copy className="w-4 h-4 mr-2" />
                                     Duplicate plan
                                 </DropdownMenuItem>
-                                
-                                <DropdownMenuItem 
+
+                                <DropdownMenuItem
                                     onClick={() => {
                                         if (plans.length === 1) return;
                                         setShowPlanDeleteModal(true);
@@ -1042,7 +1051,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             </span>
                         )}
                     </div>
-                    
+
                     {error && (
                         <div
                             ref={errorRef}
@@ -1077,13 +1086,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                             return (
                                 <div key={yearKey}>
-                                    
+
                                     <YearDivider
                                         yearLabel={(() => {
-                                        const firstTitle = allSemesters[yearKey]?.[0]?.title;
-                                        const year = firstTitle?.match(/\d{4}/)?.[0];
-                                        const nextYear = year ? String(Number(year) + 1) : null;
-                                        return year && nextYear ? `${year} – ${nextYear}` : yearKey.replace("year", "Year ");
+                                            const firstTitle = allSemesters[yearKey]?.[0]?.title;
+                                            const year = firstTitle?.match(/\d{4}/)?.[0];
+                                            const nextYear = year ? String(Number(year) + 1) : null;
+                                            return year && nextYear ? `${year} – ${nextYear}` : yearKey.replace("year", "Year ");
                                         })()}
                                         yearKey={yearKey}
                                         isEntirelyUserCreated={isEntirelyUserCreated}
@@ -1136,7 +1145,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                             <button
                                                 onClick={() => handleAddSemester(yearKey)}
                                                 className="hidden md:flex flex-col items-center justify-center gap-2 w-[300px] h-[300px] self-start rounded-2xl border-2 border-dashed border-gray-300 text-gray-400 hover:border-green-400 hover:text-green-500 transition-colors"
-                                                >
+                                            >
                                                 <Plus className="w-5 h-5" />
                                                 <span className="text-sm font-medium">Add Semester</span>
                                             </button>
@@ -1147,7 +1156,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         })}
                     </div>
 
-                    {Object.keys(allSemesters).length > 0 && (
+                    {Object.keys(allSemesters).length > 0 && Object.keys(allSemesters).length < allowedYears && (
                         <div className="mt-8 mb-16 flex justify-end">
                             <button
                                 data-tour="add-year"
@@ -1162,11 +1171,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                     {/* Rename Plan Modal */}
                     {showRenameModal && (
-                        <div 
+                        <div
                             className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
                             onClick={() => setShowRenameModal(false)}
                         >
-                            <div 
+                            <div
                                 className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4"
                                 onClick={(e) => e.stopPropagation()}
                             >
@@ -1186,13 +1195,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                     }}
                                 />
                                 <div className="flex gap-2 justify-end">
-                                    <button 
+                                    <button
                                         onClick={() => setShowRenameModal(false)}
                                         className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
                                     >
                                         Cancel
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             handleRenamePlan(newPlanName);
                                             setShowRenameModal(false);
@@ -1208,11 +1217,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                     {/* Delete Plan Modal */}
                     {showPlanDeleteModal && (
-                        <div 
+                        <div
                             className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
                             onClick={() => setShowPlanDeleteModal(false)}
                         >
-                            <div 
+                            <div
                                 className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4"
                                 onClick={(e) => e.stopPropagation()}
                             >
@@ -1223,13 +1232,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                     This plan and all its courses will be permanently deleted. This action cannot be undone.
                                 </p>
                                 <div className="flex gap-2 justify-end">
-                                    <button 
+                                    <button
                                         onClick={() => setShowPlanDeleteModal(false)}
                                         className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
                                     >
                                         Cancel
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             handleDeletePlan();
                                             setShowPlanDeleteModal(false);
@@ -1244,7 +1253,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     )}
 
                     {showDeleteModal && semesterToDelete && (
-                        <div 
+                        <div
                             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80]"
                             onClick={() => {
                                 setShowDeleteModal(false);
@@ -1308,6 +1317,85 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                             : 'Delete'}
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showExtendYearsModal && (
+                        <div
+                            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
+                            onClick={() => { setShowExtendYearsModal(false); setExtendRequestSent(false); }}
+                        >
+                            <div
+                                className="bg-white p-6 rounded-2xl shadow-lg max-w-md w-full mx-4"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {extendRequestSent ? (
+                                    <>
+                                        <h3 className="font-semibold text-lg mb-2">Request sent!</h3>
+                                        <p className="text-sm text-gray-500 mb-4">We'll review your request and update your account shortly.</p>
+                                        <button
+                                            onClick={() => { setShowExtendYearsModal(false); setExtendRequestSent(false); }}
+                                            className="w-full px-4 py-2 text-sm bg-green-500 text-white rounded-full hover:bg-green-600"
+                                        >
+                                            Got it
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h3 className="font-semibold text-lg mb-1">Need more years?</h3>
+                                        <p className="text-sm text-gray-500 mb-4">You've hit the {allowedYears}-year limit. Let us know how many you need and we'll get you sorted.</p>
+                                        <label className="text-sm font-medium text-gray-700">How many years do you need?</label>
+                                        <input
+                                            type="number"
+                                            min={allowedYears + 1}
+                                            max={20}
+                                            value={requestedYears}
+                                            onChange={(e) => setRequestedYears(Number(e.target.value))}
+                                            className="border rounded-lg px-3 py-2 w-full mt-1 mb-4"
+                                        />
+                                        <div className="flex gap-2 justify-end">
+                                            <button
+                                                onClick={() => setShowExtendYearsModal(false)}
+                                                className="px-4 py-2 text-sm bg-gray-200 rounded-full hover:bg-gray-300"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        // TODO: hook up lambda when SendGrid is ready
+                                                        await new Promise(resolve => setTimeout(resolve, 800)); // fake delay
+                                                        setExtendRequestSent(true);
+                                                    } catch {
+                                                        toast.error('Failed to send request. Try again.');
+                                                    }
+
+                                                    // TODO: hook it up soon
+                                                    try {
+                                                        const token = await user?.getIdToken();
+                                                        await fetch(import.meta.env.VITE_CRUD_API, {
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({
+                                                                action: 'requestExtendedYears',
+                                                                userId: user?.uid,
+                                                                token,
+                                                                requestedYears
+                                                            })
+                                                        });
+                                                        setExtendRequestSent(true);
+                                                    } catch {
+                                                        toast.error('Failed to send request. Try again.');
+                                                    }
+                                                }}
+                                                className="px-4 py-2 text-sm bg-green-500 text-white rounded-full hover:bg-green-600"
+                                            >
+                                                Send Request
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
