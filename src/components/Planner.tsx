@@ -947,9 +947,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                 <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
                     {/* Plan Selector */}
-                    <div className="mb-6 flex items-center gap-3">
+                    <div className="mb-6 flex flex-wrap items-center gap-3">
                         <DropdownMenu>
-                            <DropdownMenuTrigger data-tour="plan-toggle" className="flex items-center gap-3 px-5 py-3 border-2 border-green-400 rounded-2xl text-base bg-white hover:bg-gray-50 shadow-sm font-medium">
+                            <DropdownMenuTrigger data-tour="plan-toggle" className="flex items-center gap-3 px-5 py-3 border-2 border-green-400 rounded-2xl text-base bg-white hover:bg-gray-50 shadow-sm font-medium whitespace-nowrap">
                                 <span>{activePlan?.name || 'Select Plan'}</span>
                                 <ChevronDown size={18} />
                             </DropdownMenuTrigger>
@@ -1031,7 +1031,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         </DropdownMenu>
 
                         {transcriptData?.catalogYear && (
-                            <span data-tour="evaluation-message" className="text-xs text-gray-500 border border-gray-200 rounded-full px-3 py-1.5 bg-white whitespace-nowrap">
+                            <span data-tour="evaluation-message" className="text-xs text-gray-500 border border-gray-200 rounded-full px-3 py-1.5 bg-white whitespace-nowrap min-w-0 truncate max-w-[160px] sm:max-w-none">
                                 Evaluated against{" "}
                                 <span className="font-semibold text-gray-700">
                                     {transcriptData.catalogYear === "latest"
