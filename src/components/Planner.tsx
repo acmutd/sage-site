@@ -1156,7 +1156,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         })}
                     </div>
 
-                    {Object.keys(allSemesters).length > 0 && Object.keys(allSemesters).length < allowedYears && (
+                    {Object.keys(allSemesters).length > 0 && (
                         <div className="mt-8 mb-16 flex justify-end">
                             <button
                                 data-tour="add-year"
@@ -1164,7 +1164,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 className="flex items-center gap-2 px-4 py-2 bg-green-400 hover:bg-green-500 rounded-full text-sm font-medium transition-colors"
                             >
                                 <PlusCircle className="w-4 h-4" />
-                                <span>Add Another Year</span>
+                                <span>{Object.keys(allSemesters).length >= allowedYears ? 'Need More Years?' : 'Add Another Year'}</span>
                             </button>
                         </div>
                     )}
@@ -1345,7 +1345,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                     <>
                                         <h3 className="font-semibold text-lg mb-1">Need more years?</h3>
                                         <p className="text-sm text-gray-500 mb-4">You've hit the {allowedYears}-year limit. Let us know how many you need and we'll get you sorted.</p>
-                                        <label className="text-sm font-medium text-gray-700">How many years do you need?</label>
+                                        <label className="text-sm font-medium text-gray-700">How many years do you need in total?</label>
                                         <input
                                             type="number"
                                             min={allowedYears + 1}
