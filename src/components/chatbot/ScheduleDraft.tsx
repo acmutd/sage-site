@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Copy, Check, CalendarDays } from "lucide-react";
 import { CourseBlock, ScheduleVariant } from "@/types/chat";
+import { createPortal } from "react-dom";
 
 interface Props {
   variants: ScheduleVariant[];
@@ -65,6 +66,54 @@ function hasConflict(blocks: CourseBlock[]): boolean {
   return false;
 }
 
+function ScheduleTab({ variant, index, isActive, onClick }: {
+    variant: ScheduleVariant;
+    index: number;
+    isActive: boolean;
+    onClick: () => void;
+  }) {
+    const tabRef = useRef<HTMLButtonElement>(null);
+    const [showTip, setShowTip] = useState(false);
+    const [tipPos, setTipPos] = useState({ x: 0, y: 0 });
+  
+    return (
+      <button
+        ref={tabRef}
+        onMouseEnter={() => {
+          if (tabRef.current) {
+            const rect = tabRef.current.getBoundingClientRect();
+            setTipPos({ x: rect.left, y: rect.top - 8 });
+            setShowTip(true);
+          }
+        }}
+        onMouseLeave={() => setShowTip(false)}
+        onClick={onClick}
+        className={`relative px-4 py-2 text-sm rounded-t-md transition-colors duration-150 font-medium max-w-[160px] truncate ${
+          isActive
+            ? "bg-innercontainer text-textdark border border-b-0 border-border -mb-px"
+            : "text-textsecondary hover:text-textdark hover:bg-secondary"
+        }`}
+      >
+        <span className="mr-1.5 text-xs font-bold opacity-50">
+          {String.fromCharCode(65 + index)}
+        </span>
+        {variant.label}
+        {showTip && createPortal(
+          <div
+            style={{
+              position: "fixed", left: tipPos.x, top: tipPos.y,
+              transform: "translateY(-100%)", zIndex: 99999, pointerEvents: "none",
+            }}
+            className="px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-md whitespace-nowrap"
+          >
+            {variant.label}
+          </div>,
+          document.body
+        )}
+      </button>
+    );
+}
+
 export default function ScheduleDraft({ variants }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
@@ -102,22 +151,15 @@ export default function ScheduleDraft({ variants }: Props) {
 
       <div className="bg-innercontainer border border-border rounded-lg overflow-hidden">
         <div className="flex border-b border-border bg-bglight px-4 pt-3 gap-2">
-          {variants.map((v, i) => (
-            <button
-              key={v.label}
-              onClick={() => { setActiveIndex(i); setSelectedCourse(null); }}
-              className={`relative px-4 py-2 text-sm rounded-t-md transition-colors duration-150 font-medium ${
-                activeIndex === i
-                  ? "bg-innercontainer text-textdark border border-b-0 border-border -mb-px"
-                  : "text-textsecondary hover:text-textdark hover:bg-secondary"
-              }`}
-            >
-              <span className="mr-1.5 text-xs font-bold opacity-50">
-                {String.fromCharCode(65 + i)}
-              </span>
-              {v.label}
-            </button>
-          ))}
+        {variants.map((v, i) => (
+            <ScheduleTab
+                key={v.label}
+                variant={v}
+                index={i}
+                isActive={activeIndex === i}
+                onClick={() => { setActiveIndex(i); setSelectedCourse(null); }}
+            />
+        ))}
         </div>
 
         <div className="p-5 flex flex-col gap-4">
