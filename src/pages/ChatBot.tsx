@@ -33,6 +33,9 @@ const hydrateMessages = (msgs: Message[]): Message[] =>
         if (parsed?.type === "email") {
           return { ...msg, type: "email" as const, variants: parsed.variants, content: "" };
         }
+        if (parsed?.type === "schedule") {
+          return { ...msg, type: "schedule" as const, variants: parsed.variants, content: "" };
+        }
       } catch { /* plain string, leave as is */ }
     }
     return msg;
@@ -404,6 +407,8 @@ const ChatBot: React.FC = () => {
               variants: data.response.variants,
               timestamp: Date.now(),
             }
+          : data.type === "schedule"
+          ? { role: "assistant", content: JSON.stringify({ type: "schedule", variants: data.response.variants }), type: "schedule", variants: data.response.variants, timestamp: Date.now() }
           : {
               role: "assistant",
               content: data.response,

@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
-import EmailVariantCard from "./EmailVariantCard";
-import type { Message } from "@/types/chat";
+import EmailVariantCard from "@/components/chatbot/EmailVariantCard";
+import ScheduleDraftWidget from "@/components/chatbot/ScheduleDraft";
+import type { EmailVariant, Message, ScheduleVariant } from "@/types/chat";
 
 
 interface MessageDisplayProps {
@@ -13,8 +14,23 @@ type StringOrElement = string | ReactNode;
 
 const MessageDisplay = ({ message, messageIndex, conversationId }: MessageDisplayProps) => {
   if (message.type === "email" && message.variants) {
-    return <EmailVariantCard variants={message.variants} messageIndex={messageIndex} conversationId={conversationId} />;
+    return (
+      <div className="w-full flex">
+        <div className="self-start mr-auto w-fit">
+          <EmailVariantCard variants={message.variants as EmailVariant[]} messageIndex={messageIndex} conversationId={conversationId} />
+        </div>
+      </div>
+    );
   }
+  if (message.type === "schedule") {
+    return (
+      <div className="w-full flex">
+        <div className="self-start mr-auto w-fit">
+          <ScheduleDraftWidget variants={message.variants as ScheduleVariant[]} messageIndex={messageIndex} conversationId={conversationId} />
+        </div>
+      </div>
+    );
+  } 
 
   {/* Potential weird case to where a student may ask about code...not ideal we may need prompting BUT just in case! */}
   const renderContent = (content: string) => {
