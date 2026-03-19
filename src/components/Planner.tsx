@@ -1400,15 +1400,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                             <button
                                                 onClick={async () => {
                                                     try {
-                                                        // TODO: hook up lambda when SendGrid is ready
-                                                        await new Promise(resolve => setTimeout(resolve, 800)); // fake delay
-                                                        setExtendRequestSent(true);
-                                                    } catch {
-                                                        toast.error('Failed to send request. Try again.');
-                                                    }
-
-                                                    // TODO: hook it up soon
-                                                    try {
                                                         const token = await user?.getIdToken();
                                                         await fetch(import.meta.env.VITE_CRUD_API, {
                                                             method: 'POST',
