@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { NotebookPen, ArrowLeftToLine, PanelLeftDashed, ArrowRightToLine } from "lucide-react";
+import { NotebookPen, ArrowLeftToLine, PanelLeftDashed, ArrowRightToLine, Compass, ChevronRight } from "lucide-react";
 import { useDrop } from "react-dnd";
 import RequirementCategory from '@/components/planner/RequirementCategory';
 import CoursesCarousel from '@/components/planner/CoursesCarousel';
@@ -59,6 +59,7 @@ interface SidebarProps {
     coursebookData?: Record<string, any[]>;
     gradesData?: Record<string, any>;
     coursebookSemester?: string | null;
+    onOpenDiscovery?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -75,6 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     coursebookData = {},
     gradesData = {},
     coursebookSemester,
+    onOpenDiscovery,
 }) => {
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
     const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -525,6 +527,21 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 </button>
                             </div>
 
+                            <button
+                                onClick={onOpenDiscovery}
+                                className="w-full flex items-center gap-2.5 p-3 rounded-xl border border-dashed
+                                    border-green-300 bg-green-50 hover:bg-green-100 transition-colors text-left mb-4 group"
+                            >
+                                <div className="w-7 h-7 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0">
+                                    <Compass className="w-4 h-4 text-white" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-medium text-green-800">Discover Courses</div>
+                                    <div className="text-xs text-green-600">Browse &amp; add to your plan</div>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-green-400 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                            </button>
+
                             <h2 className="text-xl font-bold text-gray-900 mb-4">
                                 Degree Requirements
                             </h2>
@@ -594,12 +611,26 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 data-tour="edit-plans"
                                 className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
                                 aria-label="Edit Degree Plans"
-                                onClick={() => {
-                                    if (document.querySelector('.driver-active-element')) return; // ← block during tutorial
+                                onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    if (document.querySelector('.driver-active-element')) return;
                                     onRestartOnboarding?.();
                                 }}
                             >
                                 <NotebookPen className="w-5 h-5" strokeWidth={2} />
+                            </button>
+
+                            <button 
+                                data-tour="course-discovery"
+                                className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
+                                aria-label="Discover Courses"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (document.querySelector('.driver-active-element')) return;
+                                    onOpenDiscovery?.();
+                                }}
+                            >
+                                <Compass className="w-5 h-5" strokeWidth={2} />
                             </button>
 
                             <div className="flex flex-grow" />

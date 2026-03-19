@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAuth } from "@/context/AuthContext";
+import { getCurrentCatalogYear } from "@/utils/studentInfo";
 
 const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
@@ -18,14 +19,6 @@ const calculateCatalogYear = (semester: string): string => {
   if (!semester) return getCurrentCatalogYear();
   const [year, season] = semester.split(" ");
   return season === "Fall" ? year : (parseInt(year) - 1).toString();
-};
-
-const getCurrentCatalogYear = (): string => {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth(); // 0-11
-  
-  return currentMonth >= 8 ? currentYear.toString() : (currentYear - 1).toString();
 };
 
 async function fetchCatalog(year: string, user: any): Promise<any> {

@@ -23,6 +23,7 @@ import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
 import { usePlannerStore } from "@/stores/plannerStore";
 import { usePlannerTutorial } from "@/hooks/usePlannerTutorial";
 import { exportPlanAsCSV, exportPlanAsJPG, exportPlanAsPDF, exportPlanAsPNG } from "@/utils/planExport";
+import CourseDiscoveryModal from "./planner/CourseDiscoveryModal";
 
 interface PlannerProps {
     semesters: {
@@ -369,6 +370,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const [showRenameModal, setShowRenameModal] = useState(false);
     const [showPlanDeleteModal, setShowPlanDeleteModal] = useState(false);
     const [newPlanName, setNewPlanName] = useState("");
+    const [showDiscovery, setShowDiscovery] = useState(false);
     const gradesFetchedRef = useRef<Set<string>>(new Set());
     const coursebookFetchedRef = useRef<Set<string>>(new Set());
     const errorRef = useRef<HTMLDivElement>(null);
@@ -958,6 +960,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         coursebookData={coursebookData}
                         coursebookSemester={coursebookSemester}
                         gradesData={gradesData}
+                        onOpenDiscovery={() => setShowDiscovery(true)}
                     />
 
                     <div
@@ -1355,6 +1358,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 </div>
                             </div>
                         </div>
+                    )}
+
+                    {showDiscovery && (
+                        <CourseDiscoveryModal
+                            onClose={() => setShowDiscovery(false)}
+                            onAddToPlan={(_) => {
+                                // write items to your degree plan state
+                                setShowDiscovery(false);
+                            }}
+                            semester={coursebookSemester ?? 'Spring 2026'}
+                        />
                     )}
 
                     {showExtendYearsModal && (
