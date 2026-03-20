@@ -15,7 +15,7 @@ import {
 } from "./ui/dropdown-menu";
 import { Toaster, toast } from "sonner";
 import { calculateCatalogYear, calculateLatestYear, determineStudentType, isCurrentSemester } from "@/utils/studentInfo";
-import YearDivider from "./planner/YearDivider";
+import YearDivider from "@/components/planner/YearDivider";
 import { useUISnapshot } from "@/hooks/useUISnapshot";
 import { useAuth } from "@/context/AuthContext";
 import { normalizeCourseCode } from "@/utils/prerequisiteUtils";
@@ -23,7 +23,7 @@ import { evaluatePlannerAndMergeSuggestions } from "@/utils/evaluatePlanner";
 import { usePlannerStore } from "@/stores/plannerStore";
 import { usePlannerTutorial } from "@/hooks/usePlannerTutorial";
 import { exportPlanAsCSV, exportPlanAsJPG, exportPlanAsPDF, exportPlanAsPNG } from "@/utils/planExport";
-import CourseDiscoveryModal from "./planner/CourseDiscoveryModal";
+import CourseDiscoveryModal, { CartItem } from "@/components/planner/CourseDiscoveryModal";
 
 interface PlannerProps {
     semesters: {
@@ -174,6 +174,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
     }, [plans, activePlanId]);
 
+    const { dropCourse } = usePlannerStore();
     const activePlan = plans.find(p => p.id === activePlanId);
     const allSemesters = activePlan?.semesters || {};
     const placedSuggestedCourses = new Set(activePlan?.placedCourses || []);
@@ -374,6 +375,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const gradesFetchedRef = useRef<Set<string>>(new Set());
     const coursebookFetchedRef = useRef<Set<string>>(new Set());
     const errorRef = useRef<HTMLDivElement>(null);
+    const [discoveryCart, setDiscoveryCart] = useState<CartItem[]>([]);
 
     useEffect(() => {
         if (error && scrollContainerRef.current) {
@@ -961,6 +963,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         coursebookSemester={coursebookSemester}
                         gradesData={gradesData}
                         onOpenDiscovery={() => setShowDiscovery(true)}
+                        discoveryCart={discoveryCart}
                     />
 
                     <div
@@ -1367,7 +1370,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 // write items to your degree plan state
                                 setShowDiscovery(false);
                             }}
-                            semester={coursebookSemester ?? 'Spring 2026'}
+                            semester={coursebookSemester ?? ''}
+                            cart={discoveryCart}
+                            onCartChange={setDiscoveryCart}
+                            semesters={activePlan?.semesters ?? {}}
+                            dropCourse={dropCourse}
                         />
                     )}
 

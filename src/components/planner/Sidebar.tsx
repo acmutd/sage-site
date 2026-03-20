@@ -5,6 +5,7 @@ import RequirementCategory from '@/components/planner/RequirementCategory';
 import CoursesCarousel from '@/components/planner/CoursesCarousel';
 import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/plannerCredits";
 import type { SemestersForCredits } from "@/utils/plannerCredits";
+import { CartItem } from "./CourseDiscoveryModal";
 
 interface SidebarProps {
     requirements: {
@@ -60,6 +61,7 @@ interface SidebarProps {
     gradesData?: Record<string, any>;
     coursebookSemester?: string | null;
     onOpenDiscovery?: () => void;
+    discoveryCart?: CartItem[];
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -77,6 +79,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     gradesData = {},
     coursebookSemester,
     onOpenDiscovery,
+    discoveryCart = [],
 }) => {
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
     const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -88,13 +91,13 @@ const Sidebar: React.FC<SidebarProps> = ({
     // Collect all suggested courses from all categories with their category paths
     const allSuggestedCourses = React.useMemo(() => {
         const courses: any[] = [];
-        
+
         const collectSuggestedCourses = (categories: any[], parentPath: string[] = []) => {
             if (!categories) return;
-            
+
             categories.forEach((category) => {
                 const currentPath = [...parentPath, category.name];
-                
+
                 if (category.suggested && category.suggested.length > 0) {
                     // Add category location to each suggested course
                     const coursesWithLocation = category.suggested.map((course: any) => ({
@@ -108,13 +111,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                 }
             });
         };
-        
+
         requirements.forEach((req) => {
             if (req.categories) {
                 collectSuggestedCourses(req.categories, [req.degree]);
             }
         });
-        
+
         return courses;
     }, [requirements]);
 
@@ -142,7 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     };
 
     // parent category - only expand reqs that have categories with new suggestions
-    
+
     useEffect(() => {
         const getSuggestedCodes = (c: any): Set<string> =>
             new Set((c?.suggested || []).map((s: any) => String(s.code || s.course_code || "").trim().toUpperCase()).filter((x: string) => !!x));
@@ -280,45 +283,45 @@ const Sidebar: React.FC<SidebarProps> = ({
             });
         }
     }, [requirements]);
-    
+
     // profile -> planner hotlink
     useEffect(() => {
         if (!focusLabel) return;
-    
+
         const newExpanded = { ...expandedSubcategories };
         let foundKey: string | null = null;
-    
+
         const findAndExpand = (categories: any[], reqIdx: number, parentPath: string = "0"): boolean => {
             return categories.some((category, catIdx) => {
                 const key = `${reqIdx}-${parentPath}-${catIdx}`;
-    
+
                 if (category.name.includes(focusLabel)) {
                     foundKey = key;
                     // don't touch newExpanded[key] — don't expand the target itself
                     return true;
                 }
-    
+
                 const childMatched = category.categories?.length
                     ? findAndExpand(category.categories, reqIdx, `${parentPath}-${catIdx}`)
                     : false;
-    
+
                 if (childMatched) {
                     newExpanded[key] = true; // expand ancestor only
                 }
-    
+
                 return childMatched;
             });
         };
-    
+
         requirements.forEach((req, reqIdx) => {
             const matched = findAndExpand(req.categories, reqIdx);
             if (matched) setAutoExpandedCategories(prev => ({ ...prev, [reqIdx]: true }));
         });
-    
+
         setExpandedSubcategories(newExpanded);
         if (foundKey) setHighlightedKey(foundKey);
     }, [focusLabel]);
-    
+
     useEffect(() => {
         if (!highlightedKey) return;
         const el = document.querySelector(`[data-category-key="${highlightedKey}"]`);
@@ -326,7 +329,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         const timer = setTimeout(() => setHighlightedKey(null), 2000);
         return () => clearTimeout(timer);
     }, [highlightedKey]);
-    
+
     const handleToggleSubcategory = (key: string) => {
         setExpandedSubcategories((prev) => ({
             ...prev,
@@ -338,20 +341,20 @@ const Sidebar: React.FC<SidebarProps> = ({
     const hasCompletion = (category: any): boolean => {
         // Check if the category itself has progress
         if (category.progress > 0) return true;
-        
+
         // Check if any classes are completed
         if (category.classes && category.classes.length > 0) {
-            const hasCompletedClasses = category.classes.some((course: any) => 
+            const hasCompletedClasses = category.classes.some((course: any) =>
                 course.status === "completed" || course.status === "in progress"
             );
             if (hasCompletedClasses) return true;
         }
-        
+
         // Recursively check subcategories
         if (category.categories && category.categories.length > 0) {
             return category.categories.some((subcat: any) => hasCompletion(subcat));
         }
-        
+
         return false;
     };
 
@@ -361,25 +364,25 @@ const Sidebar: React.FC<SidebarProps> = ({
             const categoryName = category.name?.toUpperCase() || '';
             const isOR = categoryName === 'OR';
             const isAND = categoryName === 'AND';
-            
+
             // If it's an AND with no completion, don't show it
             if (isAND && !hasCompletion(category)) {
                 return false;
             }
-            
+
             // If it's an OR, filter its children
             if (isOR && category.categories && category.categories.length > 0) {
                 // Filter children to only show ANDs with completion
                 const childrenWithCompletion = category.categories.filter((child: any) => {
                     return hasCompletion(child);
                 });
-                
+
                 // If OR has no children with completion, don't show it
                 if (childrenWithCompletion.length === 0) {
                     return false;
                 }
             }
-            
+
             return true;
         });
     };
@@ -393,7 +396,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <div className="text-sm text-gray-500">No courses in this category</div>
                 )
             )}
-    
+
             {category.suggested && category.suggested.length > 0 && (
                 <>
                     <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
@@ -413,15 +416,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                     />
                 </>
             )}
-    
+
             {subCategoriesToRender.length > 0 &&
                 renderCategories(subCategoriesToRender, reqIdx, nextParentPath, isOR)}
         </>
     );
-    
+
     const renderCategories = (categories: any[], reqIdx: number, parentPath: string = "0", parentIsOR: boolean = false): React.ReactNode[] => {
         const filteredCategories = filterCategories(categories);
-    
+
         return filteredCategories.map((category, catIdx) => {
             const originalIdx = categories.indexOf(category);
             const currentCatIdx = `${reqIdx}-${parentPath}-${originalIdx}`;
@@ -429,23 +432,23 @@ const Sidebar: React.FC<SidebarProps> = ({
             const categoryName = category.name?.toUpperCase() || '';
             const isOR = categoryName === 'OR';
             const isAND = categoryName === 'AND';
-    
+
             let displayName = category.name;
             if (isOR) {
                 displayName = "Track Options";
             } else if (isAND && parentIsOR) {
                 displayName = `Track ${catIdx + 1}`;
             }
-    
+
             let subCategoriesToRender = category.categories || [];
             if (isOR && subCategoriesToRender.length > 0) {
                 subCategoriesToRender = subCategoriesToRender.filter((child: any) => hasCompletion(child));
             }
-    
+
             const content = renderCategoryContent(category, reqIdx, nextParentPath, isOR, subCategoriesToRender);
-    
+
             const parts = displayName?.split('|').map((p: string) => p.trim()) || [displayName];
-    
+
             const completion = semesters ? getCompletionForCategory(category, semesters) : { completed: category.progress, total: category.total, isCreditBased: true };
             const creditsBreakdown = completion.isCreditBased && semesters ? getCreditsBreakdownRecursive(category, semesters) : undefined;
 
@@ -499,7 +502,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return (
         <>
             <div data-tour="sidebar" className={`${isExpanded ? "w-80 rounded-lg" : "w-20 rounded-md"} bg-bglight rounded-lg border border-border transition-all duration-300 flex flex-col h-full overflow-hidden`}>
-                <div 
+                <div
                     ref={drop}
                     className={`flex-1 overflow-y-auto ${isOver ? 'bg-gray-100' : ''}`}
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -530,17 +533,42 @@ const Sidebar: React.FC<SidebarProps> = ({
                             <button
                                 onClick={onOpenDiscovery}
                                 className="w-full flex items-center gap-2.5 p-3 rounded-xl border border-dashed
-                                    border-green-300 bg-green-50 hover:bg-green-100 transition-colors text-left mb-4 group"
+        border-green-300 bg-green-50 hover:bg-green-100 transition-colors text-left mb-4 group"
                             >
                                 <div className="w-7 h-7 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0">
                                     <Compass className="w-4 h-4 text-white" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-medium text-green-800">Discover Courses</div>
+                                    <div className="text-sm font-medium text-green-800">
+                                        {discoveryCart.length > 0 ? 'Shop more courses' : 'Discover Courses'}
+                                    </div>
                                     <div className="text-xs text-green-600">Browse &amp; add to your plan</div>
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-green-400 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
                             </button>
+
+                            {discoveryCart.length > 0 && (
+                                <div className="mb-4 space-y-1.5">
+                                    <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-1 mb-2">
+                                        In cart · {discoveryCart.length} course{discoveryCart.length !== 1 ? 's' : ''}
+                                    </div>
+                                    {discoveryCart.map(item => (
+                                        <div
+                                            key={item.course.course_id}
+                                            onClick={onOpenDiscovery}
+                                            className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-green-200
+                    hover:border-green-300 hover:bg-green-50 transition-colors cursor-pointer group"
+                                        >
+                                            <div className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-xs font-semibold text-gray-700 truncate">{item.course.course_code}</div>
+                                                <div className="text-[10px] text-gray-400 truncate">{item.course.course_name}</div>
+                                            </div>
+                                            <span className="text-[10px] text-gray-400 flex-shrink-0">{item.course.credits}cr</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
 
                             <h2 className="text-xl font-bold text-gray-900 mb-4">
                                 Degree Requirements
@@ -551,50 +579,50 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     const reqCompletion = semesters ? getCompletionForCategory(req, semesters) : { completed: req.progress, total: req.total, isCreditBased: true };
                                     const reqCreditsBreakdown = reqCompletion.isCreditBased && semesters ? getCreditsBreakdownRecursive(req, semesters) : undefined;
                                     return (
-                                    <RequirementCategory
-                                        key={reqIdx}
-                                        title={req.degree}
-                                        completed={reqCompletion.completed}
-                                        total={reqCompletion.total}
-                                        isExpanded={autoExpandedCategories[reqIdx]}
-                                        onToggle={() => {
-                                            setAutoExpandedCategories((prev) => ({
-                                            ...prev,
-                                            [reqIdx]: !prev[reqIdx],
-                                            }));
-                                        }}
-                                        hasSubcategories={req.categories && req.categories.length > 0}
-                                        isFirstCategory={reqIdx === 0}
-                                        creditsBreakdown={reqCreditsBreakdown}
-                                        footnote={(req as any).footnote}
-                                        rules={(req as any).rules}
-                                    >
-                                        {req.categories && req.categories.length > 0 ? (
-                                            renderCategories(req.categories, reqIdx)
-                                        ) : (
-                                            <div className="text-sm text-gray-500">
-                                                No categories available
-                                            </div>
-                                        )}
-                                    </RequirementCategory>
+                                        <RequirementCategory
+                                            key={reqIdx}
+                                            title={req.degree}
+                                            completed={reqCompletion.completed}
+                                            total={reqCompletion.total}
+                                            isExpanded={autoExpandedCategories[reqIdx]}
+                                            onToggle={() => {
+                                                setAutoExpandedCategories((prev) => ({
+                                                    ...prev,
+                                                    [reqIdx]: !prev[reqIdx],
+                                                }));
+                                            }}
+                                            hasSubcategories={req.categories && req.categories.length > 0}
+                                            isFirstCategory={reqIdx === 0}
+                                            creditsBreakdown={reqCreditsBreakdown}
+                                            footnote={(req as any).footnote}
+                                            rules={(req as any).rules}
+                                        >
+                                            {req.categories && req.categories.length > 0 ? (
+                                                renderCategories(req.categories, reqIdx)
+                                            ) : (
+                                                <div className="text-sm text-gray-500">
+                                                    No categories available
+                                                </div>
+                                            )}
+                                        </RequirementCategory>
                                     );
                                 })}
                             </div>
                         </div>
                     ) : (
-                        <div 
-                            className="flex flex-col items-center gap-8 pt-8 h-full cursor-pointer hover:bg-[#F5F7F5]" 
+                        <div
+                            className="flex flex-col items-center gap-8 pt-8 h-full cursor-pointer hover:bg-[#F5F7F5]"
                             onClick={handleToggleSidebar}
                             role="button"
                             tabIndex={0}
                             aria-label="Expand sidebar"
                             onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                handleToggleSidebar();
-                              }
+                                if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    handleToggleSidebar();
+                                }
                             }}
-                        >    
+                        >
                             <button
                                 data-tour="sidebar-toggle"
                                 aria-label="Expand sidebar"
@@ -607,12 +635,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                             >
                                 <ArrowRightToLine size={24} className="w-5 h-5 text-gray-500" />
                             </button>
-                            <button 
+                            <button
                                 data-tour="edit-plans"
                                 className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
                                 aria-label="Edit Degree Plans"
                                 onClick={(e) => {
-                                    e.stopPropagation(); 
+                                    e.stopPropagation();
                                     if (document.querySelector('.driver-active-element')) return;
                                     onRestartOnboarding?.();
                                 }}
@@ -620,7 +648,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 <NotebookPen className="w-5 h-5" strokeWidth={2} />
                             </button>
 
-                            <button 
+                            <button
                                 data-tour="course-discovery"
                                 className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
                                 aria-label="Discover Courses"
