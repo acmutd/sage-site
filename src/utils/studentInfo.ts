@@ -28,3 +28,11 @@ export const isCurrentSemester = (title: string) => {
   const season = month >= 8 ? 'Fall' : month >= 5 ? 'Summer' : 'Spring';
   return title === `${season} ${year}`;
 };
+
+export const getCurrentCatalogYear = (): string => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-11
+  
+  return currentMonth >= 8 ? currentYear.toString() : (currentYear - 1).toString();
+};
