@@ -810,7 +810,11 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                 };
             });
 
-            setCourses(prev => newOffset === 0 ? normalized : [...prev, ...normalized]);
+            setCourses(prev => {
+                const merged = newOffset === 0 ? normalized : [...prev, ...normalized];
+                return merged.filter((c, i, arr) => arr.findIndex(x => x.course_id === c.course_id) === i);
+            });
+            
             setTotal(data.total);
             setHasMore(data.has_more);
             setOffset(newOffset + LIMIT);
@@ -1216,9 +1220,9 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                         {loading && <Loader2 className="w-3 h-3 animate-spin opacity-40" />}
                                     </div>
                                     <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
-                                        {filteredCourses.map(course => (
+                                        {filteredCourses.map((course, i) => (
                                             <CourseCard
-                                                key={course.course_id}
+                                                key={`${course.course_id}-${i}`}
                                                 course={course}
                                                 inCart={!!cart.find(i => i.course.course_id === course.course_id)}
                                                 isSelected={selectedCourseId === course.course_id && rightPanel === 'detail'}
