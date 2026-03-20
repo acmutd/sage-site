@@ -694,7 +694,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 }) => {
 
     const [query, setQuery] = useState('');
-    const [debouncedQuery, setDebouncedQuery] = useState(''); 
+    const [debouncedQuery, setDebouncedQuery] = useState('');
     const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
     const [selectedDept, setSelectedDept] = useState('All');
     const [selectedPrefixes, setSelectedPrefixes] = useState<string[]>([]);
@@ -713,8 +713,12 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [allSchools,   setAllSchools]   = useState<string[]>([]);
-    const [allPrefixes,  setAllPrefixes]  = useState<string[]>([]);
+    const [allSchools, setAllSchools] = useState<string[]>([]);
+    const [allPrefixes, setAllPrefixes] = useState<string[]>([]);
+
+    const [noAleks, setNoAleks] = useState(false);
+    const [noPerm, setNoPerm] = useState(false);
+    const [selectedStanding, setSelectedStanding] = useState<string[]>([]);
 
     const searchRef = useRef<HTMLInputElement>(null);
 
@@ -728,6 +732,9 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         if (selectedSchools.length) params.set('schools', selectedSchools.join(','));
         if (selectedPrefixes.length) params.set('subjects', selectedPrefixes.join(','));
         if (selectedCredits.length) params.set('credits', selectedCredits.map(c => c === '4+' ? '4' : c).join(','));
+        if (noAleks) params.set('no_aleks', 'true');
+        if (noPerm) params.set('no_perm', 'true');
+        if (selectedStanding.length) params.set('standing', selectedStanding.join(','));
         if (coreOnly) params.set('core_only', 'true');
         params.set('education_level', educationLevel);
         params.set('limit', String(newOffset === 0 ? 500 : LIMIT));
@@ -739,7 +746,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
             });
             if (!res.ok) throw new Error('Failed to fetch');
             const data = await res.json();
-            
+
             const satisfiedSet = new Set<string>(
                 completedCourseCodes.map((code: string) => normalizeCourseCode(code)).filter(Boolean) as string[]
             );
@@ -750,10 +757,10 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
                 return {
                     ...c,
-                    course_id:      c.course_code.replace(/\s+/g, '').toLowerCase(),
+                    course_id: c.course_code.replace(/\s+/g, '').toLowerCase(),
                     subject_prefix: c.course_code.split(' ')[0],
-                    subject:        c.course_code.split(' ')[0],
-                    prereqs_met:    prereqGroups.length === 0 || missing.length === 0,
+                    subject: c.course_code.split(' ')[0],
+                    prereqs_met: prereqGroups.length === 0 || missing.length === 0,
                 };
             });
 
@@ -766,7 +773,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         } finally {
             setLoading(false);
         }
-    }, [selectedSchools, selectedPrefixes, selectedCredits, coreOnly, educationLevel, apiBaseUrl, authToken, completedCourseCodes, debouncedQuery]);
+    }, [selectedSchools, selectedPrefixes, selectedCredits, coreOnly, educationLevel, apiBaseUrl, authToken, completedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding]);
 
     useEffect(() => { searchRef.current?.focus(); }, []);
 
@@ -798,7 +805,10 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         selectedPrefixes.length > 0,
         selectedCredits.length > 0,
         coreOnly,
-    ].filter(Boolean).length, [selectedSchools, selectedDept, selectedPrefixes, selectedCredits, coreOnly]);
+        noAleks,
+        noPerm,
+        selectedStanding.length > 0,
+    ].filter(Boolean).length, [selectedSchools, selectedDept, selectedPrefixes, selectedCredits, coreOnly, noAleks, noPerm, selectedStanding]);
 
     useEffect(() => {
         if (courses.length === 0) return;
@@ -823,9 +833,9 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
     const filteredCourses = useMemo(() => {
         if (!query.trim()) return courses;
-        
+
         const q = query.trim().toLowerCase().replace(/\s+/g, '');
-        
+
         // Exact/prefix match first — handles "CS 3345", "cs3345", "3345"
         const exact = courses.filter(c => {
             const code = c.course_code.toLowerCase().replace(/\s+/g, '');
@@ -836,9 +846,9 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                 name.includes(query.trim().toLowerCase())
             );
         });
-        
+
         if (exact.length > 0) return exact;
-        
+
         // Fall back to Fuse for fuzzy matching (typos, professor names, etc.)
         return fuse.search(query).map(r => r.item);
     }, [query, fuse, courses]);
@@ -917,6 +927,9 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         setSelectedCredits([]);
         setCoreOnly(false);
         setQuery('');
+        setNoAleks(false);
+        setNoPerm(false);
+        setSelectedStanding([]);
     };
 
     const year = getCurrentCatalogYear();
@@ -1002,7 +1015,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                     </div>
 
                     {/* Active filter chips */}
-                    {(selectedSchools.length > 0 || selectedPrefixes.length > 0 || selectedCredits.length > 0 || coreOnly) && (
+                    {(selectedSchools.length > 0 || selectedPrefixes.length > 0 || selectedCredits.length > 0 || coreOnly || noPerm || noAleks || selectedStanding.length > 0) && (
                         <div className="px-5 py-1.5 flex items-center gap-2 flex-wrap border-b border-gray-100 flex-shrink-0">
                             <span className="text-xs text-gray-400">Active:</span>
                             {selectedSchools.map(s => (
@@ -1029,6 +1042,25 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                     Core req <X className="w-2.5 h-2.5" />
                                 </button>
                             )}
+                            {noPerm && (
+                                <button onClick={() => setNoPerm(false)}
+                                    className="text-xs bg-green-100 text-green-700 rounded-full px-2.5 py-0.5 font-medium flex items-center gap-1 hover:bg-green-200">
+                                    No permission req <X className="w-2.5 h-2.5" />
+                                </button>
+                            )}
+                            {noAleks && (
+                                <button onClick={() => setNoAleks(false)}
+                                    className="text-xs bg-green-100 text-green-700 rounded-full px-2.5 py-0.5 font-medium flex items-center gap-1 hover:bg-green-200">
+                                    No ALEKS req <X className="w-2.5 h-2.5" />
+                                </button>
+                            )}
+                            {selectedStanding.map(s => (
+                                <button key={s} onClick={() => setSelectedStanding(prev => prev.filter(x => x !== s))}
+                                    className="text-xs bg-green-100 text-green-700 rounded-full px-2.5 py-0.5 font-medium flex items-center gap-1 hover:bg-green-200">
+                                    {s} <X className="w-2.5 h-2.5" />
+                                </button>
+                            ))}
+
                             <button onClick={clearAllFilters}
                                 className="text-xs text-gray-400 hover:text-gray-600 ml-1 underline underline-offset-2">
                                 Clear all
@@ -1077,13 +1109,33 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
                                 <div className="flex flex-col gap-1.5">
                                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Attributes</span>
-                                    <button onClick={() => setCoreOnly(p => !p)}
-                                        className={`text-xs px-2.5 py-1 rounded-md border transition-colors flex items-center gap-1 whitespace-nowrap
-                                            ${coreOnly
-                                                ? 'bg-green-500 border-green-500 text-white font-medium'
-                                                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}>
-                                        <BookOpen className="w-3 h-3" /> Satisfies Core
-                                    </button>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        <button onClick={() => setCoreOnly(p => !p)}
+                                            className={`text-xs px-2.5 py-1 rounded-md border transition-colors flex items-center gap-1 whitespace-nowrap
+                                                ${coreOnly
+                                                    ? 'bg-green-500 border-green-500 text-white font-medium'
+                                                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}>
+                                            <BookOpen className="w-3 h-3" /> Satisfies Core
+                                        </button>
+
+                                        <button onClick={() => setNoPerm(p => !p)}
+                                            className={`text-xs px-2.5 py-1 rounded-md border transition-colors flex items-center gap-1 whitespace-nowrap
+                                                ${noPerm ? 'bg-green-500 border-green-500 text-white font-medium' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}>
+                                            <CheckCircle className="w-3 h-3" /> No Permission Required
+                                        </button>
+                                        <button onClick={() => setNoAleks(p => !p)}
+                                            className={`text-xs px-2.5 py-1 rounded-md border transition-colors flex items-center gap-1 whitespace-nowrap
+                                                ${noAleks ? 'bg-green-500 border-green-500 text-white font-medium' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}>
+                                            <AlertCircle className="w-3 h-3" /> No ALEKS Required
+                                        </button>
+                                        <FilterDropdown
+                                            label="Standing"
+                                            options={['Freshman', 'Sophomore', 'Junior', 'Senior']}
+                                            selected={selectedStanding}
+                                            onChange={setSelectedStanding}
+                                            allLabel="Any Standing"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
