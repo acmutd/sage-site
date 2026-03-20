@@ -196,6 +196,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         switchPlan(planId);
     };
 
+    const educationLevel = useMemo(() => {
+        const hasGradCredits = 
+            transcriptData?.credit_hours?.graduate || 
+            transcriptData?.gpa?.graduate;
+        return hasGradCredits ? 'graduate' : 'undergraduate';
+    }, [transcriptData]);
+
     const handleNewPlan = () => {
         const evalRaw = localStorage.getItem('evaluation');
         const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
@@ -376,6 +383,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const coursebookFetchedRef = useRef<Set<string>>(new Set());
     const errorRef = useRef<HTMLDivElement>(null);
     const [discoveryCart, setDiscoveryCart] = useState<CartItem[]>([]);
+    const [authToken, setAuthToken] = useState<string>('');
+
+    useEffect(() => {
+        user?.getIdToken().then(setAuthToken);
+    }, [user]);
 
     useEffect(() => {
         if (error && scrollContainerRef.current) {
@@ -1367,7 +1379,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         <CourseDiscoveryModal
                             onClose={() => setShowDiscovery(false)}
                             onAddToPlan={(_) => {
-                                // write items to your degree plan state
                                 setShowDiscovery(false);
                             }}
                             semester={coursebookSemester ?? ''}
@@ -1375,6 +1386,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             onCartChange={setDiscoveryCart}
                             semesters={activePlan?.semesters ?? {}}
                             dropCourse={dropCourse}
+                            apiBaseUrl={import.meta.env.VITE_CRUD_API}
+                            authToken={authToken}
+                            completedCourseCodes={allCompletedCourseCodes}
+                            educationLevel={educationLevel}
                         />
                     )}
 

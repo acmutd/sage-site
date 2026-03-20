@@ -1,5 +1,5 @@
 const CACHE_NAME = 'sage-cacher-v1';
-const CACHED_URLS = ['CRUD/coursebook', 'CRUD/utdgrades', 'CRUD/catalog'];
+const CACHED_URLS = ['CRUD/coursebook', 'CRUD/utdgrades', 'CRUD/catalog', 'CRUD/discover'];
 
 function normalizeCacheKey(url) {
     const u = new URL(url);
@@ -7,6 +7,17 @@ function normalizeCacheKey(url) {
     if (courses) {
         u.searchParams.set('courses', courses.split(',').sort().join(','));
     }
+
+    if (url.includes('discover')) {
+        ['schools', 'subjects', 'credits'].forEach(param => {
+            const val = u.searchParams.get(param);
+            if (val) u.searchParams.set(param, val.split(',').sort().join(','));
+        });
+
+        const sorted = new URLSearchParams([...u.searchParams.entries()].sort());
+        u.search = sorted.toString();
+    }
+
     return u.toString();
 }
 
