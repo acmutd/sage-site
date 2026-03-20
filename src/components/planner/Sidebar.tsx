@@ -556,7 +556,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         <div
                                             key={item.course.course_id}
                                             onClick={onOpenDiscovery}
-                                            className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-green-200
+                                            className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-white border border-green-200
                     hover:border-green-300 hover:bg-green-50 transition-colors cursor-pointer group"
                                         >
                                             <div className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
