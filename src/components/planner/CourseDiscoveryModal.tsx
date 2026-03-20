@@ -786,7 +786,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     // Fetch on filter change, reset to page 0
     useEffect(() => {
         fetchCourses(0);
-    }, [selectedSchools, selectedPrefixes, selectedCredits, coreOnly, selectedDept, educationLevel, debouncedQuery]);
+    }, [selectedSchools, selectedPrefixes, selectedCredits, coreOnly, selectedDept, educationLevel, debouncedQuery,  noAleks, noPerm, selectedStanding]);
 
     const coursesWithInstructors = useMemo(() =>
         courses.map(c => ({
