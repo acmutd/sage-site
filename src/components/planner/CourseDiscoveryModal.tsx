@@ -5,7 +5,8 @@ import {
     X, Search, Compass, ShoppingCart, ChevronRight, ChevronDown,
     Star, BookOpen, MapPin, ExternalLink, Plus, Minus,
     CheckCircle, AlertCircle, ArrowRight, Trash2, SlidersHorizontal,
-    FileText, Clock, Award, RefreshCw, Layers, Loader2
+    FileText, Clock, Award, RefreshCw, Layers, Loader2,
+    ChevronUp
 } from 'lucide-react';
 import { getCoursePrerequisiteGroups, getMissingPrerequisiteGroups, normalizeCourseCode } from '@/utils/prerequisiteUtils';
 import { getCurrentCatalogYear } from '@/utils/studentInfo';
@@ -161,6 +162,26 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
     const [open, setOpen] = useState(false);
     const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
     const buttonRef = useRef<HTMLButtonElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [canScrollUp, setCanScrollUp] = useState(false);
+    const [canScrollDown, setCanScrollDown] = useState(false);
+
+    const checkScroll = () => {
+        const el = scrollRef.current;
+        if (!el) return;
+        setCanScrollUp(el.scrollTop > 0);
+        setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
+    };
+
+    useEffect(() => {
+        if (open) setTimeout(checkScroll, 50);
+    }, [open, options]);
+
+    const scroll = (dir: 'up' | 'down') => {
+        const el = scrollRef.current;
+        if (!el) return;
+        el.scrollBy({ top: dir === 'up' ? -80 : 80, behavior: 'smooth' });
+    };
 
     useEffect(() => {
         if (!open) return;
@@ -168,7 +189,6 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
             const target = e.target as Node;
             const buttonWrapper = buttonRef.current?.closest('[data-filter-dropdown]');
             const portalMenu = document.querySelector('[data-filter-menu]');
-
             if (!buttonWrapper?.contains(target) && !portalMenu?.contains(target)) {
                 setOpen(false);
             }
@@ -227,6 +247,15 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                     data-filter-menu
                     className="bg-white border border-gray-200 rounded-2xl shadow-lg py-1 min-w-[140px]"
                 >
+                    {canScrollUp && (
+                        <button
+                            onClick={() => scroll('up')}
+                            className="w-full flex items-center justify-center py-1 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                        >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+
                     {isActive && (
                         <>
                             <button
@@ -238,16 +267,33 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                             <div className="border-t border-gray-100 my-1" />
                         </>
                     )}
-                    {options.map(opt => (
+
+                    <div
+                        ref={scrollRef}
+                        onScroll={checkScroll}
+                        style={{ maxHeight: '200px', overflowY: 'auto', scrollbarWidth: 'none' }}
+                        className="[&::-webkit-scrollbar]:hidden"
+                    >
+                        {options.map(opt => (
+                            <button
+                                key={opt}
+                                onClick={() => toggle(opt)}
+                                className="w-full flex items-center justify-between gap-3 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                            >
+                                <span className="font-medium">{opt}</span>
+                                {selected.includes(opt) && <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
+                            </button>
+                        ))}
+                    </div>
+
+                    {canScrollDown && (
                         <button
-                            key={opt}
-                            onClick={() => toggle(opt)}
-                            className="w-full flex items-center justify-between gap-3 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                            onClick={() => scroll('down')}
+                            className="w-full flex items-center justify-center py-1 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
                         >
-                            <span className="font-medium">{opt}</span>
-                            {selected.includes(opt) && <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
+                            <ChevronDown className="w-3.5 h-3.5" />
                         </button>
-                    ))}
+                    )}
                 </div>,
                 document.body
             )}
