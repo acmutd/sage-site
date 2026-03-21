@@ -45,6 +45,7 @@ const SectionSwitcher: React.FC<SectionSwitcherProps> = ({ active, onChange }) =
             <button
               key={section}
               onClick={() => { onChange(section); setOpen(false); }}
+              aria-current={active === section ? "page" : undefined}
               className={`w-full text-left px-5 py-3 text-base font-medium transition-colors duration-150
                 ${active === section
                   ? "bg-accent text-textdark"

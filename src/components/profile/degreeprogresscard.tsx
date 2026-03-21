@@ -126,7 +126,7 @@ const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
               {abbreviateDegree(title)}
             </h2>
           </div>
-          <p className="text-sm text-gray-400">{startDate ?? "—"} - {endDate ?? "Present"}</p>
+          <p className="text-sm text-gray-600">{startDate ?? "—"} - {endDate ?? "Present"}</p>
             <div className="flex flex-col gap-2 flex-1 overflow-y-auto">
             {categories.map((cat, i) => (
               <Requirement key={i} label={cat.label} completed={cat.completed} total={cat.total} />
@@ -142,7 +142,7 @@ const DegreeProgressCard: React.FC<DegreeProgressCardProps> = ({
           <div className="relative bottom-4 right-2 flex flex-col gap-0.5">
             <p className="text-3xl font-semibold text-gray-900">{completed}</p>
             <p className="text-gray-700 text-sm font-medium">Credit Hours</p>
-            <p className="text-green-500 text-sm">of {total} Completed</p>
+            <p className="text-green-700 text-sm">of {total} Completed</p>
           </div>
         </div>
       </div>
@@ -188,7 +188,7 @@ const ProgressCircle: React.FC<ProgressCircleProps> = ({ percentage }) => {
 
   return (
     <div className="relative w-20 h-20">
-      <svg className="w-full h-full" viewBox="0 0 100 100">
+      <svg className="w-full h-full" viewBox="0 0 100 100" aria-hidden="true">
         <circle
           className="text-gray-200"
           strokeWidth="10"
@@ -211,7 +211,7 @@ const ProgressCircle: React.FC<ProgressCircleProps> = ({ percentage }) => {
           cy="50"
         />
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center text-green-500 font-semibold text-lg">
+      <div className="absolute inset-0 flex items-center justify-center text-green-700 font-semibold text-lg">
         {percentage}%
       </div>
     </div>

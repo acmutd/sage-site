@@ -21,18 +21,18 @@ const MAX_CARDS = 3;
 const DEFAULT_CARDS: Card[] = [
   { id: "undergrad", label: "0 Credit Hours", sublabel: "Undergraduate", enabled: true, editable: false },
   { id: "startdate", label: "—", sublabel: "Start Date", enabled: true, editable: false },
-  { id: "gpaundergrad", label: "—", sublabel: "GPA Average (Undergrad)", enabled: true,  editable: false },
+  { id: "gpaundergrad", label: "—", sublabel: "GPA Average (Undergrad)", enabled: true, editable: false },
   { id: "gpagrad", label: "—", sublabel: "GPA Average (Grad)", enabled: false, editable: false },
   { id: "grad", label: "0 Credit Hours", sublabel: "Graduate", enabled: false, editable: false },
-  { id: "advisor", label: "Add advisor…", sublabel: "Advisor", enabled: false, editable: true  },
-  { id: "holds", label: "No Holds", sublabel: "Deadlines & Holds", enabled: false, editable: true  },
-  { id: "note", label: "Add a note…", sublabel: "Personal Note", enabled: false, editable: true  },
+  { id: "advisor", label: "Add advisor…", sublabel: "Advisor", enabled: false, editable: true },
+  { id: "holds", label: "No Holds", sublabel: "Deadlines & Holds", enabled: false, editable: true },
+  { id: "note", label: "Add a note…", sublabel: "Personal Note", enabled: false, editable: true },
   { id: "utdid", label: "—", sublabel: "UTD ID", enabled: false, editable: false },
 ];
 
 function EditableCardContent({ card, onSave }: { card: Card; onSave: (val: string) => void }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft]     = useState(card.label);
+  const [draft, setDraft] = useState(card.label);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setDraft(card.label); }, [card.label]);
@@ -49,10 +49,11 @@ function EditableCardContent({ card, onSave }: { card: Card; onSave: (val: strin
       <div className="flex flex-col gap-1 w-full">
         <input
           ref={inputRef}
+          aria-label={`Edit ${card.sublabel}`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter")  commit();
+            if (e.key === "Enter") commit();
             if (e.key === "Escape") { setDraft(card.label); setEditing(false); }
           }}
           onBlur={commit}
@@ -64,8 +65,8 @@ function EditableCardContent({ card, onSave }: { card: Card; onSave: (val: strin
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="flex items-center gap-1 cursor-text group">
-    <h3 className="group-hover:underline group-hover:decoration-dotted group-hover:underline-offset-2 transition-all">{card.label}</h3>
+    <div onClick={() => setEditing(true)} aria-label={`Edit ${card.sublabel}`} className="flex items-center gap-1 cursor-text group">
+      <h3 className="group-hover:underline group-hover:decoration-dotted group-hover:underline-offset-2 transition-all">{card.label}</h3>
     </div>
   );
 }
@@ -87,10 +88,10 @@ const Profile = () => {
     const cached = localStorage.getItem('profilePictureType');
     return cached ? parseInt(cached) : 1;
   });
-  const [googlePhotoURL, setGooglePhotoURL]         = useState<string | null>(null);
-  const [isPopUpOpen, setIsPopUpOpen]               = useState(false);
-  const [program, setProgram]                        = useState("All");
-  const [currentIndex, setCurrentIndex]             = useState(0);
+  const [googlePhotoURL, setGooglePhotoURL] = useState<string | null>(null);
+  const [isPopUpOpen, setIsPopUpOpen] = useState(false);
+  const [program, setProgram] = useState("All");
+  const [currentIndex, setCurrentIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
   const [name, setName] = useState("");
   const [carouselData, setCarouselData] = useState<Array<{
@@ -104,25 +105,100 @@ const Profile = () => {
     status: string | null;
   }>>([]);
   const [majorsData, setMajorsData] = useState<Array<{ name: string; start_date: string; program_level: string; status: string }>>([]);
-  const [section, setSection]         = useState<ProfileSection>("Program Status");
+  const [section, setSection] = useState<ProfileSection>("Program Status");
   const [conversationsData, setConversationsData] = useState<Conversation[]>([]);
   const cardWidthPercent = mobileView ? 69 : tabletView ? 55 : 34;
   const navigate = useNavigate();
 
   // ── Customizable Cards state ──
-  const [cards, setCards]                       = useState<Card[]>(DEFAULT_CARDS);
-  const [isEditing, setIsEditing]               = useState(false);
-  const [dragIndex, setDragIndex]               = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex]       = useState<number | null>(null);
-  const [justDropped, setJustDropped]           = useState<string | null>(null);
-  const [savedFlash, setSavedFlash]             = useState<string | null>(null);
+  const [cards, setCards] = useState<Card[]>(DEFAULT_CARDS);
+  const [isEditing, setIsEditing] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [justDropped, setJustDropped] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState<string | null>(null);
   const dragNode = useRef<HTMLDivElement | null>(null);
 
   // loading/err state
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const enabledCards  = cards.filter((c) => c.enabled);
+  const enabledCards = cards.filter((c) => c.enabled);
   const disabledCards = cards.filter((c) => !c.enabled);
+
+  {/* 
+    Accessbility stuff    
+  */}
+
+  const pickerModalRef = useRef<HTMLDivElement>(null);
+  const pickerTriggerRef = useRef<HTMLButtonElement>(null);
+  const missingInfoModalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isPopUpOpen && pickerModalRef.current) {
+      pickerModalRef.current.focus();
+    }
+  }, [isPopUpOpen]);
+
+  useEffect(() => {
+    if (showMissingInfoModal && missingInfoModalRef.current) {
+      missingInfoModalRef.current.focus();
+    }
+  }, [showMissingInfoModal]);
+
+  const handleMissingInfoKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") { setShowMissingInfoModal(false); return; }
+    if (e.key !== "Tab") return;
+
+    const focusable = missingInfoModalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+
+  const handlePickerKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") { closePickerModal(); return; }
+    if (e.key !== "Tab") return;
+
+    const focusable = pickerModalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+
+  const handleCardKeyDown = (e: React.KeyboardEvent, i: number) => {
+    if (!isEditing) return;
+    const enabled = cards.filter(c => c.enabled);
+    if (e.key === "ArrowUp" && i > 0) {
+      e.preventDefault();
+      const reordered = [...enabled];
+      [reordered[i - 1], reordered[i]] = [reordered[i], reordered[i - 1]];
+      setCards([...reordered, ...cards.filter(c => !c.enabled)]);
+    }
+    if (e.key === "ArrowDown" && i < enabled.length - 1) {
+      e.preventDefault();
+      const reordered = [...enabled];
+      [reordered[i + 1], reordered[i]] = [reordered[i], reordered[i + 1]];
+      setCards([...reordered, ...cards.filter(c => !c.enabled)]);
+    }
+  };
 
   const toggleCard = (id: string) =>
     setCards((p) => {
@@ -151,34 +227,39 @@ const Profile = () => {
   const handleDragEnd = () => {
     if (dragNode.current) dragNode.current.style.opacity = "1";
     if (dragOverIndex !== null && dragOverIndex !== dragIndex && dragIndex !== null) {
-        const enabled  = cards.filter((c) => c.enabled);
-        const disabled = cards.filter((c) => !c.enabled);
-        const moved = enabled.splice(dragIndex, 1)[0];
-        enabled.splice(dragOverIndex, 0, moved);
-        const newCards = [...enabled, ...disabled];
-        setCards(newCards);
-        setJustDropped(moved.id);
-        setTimeout(() => setJustDropped(null), 600);
+      const enabled = cards.filter((c) => c.enabled);
+      const disabled = cards.filter((c) => !c.enabled);
+      const moved = enabled.splice(dragIndex, 1)[0];
+      enabled.splice(dragOverIndex, 0, moved);
+      const newCards = [...enabled, ...disabled];
+      setCards(newCards);
+      setJustDropped(moved.id);
+      setTimeout(() => setJustDropped(null), 600);
 
-        // ← persist card order
-        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-        saveTimeoutRef.current = setTimeout(async () => {
-            const token = await user?.getIdToken();
-            if (!token || !CRUD_API) return;
-            await fetch(CRUD_API, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user?.uid,
-                    action: 'updateProfile',
-                    token,
-                    card_order: newCards.map(c => ({ id: c.id, enabled: c.enabled }))
-                })
-            });
-        }, 800);
+      // ← persist card order
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(async () => {
+        const token = await user?.getIdToken();
+        if (!token || !CRUD_API) return;
+        await fetch(CRUD_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user?.uid,
+            action: 'updateProfile',
+            token,
+            card_order: newCards.map(c => ({ id: c.id, enabled: c.enabled }))
+          })
+        });
+      }, 800);
     }
     setDragIndex(null);
     setDragOverIndex(null);
+  };
+
+  const closePickerModal = () => {
+    closePickerModal()
+    setTimeout(() => pickerTriggerRef.current?.focus(), 0);
   };
 
   type EvaluatorData = Array<{
@@ -196,7 +277,7 @@ const Profile = () => {
       if (storedType === 0) setProfilePic(user.photoURL);
     }
     getUserInfo();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.photoURL]);
 
   useEffect(() => {
@@ -226,8 +307,8 @@ const Profile = () => {
   const convCarouselRef = useRef<HTMLDivElement>(null);
   const maxConvIndex = Math.max(0, conversationsData.length - cardsPerView);
   const goToConvPrevious = () => setConvIndex((p) => (p > 0 ? p - 1 : p));
-  const goToConvNext     = () => setConvIndex((p) => (p < maxConvIndex ? p + 1 : p));
-  const goToConvSlide    = (i: number) => setConvIndex(i);
+  const goToConvNext = () => setConvIndex((p) => (p < maxConvIndex ? p + 1 : p));
+  const goToConvSlide = (i: number) => setConvIndex(i);
 
   useEffect(() => {
     const update = () => {
@@ -242,8 +323,8 @@ const Profile = () => {
   }, [convIndex, cardWidthPercent]);
 
   const goToPrevious = () => setCurrentIndex((p) => (p > 0 ? p - 1 : p));
-  const goToNext     = () => setCurrentIndex((p) => (p < maxIndex ? p + 1 : p));
-  const goToSlide    = (i: number) => setCurrentIndex(i);
+  const goToNext = () => setCurrentIndex((p) => (p < maxIndex ? p + 1 : p));
+  const goToSlide = (i: number) => setCurrentIndex(i);
 
   const parseYear = (date: string | undefined) => {
     if (!date) return null;
@@ -252,7 +333,7 @@ const Profile = () => {
   };
 
   function formatCarouselData(evaluatorResponse: EvaluatorData, majors: typeof majorsData) {
-    const core    = evaluatorResponse.find((d) => d.degree === "Core Requirements");
+    const core = evaluatorResponse.find((d) => d.degree === "Core Requirements");
     const degrees = evaluatorResponse.filter((d) => d.degree !== "Core Requirements");
     if (!degrees.length) return [];
     return degrees.map((degree) => {
@@ -271,7 +352,7 @@ const Profile = () => {
         })),
       ];
       const completed = (core?.credits_completed ?? 0) + degree.credits_completed;
-      const total     = (core?.credits ?? 0) + degree.credits;
+      const total = (core?.credits ?? 0) + degree.credits;
       return {
         title: degree.degree,
         categories: allCategories,
@@ -313,15 +394,14 @@ const Profile = () => {
     window.dispatchEvent(new Event('profilePictureUpdated'));
     if (newType === 0 && googlePhotoURL) setProfilePic(googlePhotoURL);
     else setProfilePic(`/assets/profile_pics/${newType}.png`);
-    setIsPopUpOpen(false);
+    closePickerModal()
   }
 
   function pickProgram(prog: string) { setProgram(prog); }
 
   async function getUserInfo() {
     setLoadError(null);
-    try 
-    { 
+    try {
       const token = await user?.getIdToken();
       if (!token) throw new Error("Failed to retrieve authentication token.");
       if (!CRUD_API) {
@@ -357,30 +437,30 @@ const Profile = () => {
       setCards((prev) =>
         prev.map((c) => {
           if (c.id === "undergrad") return { ...c, label: `${ug} Credit Hours` };
-          if (c.id === "grad")      return { ...c, label: `0 Credit Hours` };
+          if (c.id === "grad") return { ...c, label: `0 Credit Hours` };
           if (c.id === "startdate") return { ...c, label: data.majors[0].start_date || "—" };
-          if (c.id === "gpaundergrad") return {...c, label: data.gpa.undergraduate || "-"};
-          if (c.id === "gpagrad") return {...c, label: data.gpa.graduate || "-"};
-          if (c.id === "utdid") return {...c, label: data.utd_id};
+          if (c.id === "gpaundergrad") return { ...c, label: data.gpa.undergraduate || "-" };
+          if (c.id === "gpagrad") return { ...c, label: data.gpa.graduate || "-" };
+          if (c.id === "utdid") return { ...c, label: data.utd_id };
           return c;
         })
       );
 
       const savedOrder = data.profile?.["user-fields"]?.card_order;
       if (savedOrder?.length) {
-          setCards(prev => {
-              const mapped = savedOrder
-                  .map((saved: { id: string; enabled: boolean }) => {
-                      const card = prev.find(c => c.id === saved.id);
-                      return card ? { ...card, enabled: saved.enabled } : null;
-                  })
-                  .filter(Boolean);
-              const savedIds = new Set(savedOrder.map((s: any) => s.id));
-              const unsaved = prev.filter(c => !savedIds.has(c.id));
-              return [...mapped, ...unsaved];
-          });
+        setCards(prev => {
+          const mapped = savedOrder
+            .map((saved: { id: string; enabled: boolean }) => {
+              const card = prev.find(c => c.id === saved.id);
+              return card ? { ...card, enabled: saved.enabled } : null;
+            })
+            .filter(Boolean);
+          const savedIds = new Set(savedOrder.map((s: any) => s.id));
+          const unsaved = prev.filter(c => !savedIds.has(c.id));
+          return [...mapped, ...unsaved];
+        });
       }
-      
+
       if (!CRUD_API) {
         setLoadError('API missing');
         return;
@@ -402,7 +482,7 @@ const Profile = () => {
       let loadedFromCache = false;
       if (cachedConvos) {
         const parsed = JSON.parse(cachedConvos);
-        const cacheAge   = Date.now() - (parsed?.timestamp ?? 0);
+        const cacheAge = Date.now() - (parsed?.timestamp ?? 0);
         const cacheValid = cacheAge < 1000 * 60 * 60 && parsed?.userId === user?.uid;
         if (cacheValid && Array.isArray(parsed?.data)) {
           const sortedCache = [...parsed.data].sort((a: Conversation, b: Conversation) => {
@@ -426,11 +506,10 @@ const Profile = () => {
         });
         const parseTs = (ts: any): number => {
           if (!ts) return 0;
-          if (typeof ts === "number")
-          {
+          if (typeof ts === "number") {
             return ts < 1e12 ? ts * 1000 : ts;
           }
-          if (ts?.seconds) return ts.seconds * 1000; 
+          if (ts?.seconds) return ts.seconds * 1000;
           return new Date(String(ts).replace(/(\.\d{3})\d+/, "$1")).getTime();
         };
         if (convResponse.ok) {
@@ -464,7 +543,7 @@ const Profile = () => {
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function formatConvoTimestamp(ms: number): string {
@@ -472,7 +551,7 @@ const Profile = () => {
     const normalized = ms < 1e12 ? ms * 1000 : ms;
     if (!normalized) return "";
     const date = new Date(normalized);
-    const now   = new Date();
+    const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays === 0) return `Today, ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
     if (diffDays === 1) return `Yesterday, ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
@@ -493,17 +572,17 @@ const Profile = () => {
       `}</style>
 
       {loadError && (
-                  <div className="fixed top-[4.2rem] left-0 right-0 z-50 bg-red-50 border-b border-red-200 px-6 py-2 text-sm text-red-600 text-center">
-                      {loadError} — <button onClick={getUserInfo} className="underline">retry</button>
-                  </div>
+        <div className="fixed top-[4.2rem] left-0 right-0 z-50 bg-red-50 border-b border-red-200 px-6 py-2 text-sm text-red-600 text-center">
+          {loadError} — <button onClick={getUserInfo} className="underline">retry</button>
+        </div>
       )}
 
-      <div className="flex bg-bglight py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)] overflow-y-auto">
+      <main className="flex bg-bglight py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)] overflow-y-auto">
         {mobileView ? (
           <div className="text-textdark w-full flex flex-col gap-5">
             <div className="border border-card-bord rounded-3xl bg-innercontainer p-4 flex flex-row gap-4 items-stretch">
               <button onClick={() => setIsPopUpOpen(true)} className="flex-shrink-0">
-                <img src={profilepic} draggable={false} className="w-28 h-28 object-cover rounded-2xl" />
+                <img src={profilepic} draggable={false} alt={name ? `${name}'s profile picture` : "Profile picture"} className="w-28 h-28 object-cover rounded-2xl" />
               </button>
               <div className="flex flex-col gap-2 flex-1 min-w-0">
                 <p className="font-semibold text-lg">{name}</p>
@@ -519,15 +598,22 @@ const Profile = () => {
             <div className="flex flex-row justify-between items-center">
               <h2 className="text-xl font-semibold">Program Status</h2>
               <div className="relative">
-                  <select value={program} onChange={(e) => pickProgram(e.target.value)}
-                      className="appearance-none border border-card-bord rounded-full pl-4 pr-8 py-1.5 text-sm bg-white text-textdark cursor-pointer">
-                      <option value="All">All</option>
-                      <option value="Active">Active</option>
-                      <option value="Complete">Complete</option>
-                  </select>
-                  <MoveRight className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-textdark rotate-90 pointer-events-none" />
+                <label htmlFor="program-filter" className="sr-only">
+                  Filter by program status
+                </label>
+                <select
+                  id="program-filter"
+                  value={program}
+                  onChange={(e) => pickProgram(e.target.value)}
+                  className="appearance-none border border-card-bord rounded-full pl-4 pr-8 py-1.5 text-sm bg-white text-textdark cursor-pointer"
+                >
+                  <option value="All">All</option>
+                  <option value="Active">Active</option>
+                  <option value="Complete">Complete</option>
+                </select>
+                <MoveRight className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-textdark rotate-90 pointer-events-none" aria-hidden="true" />
               </div>
-          </div>
+            </div>
 
             <div className="relative w-full">
               {carouselData.length > 0 && (
@@ -543,7 +629,7 @@ const Profile = () => {
                 />
               )}
               <div className="flex justify-between">
-                <button onClick={goToPrevious} disabled={currentIndex === 0}
+                <button onClick={goToPrevious} disabled={currentIndex === 0} aria-label="Previous program"
                   className="p-2 rounded-full bg-white shadow border border-gray-200 disabled:opacity-30">
                   <MoveLeft className="w-4 h-4 text-gray-700" />
                 </button>
@@ -567,8 +653,8 @@ const Profile = () => {
 
             {/* Profile header */}
             <div className="border border-card-bord rounded-[3rem] bg-innercontainer px-4 py-6 sm:px-8 sm:py-8 md:px-12 md:py-10 flex flex-col sm:flex-row sm:space-x-6 md:space-x-12 space-y-6 sm:space-y-0">
-              <button className="self-center sm:self-start" onClick={() => setIsPopUpOpen(true)}>
-                <img src={profilepic} draggable={false} className="w-32 h-32 sm:w-40 sm:h-40 md:w-[200px] md:h-[200px] object-cover rounded-3xl" />
+              <button aria-label="change profile picture" className="self-center sm:self-start" onClick={() => setIsPopUpOpen(true)}>
+                <img src={profilepic} alt={name ? `${name}'s profile picture` : "Profile picture"} draggable={false} className="w-32 h-32 sm:w-40 sm:h-40 md:w-[200px] md:h-[200px] object-cover rounded-3xl" />
               </button>
 
               <div className="flex-1 min-w-0 flex flex-col">
@@ -577,22 +663,23 @@ const Profile = () => {
                   <h2 className="text-center sm:text-left">{name}</h2>
                   <button
                     onClick={() => setIsEditing(!isEditing)}
-                    className={`px-4 py-1.5 rounded-full text-sm border-2 transition-all duration-200 whitespace-nowrap flex items-center gap-2 ${
-                      isEditing
-                        ? "border-accent bg-accent text-black"
-                        : "border-card-bord bg-white text-textdark hover:border-accent"
-                    }`}
+                    aria-pressed={isEditing}
+                    aria-label={isEditing ? "Finish customizing" : "Customize profile cards"}
+                    className={`px-4 py-1.5 rounded-full text-sm border-2 transition-all duration-200 whitespace-nowrap flex items-center gap-2 ${isEditing
+                      ? "border-accent bg-accent text-black"
+                      : "border-card-bord bg-white text-textdark hover:border-accent"
+                      }`}
                   >
                     {isEditing ? (
-                        <>
+                      <>
                         <Check className="w-5 h-5" />
                         Done
-                        </>
+                      </>
                     ) : (
-                        <>
+                      <>
                         <Sparkles className="w-5 h-5" />
                         Customize
-                        </>
+                      </>
                     )}
                   </button>
                 </div>
@@ -602,11 +689,14 @@ const Profile = () => {
                   <div className="grid grid-cols-3 gap-6 sm:gap-8 md:gap-10">
                     {enabledCards.map((card, i) => {
                       const isDragOver = dragOverIndex === i && dragIndex !== i;
-                      const isFlashed  = savedFlash === card.id;
+                      const isFlashed = savedFlash === card.id;
                       return (
                         <div
                           key={card.id}
                           data-testid={`profile-card-${card.id}`}
+                          tabIndex={isEditing ? 0 : -1}
+                          onKeyDown={(e) => handleCardKeyDown(e, i)}
+                          aria-label={isEditing ? `${card.sublabel} card, use arrow keys to reorder` : undefined}
                           draggable={isEditing}
                           onDragStart={(e) => handleDragStart(e, i)}
                           onDragEnter={(e) => handleDragEnter(e, i)}
@@ -627,12 +717,13 @@ const Profile = () => {
                           {/* Edit-mode controls */}
                           {isEditing && (
                             <>
-                              <GripVertical className="absolute top-2 left-2 w-5 h-5 text-gray-400 cursor-grab" />
+                              <GripVertical className="absolute top-2 left-2 w-5 h-5 text-gray-400 cursor-grab" aria-hidden="true" />
                               <button
                                 data-testid="card-remove-btn"
                                 onClick={() => toggleCard(card.id)}
+                                aria-label={`Remove ${card.sublabel} card`}
                                 className="absolute top-2 right-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center hover:bg-red-600 leading-none"
-                              ><X className="w-8.5 h-8.5 stroke-white" /></button>
+                              ><X className="w-8.5 h-8.5 stroke-white" aria-hidden="true" /></button>
                             </>
                           )}
 
@@ -674,19 +765,20 @@ const Profile = () => {
                           const atMax = enabledCards.length >= MAX_CARDS;
                           return (
                             <button
-                                data-testid={`tray-btn-${card.id}`}
-                                key={card.id}
-                                onClick={() => toggleCard(card.id)}
-                                disabled={atMax}
-                                className={`px-3 py-2 rounded-xl border-2 text-left text-sm transition-all flex-shrink-0 w-32 ${
-                                  atMax
-                                      ? "border-gray-200 bg-gray-50 opacity-40 cursor-not-allowed"
-                                      : "border-card-bord bg-white hover:border-accent hover:bg-green-50"
+                              data-testid={`tray-btn-${card.id}`}
+                              key={card.id}
+                              onClick={() => toggleCard(card.id)}
+                              disabled={atMax}
+                              aria-disabled={atMax}
+                              aria-label={`Add ${card.sublabel} card${atMax ? ", remove a card first" : ""}`}
+                              className={`px-3 py-2 rounded-xl border-2 text-left text-sm transition-all flex-shrink-0 w-32 ${atMax
+                                ? "border-gray-200 bg-gray-50 opacity-40 cursor-not-allowed"
+                                : "border-card-bord bg-white hover:border-accent hover:bg-green-50"
                                 }`}
                             >
                               <div className="font-semibold text-sm text-textdark flex items-center gap-1">
                                 {card.label}
-                                {card.editable && <span className="text-[9px] text-accent font-extrabold"><Pencil size={10}/></span>}
+                                {card.editable && <span className="text-[9px] text-accent font-extrabold"><Pencil size={10} /></span>}
                               </div>
                               <div className="text-[11px] text-gray-500 mt-0.5">{card.sublabel}</div>
                             </button>
@@ -700,7 +792,7 @@ const Profile = () => {
             </div>
 
             {/* Section switcher + filters — unchanged */}
-            <div className="flex flex-row justify-between items-center py-[1rem]">
+            <nav aria-label="Profile sections" className="flex flex-row justify-between items-center py-[1rem]">
               <SectionSwitcher active={section} onChange={setSection} />
               {section === "Conversations" ? (
                 <button onClick={() => navigate("/chatbot")}
@@ -710,23 +802,22 @@ const Profile = () => {
               ) : (
                 <div className="space-x-4">
                   {["All", "Active", "Complete"].map((label) => (
-                    <button key={label} onClick={() => pickProgram(label)}
-                      className={`px-8 py-1.5 text-base rounded-lg transition-colors duration-200 ${
-                        program === label
-                          ? "outline outline-2 outline-accent bg-accent text-textdark hover:bg-buttonhover hover:outline-buttonhover"
-                          : "outline outline-2 outline-accent bg-bglight text-textdark hover:border-buttonhover hover:bg-secondary"
-                      }`}>{label}</button>
+                    <button key={label} onClick={() => pickProgram(label)} aria-pressed={program === label}
+                      className={`px-8 py-1.5 text-base rounded-lg transition-colors duration-200 ${program === label
+                        ? "outline outline-2 outline-accent bg-accent text-textdark hover:bg-buttonhover hover:outline-buttonhover"
+                        : "outline outline-2 outline-accent bg-bglight text-textdark hover:border-buttonhover hover:bg-secondary"
+                        }`}>{label}</button>
                   ))}
                 </div>
               )}
-            </div>
+            </nav>
 
             {/* Program Status carousel — unchanged */}
             {section === "Program Status" && (
               <div className="relative w-full overflow-hidden">
                 <div ref={carouselRef} className="flex gap-0 items-stretch transition-transform duration-300 ease-in-out">
                   {filteredCarouselData.map((card, index) => (
-                    <div key={index} className="flex-shrink-0 pr-4 flex items-start"
+                    <div key={index} aria-hidden={index < currentIndex || index >= currentIndex + cardsPerView} className="flex-shrink-0 pr-4 flex items-start"
                       style={{ width: filteredCarouselData.length < cardsPerView ? "auto" : `${cardWidthPercent}%` }}>
                       <DegreeProgressCard title={card.title} categories={card.categories} completed={card.completed}
                         total={card.total} percentage={card.percentage} startDate={card.startDate ?? undefined}
@@ -748,13 +839,13 @@ const Profile = () => {
                       className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30">
                       <MoveLeft className="w-5 h-5" />
                     </button>
-                    <button onClick={goToNext} disabled={currentIndex === maxIndex}
+                    <button onClick={goToNext} disabled={currentIndex === maxIndex} aria-label="Next program"
                       className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30">
                       <MoveRight className="w-5 h-5" />
                     </button>
                     <div className="flex justify-center gap-2 mt-2">
                       {Array.from({ length: maxIndex + 1 }).map((_, index) => (
-                        <button key={index} onClick={() => goToSlide(index)}
+                        <button key={index} onClick={() => goToSlide(index)} aria-label={`Go to program ${index + 1}`} aria-current={index === currentIndex ? "true" : undefined}
                           className={`h-3 rounded-full transition-all duration-300 ${index === currentIndex ? 'bg-accent w-8' : 'bg-gray-300 w-3 hover:bg-gray-400'}`} />
                       ))}
                     </div>
@@ -776,10 +867,10 @@ const Profile = () => {
               <div className="relative w-full overflow-hidden">
                 <div ref={convCarouselRef} className="flex gap-0 items-stretch transition-transform duration-300 ease-in-out">
                   {conversationsData.length > 0 ? (
-                    conversationsData.map((conv) => {
+                    conversationsData.map((conv, index) => {
                       const lastMsgTs = conv.messages?.[conv.messages.length - 1]?.timestamp ?? 0;
                       return (
-                        <div key={conv.conversation_id} className="flex-shrink-0 pr-4 flex items-start" style={{ width: `${cardWidthPercent}%` }}>
+                        <div key={conv.conversation_id} aria-hidden={index < convIndex || index >= convIndex + cardsPerView} className="flex-shrink-0 pr-4 flex items-start" style={{ width: `${cardWidthPercent}%` }}>
                           <ChatConversationCard
                             title={conv.title || conv.messages?.[0]?.content || "Untitled Conversation"}
                             timestamp={formatConvoTimestamp(lastMsgTs)}
@@ -797,17 +888,17 @@ const Profile = () => {
                 </div>
                 {conversationsData.length > cardsPerView && (
                   <>
-                    <button onClick={goToConvPrevious} disabled={convIndex === 0}
+                    <button onClick={goToConvPrevious} disabled={convIndex === 0} aria-label="Previous conversation"
                       className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30">
                       <MoveLeft className="w-5 h-5" />
                     </button>
-                    <button onClick={goToConvNext} disabled={convIndex === maxConvIndex}
+                    <button onClick={goToConvNext} disabled={convIndex === maxConvIndex} aria-label="Next conversation"
                       className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow border rounded-full p-2 disabled:opacity-30">
                       <MoveRight className="w-5 h-5" />
                     </button>
                     <div className="flex justify-center gap-2 mt-2">
                       {Array.from({ length: maxConvIndex + 1 }).map((_, index) => (
-                        <button key={index} onClick={() => goToConvSlide(index)}
+                        <button key={index} onClick={() => goToConvSlide(index)} aria-label={`Go to conversation ${index + 1}`} aria-current={index === convIndex ? "true" : undefined}
                           className={`h-3 rounded-full transition-all duration-300 ${index === convIndex ? "bg-accent w-8" : "bg-gray-300 w-3 hover:bg-gray-400"}`} />
                       ))}
                     </div>
@@ -817,19 +908,28 @@ const Profile = () => {
             )}
           </div>
         )}
-      </div>
+      </main>
 
       {/* Profile picture picker popup — unchanged */}
       {isPopUpOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setIsPopUpOpen(false)}>
-          <div className="bg-white rounded-2xl p-6 sm:p-10 shadow-lg relative items-center text-center space-y-6 sm:space-y-10" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => closePickerModal()}>
+          <div
+            ref={pickerModalRef}
+            tabIndex={-1}
+            onKeyDown={handlePickerKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pick your profile picture"
+            className="bg-white rounded-2xl p-6 sm:p-10 shadow-lg relative items-center text-center space-y-6 sm:space-y-10"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2>Pick Your Favorite Peechi</h2>
             <div className="flex flex-row space-x-4 sm:space-x-10">
               {[1, 2, 3].map((num) => (
                 <button key={num} className="hover:scale-105 transition-transform" onClick={() => pickProfile(num)}>
                   {profilePictureType === num && googlePhotoURL
-                    ? <img referrerPolicy="no-referrer" src={googlePhotoURL} className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" draggable={false} />
-                    : <img src={`/assets/profile_pics/${num}.png`} className="w-24 h-24 sm:w-40 sm:h-40 object-cover" draggable={false} />}
+                    ? <img referrerPolicy="no-referrer" src={googlePhotoURL} alt="Your Google profile picture" className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" draggable={false} />
+                    : <img src={`/assets/profile_pics/${num}.png`} alt={`Profile picture option ${num}`} className="w-24 h-24 sm:w-40 sm:h-40 object-cover" draggable={false} />}
                 </button>
               ))}
             </div>
@@ -838,7 +938,7 @@ const Profile = () => {
                 <button key={num} className="hover:scale-105 transition-transform" onClick={() => pickProfile(num)}>
                   {profilePictureType === num && googlePhotoURL
                     ? <img referrerPolicy="no-referrer" src={googlePhotoURL} className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" draggable={false} />
-                    : <img src={`/assets/profile_pics/${num}.png`} className="w-24 h-24 sm:w-40 sm:h-40 object-cover" draggable={false} />}
+                    : <img src={`/assets/profile_pics/${num}.png`} alt={`Profile picture option ${num}`} className="w-24 h-24 sm:w-40 sm:h-40 object-cover" draggable={false} />}
                 </button>
               ))}
             </div>
@@ -849,7 +949,15 @@ const Profile = () => {
       {/* Missing info modal — unchanged */}
       {showMissingInfoModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[9999]">
-          <div className="bg-white rounded-2xl p-10 shadow-lg flex flex-col items-center text-center gap-6 max-w-md w-full mx-4">
+          <div
+            ref={missingInfoModalRef}
+            tabIndex={-1}
+            onKeyDown={handleMissingInfoKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="missing-info-title"
+            className="bg-white rounded-2xl p-10 shadow-lg flex flex-col items-center text-center gap-6 max-w-md w-full mx-4"
+          >
             <h2 className="text-xl font-semibold text-gray-900">Missing Profile Information</h2>
             <p className="text-gray-500 text-base">To access your profile, please submit your transcript for the best experience</p>
             <div className="flex gap-4">
