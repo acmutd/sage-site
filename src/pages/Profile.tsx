@@ -258,7 +258,7 @@ const Profile = () => {
   };
 
   const closePickerModal = () => {
-    closePickerModal()
+    setIsPopUpOpen(false);
     setTimeout(() => pickerTriggerRef.current?.focus(), 0);
   };
 
@@ -664,7 +664,7 @@ const Profile = () => {
                   <button
                     onClick={() => setIsEditing(!isEditing)}
                     aria-pressed={isEditing}
-                    aria-label={isEditing ? "Finish customizing" : "Customize profile cards"}
+                    aria-label={isEditing ? "Done" : "Customize"}
                     className={`px-4 py-1.5 rounded-full text-sm border-2 transition-all duration-200 whitespace-nowrap flex items-center gap-2 ${isEditing
                       ? "border-accent bg-accent text-black"
                       : "border-card-bord bg-white text-textdark hover:border-accent"
