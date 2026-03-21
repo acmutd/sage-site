@@ -51,6 +51,55 @@ const PlannerPage = () => {
   const [loading, setLoading] = useState(true);
   const [planConflict, setPlanConflict] = useState<PlanConflictState | null>(null);
 
+  const conflictModalRef = useRef<HTMLDivElement>(null);
+  const onboardingOverlayRef = useRef<HTMLDivElement>(null);
+  const conflictTriggerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (planConflict && conflictModalRef.current) {
+      conflictModalRef.current.focus();
+    }
+  }, [planConflict]);
+
+  useEffect(() => {
+    if (showOnboarding && !isFirstTime && onboardingOverlayRef.current) {
+      onboardingOverlayRef.current.focus();
+    }
+  }, [showOnboarding, isFirstTime]);
+
+
+  const handleConflictModalKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") { setPlanConflict(null); return; }
+    if (e.key !== "Tab") return;
+    const focusable = conflictModalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+
+  const handleOnboardingKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") { handleOnboardingCancel(); return; }
+    if (e.key !== "Tab") return;
+    const focusable = onboardingOverlayRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+
   // "select" option — which existing plan to overwrite
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   // existing plan names/ids come from Planner via this ref, populated on register
@@ -260,7 +309,7 @@ const PlannerPage = () => {
       if (error.message?.includes("429")) {
         toast.error("Daily evaluation limit reached. Try again tomorrow.");
       } else {
-          toast.error("Failed to load your degree requirements. Try again.");
+        toast.error("Failed to load your degree requirements. Try again.");
       }
     }
   }, [user, VITE_EVALUATOR_API]);
@@ -287,6 +336,7 @@ const PlannerPage = () => {
 
     setPlanConflict(null);
     setShowPlanner(true);
+    setTimeout(() => conflictTriggerRef.current?.focus(), 0);
   };
 
   const handleFinishOnboarding = async (data: any) => {
@@ -305,6 +355,7 @@ const PlannerPage = () => {
   };
 
   const handleRestartOnboarding = async () => {
+    conflictTriggerRef.current = document.activeElement as HTMLElement;
     setShowOnboarding(true);
     setFirstTime(false);
   };
@@ -390,11 +441,16 @@ const PlannerPage = () => {
   }, [rawSemesters, transcriptData]);
 
   return (
-    <div className="bg-gray-50">
+    <main className="bg-gray-50">
       {loading ? (
-        <div className="flex items-center justify-center min-h-screen">
+        <div
+          role="status"
+          aria-live="polite"
+          aria-label="Loading your planner"
+          className="flex items-center justify-center min-h-screen"
+        >
           <div className="flex flex-col items-center justify-center">
-            <img src="sage-icon.png" alt="Loading" className="h-16 w-16 animate-spin" />
+            <img src="sage-icon.png" alt="" aria-hidden="true" className="h-16 w-16 animate-spin" />
             <p className="mt-4 opacity-80 font-semibold">Loading...</p>
           </div>
         </div>
@@ -403,7 +459,15 @@ const PlannerPage = () => {
           {/* Conflict resolution modal */}
           {planConflict && (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] px-4">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 flex flex-col gap-4">
+              <div
+                ref={conflictModalRef}
+                tabIndex={-1}
+                onKeyDown={handleConflictModalKeyDown}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="conflict-modal-title"
+                className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 flex flex-col gap-4"
+              >
                 <h2 className="text-lg font-bold text-gray-900">Program Plan Conflict?</h2>
                 <p className="text-sm text-gray-500">
                   Your new transcript has different degrees, programs, and/or courses. What would you like to do?
@@ -411,7 +475,7 @@ const PlannerPage = () => {
 
                 {/* Overwrite: always shown — replaces active plan */}
                 <button
-                  onClick={() => handlePlanConflictChoice("overwrite")}
+                  onClick={() => handlePlanConflictChoice("overwrite")} aria-describedby="overwrite-desc"
                   className="w-full text-left px-4 py-3 rounded-xl border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition"
                 >
                   <p className="font-semibold text-gray-800">Overwrite current plan</p>
@@ -423,7 +487,11 @@ const PlannerPage = () => {
                   <div className="flex flex-col gap-2 px-4 py-3 rounded-xl border border-gray-200">
                     <p className="font-semibold text-gray-800">Apply to a specific plan</p>
                     <p className="text-xs text-gray-400">Pick which of your existing plans to overwrite</p>
+                    <label htmlFor="plan-select" className="sr-only">
+                      Select a plan to overwrite
+                    </label>
                     <select
+                      id="plan-select"
                       value={selectedPlanId}
                       onChange={(e) => setSelectedPlanId(e.target.value)}
                       className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
@@ -445,7 +513,7 @@ const PlannerPage = () => {
 
                 {/* New: always shown — keeps all existing, adds fresh plan */}
                 <button
-                  onClick={() => handlePlanConflictChoice("new")}
+                  onClick={() => handlePlanConflictChoice("new")} aria-describedby="new-plan-desc"
                   className="w-full text-left px-4 py-3 rounded-xl border border-gray-200 hover:border-green-400 hover:bg-green-50 transition"
                 >
                   <p className="font-semibold text-gray-800">Save current & switch to new plan</p>
@@ -453,7 +521,10 @@ const PlannerPage = () => {
                 </button>
 
                 <button
-                  onClick={() => setPlanConflict(null)}
+                  onClick={() => {
+                    setPlanConflict(null);
+                    setTimeout(() => conflictTriggerRef.current?.focus(), 0);
+                  }}
                   className="w-full text-sm text-gray-500 hover:text-gray-700 text-center border border-gray-200 hover:border-gray-300 rounded-xl py-3 transition-colors"
                 >
                   Cancel
@@ -491,7 +562,16 @@ const PlannerPage = () => {
 
               {showOnboarding && !isFirstTime && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80] px-4">
-                  <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    ref={onboardingOverlayRef}
+                    tabIndex={-1}
+                    onKeyDown={handleOnboardingKeyDown}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Update your program information"
+                    className="w-full max-w-3xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Onboarding
                       onClose={handleOnboardingCancel}
                       onFinish={handleFinishOnboarding}
@@ -507,7 +587,7 @@ const PlannerPage = () => {
           </DndProvider>
         </>
       )}
-    </div>
+    </main>
   );
 };
 

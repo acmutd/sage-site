@@ -52,12 +52,13 @@ const YearDivider: React.FC<YearDividerProps> = ({
                         className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
                             isCollapsed ? "-rotate-180" : "rotate-0"
                         }`}
+                        aria-hidden="true" 
                     />
                     <h2 className="text-lg font-semibold text-gray-700">
                         {yearLabel}
                     </h2>
                     {isCollapsed && (semesterCount !== undefined || courseCount !== undefined) && (
-                        <span className="ml-1.5 text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2.5 py-0.5 flex-shrink-0">
+                        <span className="ml-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-full px-2.5 py-0.5 flex-shrink-0">
                             {[
                                 semesterCount !== undefined && `${semesterCount} semester${semesterCount !== 1 ? 's' : ''}`,
                                 courseCount !== undefined && `${courseCount} course${courseCount !== 1 ? 's' : ''}`,
@@ -84,7 +85,7 @@ const YearDivider: React.FC<YearDividerProps> = ({
                 }}>
                     <DropdownMenuTrigger asChild>
                         <button data-tour="year-option" aria-label="Year options" className="hover:bg-gray-100 p-1 rounded">
-                            <Menu className="w-5 h-5 text-gray-600" />
+                            <Menu className="w-5 h-5 text-gray-600" aria-hidden="true" />
                         </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -94,7 +95,7 @@ const YearDivider: React.FC<YearDividerProps> = ({
                                 className="md:hidden text-[#3eb369] focus:text-[#3eb369] hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-[#3eb369]"
                                 onClick={() => onAddSemester(yearKey)}
                             >
-                                <Plus className="w-4 h-4 mr-2" />
+                                <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
                                 Add Semester
                             </DropdownMenuItem>
                         )}
@@ -105,7 +106,7 @@ const YearDivider: React.FC<YearDividerProps> = ({
                                 className="text-amber-600 focus:text-amber-600 hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-amber-600"
                                 onClick={() => onClearYear(yearKey)}
                             >
-                                <Eraser className="w-4 h-4 mr-2" />
+                                <Eraser className="w-4 h-4 mr-2" aria-hidden="true" />
                                 Clear All Semesters
                             </DropdownMenuItem>
                         )}
@@ -116,14 +117,14 @@ const YearDivider: React.FC<YearDividerProps> = ({
                                 className="text-destructive focus:text-destructive hover:bg-gray-100 cursor-pointer"
                                 onClick={() => onDeleteYear(yearKey)}
                             >
-                                <Trash2 className="w-4 h-4 mr-2" />
+                                <Trash2 className="w-4 h-4 mr-2" aria-hidden="true" />
                                 Delete Year
                             </DropdownMenuItem>
                         )}
 
                         <DropdownMenuSub>
                             <DropdownMenuSubTrigger className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">
-                                <Download className="w-4 h-4 mr-2" />
+                                <Download className="w-4 h-4 mr-2" aria-hidden="true"  />
                                 Export Year
                             </DropdownMenuSubTrigger>
                             <DropdownMenuSubContent className="bg-white rounded-2xl shadow-lg p-2">
