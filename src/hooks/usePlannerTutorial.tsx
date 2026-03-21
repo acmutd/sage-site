@@ -80,6 +80,14 @@ export function usePlannerTutorial({ scrollContainerRef, user, onForceExpandSide
                     }
                 },
                 {
+                    element: '[data-tour="evaluation-message"]',
+                    popover: {
+                        title: 'Selected catalog',
+                        description: 'Shows which catalog your degree requirements are evaluated against. You can change this in Edit Plans if your assigned catalog differs.',
+                        side: "bottom"
+                    }
+                },
+                {
                     element: '[data-tour="semester-area"]',
                     popover: {
                         title: 'Academic Plan',
@@ -105,10 +113,10 @@ export function usePlannerTutorial({ scrollContainerRef, user, onForceExpandSide
                     onDeselected: () => {
                         if (!dropdownWasOpenedRef.current) {
                             setTimeout(() => {
-                                driverInstance.moveTo(18);
+                                driverInstance.moveTo(19);
                                 setTimeout(() => {
                                     driverInstance.destroy();
-                                    driverInstance.drive(17);
+                                    driverInstance.drive(18);
                                 }, 50);
                             }, 150);
                         }

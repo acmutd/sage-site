@@ -1,6 +1,7 @@
 import React from 'react';
-import { ChevronUp, Eraser, Menu, Plus, Trash2 } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { ChevronUp, Download, Eraser, Menu, Plus, Trash2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { exportYearAsCSV, exportYearAsJPG, exportYearAsPDF, exportYearAsPNG, SavedPlannerState } from '@/utils/planExport';
 
 interface YearDividerProps {
     yearLabel: string;
@@ -17,6 +18,7 @@ interface YearDividerProps {
     semesterCount?: number;
     courseCount?: number;
     hasCurrentSemester: boolean;
+    activePlan?: SavedPlannerState;
 }
 
 const YearDivider: React.FC<YearDividerProps> = ({
@@ -34,6 +36,7 @@ const YearDivider: React.FC<YearDividerProps> = ({
     semesterCount,
     courseCount,
     hasCurrentSemester = false,
+    activePlan,
 }) => {
     return (
         <div className="w-full mb-4">
@@ -88,7 +91,7 @@ const YearDivider: React.FC<YearDividerProps> = ({
                         {onAddSemester && (
                             <DropdownMenuItem 
                                 data-tour="add-semester"
-                                className="text-[#3eb369] focus:text-[#3eb369] hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-[#3eb369]"
+                                className="md:hidden text-[#3eb369] focus:text-[#3eb369] hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-[#3eb369]"
                                 onClick={() => onAddSemester(yearKey)}
                             >
                                 <Plus className="w-4 h-4 mr-2" />
@@ -117,6 +120,24 @@ const YearDivider: React.FC<YearDividerProps> = ({
                                 Delete Year
                             </DropdownMenuItem>
                         )}
+
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">
+                                <Download className="w-4 h-4 mr-2" />
+                                Export Year
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent className="bg-white rounded-2xl shadow-lg p-2">
+                                <DropdownMenuItem onClick={() => activePlan && exportYearAsPNG(activePlan, yearKey)}
+                                    className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">PNG</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => activePlan && exportYearAsJPG(activePlan, yearKey)}
+                                    className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">JPG</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => activePlan && exportYearAsPDF(activePlan, yearKey)}
+                                    className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">PDF</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => activePlan && exportYearAsCSV(activePlan, yearKey)}
+                                    className="hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100">CSV</DropdownMenuItem>
+                            </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

@@ -11,20 +11,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAuth } from "@/context/AuthContext";
+import { getCurrentCatalogYear } from "@/utils/studentInfo";
 
 const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
 const calculateCatalogYear = (semester: string): string => {
+  if (!semester) return getCurrentCatalogYear();
   const [year, season] = semester.split(" ");
   return season === "Fall" ? year : (parseInt(year) - 1).toString();
-};
-
-const getCurrentCatalogYear = (): string => {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth(); // 0-11
-  
-  return currentMonth >= 8 ? currentYear.toString() : (currentYear - 1).toString();
 };
 
 async function fetchCatalog(year: string, user: any): Promise<any> {
@@ -90,6 +84,14 @@ interface ProgramValidationAProps {
   onUploadClick?: () => void;
   isFirstTime?: boolean;
 }
+
+const getCurrentSemester = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const season = month >= 8 ? "Fall" : month >= 4 ? "Summer" : "Spring";
+  return `${year} ${season}`;
+};
 
 const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, onBack, dropdownRef, isFirstTime = true
 }) => {
@@ -207,8 +209,11 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
         )
       );
     } else {
-      // Add new program
-      const newProgram = { ...updatedProgram, id: Date.now() }; // Generate a unique ID
+      const newProgram = { 
+        ...updatedProgram, 
+        id: Date.now(),
+        start_date: updatedProgram.start_date ?? getCurrentSemester(),
+      };
       setProgramsData((prev) => [...prev, newProgram]);
     }
     setIsEditing(false); // Exit "Edit" mode

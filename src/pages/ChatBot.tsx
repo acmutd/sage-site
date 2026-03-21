@@ -33,6 +33,9 @@ const hydrateMessages = (msgs: Message[]): Message[] =>
         if (parsed?.type === "email") {
           return { ...msg, type: "email" as const, variants: parsed.variants, content: "" };
         }
+        if (parsed?.type === "schedule") {
+          return { ...msg, type: "schedule" as const, variants: parsed.variants, content: "" };
+        }
       } catch { /* plain string, leave as is */ }
     }
     return msg;
@@ -244,6 +247,7 @@ const ChatBot: React.FC = () => {
   };
 
   const startNewChat = () => {
+    setChatError(null);
     if (messages.length > 0 && conversation_id) {
       updateConversations((prevConversations) => {
         if (!Array.isArray(prevConversations)) return [];
@@ -262,6 +266,10 @@ const ChatBot: React.FC = () => {
     const newConversationId = `conversation_${uuidv4()}`;
     loadConversation(newConversationId, []);
     setIsNewConversation(true);
+
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = 0;
+    }
 
     localStorage.setItem(
       "chatbot_conversation",
@@ -399,6 +407,8 @@ const ChatBot: React.FC = () => {
               variants: data.response.variants,
               timestamp: Date.now(),
             }
+          : data.type === "schedule"
+          ? { role: "assistant", content: JSON.stringify({ type: "schedule", variants: data.response.variants }), type: "schedule", variants: data.response.variants, timestamp: Date.now() }
           : {
               role: "assistant",
               content: data.response,
@@ -622,7 +632,7 @@ const ChatBot: React.FC = () => {
                 <div className="flex flex-col flex-grow-[1] min-h-0 w-full bg-innercontainer rounded-lg border border-border">
                   <div
                     ref={chatContainerRef}
-                    className="p-8 overflow-y-auto space-y-2 flex flex-col items-center"
+                    className="p-8 overflow-y-auto space-y-2 flex flex-col items-center flex-1 min-h-0"
                     style={{ scrollbarWidth: "none" }}
                   >
                     {messages.length === 0 && !chatLoad && !generateSchedule ? (
@@ -692,7 +702,11 @@ const ChatBot: React.FC = () => {
                         query.trim().length >= 400 ? "pb-6" : ""
                       }`}
                       style={{ scrollbarWidth: "none" }}
-                      onChange={(e) => setQuery(e.target.value)}
+                      onChange={(e) => 
+                      {
+                        setQuery(e.target.value);
+                        if (chatError) setChatError(null);
+                      }}
                       onKeyDown={handleEnter}
                       value={query}
                       disabled={loading}
@@ -1043,10 +1057,17 @@ const ChatBot: React.FC = () => {
                   setDeleting(true);
                   try {
                     await deleteConversation(conversationToDelete);
+
+                    setMessages([]);
+                    updateConversationId(null);
+                    setChatError(null);
+                    localStorage.removeItem("chatbot_conversation");
+                    
                     setShowDeleteModal(false);
                     setConversationToDelete(null);
                   } catch (err) {
                     console.error("Failed to delete:", err);
+                    setChatError("Failed to delete conversation. Please try again.");
                   } finally {
                     setDeleting(false);
                   }

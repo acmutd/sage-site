@@ -83,7 +83,10 @@ const Profile = () => {
     }
     return "/assets/profile_pics/1.png";
   });
-  const [profilePictureType, setProfilePictureType] = useState(1);
+  const [profilePictureType, setProfilePictureType] = useState(() => {
+    const cached = localStorage.getItem('profilePictureType');
+    return cached ? parseInt(cached) : 1;
+  });
   const [googlePhotoURL, setGooglePhotoURL]         = useState<string | null>(null);
   const [isPopUpOpen, setIsPopUpOpen]               = useState(false);
   const [program, setProgram]                        = useState("All");
@@ -186,9 +189,11 @@ const Profile = () => {
   }>;
 
   useEffect(() => {
+    if (!user) return;
     if (user?.photoURL) {
       setGooglePhotoURL(user.photoURL);
-      if (profilePictureType === 0) setProfilePic(user.photoURL);
+      const storedType = parseInt(localStorage.getItem('profilePictureType') ?? '1');
+      if (storedType === 0) setProfilePic(user.photoURL);
     }
     getUserInfo();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -298,12 +303,14 @@ const Profile = () => {
       console.error("Failed to update profile:", result.error);
       setProfilePictureType(currentType);
       localStorage.setItem('profilePictureType', currentType.toString());
+      window.dispatchEvent(new Event('profilePictureUpdated'));
       setProfilePic(currentType === 0 && googlePhotoURL ? googlePhotoURL : `/assets/profile_pics/${currentType}.png`);
       return;
     }
     setProfilePictureType(newType);
     localStorage.setItem('profilePictureType', newType.toString());
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('profilePictureUpdated'));
     if (newType === 0 && googlePhotoURL) setProfilePic(googlePhotoURL);
     else setProfilePic(`/assets/profile_pics/${newType}.png`);
     setIsPopUpOpen(false);
@@ -329,6 +336,20 @@ const Profile = () => {
       if (!response.ok) throw new Error("Failed to fetch user info");
       const data = await response.json();
 
+      const picType = data.profile?.["user-fields"]?.profile_picture_type ?? 1;
+      const savedPhotoURL = data.profile?.["user-fields"]?.photo_url ?? null;
+      const googleURL = user?.photoURL ?? savedPhotoURL;
+      if (googleURL) setGooglePhotoURL(googleURL);
+      setProfilePictureType(picType);
+      localStorage.setItem('profilePictureType', picType.toString());
+      window.dispatchEvent(new Event('profilePictureUpdated'));
+      if (picType === 0 && googleURL) setProfilePic(googleURL);
+      else setProfilePic(`/assets/profile_pics/${picType}.png`);
+
+      if (!data.majors || !data.credit_hours) {
+        setShowMissingInfoModal(true);
+        return;
+      }
       setMajorsData([...(data.majors ?? []), ...(data.minors ?? []), ...(data.certifications ?? [])]);
       setName(data.name);
 
@@ -359,16 +380,7 @@ const Profile = () => {
               return [...mapped, ...unsaved];
           });
       }
-
-      const picType = data.profile?.["user-fields"]?.profile_picture_type ?? data.profile_picture_type ?? 1;
-      if (user?.photoURL) setGooglePhotoURL(user.photoURL);
-      if (picType !== profilePictureType) {
-          setProfilePictureType(picType);
-          localStorage.setItem('profilePictureType', picType.toString());
-          if (picType === 0 && user?.photoURL) setProfilePic(user.photoURL);
-          else setProfilePic(`/assets/profile_pics/${picType}.png`);
-      }
-
+      
       if (!CRUD_API) {
         setLoadError('API missing');
         return;
@@ -436,6 +448,7 @@ const Profile = () => {
         }
       }
     } catch (err) {
+      console.error("getUserInfo error:", err);
       setLoadError('Failed to load profile. Please refresh.');
     }
   }
@@ -835,7 +848,7 @@ const Profile = () => {
 
       {/* Missing info modal — unchanged */}
       {showMissingInfoModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[9999]">
           <div className="bg-white rounded-2xl p-10 shadow-lg flex flex-col items-center text-center gap-6 max-w-md w-full mx-4">
             <h2 className="text-xl font-semibold text-gray-900">Missing Profile Information</h2>
             <p className="text-gray-500 text-base">To access your profile, please submit your transcript for the best experience</p>

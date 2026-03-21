@@ -20,6 +20,7 @@ interface SchedulePlanningModalProps {
     onSave?: (selectedSections: Record<string, string>, colorOverrides: Record<string, string>) => void;
     initialSelectedSections?: Record<string, string>;
     initialColorOverrides?: Record<string, string>;
+    coursebookSemester?: string | null;
 }
 
 const DAY_ABBR: Record<string, string> = {
@@ -119,7 +120,11 @@ const ColorDotPicker = ({ color, onChange }: { color: string; onChange: (hex: st
     );
 };
 
+const getTime = (t: any) => (Array.isArray(t) ? t[0] : (t || '')).split(';')[0].trim();
+
 const parseTime12 = (timeStr: string): { start: number; end: number } | null => {
+    const raw = Array.isArray(timeStr) ? timeStr[0] : timeStr;
+    if (!raw) return null;
     const trimmed = timeStr.split(';')[0].trim();
     const match = trimmed.match(/(\d+):(\d+)\s*(AM|PM)\s*[-–]\s*(\d+):(\d+)\s*(AM|PM)/i);
     if (!match) return null;
@@ -141,8 +146,10 @@ const parseTime24 = (t: string): number => {
     return h * 60 + (m || 0);
 };
 
-const parseDays = (days: string): Set<string> =>
-    new Set(days.split(',').map(d => d.trim()).filter(Boolean));
+const parseDays = (days: string | string[]): Set<string> => {
+    if (Array.isArray(days)) return new Set(days.map(d => d.trim()).filter(Boolean));
+    return new Set(days.split(',').map(d => d.trim()).filter(Boolean));
+};
 
 const timesOverlap = (s1: number, e1: number, s2: number, e2: number) =>
     s1 < e2 && s2 < e1;
@@ -220,7 +227,16 @@ const guessModality = (sec: any): 'online' | 'hybrid' | 'inperson' => {
     return 'inperson';
 };
 
-const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, courses, onClose, onSave, initialSelectedSections, initialColorOverrides }) => {
+const formatCoursebookSemester = (sem: string | null): string | null => {
+    if (!sem) return null;
+    const match = sem.match(/^(\d{2})([suf])$/);
+    if (!match) return null;
+    const year = `20${match[1]}`;
+    const name = { s: "Spring", u: "Summer", f: "Fall" }[match[2]] ?? "";
+    return `${name} ${year}`;
+};
+
+const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, courses, onClose, onSave, initialSelectedSections, initialColorOverrides, coursebookSemester }) => {
     const [selectedSections, setSelectedSections] = useState<Record<string, string>>(initialSelectedSections ?? {});
     const [breaks, setBreaks] = useState<Break[]>([]);
     const [showFilters, setShowFilters] = useState(false);
@@ -304,24 +320,37 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
             if (sessionFilter !== 'all' && sec.session !== sessionFilter) return false;
             if (modalityFilter !== 'all' && guessModality(sec) !== modalityFilter) return false;
             if (profFilter !== 'all') {
-                const profs = (sec.instructors || '').split(',').map((p: string) => p.trim());
+                const profs = (Array.isArray(sec.instructors) ? sec.instructors : (sec.instructors || '').split(',')).map((p: string) => p.trim());
                 if (!profs.includes(profFilter)) return false;
             }
             return true;
         });
-        if (sortBy === 'professor') result = [...result].sort((a, b) => (a.instructors || '').localeCompare(b.instructors || ''));
-        else if (sortBy === 'location') result = [...result].sort((a, b) => (a.location || '').localeCompare(b.location || ''));
+        if (sortBy === 'professor') result = [...result].sort((a, b) => {
+            const aProf = (Array.isArray(a.instructors) ? a.instructors.join(', ') : (a.instructors || ''));
+            const bProf = (Array.isArray(b.instructors) ? b.instructors.join(', ') : (b.instructors || ''));
+            return aProf.localeCompare(bProf);
+        });
+        
+        else if (sortBy === 'location') result = [...result].sort((a, b) => {
+            const aLoc = (Array.isArray(a.location) ? a.location.join(', ') : (a.location || ''));
+            const bLoc = (Array.isArray(b.location) ? b.location.join(', ') : (b.location || ''));
+            return aLoc.localeCompare(bLoc);
+        });        
+        
         return result;
     };
 
     const professorDropdownWidth = useMemo(() => {
         let maxLen = 'All Professors'.length;
         plannableCourses.forEach(({ sections }) =>
-            sections.forEach((sec: any) =>
-                (sec.instructors || '').split(',').forEach((p: string) => {
+            sections.forEach((sec: any) => {
+                const profs: string[] = Array.isArray(sec.instructors)
+                    ? sec.instructors
+                    : (sec.instructors || '').split(',');
+                profs.forEach((p: string) => {
                     maxLen = Math.max(maxLen, p.trim().length);
-                })
-            )
+                });
+            })
         );
         return maxLen * 7 + 48;
     }, [plannableCourses]);
@@ -400,7 +429,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
         <>
             <div className="fixed inset-0 bg-black bg-opacity-40 z-[9998]" />
                 <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
-                    <div className={`bg-white sm:rounded-xl rounded-t-2xl shadow-2xl w-full h-[95vh] sm:h-auto sm:max-h-[90vh] flex flex-col pointer-events-auto transition-all duration-300 ${showPreview ? 'sm:max-w-5xl' : 'sm:max-w-2xl'}`}>
+                    <div style={{ WebkitOverflowScrolling: 'touch' }} className={`bg-white sm:rounded-xl rounded-t-2xl shadow-2xl w-full h-[95dvh] sm:h-auto sm:max-h-[90vh] flex flex-col pointer-events-auto transition-all duration-300 ${showPreview ? 'sm:max-w-5xl' : 'sm:max-w-2xl'}`}>
 
                     {/* Header */}
                     <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
@@ -637,7 +666,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
                                 const courseProfessors = [...new Set(
                                     sections.flatMap((sec: any) =>
-                                        (sec.instructors || '').split(',').map((p: string) => p.trim()).filter(Boolean)
+                                        (Array.isArray(sec.instructors) ? sec.instructors : (sec.instructors || '').split(',')).map((p: string) => p.trim()).filter(Boolean)
                                     )
                                 )].sort();
 
@@ -731,13 +760,18 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                             {sec.session && <span className="text-[10px] text-blue-500">{sec.session}</span>}
                                                                             <span className="text-gray-500">·</span>
                                                                             <span className="font-medium text-gray-700 truncate">
-                                                                                {sec.instructors?.split(',')[0].trim()}{sec.instructors?.includes(',') ? ' +' : ''}
+                                                                                {(() => {
+                                                                                    const instList = Array.isArray(sec.instructors)
+                                                                                        ? sec.instructors
+                                                                                        : (sec.instructors || '').split(',').map((p: string) => p.trim()).filter(Boolean);
+                                                                                    return instList.length > 0 ? `${instList[0]}${instList.length > 1 ? ' +' : ''}` : '';
+                                                                                })()}
                                                                             </span>
                                                                             <span className="text-gray-400">{sec.activity_type}</span>
                                                                         </div>
                                                                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                                             {sec.days && <DayPips days={sec.days} />}
-                                                                            <span className="text-gray-500">{sec.times_12h?.split(';')[0].trim()}</span>
+                                                                            <span className="text-gray-500">{getTime(sec.times_12h)}</span>
                                                                             <span className="text-gray-300">·</span>
                                                                             <span className={`font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
                                                                                 {sec.location?.replace('_', ' ')}
@@ -761,13 +795,18 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                         </div>
                                                                         <div className="min-w-0">
                                                                             <div className="font-medium text-gray-700 truncate">
-                                                                                {sec.instructors?.split(',')[0].trim()}{sec.instructors?.includes(',') ? ' +' : ''}
+                                                                                {(() => {
+                                                                                    const profs = Array.isArray(sec.instructors)
+                                                                                        ? sec.instructors
+                                                                                        : (sec.instructors || '').split(',').map((p: string) => p.trim()).filter(Boolean);
+                                                                                    return profs.length > 0 ? `${profs[0]}${profs.length > 1 ? ' +' : ''}` : '';
+                                                                                })()}
                                                                             </div>
                                                                             <div className="text-gray-400">{sec.activity_type}</div>
                                                                         </div>
                                                                         <div className="flex flex-col gap-1">
                                                                             {sec.days && <DayPips days={sec.days} />}
-                                                                            <span className="text-gray-500">{sec.times_12h?.split(';')[0].trim()}</span>
+                                                                            <span className="text-gray-500">{getTime(sec.times_12h)}</span>
                                                                         </div>
                                                                         <div>
                                                                             <div className={`truncate font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
@@ -905,7 +944,9 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                     {showDisclaimer && (
                         <div className="px-5 py-2 bg-amber-50 border-t border-amber-100 flex-shrink-0 flex items-center justify-between gap-3">
                             <p className="text-[10px] text-amber-700 leading-relaxed">
-                                Section availability is not real-time and is subject to change. Always verify openings in your university's official schedule planner before registering.
+                                Section availability is not real-time and is subject to change.
+                                {coursebookSemester && ` Currently showing ${formatCoursebookSemester(coursebookSemester)} sections; course offerings may be limited.`}
+                                {" "}Always verify openings in your university's official schedule planner before registering.
                             </p>
                             <button onClick={() => setShowDisclaimer(false)} className="text-amber-400 hover:text-amber-600 flex-shrink-0">
                                 <X className="w-3 h-3" />

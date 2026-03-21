@@ -5,6 +5,7 @@ import ProgramValidationA from "@/components/planner/ProgramValidationA"
 import ClassValidationA from "@/components/planner/ClassValidationA"
 import { SquareAsterisk } from "lucide-react";
 import { calculateCatalogYear, calculateLatestYear } from "@/utils/studentInfo";
+import { toast } from "sonner";
 
 interface OnboardingProps {
   onClose: () => void;
@@ -25,8 +26,10 @@ interface CatalogYearSelectorProps {
 }
 
 const CatalogYearSelector: React.FC<CatalogYearSelectorProps> = ({ onNext, onBack, transcriptData }) => {
-  const [selected, setSelected] = useState<CatalogChoice>("assigned");
-  const assignedYear = calculateCatalogYear(transcriptData?.majors[0].start_date);
+  const [selected, setSelected] = useState<CatalogChoice>("latest");
+  const assignedYear = calculateCatalogYear(
+    transcriptData?.majors[0]?.start_date ?? transcriptData?.certifications[0]?.start_date
+  );
   const latestYear = calculateLatestYear();
   
   const details: Record<CatalogChoice, { year: string; label: string; desc: string; tag: string }> = {
@@ -113,7 +116,7 @@ const Onboarding: React.FC<OnboardingProps> = ({
   const { user } = useAuth();
 
   const [modalStep, setModalStep] = useState<"FileUpload" | "Programs" | "CatalogYear" | "Classes">(initialStep);
-  const [catalogYear, setCatalogYear] = useState<"assigned" | "latest">("assigned");
+  const [catalogYear, setCatalogYear] = useState<"assigned" | "latest">("latest");
   const [transcriptData, setLocalTranscriptData] = useState(initialTranscriptData || null);
 
   const handleFileUploadNext = (data: any) => {
@@ -139,6 +142,13 @@ const Onboarding: React.FC<OnboardingProps> = ({
       start_date: program.start_date,
       concentration: program.concentration
     });
+    const majors = updatedPrograms.filter(p => p.type === "Major");
+    const certs = updatedPrograms.filter(p => p.type === "Certificate");
+    if (majors.length === 0 && certs.length === 0) {
+        toast.error("Please add at least one major before continuing.");
+        return;
+    }
+    
     const updatedTranscript = {
       ...transcriptData,
       majors: updatedPrograms.filter(p => p.type === "Major").map(transformToTranscriptData),
@@ -150,7 +160,7 @@ const Onboarding: React.FC<OnboardingProps> = ({
     if (isFirstTime) {
       setModalStep("Classes");
     } else {
-      const assignedYear = calculateCatalogYear(updatedTranscript.majors[0]?.start_date);
+      const assignedYear = calculateCatalogYear(updatedTranscript.majors[0]?.start_date ?? updatedTranscript.certifications[0]?.start_date);
       const latestYear = calculateLatestYear();
   
       if (assignedYear === latestYear) {
@@ -172,7 +182,10 @@ const Onboarding: React.FC<OnboardingProps> = ({
   const handleBack = () => {
     if (modalStep === "Programs") setModalStep("FileUpload");
     else if (modalStep === "CatalogYear") setModalStep("Programs");
-    else if (modalStep === "Classes") setModalStep(isFirstTime ? "Programs" : "CatalogYear");
+    else if (modalStep === "Classes") {
+      const isCertOnly = transcriptData?.majors?.length === 0 && transcriptData?.certifications?.length > 0;
+      setModalStep(isFirstTime || isCertOnly ? "Programs" : "CatalogYear");
+    }
   };
 
   const handleOutsideClick = (e: MouseEvent) => {
@@ -200,11 +213,11 @@ const Onboarding: React.FC<OnboardingProps> = ({
   const modalCard = (
     <div
       ref={modalRef}
-      className="bg-white rounded-[18px] shadow-2xl w-full max-w-3xl relative max-h-[70vh] sm:max-h-[85vh] flex flex-col"
+      className="bg-white rounded-[18px] shadow-2xl w-full max-w-3xl relative max-h-[90svh] sm:max-h-[85vh] flex flex-col"
     >
       {!isFirstTime && (
         <button
-          className="absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition z-10"
+          className="absolute top-1 right-1 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition z-10"
           onClick={onClose}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,7 +225,7 @@ const Onboarding: React.FC<OnboardingProps> = ({
           </svg>
         </button>
       )}
-      <div className="overflow-y-auto px-4 sm:px-9 py-4 sm:py-7 pb-24 sm:pb-7" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <div className="overflow-y-auto px-4 sm:px-9 py-4 sm:py-7 pb-24 sm:pb-7 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {modalStep === "FileUpload" && (
           <FileUploader
             userId={user?.uid || "test-user-123"}
@@ -248,8 +261,6 @@ const Onboarding: React.FC<OnboardingProps> = ({
     </div>
   );
 
-  // When restarting from planner — return just the card, no wrapper.
-  // PlannerPage wraps it with bg-black bg-opacity-50, same as delete modals.
   if (!isFirstTime) {
     return modalCard;
   }
@@ -258,7 +269,7 @@ const Onboarding: React.FC<OnboardingProps> = ({
   return (
     <>
       <div 
-        className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+        className="fixed inset-0 z-[60] flex items-center justify-center px-4 pt-16 pb-16"
         style={{ background: 'radial-gradient(circle at center, #111111 0%, #181818 100%)' }}
       >
         {modalCard}

@@ -15,6 +15,7 @@ interface AuthContextType {
   profilePicture: string | null;
   authChecking: boolean;
   setAuthChecking: (checking: boolean) => void;
+  allowedYears: number;
 }
 
 const loadClarity = (projectId: string) => {
@@ -31,6 +32,7 @@ const AuthContext = createContext<AuthContextType>({
   profilePicture: null,
   authChecking: false,
   setAuthChecking: () => {},
+  allowedYears: 10,
 });
 
 const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
@@ -44,6 +46,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profilePicture, setProfilePicture] = useState(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [authChecking, setAuthChecking] = useState(false);
+  const [allowedYears, setAllowedYears] = useState<number>(10);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -78,6 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setProfilePicture(
               data.photo_url || `/assets/profile_pics/${data.profile_picture_type}.png`
             );
+            setAllowedYears(data.profile?.["system-fields"]?.allowedYears ?? 10);
           } else {
             setUser(null);
             setProfilePicture(null);
@@ -108,7 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, profilePicture, authChecking, setAuthChecking, }}>
+    <AuthContext.Provider value={{ user, loading, logout, profilePicture, authChecking, setAuthChecking, allowedYears, }}>
       {!loading && children}
     </AuthContext.Provider>
   );

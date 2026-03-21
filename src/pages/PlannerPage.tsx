@@ -7,6 +7,7 @@ import { TouchBackend } from "react-dnd-touch-backend";
 import { MultiBackend, TouchTransition, MouseTransition } from "react-dnd-multi-backend";
 import { useAuth } from "@/context/AuthContext";
 import { usePlannerStore } from "@/stores/plannerStore";
+import { toast } from "sonner";
 
 type PlanConflictOption = "overwrite" | "select" | "new";
 
@@ -256,7 +257,11 @@ const PlannerPage = () => {
 
     } catch (error: any) {
       if (error.name === "AbortError") return;
-      console.error("Failed to fetch requirements:", error);
+      if (error.message?.includes("429")) {
+        toast.error("Daily evaluation limit reached. Try again tomorrow.");
+      } else {
+          toast.error("Failed to load your degree requirements. Try again.");
+      }
     }
   }, [user, VITE_EVALUATOR_API]);
 

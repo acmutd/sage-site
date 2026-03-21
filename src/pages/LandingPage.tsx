@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState} from "react";
+import { useAuth } from "../context/AuthContext";
 
 const LandingPage = () => {
+  const { user } = useAuth();
   const [mobileView, setMobileView] = useState(false);
 
   useEffect(() => {
@@ -46,19 +48,21 @@ const LandingPage = () => {
             >
               Ask a question
             </Link>
-            <div className="flex flex-row space-x-[1vh]">
-              <Link 
-              to="/signup" 
-              className="text-accent">
-                Sign Up
-              </Link>
-              <p className="text-textlight">or</p>
-              <Link 
-              to="/login" 
-              className="text-accent">
-                Login
-              </Link>
-            </div>
+            {!user && ( 
+              <div className="flex flex-row space-x-[1vh]">
+                <Link 
+                to="/signup" 
+                className="text-accent">
+                  Sign Up
+                </Link>
+                <p className="text-textlight">or</p>
+                <Link 
+                to="/login" 
+                className="text-accent">
+                  Login
+                </Link>
+              </div>
+            )}
           </div>
         </div>
          : 

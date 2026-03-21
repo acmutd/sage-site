@@ -73,7 +73,11 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
     };
     updateProfilePicture();
     window.addEventListener('storage', updateProfilePicture);
-    return () => window.removeEventListener('storage', updateProfilePicture);
+    window.addEventListener('profilePictureUpdated', updateProfilePicture);
+    return () => { 
+      window.removeEventListener('storage', updateProfilePicture);
+      window.removeEventListener('profilePictureUpdated', updateProfilePicture);
+    }
   }, [user?.photoURL]);
 
   useEffect(() => {

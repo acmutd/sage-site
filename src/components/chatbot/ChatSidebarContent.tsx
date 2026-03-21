@@ -36,6 +36,27 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
     initialLoad();
   }, []);
   
+  useEffect(() => {
+    // Sync conversations from ChatBot when they update
+    const handleConversationUpdate = (updatedConversations: Conversation[]) => {
+      setConversations(updatedConversations);
+    };
+  
+    // Sync active conversation ID from ChatBot
+    const handleActiveConversationUpdate = (newId: string | null) => {
+      setConversationId(newId);
+    };
+  
+    chatEventEmitter.on('conversationUpdate', handleConversationUpdate);
+    chatEventEmitter.on('activeConversationUpdate', handleActiveConversationUpdate);
+    chatEventEmitter.emit('requestConversations'); // Request current state from ChatBot on mount
+  
+    return () => {
+      chatEventEmitter.off('conversationUpdate', handleConversationUpdate);
+      chatEventEmitter.off('activeConversationUpdate', handleActiveConversationUpdate);
+    };
+  }, []);
+
   const groupConversationsByDate = (convs: Conversation[]) => {
     const today = new Date();
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -246,6 +267,11 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
                   setDeleting(true);
                   try {
                     await deleteConversation(conversationToDelete);
+
+                    // Always reset to new chat
+                    setConversationId(null);
+                    chatEventEmitter.emit('startNewChat');
+
                     setShowDeleteModal(false);
                     setConversationToDelete(null);
                   } catch (err) {

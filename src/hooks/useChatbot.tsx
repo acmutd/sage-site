@@ -159,71 +159,40 @@ export const useChatbot = () => {
     };
 
     const deleteConversation = async (conversationId: string) => {
-        if (!user?.uid) {
-          console.warn("User ID is missing. Cannot delete conversation.");
-          return;
-        }
+        if (!user?.uid) return;
         setError(null);
-    
-        try {
-          // Optimistically update cache
-          const cachedConversationsString = localStorage.getItem("chatbot_conversations");
-          if (cachedConversationsString) {
-            const cached = JSON.parse(cachedConversationsString);
-            if (cached?.data) {
-              const updatedCache = {
-                ...cached,
-                data: cached.data.filter((item: Conversation) => item.conversation_id !== conversationId),
-              };
-              localStorage.setItem("chatbot_conversations", JSON.stringify(updatedCache));
-            }
+      
+        // Optimistic cache update
+        setConversations((prev) => prev.filter((item) => item.conversation_id !== conversationId));
+
+        const cachedString = localStorage.getItem("chatbot_conversations");
+        if (cachedString) {
+          const cached = JSON.parse(cachedString);
+          if (cached?.data) {
+            localStorage.setItem("chatbot_conversations", JSON.stringify({
+              ...cached,
+              data: cached.data.filter((item: Conversation) => item.conversation_id !== conversationId),
+            }));
           }
-    
-          if (!CRUD_API) throw new Error("CRUD_API environment variable is missing.");
-    
-          const token = await user.getIdToken();
-          if (!token) throw new Error("Failed to retrieve authentication token.");
-    
-          const response = await fetch(CRUD_API, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: user.uid,
-              action: "deleteConversation",
-              token,
-              conversationId,
-            }),
-          });
-    
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to delete conversation: ${response.status} - ${errorText}`);
-          }
-    
-          // Remove in state
-          setConversations((prev) => prev.filter((item) => item.conversation_id !== conversationId));
-    
-          // Update localStorage cache too
-          const updatedCacheString = localStorage.getItem("chatbot_conversations");
-          if (updatedCacheString) {
-            const updatedCache = JSON.parse(updatedCacheString);
-            if (updatedCache?.data) {
-              const filtered = updatedCache.data.filter(
-                (item: Conversation) => item.conversation_id !== conversationId
-              );
-              saveConversationsToCache(filtered);
-            }
-          }
-    
-          if (conversation_id === conversationId) {
-            setConversationId(null);
-            localStorage.removeItem("chatbot_conversation");
-          }
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : "Failed to delete conversation";
-          setError(msg);
-          console.error("Error deleting conversation:", err);
         }
+      
+        if (!CRUD_API) throw new Error("CRUD_API environment variable is missing.");
+        const token = await user.getIdToken();
+        if (!token) throw new Error("Failed to retrieve authentication token.");
+      
+        const response = await fetch(CRUD_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user.uid, action: "deleteConversation", token, conversationId }),
+        });
+      
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to delete conversation: ${response.status} - ${errorText}`);
+        }
+      
+        // Remove from state
+        setConversations((prev) => prev.filter((item) => item.conversation_id !== conversationId));
     };
 
     const renameConversation = async (conversationId: string, newTitle: string) => {

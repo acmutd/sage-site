@@ -45,7 +45,7 @@ interface PlannerStore extends PlannerData {
     renamePlan: (newName: string) => void;
     
     // Semester Management Actions
-    addYear: (allSemesters: any) => void;
+    addYear: (allSemesters: any, allowedYears?: number) => void;
     clearYear: (yearKey: string, allSemesters: any) => void;
     deleteYear: (yearKey: string, allSemesters: any) => void;
     addSemester: (yearKey: string, allSemesters: any) => { success: boolean; error?: string };
@@ -221,7 +221,13 @@ export const usePlannerStore = create<PlannerStore>()(
             
             // ========== Semester Management Actions ==========
             
-            addYear: (allSemesters: any) => {
+            addYear: (allSemesters: any, allowedYears: number = 10) => {
+                const yearCount = Object.keys(allSemesters).length;
+    
+                if (yearCount >= allowedYears) {
+                    return;
+                }
+
                 const yearNumbers = Object.keys(allSemesters)
                     .map(key => parseInt(key.replace('year', '')))
                     .filter(num => !isNaN(num));
