@@ -184,6 +184,14 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({
                                 </div>
                             ))}
 
+                            {updatedProgram?.level?.toLowerCase() === "graduate" && (
+                                <div className="flex items-start gap-2 text-sm bg-blue-50 border border-blue-200 rounded-sm px-3 py-2 text-blue-800">
+                                    <span>
+                                        Not all graduate programs are listed here. If you don't see yours, it means we couldn't support it at this time.
+                                    </span>
+                                </div>
+                            )}
+
                             <div className="dropdown-container flex flex-col items-start gap-2 w-full"
                                 onMouseDown={(e) => e.stopPropagation()}
                                 onClick={(e) => e.stopPropagation()}
