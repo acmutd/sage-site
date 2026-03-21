@@ -948,6 +948,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     {/* Help */}
                     <button
                         data-tour="help-button"
+                        aria-label="tutorial"
                         onClick={startTutorial}
                         className="hidden sm:flex self-end translate-y-2 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 items-center justify-center"
                     >
@@ -1010,7 +1011,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     {/* Plan Selector */}
                     <div className="mb-6 flex flex-wrap items-center gap-3">
                         <DropdownMenu>
-                            <DropdownMenuTrigger data-tour="plan-toggle" className="flex items-center gap-3 px-5 py-3 border-2 border-green-400 rounded-2xl text-base bg-white hover:bg-gray-50 shadow-sm font-medium whitespace-nowrap">
+                            <DropdownMenuTrigger aria-label="plan settings" data-tour="plan-toggle" className="flex items-center gap-3 px-5 py-3 border-2 border-green-400 rounded-2xl text-base bg-white hover:bg-gray-50 shadow-sm font-medium whitespace-nowrap">
                                 <span>{activePlan?.name || 'Select Plan'}</span>
                                 <ChevronDown size={18} />
                             </DropdownMenuTrigger>

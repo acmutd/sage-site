@@ -621,7 +621,7 @@ const ChatBot: React.FC = () => {
       onClick={handleOutsideClick}
     >
       <button data-tour="help-button" aria-label="Chatbot Help" onClick={startTutorial} className="fixed bottom-4 right-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
-        <HelpCircle size={18} className="text-white" />
+        <HelpCircle size={18} className="text-white" aria-hidden="true" />
       </button>
       
       {mobileView ? (
@@ -727,7 +727,7 @@ const ChatBot: React.FC = () => {
                     onClick={handleSendQuery}
                     disabled={loading || !query.trim() || query.trim().length > 500}
                   >
-                    <CornerRightUpIcon size={24} />
+                    <CornerRightUpIcon size={24} aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -756,7 +756,7 @@ const ChatBot: React.FC = () => {
                     onClick={(e) => { e.stopPropagation(); toggleSidebar(); }}
                     aria-label="Expand sidebar"
                   >
-                    <ArrowRightToLineIcon size={24} />
+                    <ArrowRightToLineIcon size={24} aria-hidden="true" />
                   </button>
 
                   <button
@@ -764,13 +764,13 @@ const ChatBot: React.FC = () => {
                     onClick={(e) => { e.stopPropagation(); startNewChat(); }}
                     aria-label="Start new chat"
                   >
-                    <MessageCirclePlusIcon size={24} className="stroke-textdark" />
+                    <MessageCirclePlusIcon size={24} className="stroke-textdark" aria-hidden="true" />
                   </button>
 
                   <div className="flex flex-grow" />
 
                   <div className="w-12 h-12 flex items-center justify-center">
-                    <PanelLeftDashed size={24} className="stroke-[#bbbbbb] group-hover/sidebar:stroke-[#dddddd] transition-colors duration-150" />
+                    <PanelLeftDashed aria-hidden="true" size={24} className="stroke-[#bbbbbb] group-hover/sidebar:stroke-[#dddddd] transition-colors duration-150" />
                   </div>
                 </div>
               )}
@@ -784,7 +784,7 @@ const ChatBot: React.FC = () => {
                       <span>Start new chat</span>
                     </button>
                     <button data-tour="sidebar-collapse" className="group p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center" onClick={toggleSidebar} aria-label="Collapse sidebar">
-                      <ArrowLeftToLineIcon className="stroke-textdark group-hover:stroke-textsecondary transition-colors duration-150" size={20} />
+                      <ArrowLeftToLineIcon aria-hidden="true" className="stroke-textdark group-hover:stroke-textsecondary transition-colors duration-150" size={20} />
                     </button>
                   </div>
 
@@ -817,7 +817,7 @@ const ChatBot: React.FC = () => {
                                   setMoreOptionsOpenId((prev) => (prev === conv.conversation_id ? null : conv.conversation_id));
                                 }}
                               >
-                                <Ellipsis className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary" />
+                                <Ellipsis aria-hidden="true" className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary" />
                               </button>
 
                               {moreOptionsOpenId === conv.conversation_id && showContextMenu && (
@@ -839,7 +839,7 @@ const ChatBot: React.FC = () => {
                                         className="flex items-center justify-between gap-2 w-full px-4 py-2 text-left text-textdark hover:bg-gray-100"
                                       >
                                         Rename conversation
-                                        <Pencil size={16} className="stroke-textdark" />
+                                        <Pencil aria-hidden="true" size={16} className="stroke-textdark" />
                                       </button>
                                     </li>
                                     <li>
@@ -852,7 +852,7 @@ const ChatBot: React.FC = () => {
                                         className="flex items-center justify-between gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
                                       >
                                         Delete conversation
-                                        <Trash2 size={16} className="stroke-destructive" />
+                                        <Trash2 size={16} className="stroke-destructive" aria-hidden="true" />
                                       </button>
                                     </li>
                                   </ul>
@@ -874,7 +874,7 @@ const ChatBot: React.FC = () => {
 
             {/* Beta Disclaimer */}
             <div className={`${sidebarCollapsed ? "cursor-pointer rounded-md" : "rounded-full"} bg-textdark w-full py-3 px-6 flex gap-2 justify-center items-center`} onClick={!sidebarCollapsed ? undefined : toggleSidebar}>
-              <SquareAsterisk size={32} className="stroke-accent" />
+              <SquareAsterisk size={32} className="stroke-accent" aria-hidden="true" />
               <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-textlight text-xs`}>
                 This app is in development. For issues or feedback,
                 <a
@@ -965,7 +965,7 @@ const ChatBot: React.FC = () => {
                         onClick={() => setGenerateSchedule(false)}
                         aria-label="Ask a general advising question"
                       >
-                        <GraduationCapIcon size={24} className="stroke-textdark" />
+                        <GraduationCapIcon size={24} className="stroke-textdark" aria-hidden="true" />
                       </button>
                       <div className="group-hover/advising:flex hidden flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-[42%]">
                         <div className="bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap">Ask a general advising question</div>
@@ -981,7 +981,7 @@ const ChatBot: React.FC = () => {
                         onClick={() => setGenerateSchedule(true)}
                         aria-label="Generate your class schedule"
                       >
-                        <CalendarSearchIcon size={24} className="stroke-textdark" />
+                        <CalendarSearchIcon size={24} className="stroke-textdark" aria-hidden="true" />
                       </button>
                       <div className="group-hover/schedule:flex hidden flex-col items-center absolute bottom-[125%] translate-x-[-50%] left-1/2">
                         <div className="bg-bgdark text-textlight text-xs rounded-full px-3 py-2 shadow-lg whitespace-nowrap">Generate your class schedule</div>
