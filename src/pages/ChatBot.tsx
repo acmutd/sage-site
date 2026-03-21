@@ -45,11 +45,14 @@ const ChatBot: React.FC = () => {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const handleClickQueryFlag = useRef(false);
+  const ellipsisButtonRef = useRef<HTMLButtonElement | null>(null);
+  const renameModalRef = useRef<HTMLDivElement>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const { 
-    conversations, 
-    conversation_id, 
-    error, 
+  const {
+    conversations,
+    conversation_id,
+    error,
     loading,
     setConversations,
     deleteConversation,
@@ -58,80 +61,80 @@ const ChatBot: React.FC = () => {
     setConversationId,
     initialLoad
   } = useChatbot();
-  
+
   const [driverObj, setDriverObj] = useState<any>(null);
 
   useEffect(() => {
-        const driverInstance = driver({
-            showProgress: true,
-            showButtons: ['next', 'previous', 'close'],
-            steps: [
-                {
-                    element: '[data-tour="sidebar"]',
-                    popover: {
-                        title: 'Conversation History',
-                        description: 'View and manage your conversation history here. Click on any past conversation to continue it. Hovering over the conversation allows you to manage it.',
-                        side: "right"
-                    }
-                },
-                {
-                    element: '[data-tour="new-chat-expanded"]',
-                    popover: {
-                        title: 'New Chat',
-                        description: 'Start a fresh conversation with SAGE anytime.',
-                        side: "bottom"
-                    }
-                },
-                {
-                    element: '[data-tour="sidebar-collapse"]',
-                    popover: {
-                        title: 'Collapse Sidebar',
-                        description: 'You can collapse the sidebar to expand your chat view. Click again to reopen it.',
-                        side: "bottom"
-                    }
-                },
-                {
-                    element: '[data-tour="chat-input"]',
-                    popover: {
-                        title: 'Ask Questions',
-                        description: 'Type your questions here and press Enter or click the send button to your right.',
-                        side: "top"
-                    }
-                },
-                {
-                    element: '[data-tour="mode-toggle"]',
-                    popover: {
-                        title: 'Mode Toggle',
-                        description: 'Switch between general advising questions and schedule generation mode.',
-                        side: "top"
-                    }
-                },
-                {
-                  element: '[data-tour="help-button"]',
-                  popover: {
-                      title: 'Tutorial',
-                      description: 'Click here to replay the tutorial at any time',
-                      side: "left"
-                  }
-                }
-            ],
-            onDestroyed: () => {
-                localStorage.setItem('hasSeenChatbotTutorial', 'true');
-            },
-            popoverClass: 'sage-driver-theme'
-        });
-        
-        setDriverObj(driverInstance);
-        const hasSeenTutorial = localStorage.getItem('hasSeenChatbotTutorial');
-        if (!hasSeenTutorial) {
-            setTimeout(() => driverInstance.drive(), 500);
+    const driverInstance = driver({
+      showProgress: true,
+      showButtons: ['next', 'previous', 'close'],
+      steps: [
+        {
+          element: '[data-tour="sidebar"]',
+          popover: {
+            title: 'Conversation History',
+            description: 'View and manage your conversation history here. Click on any past conversation to continue it. Hovering over the conversation allows you to manage it.',
+            side: "right"
+          }
+        },
+        {
+          element: '[data-tour="new-chat-expanded"]',
+          popover: {
+            title: 'New Chat',
+            description: 'Start a fresh conversation with SAGE anytime.',
+            side: "bottom"
+          }
+        },
+        {
+          element: '[data-tour="sidebar-collapse"]',
+          popover: {
+            title: 'Collapse Sidebar',
+            description: 'You can collapse the sidebar to expand your chat view. Click again to reopen it.',
+            side: "bottom"
+          }
+        },
+        {
+          element: '[data-tour="chat-input"]',
+          popover: {
+            title: 'Ask Questions',
+            description: 'Type your questions here and press Enter or click the send button to your right.',
+            side: "top"
+          }
+        },
+        {
+          element: '[data-tour="mode-toggle"]',
+          popover: {
+            title: 'Mode Toggle',
+            description: 'Switch between general advising questions and schedule generation mode.',
+            side: "top"
+          }
+        },
+        {
+          element: '[data-tour="help-button"]',
+          popover: {
+            title: 'Tutorial',
+            description: 'Click here to replay the tutorial at any time',
+            side: "left"
+          }
         }
+      ],
+      onDestroyed: () => {
+        localStorage.setItem('hasSeenChatbotTutorial', 'true');
+      },
+      popoverClass: 'sage-driver-theme'
+    });
+
+    setDriverObj(driverInstance);
+    const hasSeenTutorial = localStorage.getItem('hasSeenChatbotTutorial');
+    if (!hasSeenTutorial) {
+      setTimeout(() => driverInstance.drive(), 500);
+    }
   }, []);
-  
+
   const startTutorial = () => {
-      if (driverObj) {
-          driverObj.drive();
-      }
+    if (driverObj) {
+      driverObj.drive();
+    }
   };
 
   const updateConversations = (newConversations: Conversation[] | ((prev: Conversation[]) => Conversation[])) => {
@@ -401,15 +404,15 @@ const ChatBot: React.FC = () => {
       const botMessage: Message =
         data.type === "email"
           ? {
-              role: "assistant",
-              content: JSON.stringify({ type: "email", variants: data.response.variants }),
-              type: "email",
-              variants: data.response.variants,
-              timestamp: Date.now(),
-            }
+            role: "assistant",
+            content: JSON.stringify({ type: "email", variants: data.response.variants }),
+            type: "email",
+            variants: data.response.variants,
+            timestamp: Date.now(),
+          }
           : data.type === "schedule"
-          ? { role: "assistant", content: JSON.stringify({ type: "schedule", variants: data.response.variants }), type: "schedule", variants: data.response.variants, timestamp: Date.now() }
-          : {
+            ? { role: "assistant", content: JSON.stringify({ type: "schedule", variants: data.response.variants }), type: "schedule", variants: data.response.variants, timestamp: Date.now() }
+            : {
               role: "assistant",
               content: data.response,
               timestamp: Date.now(),
@@ -451,6 +454,91 @@ const ChatBot: React.FC = () => {
       setChatError("Chatbot has encountered an error. Please try again.");
     } finally {
       setChatLoad(false);
+    }
+  };
+
+  // accessibility stuff 
+  const deleteModalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showRenameModal && renameModalRef.current) {
+      renameModalRef.current.focus();
+    }
+  }, [showRenameModal]);
+
+  useEffect(() => {
+    if (showDeleteModal && deleteModalRef.current) {
+      deleteModalRef.current.focus();
+    }
+  }, [showDeleteModal]);
+
+  useEffect(() => {
+    if (moreOptionsOpenId && showContextMenu && contextMenuRef.current) {
+      const firstItem = contextMenuRef.current.querySelector<HTMLElement>('[role="menuitem"]');
+      firstItem?.focus();
+    }
+  }, [moreOptionsOpenId, showContextMenu]);
+
+  const handleDeleteModalKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      setShowDeleteModal(false);
+      setConversationToDelete(null);
+      return;
+    }
+    if (e.key !== "Tab") return;
+    const focusable = deleteModalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+
+  const handleRenameModalKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      setShowRenameModal(false);
+      setNewName("");
+      return;
+    }
+    if (e.key !== "Tab") return;
+    const focusable = renameModalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+
+  const handleContextMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = Array.from(
+      contextMenuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []
+    );
+    if (!items.length) return;
+    const currentIdx = items.indexOf(document.activeElement as HTMLElement);
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      items[(currentIdx + 1) % items.length]?.focus();
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      items[(currentIdx - 1 + items.length) % items.length]?.focus();
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setMoreOptionsOpenId(null);
+      setShowContextMenu(false);
+      ellipsisButtonRef.current?.focus();
     }
   };
 
@@ -616,14 +704,14 @@ const ChatBot: React.FC = () => {
   }, [query]);
 
   return (
-    <div
+    <main
       className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]"
       onClick={handleOutsideClick}
     >
       <button data-tour="help-button" aria-label="Chatbot Help" onClick={startTutorial} className="fixed bottom-4 right-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
         <HelpCircle size={18} className="text-white" aria-hidden="true" />
       </button>
-      
+
       {mobileView ? (
         <>
           <div className="flex justify-center h-full w-full">
@@ -698,12 +786,10 @@ const ChatBot: React.FC = () => {
                       rows={1}
                       placeholder="Ask a question..."
                       aria-label="Chat input field"
-                      className={`w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-y-auto focus:outline-none h-fit max-h-28 ${
-                        query.trim().length >= 400 ? "pb-6" : ""
-                      }`}
+                      className={`w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-y-auto focus:outline-none h-fit max-h-28 ${query.trim().length >= 400 ? "pb-6" : ""
+                        }`}
                       style={{ scrollbarWidth: "none" }}
-                      onChange={(e) => 
-                      {
+                      onChange={(e) => {
                         setQuery(e.target.value);
                         if (chatError) setChatError(null);
                       }}
@@ -713,9 +799,8 @@ const ChatBot: React.FC = () => {
                     />
                     {query.trim().length >= 400 && (
                       <div
-                        className={`absolute -bottom-3 right-6 text-xs font-medium pointer-events-none transition-colors duration-150 ${
-                          query.trim().length >= 500 ? "text-red-500" : "text-orange-400"
-                        }`}
+                        className={`absolute -bottom-3 right-6 text-xs font-medium pointer-events-none transition-colors duration-150 ${query.trim().length >= 500 ? "text-red-500" : "text-orange-400"
+                          }`}
                       >
                         {query.trim().length} / 500
                       </div>
@@ -723,6 +808,7 @@ const ChatBot: React.FC = () => {
                   </div>
 
                   <button
+                    aria-label="Send message"
                     className="flex h-full max-h-[3rem] justify-center items-center aspect-square bg-accent rounded-full hover:bg-buttonhover transition-colors disabled:opacity-50"
                     onClick={handleSendQuery}
                     disabled={loading || !query.trim() || query.trim().length > 500}
@@ -741,11 +827,10 @@ const ChatBot: React.FC = () => {
       ) : (
         <>
           {/* Chat History Bar */}
-          <div data-tour="sidebar" className={`${sidebarCollapsed ? "w-[5.25rem]" : "w-[24rem]"} h-full flex flex-col gap-4 transition-all duration-100`}>
+          <aside aria-label="Conversation history" data-tour="sidebar" className={`${sidebarCollapsed ? "w-[5.25rem]" : "w-[24rem]"} h-full flex flex-col gap-4 transition-all duration-100`}>
             <div
-              className={`${
-                sidebarCollapsed ? "rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]" : "rounded-lg px-6"
-              } transition-all duration-100 group/sidebar pt-8 pb-4 gap-8 overflow-hidden bg-bglight border border-border flex flex-col items-center w-full h-full`}
+              className={`${sidebarCollapsed ? "rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]" : "rounded-lg px-6"
+                } transition-all duration-100 group/sidebar pt-8 pb-4 gap-8 overflow-hidden bg-bglight border border-border flex flex-col items-center w-full h-full`}
               onClick={sidebarCollapsed ? toggleSidebar : undefined}
             >
               {/* Collapsed */}
@@ -779,8 +864,8 @@ const ChatBot: React.FC = () => {
               {!sidebarCollapsed && (
                 <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-hidden gap-8 transition-all duration-150`}>
                   <div className="flex gap-3 justify-between items-center">
-                    <button data-tour="new-chat-expanded" className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
-                      <MessageCirclePlusIcon size={24} />
+                    <button data-tour="new-chat-expanded" aria-label="Start a new chat conversation" className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
+                      <MessageCirclePlusIcon size={24} aria-hidden="true" />
                       <span>Start new chat</span>
                     </button>
                     <button data-tour="sidebar-collapse" className="group p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center" onClick={toggleSidebar} aria-label="Collapse sidebar">
@@ -791,26 +876,31 @@ const ChatBot: React.FC = () => {
                   {loading && <p className="text-textsecondary">Loading conversations...</p>}
                   {error && <p className="text-destructive">{error}</p>}
 
-                  <ul className="flex flex-col gap-2 overflow-y-scroll w-full" ref={conversationListRef} style={{ scrollbarWidth: "none" }} onScroll={updateScrollPosition}>
+                  <ul aria-label="Past conversations" className="flex flex-col gap-2 overflow-y-scroll w-full" ref={conversationListRef} style={{ scrollbarWidth: "none" }} onScroll={updateScrollPosition}>
                     {Array.isArray(conversations) && conversations.length > 0 ? (
                       conversations.map((conv, index) => {
                         const displayName = conv.title || conv.messages?.[0]?.content || "No messages";
                         return (
-                          <li
-                            key={conv.conversation_id}
-                            className={`group/conversation flex flex-row gap-2 justify-between items-center w-full p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors overflow-visible ${
-                              conversation_id === conv.conversation_id ? "bg-secondary" : "bg-bglight"
-                            }`}
-                            onClick={() => loadConversation(conv.conversation_id, conv.messages)}
-                            ref={(el) => (contextButtonRefs.current[index] = el)}
-                          >
-                            <div className="relative flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
-                              <div className="opacity-0 group-hover/conversation:opacity-100 absolute left-[calc(100%-2rem)] w-[2rem] h-full bg-gradient-to-r from-secondary/0 to-secondary transition-all duration-150" />
-                              <small className="truncate">{displayName}</small>
-                            </div>
+                          <li key={conv.conversation_id} ref={(el) => (contextButtonRefs.current[index] = el)} className={`group/conversation flex flex-row items-center w-full rounded-sm transition-colors overflow-visible ${conversation_id === conv.conversation_id ? "bg-secondary" : "hover:bg-secondary"
+                            }`}>
+                            <button
+                              className={`group/conversation flex flex-row gap-2 justify-between items-center w-full p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors overflow-visible text-left bg-transparent border-none outline-none ${conversation_id === conv.conversation_id ? "bg-secondary" : "bg-bglight"
+                                }`}
+                              onClick={() => loadConversation(conv.conversation_id, conv.messages)}
+                              aria-current={conversation_id === conv.conversation_id ? "true" : undefined}
+                            >
+                              <div className="relative flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
+                                <div className="opacity-0 group-hover/conversation:opacity-100 absolute left-[calc(100%-2rem)] w-[2rem] h-full bg-gradient-to-r from-secondary/0 to-secondary transition-all duration-150" />
+                                <small className="truncate">{displayName}</small>
+                              </div>
+                            </button>
 
                             <div className="relative flex h-full">
                               <button
+                                ref={ellipsisButtonRef}
+                                aria-label={`More options for ${displayName}`}
+                                aria-expanded={moreOptionsOpenId === conv.conversation_id}
+                                aria-haspopup="menu"
                                 className="group/menu px-2 h-full group-hover/conversation:opacity-100 opacity-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -822,14 +912,19 @@ const ChatBot: React.FC = () => {
 
                               {moreOptionsOpenId === conv.conversation_id && showContextMenu && (
                                 <div
+                                  ref={contextMenuRef}
+                                  role="menu"
+                                  aria-label={`Options for ${displayName}`}
+                                  onKeyDown={handleContextMenuKeyDown}
                                   className="fixed translate-x-[160%] translate-y-[40%] z-[9999] w-50 bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden transition-opacity duration-150"
                                   style={{ top: contextMenuPosition.top, left: contextMenuPosition.left }}
                                   onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                                  onMouseEnter={(e) => { e.stopPropagation(); }}
+                                  onMouseEnter={(e) => { e.stopPropagation(); e.preventDefault(); }}
                                 >
-                                  <ul className="py-1">
-                                    <li>
+                                  <ul className="py-1" role="presentation">
+                                    <li role="presentation">
                                       <button
+                                        role="menuitem"
                                         onClick={() => {
                                           setConversationToRename(conv.conversation_id);
                                           setNewName(conv.title || conv.messages?.[0]?.content || "");
@@ -842,8 +937,9 @@ const ChatBot: React.FC = () => {
                                         <Pencil aria-hidden="true" size={16} className="stroke-textdark" />
                                       </button>
                                     </li>
-                                    <li>
+                                    <li role="presentation">
                                       <button
+                                        role="menuitem"
                                         onClick={() => {
                                           setConversationToDelete(conv.conversation_id);
                                           setShowDeleteModal(true);
@@ -887,7 +983,7 @@ const ChatBot: React.FC = () => {
                 </a>
               </small>
             </div>
-          </div>
+          </aside>
 
           {/* Main chat area */}
           <div className="flex justify-center h-full w-full">
@@ -908,13 +1004,16 @@ const ChatBot: React.FC = () => {
                           {advisingExampleQuestions.map((example) => (
                             <li
                               key={example.question}
-                              className="text-textdark hover:text-textsecondary cursor-pointer"
-                              onClick={() => {
-                                handleClickQueryFlag.current = true;
-                                setQuery(example.question);
-                              }}
                             >
-                              {example.question}
+                              <button
+                                className="text-textdark hover:text-textsecondary cursor-pointer text-left bg-transparent border-none p-0"
+                                onClick={() => {
+                                  handleClickQueryFlag.current = true;
+                                  setQuery(example.question);
+                                }}
+                              >
+                                {example.question}
+                              </button>
                             </li>
                           ))}
                         </ul>
@@ -928,13 +1027,16 @@ const ChatBot: React.FC = () => {
                           {scheduleExampleQuestions.map((example) => (
                             <li
                               key={example.question}
-                              className="text-textdark hover:text-textsecondary cursor-pointer"
-                              onClick={() => {
-                                handleClickQueryFlag.current = true;
-                                setQuery(example.question);
-                              }}
                             >
-                              {example.question}
+                              <button
+                                className="text-textdark hover:text-textsecondary cursor-pointer text-left bg-transparent border-none p-0"
+                                onClick={() => {
+                                  handleClickQueryFlag.current = true;
+                                  setQuery(example.question);
+                                }}
+                              >
+                                {example.question}
+                              </button>
                             </li>
                           ))}
                         </ul>
@@ -959,9 +1061,8 @@ const ChatBot: React.FC = () => {
                   <div data-tour="mode-toggle" className="flex flex-row gap-2 p-2 bg-innercontainer border rounded-full border-border">
                     <div className="relative group/advising">
                       <button
-                        className={`p-2 rounded-full mr-2 transition-colors duration-200 ${
-                          !generateSchedule ? "bg-accent hover:bg-buttonhover" : "bg-secondary hover:bg-[#A9BFB4]"
-                        }`}
+                        className={`p-2 rounded-full mr-2 transition-colors duration-200 ${!generateSchedule ? "bg-accent hover:bg-buttonhover" : "bg-secondary hover:bg-[#A9BFB4]"
+                          }`}
                         onClick={() => setGenerateSchedule(false)}
                         aria-label="Ask a general advising question"
                       >
@@ -975,9 +1076,8 @@ const ChatBot: React.FC = () => {
 
                     <div className="relative group/schedule">
                       <button
-                        className={`p-2 rounded-full transition-colors duration-200 ${
-                          generateSchedule ? "bg-accent hover:bg-buttonhover" : "bg-secondary hover:bg-[#A9BFB4]"
-                        }`}
+                        className={`p-2 rounded-full transition-colors duration-200 ${generateSchedule ? "bg-accent hover:bg-buttonhover" : "bg-secondary hover:bg-[#A9BFB4]"
+                          }`}
                         onClick={() => setGenerateSchedule(true)}
                         aria-label="Generate your class schedule"
                       >
@@ -1006,9 +1106,8 @@ const ChatBot: React.FC = () => {
                     />
                     {query.trim().length >= 400 && (
                       <div
-                        className={`absolute bottom-3 right-6 text-xs font-medium pointer-events-none transition-colors duration-150 ${
-                          query.trim().length >= 500 ? "text-red-500" : "text-orange-400"
-                        }`}
+                        className={`absolute bottom-3 right-6 text-xs font-medium pointer-events-none transition-colors duration-150 ${query.trim().length >= 500 ? "text-red-500" : "text-orange-400"
+                          }`}
                       >
                         {query.trim().length} / 500
                       </div>
@@ -1035,7 +1134,16 @@ const ChatBot: React.FC = () => {
 
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={handleOutsideClick}>
-          <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={deleteModalRef}
+            tabIndex={-1}
+            onKeyDown={handleDeleteModalKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
+            className="bg-white p-6 rounded-md shadow-lg w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold mb-4 text-textdark">Are you sure you want to delete this conversation?</h3>
             <div className="flex justify-end gap-4">
               <button
@@ -1043,6 +1151,7 @@ const ChatBot: React.FC = () => {
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowDeleteModal(false);
+                  setTimeout(() => ellipsisButtonRef.current?.focus(), 0);
                   setConversationToDelete(null);
                 }}
                 disabled={deleting}
@@ -1062,8 +1171,9 @@ const ChatBot: React.FC = () => {
                     updateConversationId(null);
                     setChatError(null);
                     localStorage.removeItem("chatbot_conversation");
-                    
+
                     setShowDeleteModal(false);
+                    setTimeout(() => ellipsisButtonRef.current?.focus(), 0);
                     setConversationToDelete(null);
                   } catch (err) {
                     console.error("Failed to delete:", err);
@@ -1083,7 +1193,16 @@ const ChatBot: React.FC = () => {
 
       {showRenameModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={handleOutsideClick}>
-          <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={renameModalRef}
+            tabIndex={-1}
+            onKeyDown={handleRenameModalKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rename-modal-title"
+            className="bg-white p-6 rounded-md shadow-lg w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold mb-4 text-textdark">Rename Chat</h3>
             <input
               type="text"
@@ -1129,7 +1248,7 @@ const ChatBot: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 };
 
