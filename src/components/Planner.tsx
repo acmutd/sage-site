@@ -902,7 +902,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
                 {/* Action buttons */}
-                <div className="fixed bottom-4 right-4 flex flex-row items-center gap-2 z-50">
+                <div className="fixed bottom-6 right-4 flex flex-row items-center gap-2 z-50">
                     {/* Suggest Future Classes */}
                     <button
                         onClick={runQuickEvaluation}
@@ -950,7 +950,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         data-tour="help-button"
                         aria-label="tutorial"
                         onClick={startTutorial}
-                        className="hidden sm:flex self-end translate-y-2 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 items-center justify-center"
+                        className="hidden sm:flex self-end translate-y-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 items-center justify-center"
                     >
                         <HelpCircle size={18} className="text-white" />
                     </button>

@@ -587,6 +587,12 @@ const PlannerPage = () => {
           </DndProvider>
         </>
       )}
+
+    {showPlanner && !planConflict && (
+      <div className="fixed bottom-1 w-full flex flex-col items-center gap-0.5 text-center pointer-events-none z-10 pl-72 text-[12px]">
+            <span className="text-gray-400">Degree plan evaluations are not official and may be incomplete or incorrect. Verify with your academic advisor or official catalogs.</span>
+      </div>
+    )}
     </main>
   );
 };
