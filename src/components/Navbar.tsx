@@ -16,7 +16,7 @@ const Navbar = () => {
   let location = useLocation().pathname;
 
   useEffect(() => {
-    const navHeight = ENVIRONMENT === 'development' ? '6rem' : '4.2rem';
+    const navHeight = ENVIRONMENT === 'dev' ? '6rem' : '4.2rem';
     document.documentElement.style.setProperty('--nav-height', navHeight);
   }, []);
 
@@ -78,7 +78,7 @@ const Navbar = () => {
     <AuthProvider>
       {/* Standard navbar */}
       <>
-        {ENVIRONMENT === 'development' && (
+        {ENVIRONMENT === 'dev' && (
             <div className="fixed top-0 left-0 right-0 h-4 bg-purple-600 text-white text-center text-xs font-medium z-[200] shadow-sm flex items-center justify-center">
               Dev Environment
             </div>
@@ -87,7 +87,7 @@ const Navbar = () => {
         <nav className={`
           ${isInWebapp && !isOnboardingActive ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
           py-2.5 px-6 fixed w-full z-[70] hidden md:block
-          ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
+          ${ENVIRONMENT === 'dev' ? 'top-4' : 'top-0'}
         `}>
             
           <div className="flex items-center justify-between w-full">
@@ -175,7 +175,7 @@ const Navbar = () => {
       <nav className={`
         ${isInWebapp && !isOnboardingActive ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
         py-4 px-6 fixed w-full h-[4.2rem] z-[70] md:hidden block
-        ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
+        ${ENVIRONMENT === 'dev' ? 'top-4' : 'top-0'}
       `}>
         <div className="flex items-center justify-between w-full">
           <Link to="/" className="ml-0">

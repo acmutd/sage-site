@@ -183,7 +183,7 @@ export default function SignupForm(props: {
                           type="email"
                           className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-[#10B981]"
                           {...field}
-                          disabled={ENVIRONMENT === 'development'}
+                          disabled={ENVIRONMENT === 'dev'}
                         />
                       </FormControl>
                       <FormMessage />
@@ -204,7 +204,7 @@ export default function SignupForm(props: {
                           type="password"
                           className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-[#10B981]"
                           {...field}
-                          disabled={ENVIRONMENT === 'development'}
+                          disabled={ENVIRONMENT === 'dev'}
                         />
                       </FormControl>
                       <FormMessage />
@@ -225,7 +225,7 @@ export default function SignupForm(props: {
                           type="password"
                           className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-[#10B981]"
                           {...field}
-                          disabled={ENVIRONMENT === 'development'}
+                          disabled={ENVIRONMENT === 'dev'}
                         />
                       </FormControl>
                       <FormMessage />
@@ -234,7 +234,7 @@ export default function SignupForm(props: {
                 />
                 <Button
                   type="submit"
-                  disabled={ENVIRONMENT === 'development'}
+                  disabled={ENVIRONMENT === 'dev'}
                   className="w-full h-[2.5rem] rounded-full bg-[#4ADE80] hover:bg-[#22c55e] text-[15px] font-medium text-textdark"
                 >
                   Sign up
