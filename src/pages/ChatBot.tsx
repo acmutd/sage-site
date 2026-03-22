@@ -787,9 +787,9 @@ const ChatBot: React.FC = () => {
 
               {/* Expanded */}
               {!sidebarCollapsed && (
-                <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-hidden gap-8 transition-all duration-150`}>
+                <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-visible gap-8 transition-all duration-150`}>
                   <div className="flex gap-3 justify-between items-center">
-                    <button data-tour="new-chat-expanded" aria-label="Start a new chat conversation" className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
+                    <button data-tour="new-chat-expanded"  aria-label="Start a new chat conversation" className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
                       <MessageCirclePlusIcon size={24} aria-hidden="true" />
                       <span>Start new chat</span>
                     </button>

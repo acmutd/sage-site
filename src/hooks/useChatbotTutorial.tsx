@@ -25,7 +25,7 @@ export function useChatbotTutorial({ user, hasSeenTutorial }: UseChatbotTutorial
                         title: 'Conversation History',
                         description: 'View and manage your conversation history here. Click on any past conversation to continue it. Hovering over the conversation allows you to manage it.',
                         side: "right"
-                    }
+                    },
                 },
                 {
                     element: '[data-tour="new-chat-expanded"]',
@@ -33,7 +33,7 @@ export function useChatbotTutorial({ user, hasSeenTutorial }: UseChatbotTutorial
                         title: 'New Chat',
                         description: 'Start a fresh conversation with SAGE anytime.',
                         side: "bottom"
-                    }
+                    },
                 },
                 {
                     element: '[data-tour="sidebar-collapse"]',
@@ -108,14 +108,18 @@ export function useChatbotTutorial({ user, hasSeenTutorial }: UseChatbotTutorial
         
         if (!seenInStorage && !hasSeenTutorial) {
             const startIfReady = () => {
-                const sidebar = document.querySelector('[data-tour="sidebar"]');
-                if (sidebar && sidebar.children.length > 0) {
-                    driverInstance.drive();
+                const conversationButton = document.querySelector('[data-tour="sidebar"] ul li button');
+                if (conversationButton) {
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            driverInstance.drive();
+                        });
+                    });
                 } else {
                     setTimeout(startIfReady, 200);
                 }
             };
-            setTimeout(startIfReady, 1500);
+            setTimeout(startIfReady, 500);
         }
     }, []);
 
