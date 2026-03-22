@@ -36,10 +36,11 @@ interface PlannerProps {
         cb: (choice: "overwrite" | "select" | "new", degrees: any[], fetchedData: any, targetPlanId?: string) => void,
         plans: { id: string; name: string }[]
     ) => void;
+    onSidebarToggle?: (collapsed: boolean) => void;
 }
 
 
-const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding, onRegisterConflictHandler }) => {
+const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding, onRegisterConflictHandler, onSidebarToggle }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { user, allowedYears } = useAuth();
     const hasAutoSaved = useRef(false);
@@ -396,6 +397,10 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             }, 200);
         }
     }, [error]);
+
+    useEffect(() => {
+        onSidebarToggle?.(sidebarCollapsed);
+    }, [sidebarCollapsed]);
 
     useEffect(() => {
         const handleResize = () => {
@@ -1223,6 +1228,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             </button>
                         </div>
                     )}
+
+                    <div className="flex lg:hidden justify-center pb-4 pointer-events-none">
+                        <span className="text-gray-400 text-[10px] text-center px-4">
+                            Degree plan evaluations are not official and may be incomplete or incorrect. Verify with your academic advisor or official catalogs.
+                        </span>
+                    </div>
 
                     {/* Rename Plan Modal */}
                     {showRenameModal && (

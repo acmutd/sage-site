@@ -50,6 +50,7 @@ const PlannerPage = () => {
   const [requirements, setRequirements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [planConflict, setPlanConflict] = useState<PlanConflictState | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const conflictModalRef = useRef<HTMLDivElement>(null);
   const onboardingOverlayRef = useRef<HTMLDivElement>(null);
@@ -554,9 +555,9 @@ const PlannerPage = () => {
                   onRestartOnboarding={handleRestartOnboarding}
                   onRegisterConflictHandler={(cb, plans) => {
                     plannerConflictCallbackRef.current = cb;
-                    // keep a live copy of plan list for the modal dropdown
                     planListRef.current = plans;
                   }}
+                  onSidebarToggle={(collapsed) => setSidebarCollapsed(collapsed)}
                 />
               )}
 
@@ -588,11 +589,11 @@ const PlannerPage = () => {
         </>
       )}
 
-    {showPlanner && !planConflict && (
-      <div className="fixed bottom-1 w-full flex flex-col items-center gap-0.5 text-center pointer-events-none z-10 pl-72 text-[12px]">
-            <span className="text-gray-400">Degree plan evaluations are not official and may be incomplete or incorrect. Verify with your academic advisor or official catalogs.</span>
-      </div>
-    )}
+      {showPlanner && !planConflict && (
+        <div className={`hidden lg:flex fixed bottom-3 w-full flex-col items-center text-center pointer-events-none z-10 text-[10px] transition-all duration-300 ${sidebarCollapsed ? 'pl-20' : 'pl-80'}`}>
+          <span className="text-gray-400">Degree plan evaluations are not official and may be incomplete or incorrect. Verify with your academic advisor or official catalogs.</span>
+        </div>
+      )}
     </main>
   );
 };
