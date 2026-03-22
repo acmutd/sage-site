@@ -107,7 +107,15 @@ export function useChatbotTutorial({ user, hasSeenTutorial }: UseChatbotTutorial
         }
         
         if (!seenInStorage && !hasSeenTutorial) {
-            setTimeout(() => driverInstance.drive(), 500);
+            const startIfReady = () => {
+                const sidebar = document.querySelector('[data-tour="sidebar"]');
+                if (sidebar && sidebar.children.length > 0) {
+                    driverInstance.drive();
+                } else {
+                    setTimeout(startIfReady, 200);
+                }
+            };
+            setTimeout(startIfReady, 1500);
         }
     }, []);
 
