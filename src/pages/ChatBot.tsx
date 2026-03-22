@@ -1,6 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { driver } from "driver.js";
-import "driver.js/dist/driver.css";
 import { useAuth } from "../context/AuthContext";
 import {
   ArrowLeftToLineIcon,
@@ -21,6 +19,7 @@ import MessageDisplay from "@/components/chatbot/MessageDisplay";
 import { chatEventEmitter } from "../utils/chatEventEmitter";
 import { useChatbot } from "@/hooks/useChatbot";
 import { Message, Conversation } from "@/types/chat";
+import { useChatbotTutorial } from "@/hooks/useChatbotTutorial";
 
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
@@ -62,81 +61,8 @@ const ChatBot: React.FC = () => {
     initialLoad
   } = useChatbot();
 
-  const [driverObj, setDriverObj] = useState<any>(null);
-
-  useEffect(() => {
-    const driverInstance = driver({
-      showProgress: true,
-      showButtons: ['next', 'previous', 'close'],
-      steps: [
-        {
-          element: '[data-tour="sidebar"]',
-          popover: {
-            title: 'Conversation History',
-            description: 'View and manage your conversation history here. Click on any past conversation to continue it. Hovering over the conversation allows you to manage it.',
-            side: "right"
-          }
-        },
-        {
-          element: '[data-tour="new-chat-expanded"]',
-          popover: {
-            title: 'New Chat',
-            description: 'Start a fresh conversation with SAGE anytime.',
-            side: "bottom"
-          }
-        },
-        {
-          element: '[data-tour="sidebar-collapse"]',
-          popover: {
-            title: 'Collapse Sidebar',
-            description: 'You can collapse the sidebar to expand your chat view. Click again to reopen it.',
-            side: "bottom"
-          }
-        },
-        {
-          element: '[data-tour="chat-input"]',
-          popover: {
-            title: 'Ask Questions',
-            description: 'Type your questions here and press Enter or click the send button to your right.',
-            side: "top"
-          }
-        },
-        {
-          element: '[data-tour="mode-toggle"]',
-          popover: {
-            title: 'Mode Toggle',
-            description: 'Switch between general advising questions and schedule generation mode.',
-            side: "top"
-          }
-        },
-        {
-          element: '[data-tour="help-button"]',
-          popover: {
-            title: 'Tutorial',
-            description: 'Click here to replay the tutorial at any time',
-            side: "left"
-          }
-        }
-      ],
-      onDestroyed: () => {
-        localStorage.setItem('hasSeenChatbotTutorial', 'true');
-      },
-      popoverClass: 'sage-driver-theme'
-    });
-
-    setDriverObj(driverInstance);
-    const hasSeenTutorial = localStorage.getItem('hasSeenChatbotTutorial');
-    if (!hasSeenTutorial) {
-      setTimeout(() => driverInstance.drive(), 500);
-    }
-  }, []);
-
-  const startTutorial = () => {
-    if (driverObj) {
-      driverObj.drive();
-    }
-  };
-
+  const { startTutorial } = useChatbotTutorial({ user });
+  
   const updateConversations = (newConversations: Conversation[] | ((prev: Conversation[]) => Conversation[])) => {
     if (typeof newConversations === 'function') {
       setConversations((prevConversations) => {

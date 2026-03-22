@@ -590,7 +590,7 @@ const PlannerPage = () => {
       )}
 
       {showPlanner && !planConflict && (
-        <div className={`hidden lg:flex fixed bottom-3 w-full flex-col items-center text-center pointer-events-none z-10 text-[10px] transition-all duration-300 ${sidebarCollapsed ? 'pl-20' : 'pl-80'}`}>
+        <div className={`hidden lg:flex fixed bottom-1 w-full flex-col items-center text-center pointer-events-none z-10 text-[10px] transition-all duration-300 ${sidebarCollapsed ? 'pl-20' : 'pl-80'}`}>
           <span className="text-gray-400">Degree plan evaluations are not official and may be incomplete or incorrect. Verify with your academic advisor or official catalogs.</span>
         </div>
       )}
