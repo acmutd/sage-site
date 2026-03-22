@@ -54,6 +54,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await setPersistence(auth, browserLocalPersistence);
 
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
+          setUser(user);
+          setLoading(false);
+          
           if (user) {
             setUser(user);
             const token = await user.getIdToken();
