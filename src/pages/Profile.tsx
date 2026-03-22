@@ -72,7 +72,7 @@ function EditableCardContent({ card, onSave }: { card: Card; onSave: (val: strin
 }
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, setProfilePicture: setContextProfilePicture } = useAuth();
   const [showMissingInfoModal, setShowMissingInfoModal] = useState(false);
   const [mobileView, setMobileView] = useState(false);
   const [tabletView, setTabletView] = useState(false);
@@ -390,10 +390,13 @@ const Profile = () => {
     }
     setProfilePictureType(newType);
     localStorage.setItem('profilePictureType', newType.toString());
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('profilePictureUpdated'));
-    if (newType === 0 && googlePhotoURL) setProfilePic(googlePhotoURL);
-    else setProfilePic(`/assets/profile_pics/${newType}.png`);
+    if (newType === 0 && googlePhotoURL) {
+      setProfilePic(googlePhotoURL);
+      setContextProfilePicture(googlePhotoURL);
+    } else {
+      setProfilePic(`/assets/profile_pics/${newType}.png`);
+      setContextProfilePicture(`/assets/profile_pics/${newType}.png`);
+    }
     closePickerModal()
   }
 
@@ -420,11 +423,17 @@ const Profile = () => {
       const savedPhotoURL = data.profile?.["user-fields"]?.photo_url ?? null;
       const googleURL = user?.photoURL ?? savedPhotoURL;
       if (googleURL) setGooglePhotoURL(googleURL);
+
       setProfilePictureType(picType);
       localStorage.setItem('profilePictureType', picType.toString());
-      window.dispatchEvent(new Event('profilePictureUpdated'));
-      if (picType === 0 && googleURL) setProfilePic(googleURL);
-      else setProfilePic(`/assets/profile_pics/${picType}.png`);
+
+      if (picType === 0 && googleURL) {
+        setProfilePic(googleURL);
+        setContextProfilePicture(googleURL);
+      } else {
+        setProfilePic(`/assets/profile_pics/${picType}.png`);
+        setContextProfilePicture(`/assets/profile_pics/${picType}.png`);
+      }
 
       if (!data.majors || !data.credit_hours) {
         setShowMissingInfoModal(true);

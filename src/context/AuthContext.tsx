@@ -13,6 +13,7 @@ interface AuthContextType {
   loading: boolean;
   logout: () => void;
   profilePicture: string | null;
+  setProfilePicture: (url: string) => void;
   authChecking: boolean;
   setAuthChecking: (checking: boolean) => void;
   allowedYears: number;
@@ -30,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   logout: () => {},
   profilePicture: null,
+  setProfilePicture: () => {},
   authChecking: false,
   setAuthChecking: () => {},
   allowedYears: 10,
@@ -43,7 +45,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [profilePicture, setProfilePicture] = useState(null);
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [authChecking, setAuthChecking] = useState(false);
   const [allowedYears, setAllowedYears] = useState<number>(10);
@@ -56,7 +58,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
           setUser(user);
           setLoading(false);
-          
+
           if (user) {
             setUser(user);
             const token = await user.getIdToken();
@@ -81,8 +83,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
 
             const data = await response.json();
+            const picType = data.profile?.["user-fields"]?.profile_picture_type;
+            const photoUrl = data.profile?.["user-fields"]?.photo_url || user.photoURL || "";
+            
             setProfilePicture(
-              data.photo_url || `/assets/profile_pics/${data.profile_picture_type}.png`
+              picType === 0 && photoUrl
+                ? photoUrl
+                : `/assets/profile_pics/${picType}.png`
             );
             setAllowedYears(data.profile?.["system-fields"]?.allowedYears ?? 10);
           } else {
@@ -115,7 +122,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, profilePicture, authChecking, setAuthChecking, allowedYears, }}>
+    <AuthContext.Provider value={{ user, loading, logout, profilePicture, setProfilePicture, authChecking, setAuthChecking, allowedYears, }}>
       {!loading && children}
     </AuthContext.Provider>
   );
