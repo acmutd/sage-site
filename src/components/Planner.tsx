@@ -42,7 +42,7 @@ interface PlannerProps {
 
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding, onRegisterConflictHandler, onSidebarToggle }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const { user, allowedYears } = useAuth();
+    const { user, allowedYears, hasSeenPlannerTutorial } = useAuth();
     const hasAutoSaved = useRef(false);
     const lastSavedState = usePlannerStore(state => state.lastSavedState);
 
@@ -82,7 +82,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [undo, redo]);
 
-    const { driverObj, startTutorial, dropdownWasOpenedRef } = usePlannerTutorial({ scrollContainerRef, user, onForceExpandSidebar: () => { if (sidebarCollapsed) toggleSidebar(); } });
+    const { driverObj, startTutorial, dropdownWasOpenedRef } = usePlannerTutorial({ scrollContainerRef, user, hasSeenTutorial: hasSeenPlannerTutorial, onForceExpandSidebar: () => { if (sidebarCollapsed) toggleSidebar(); } });
 
     const [uiSnapshot, setUISnapshot] = useUISnapshot('sage-planner-ui', {
         collapsedYears: {} as Record<string, boolean>,

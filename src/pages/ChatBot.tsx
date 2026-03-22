@@ -23,7 +23,6 @@ import { useChatbotTutorial } from "@/hooks/useChatbotTutorial";
 
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
-// ---- Moved outside component so it's reusable across both cache paths ----
 const hydrateMessages = (msgs: Message[]): Message[] =>
   msgs.map((msg) => {
     if (msg.role === "assistant") {
@@ -41,7 +40,7 @@ const hydrateMessages = (msgs: Message[]): Message[] =>
   });
 
 const ChatBot: React.FC = () => {
-  const { user } = useAuth();
+  const { user, hasSeenChatbotTutorial } = useAuth();
   const [query, setQuery] = useState("");
   const handleClickQueryFlag = useRef(false);
   const ellipsisButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -61,7 +60,7 @@ const ChatBot: React.FC = () => {
     initialLoad
   } = useChatbot();
 
-  const { startTutorial } = useChatbotTutorial({ user });
+  const { startTutorial } = useChatbotTutorial({ user, hasSeenTutorial: hasSeenChatbotTutorial });
   
   const updateConversations = (newConversations: Conversation[] | ((prev: Conversation[]) => Conversation[])) => {
     if (typeof newConversations === 'function') {

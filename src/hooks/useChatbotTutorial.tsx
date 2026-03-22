@@ -5,11 +5,13 @@ import type { User } from "firebase/auth";
 
 interface UseChatbotTutorialOptions {
     user: User | null | undefined;
+    hasSeenTutorial?: boolean;
 }
 
-export function useChatbotTutorial({ user }: UseChatbotTutorialOptions) {
+export function useChatbotTutorial({ user, hasSeenTutorial }: UseChatbotTutorialOptions) {
     const [driverObj, setDriverObj] = useState<any>(null);
     const userRef = useRef(user);
+
     useEffect(() => { userRef.current = user; }, [user]);
 
     useEffect(() => {
@@ -98,8 +100,13 @@ export function useChatbotTutorial({ user }: UseChatbotTutorialOptions) {
 
         setDriverObj(driverInstance);
 
-        const hasSeenTutorial = localStorage.getItem('hasSeenChatbotTutorial');
-        if (!hasSeenTutorial) {
+        const seenInStorage = localStorage.getItem('hasSeenChatbotTutorial');
+
+        if (hasSeenTutorial && !seenInStorage) {
+            localStorage.setItem('hasSeenChatbotTutorial', 'true');
+        }
+        
+        if (!seenInStorage && !hasSeenTutorial) {
             setTimeout(() => driverInstance.drive(), 500);
         }
     }, []);

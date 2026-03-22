@@ -17,6 +17,8 @@ interface AuthContextType {
   authChecking: boolean;
   setAuthChecking: (checking: boolean) => void;
   allowedYears: number;
+  hasSeenChatbotTutorial: boolean;
+  hasSeenPlannerTutorial: boolean;
 }
 
 const loadClarity = (projectId: string) => {
@@ -35,6 +37,8 @@ const AuthContext = createContext<AuthContextType>({
   authChecking: false,
   setAuthChecking: () => {},
   allowedYears: 10,
+  hasSeenChatbotTutorial: false,
+  hasSeenPlannerTutorial: false,
 });
 
 const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
@@ -49,6 +53,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [authChecking, setAuthChecking] = useState(false);
   const [allowedYears, setAllowedYears] = useState<number>(10);
+  const [hasSeenChatbotTutorial, setHasSeenChatbotTutorial] = useState(false);
+  const [hasSeenPlannerTutorial, setHasSeenPlannerTutorial] = useState(false);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -91,7 +97,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 ? photoUrl
                 : `/assets/profile_pics/${picType}.png`
             );
+
             setAllowedYears(data.profile?.["system-fields"]?.allowedYears ?? 10);
+            setHasSeenChatbotTutorial(data.profile?.["system-fields"]?.hasSeenChatbotTutorial ?? false);
+            setHasSeenPlannerTutorial(data.profile?.["system-fields"]?.hasSeenPlannerTutorial ?? false);
+          
           } else {
             setUser(null);
             setProfilePicture(null);
@@ -122,7 +132,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, profilePicture, setProfilePicture, authChecking, setAuthChecking, allowedYears, }}>
+    <AuthContext.Provider value={{ user, loading, logout, profilePicture, setProfilePicture, authChecking, setAuthChecking, allowedYears, hasSeenChatbotTutorial, hasSeenPlannerTutorial, }}>
       {!loading && children}
     </AuthContext.Provider>
   );
