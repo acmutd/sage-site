@@ -40,8 +40,18 @@ export default function ForgotPasswordForm(props: { setLoading: (loading: boolea
             props.setLoading(false);
         } catch (error: unknown) {
             props.setLoading(false);
-            setError("Error sending password reset email. Try again.");
-            toast.error("Error sending password reset email. Try again.");
+            
+            const code = (error as any)?.code;
+            if (code === 'auth/user-not-found') {
+                setError("No account found with that email.");
+            } else if (code === 'auth/invalid-email') {
+                setError("Please enter a valid email address.");
+            } else if (code === 'auth/too-many-requests') {
+                setError("Too many attempts. Please try again later.");
+            } else {
+                setError(`Error: ${code ?? 'unknown'}`);
+            }
+            toast.error("Error sending password reset email.");
         }
     }
 
