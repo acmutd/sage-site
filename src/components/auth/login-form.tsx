@@ -29,12 +29,12 @@ const VITE_CRUD_API = import.meta.env.VITE_CRUD_API;
 
 const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
 const isEmailAllowedInDev = (email: string | null): boolean => {
-  if (ENVIRONMENT !== 'development') return true;
+  if (ENVIRONMENT !== 'dev') return true;
   return email?.toLowerCase().endsWith('@acmutd.co') || false;
 };
 
 const isUserAllowedInDev = async (user: any, resolvedEmail?: string): Promise<boolean> => {
-  if (ENVIRONMENT !== 'development') return true;
+  if (ENVIRONMENT !== 'dev') return true;
   const emailToCheck = resolvedEmail || user.email;
   if (emailToCheck?.toLowerCase().endsWith('@acmutd.co')) return true;
   try {
