@@ -28,7 +28,12 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({
     studentCatalogYear, latestCatalogYear 
 }) => {
     const [selectedProgramId] = useState<number | null>(program?.id || null);
-    const [updatedProgram, setUpdatedProgram] = useState(program);
+    const [updatedProgram, setUpdatedProgram] = useState({
+        level: "",
+        type: "",
+        title: "",
+        ...program,
+    });
     const [useLatest, setUseLatest] = useState(false);
 
     const activeCatalog = useLatest ? latestCatalog : degreeCatalog;
@@ -169,7 +174,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({
                                         {field.label}
                                     </label>
                                     <Select 
-                                        value={updatedProgram[field.id] || undefined}
+                                        value={updatedProgram[field.id] ?? ""}
                                         onValueChange={(value) => handleFieldChange(field.id, value)}
                                     >
                                         <SelectTrigger className="bg-redesign-stylesbg-light rounded-sm border border-slate-300 p-2 w-64">
@@ -202,7 +207,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({
                                 <Searchbox<{ name: string }>
                                     key={useLatest ? "latest" : "assigned"}
                                     items={getTitleOptions()}
-                                    getLabel={(o: { name: string }) => o.name}
+                                    getLabel={(o: { name: string }) => o?.name ?? ""}
                                     searchKeys={["name"]}
                                     onSelect={(o: { name: string }) => handleFieldChange("title", o.name)}
                                     placeholder="Search programs…"
