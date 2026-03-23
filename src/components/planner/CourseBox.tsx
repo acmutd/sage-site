@@ -473,7 +473,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         <span className="text-gray-900">{course.semester}</span>
                     </div>
                 )}
-                {course.credits_earned !== undefined && (
+                {course.credits_earned !== undefined && course.credits_earned !== 0 && (
                     <div className="flex gap-2">
                         <span className="text-gray-600 font-medium">Credits:</span>
                         <span className="text-gray-900">{course.credits_earned}</span>
