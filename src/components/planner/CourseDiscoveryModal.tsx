@@ -775,7 +775,12 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         setError(null);
 
         const params = new URLSearchParams();
-        if (debouncedQuery) params.set('q', debouncedQuery.toLowerCase().replace(/\s+/g, ''));
+
+        const looksLikeCourseCode = /\d/.test(debouncedQuery) || allPrefixes.includes(debouncedQuery.toUpperCase());;
+        if (debouncedQuery && looksLikeCourseCode) {
+            params.set('q', debouncedQuery.toLowerCase().replace(/\s+/g, ''));
+        }
+
         if (selectedSchools.length) params.set('schools', selectedSchools.join(','));
         if (selectedPrefixes.length) params.set('subjects', selectedPrefixes.join(','));
         if (selectedCredits.length) params.set('credits', selectedCredits.map(c => c === '4+' ? '4' : c).join(','));
@@ -899,11 +904,12 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         const exact = results.filter(c => {
             const code = c.course_code.toLowerCase().replace(/\s+/g, '');
             const name = c.course_name.toLowerCase();
-            return (
-                code.startsWith(q) ||
-                code.includes(q) ||
-                name.includes(query.trim().toLowerCase())
-            );
+        
+            const nameMatches = q.length <= 3
+                ? name.split(/\s+/).some(word => word.startsWith(q))
+                : name.includes(q);
+        
+            return code.startsWith(q) || code.includes(q) || nameMatches;
         });
 
         if (exact.length > 0) return exact;
