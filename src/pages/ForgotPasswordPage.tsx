@@ -4,8 +4,9 @@ import { useState, useEffect} from "react";
 
 const ForgotPasswordPage = () => {
     const [isLoading, setIsLoading] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
     const [mobileView, setMobileView] = useState(false);
-
+    
     useEffect(() => {
         if(window.innerWidth < 768) {
         setMobileView(true);
@@ -29,7 +30,11 @@ const ForgotPasswordPage = () => {
                     Loading...
                 </div>
 
-                <AuthCard title="Reset your password" mobileView={mobileView} form={<ForgotPasswordForm setLoading={handleLoading}  />} />
+                <AuthCard 
+                    title={submitted ? undefined : "Reset your password"} 
+                    mobileView={mobileView} 
+                    form={<ForgotPasswordForm setLoading={handleLoading} onSubmitted={() => setSubmitted(true)} />} 
+                />
             </div>
         </div>
     );
