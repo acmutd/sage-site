@@ -156,15 +156,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
     // idempotent init guard to prevent double making of plans
     const planInitializedRef = useRef(false);
-
+    const createNewPlanRef = useRef(createNewPlan);
+    const initialPlannerStateRef = useRef(initialPlannerState);
+    
     useEffect(() => {
         if (plans.length === 0 && !planInitializedRef.current) {
             planInitializedRef.current = true;
             const evalRaw = localStorage.getItem('evaluation');
             const evaluation = evalRaw ? JSON.parse(evalRaw) : null;
-            createNewPlan(initialPlannerState, evaluation);
+            createNewPlanRef.current(initialPlannerStateRef.current, evaluation);
         }
-    }, [plans.length, initialPlannerState, createNewPlan]);
+    }, [plans.length]);
 
     useEffect(() => {
         if (plans.length === 0) return;
@@ -322,7 +324,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             toast.success("Plan updated with new transcript");
 
         } else if (choice === "new") {
-            if (plans.length >= 5) {
+            const { plans: currentPlans } = usePlannerStore.getState();
+            if (currentPlans.length >= 5) {
                 toast.error("Maximum of 5 plans reached — delete one first");
                 setPendingConflictChoice(null);
                 return;
@@ -333,13 +336,20 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         }
 
         setPendingConflictChoice(null);
-    }, [pendingConflictChoice, activePlanId, plans.length, switchPlan, updateActivePlan, createNewPlan]);
+    }, [pendingConflictChoice, switchPlan, updateActivePlan, createNewPlan]);
 
+    const conflictCallbackRef = useRef((
+        choice: "overwrite" | "select" | "new",
+        degrees: any[],
+        fetchedData: any,
+        targetPlanId?: string
+    ) => {
+        setPendingConflictChoice({ choice, degrees, fetchedData, targetPlanId });
+    });
+    
     useEffect(() => {
         onRegisterConflictHandler?.(
-            (choice, degrees, fetchedData, targetPlanId) => {
-                setPendingConflictChoice({ choice, degrees, fetchedData, targetPlanId });
-            },
+            conflictCallbackRef.current,  // stable reference — never changes
             plans.map(p => ({ id: p.id, name: p.name }))
         );
     }, [plans, onRegisterConflictHandler]);
