@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { toast } from 'sonner';
 import { getCreditsFromCourseCode } from "@/utils/plannerCredits";
+import { normalizeCourseCode } from '@/utils/prerequisiteUtils';
 
 interface SavedPlannerState {
     id: string;
@@ -556,7 +557,7 @@ export const usePlannerStore = create<PlannerStore>()(
 
                             targetSemester.courses.push(newCourse);
                             
-                            plan.placedCourses = Array.from(new Set([...plan.placedCourses, courseCode]));
+                            plan.placedCourses = Array.from(new Set([...plan.placedCourses, normalizeCourseCode(courseCode) || courseCode]));
                         }
                     } else {
                         // Moving existing course

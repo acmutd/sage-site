@@ -762,12 +762,12 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
     const runQuickEvaluation = async () => {
         if (!plannedCoursesSignature) {
-            toast.info("Plan more courses from the sidebar to suggest more classes.");
+            toast.info("Plan more courses from the sidebar or Course Discovery to suggest more classes.");
             return;
         }
 
         if (plannedCoursesSignature === lastQuickEvalPlannedCoursesSignature) {
-            toast.info("Plan more courses from the sidebar to suggest more classes.");
+            toast.info("Plan more courses from the sidebar or Course Discovery to suggest more classes.");
             return;
         }
 
