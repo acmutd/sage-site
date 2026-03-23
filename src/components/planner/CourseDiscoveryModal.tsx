@@ -765,6 +765,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const [noAleks, setNoAleks] = useState(false);
     const [noPerm, setNoPerm] = useState(false);
     const [selectedStanding, setSelectedStanding] = useState<string[]>([]);
+    const [hideCompleted, setHideCompleted] = useState(true);
 
     const searchRef = useRef<HTMLInputElement>(null);
 
@@ -814,7 +815,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                 const merged = newOffset === 0 ? normalized : [...prev, ...normalized];
                 return merged.filter((c, i, arr) => arr.findIndex(x => x.course_id === c.course_id) === i);
             });
-            
+
             setTotal(data.total);
             setHasMore(data.has_more);
             setOffset(newOffset + LIMIT);
@@ -836,7 +837,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     // Fetch on filter change, reset to page 0
     useEffect(() => {
         fetchCourses(0);
-    }, [selectedSchools, selectedPrefixes, selectedCredits, coreOnly, selectedDept, educationLevel, debouncedQuery,  noAleks, noPerm, selectedStanding]);
+    }, [selectedSchools, selectedPrefixes, selectedCredits, coreOnly, selectedDept, educationLevel, debouncedQuery, noAleks, noPerm, selectedStanding]);
 
     const coursesWithInstructors = useMemo(() =>
         courses.map(c => ({
@@ -882,12 +883,20 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     }), [coursesWithInstructors]);
 
     const filteredCourses = useMemo(() => {
-        if (!query.trim()) return courses;
+        const completedSet = new Set(
+            completedCourseCodes.map(c => normalizeCourseCode(c))
+        );
+
+        let results = hideCompleted
+            ? courses.filter(c => !completedSet.has(normalizeCourseCode(c.course_code)))
+            : courses;
+
+        if (!query.trim()) return results;
 
         const q = query.trim().toLowerCase().replace(/\s+/g, '');
 
         // Exact/prefix match first — handles "CS 3345", "cs3345", "3345"
-        const exact = courses.filter(c => {
+        const exact = results.filter(c => {
             const code = c.course_code.toLowerCase().replace(/\s+/g, '');
             const name = c.course_name.toLowerCase();
             return (
@@ -900,8 +909,8 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         if (exact.length > 0) return exact;
 
         // Fall back to Fuse for fuzzy matching (typos, professor names, etc.)
-        return fuse.search(query).map(r => r.item);
-    }, [query, fuse, courses]);
+        return fuse.search(query).map(r => r.item).filter(c => results.includes(c));
+    }, [query, fuse, courses, hideCompleted, completedCourseCodes]);
 
     const selectedCourse = courses.find(c => c.course_id === selectedCourseId) ?? null;
     const cartItem = selectedCourse ? cart.find(i => i.course.course_id === selectedCourse.course_id) : undefined;
@@ -1185,6 +1194,13 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                             onChange={setSelectedStanding}
                                             allLabel="Any Standing"
                                         />
+                                        <button onClick={() => setHideCompleted(p => !p)}
+                                            className={`text-xs px-2.5 py-1 rounded-md border transition-colors flex items-center gap-1 whitespace-nowrap
+        ${!hideCompleted
+                                                    ? 'bg-green-500 border-green-500 text-white font-medium'
+                                                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}>
+                                            <CheckCircle className="w-3 h-3" /> Show Completed
+                                        </button>
                                     </div>
                                 </div>
                             </div>
