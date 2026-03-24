@@ -350,6 +350,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             if (hasCompletedClasses) return true;
         }
 
+        if (category.suggested && category.suggested.length > 0) return true;
+        if (category.prereq_blocked && category.prereq_blocked.length > 0) return true;
+        
         // Recursively check subcategories
         if (category.categories && category.categories.length > 0) {
             return category.categories.some((subcat: any) => hasCompletion(subcat));
@@ -406,6 +409,25 @@ const Sidebar: React.FC<SidebarProps> = ({
                         courses={category.suggested}
                         type="suggested"
                         placedSuggestedCourses={placedSuggestedCourses}
+                        categoryName={category.name}
+                        allSuggestedCourses={allSuggestedCourses}
+                        allCompletedCourseCodes={allCompletedCourseCodes}
+                        allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
+                        coursebookData={coursebookData}
+                        coursebookSemester={coursebookSemester}
+                        gradesData={gradesData}
+                    />
+                </>
+            )}
+
+            {category.prereq_blocked && category.prereq_blocked.length > 0 && (
+                <>
+                    <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
+                        <span className="text-xs text-gray-500 font-medium">Needs Prerequisites</span>
+                    </div>
+                    <CoursesCarousel
+                        courses={category.prereq_blocked}
+                        type="prereq_blocked"
                         categoryName={category.name}
                         allSuggestedCourses={allSuggestedCourses}
                         allCompletedCourseCodes={allCompletedCourseCodes}

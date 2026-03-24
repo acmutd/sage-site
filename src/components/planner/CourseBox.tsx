@@ -27,6 +27,7 @@ interface CourseBoxProps {
     footnotes?: string[] | null;
     rules?: string[] | null;
     coursebookSemester?: string | null;
+    isPrereqBlocked?: boolean;
 }
 
 let closeActiveTooltip: (() => void) | null = null; // singleton to prevent multi-drags
@@ -147,6 +148,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     footnotes = [],
     rules = [],
     coursebookSemester,
+    isPrereqBlocked,
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -167,7 +169,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, [inSidebar]);
-    
+
     // mobile check - does it have a cursor or does it have touch?
     const [canHover, setCanHover] = useState(true);
     useEffect(() => {
@@ -257,6 +259,9 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const dragRef = !isFromTranscript && !isPlaced ? drag : null;
 
     const getStatusStyles = () => {
+        if (isPrereqBlocked) {
+            return 'border-dashed border-gray-400 bg-gray-50 opacity-75';
+        }
         if (isPlaced) {
             return 'border-gray-300 bg-gray-100 opacity-50';
         }
@@ -315,21 +320,21 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             isActiveTooltipRef.current = false;
             setShowTooltip(false);
         };
-    
+
         const rect = e.currentTarget.getBoundingClientRect();
         const tooltipWidth = sections.length > 0 ? Math.min(560, window.innerWidth * 0.9) : 264;
         const padding = 8;
-    
+
         const spaceRight = window.innerWidth - rect.right - padding;
         const spaceLeft = rect.left - padding;
-    
+
         // Prefer right; only flip left if it genuinely doesn't fit AND left has more room
         const goLeft = spaceRight < tooltipWidth && spaceLeft > spaceRight;
-    
+
         const left = goLeft
             ? Math.max(padding, rect.left - tooltipWidth - 10)  // clamp so it never goes off-screen left
             : Math.min(rect.right + 10, window.innerWidth - tooltipWidth - padding); // clamp right
-    
+
         setTooltipPosition({ top: rect.top, left });
         tooltipAnimatedRef.current = false;
         setShowTooltip(true);
@@ -380,10 +385,10 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         if (count === 0) return null;
         const avg = total / count;
         if (avg >= 3.85) return "A";
-        if (avg >= 3.5)  return "A-";
+        if (avg >= 3.5) return "A-";
         if (avg >= 3.15) return "B+";
         if (avg >= 2.85) return "B";
-        if (avg >= 2.5)  return "B-";
+        if (avg >= 2.5) return "B-";
         if (avg >= 2.15) return "C+";
         if (avg >= 1.85) return "C";
         return "C-";
@@ -406,14 +411,14 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         const nameStr = Array.isArray(instructorName)
             ? (instructorName[0] ?? "")
             : String(instructorName ?? "");
-    
+
         if (!courseGrades?.instructors || !nameStr) return null;
-    
+
         const normalize = (name: any): string => {
             if (!name || typeof name !== "string") return "";
             return name.toLowerCase().replace(/[^a-z\s]/g, "").trim();
         };
-    
+
         const parseName = (name: string) => {
             if (name.includes(",")) {
                 const [last, firstPart] = name.split(",").map(s => s.trim());
@@ -423,9 +428,9 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             const parts = normalize(name).split(" ");
             return { first: parts[0] ?? "", last: parts[parts.length - 1] ?? "" };
         };
-    
+
         const input = parseName(nameStr);
-    
+
         return courseGrades.instructors.find((inst: any) => {
             const instName = inst.instructor?.name ?? "";
             const parsed = parseName(instName);
@@ -539,9 +544,9 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                                 {rmp && (() => {
                                                     const color = getRMPColor(rmp);
                                                     const isLight = (hex: string) => {
-                                                        const r = parseInt(hex.slice(1,3), 16);
-                                                        const g = parseInt(hex.slice(3,5), 16);
-                                                        const b = parseInt(hex.slice(5,7), 16);
+                                                        const r = parseInt(hex.slice(1, 3), 16);
+                                                        const g = parseInt(hex.slice(3, 5), 16);
+                                                        const b = parseInt(hex.slice(5, 7), 16);
                                                         return (r * 0.299 + g * 0.587 + b * 0.114) > 180;
                                                     };
                                                     const textColor = isLight(color) ? '#854d0e' : color;
@@ -601,7 +606,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                         </div>
                                         <div>
                                             <div className="text-xs font-semibold text-gray-800 truncate max-w-[90px]" title={sec.instructors}>
-                                               {(() => { const s = getInstructorString(sec.instructors); const first = s.split(",")[0].trim(); return s.includes(",") ? `${first} +` : first; })()}
+                                                {(() => { const s = getInstructorString(sec.instructors); const first = s.split(",")[0].trim(); return s.includes(",") ? `${first} +` : first; })()}
                                             </div>
                                             <div className="text-[10px] text-gray-400">{sec.activity_type}</div>
                                         </div>
@@ -621,26 +626,26 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                                 </span>
                                             )}
                                             {rmp && (() => {
-                                                    const color = getRMPColor(rmp);
-                                                    const isLight = (hex: string) => {
-                                                        const r = parseInt(hex.slice(1,3), 16);
-                                                        const g = parseInt(hex.slice(3,5), 16);
-                                                        const b = parseInt(hex.slice(5,7), 16);
-                                                        return (r * 0.299 + g * 0.587 + b * 0.114) > 180;
-                                                    };
-                                                    const textColor = isLight(color) ? '#854d0e' : color;
-                                                    return (
-                                                        <span
-                                                            className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                                                            style={{
-                                                                color: textColor,
-                                                                backgroundColor: `${color}18`,
-                                                                border: `1px solid ${color}30`,
-                                                            }}
-                                                        >
-                                                            {rmp} ★
-                                                        </span>
-                                                    );
+                                                const color = getRMPColor(rmp);
+                                                const isLight = (hex: string) => {
+                                                    const r = parseInt(hex.slice(1, 3), 16);
+                                                    const g = parseInt(hex.slice(3, 5), 16);
+                                                    const b = parseInt(hex.slice(5, 7), 16);
+                                                    return (r * 0.299 + g * 0.587 + b * 0.114) > 180;
+                                                };
+                                                const textColor = isLight(color) ? '#854d0e' : color;
+                                                return (
+                                                    <span
+                                                        className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                                                        style={{
+                                                            color: textColor,
+                                                            backgroundColor: `${color}18`,
+                                                            border: `1px solid ${color}30`,
+                                                        }}
+                                                    >
+                                                        {rmp} ★
+                                                    </span>
+                                                );
                                             })()}
                                         </div>
                                     </div>
@@ -700,6 +705,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                             ? getWarningIndicatorIcon()
                             : (canHover && !(inSidebar && isNarrowSidebar)) && getIcon()}
                         {!shouldReplaceSidebarInfoIcon && shouldShowWarningIcon && getWarningIndicatorIcon()}
+                        {isPrereqBlocked && (
+                            <span className="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
+                                Locked
+                            </span>
+                        )}
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
                                 Suggested
