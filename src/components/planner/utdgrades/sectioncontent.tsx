@@ -61,8 +61,8 @@ export default function SectionContent({ instData }: SectionContentProps) {
           <GradeChart grades={aggregate.grades} totalStudents={aggregate.totalStudents} height={180} />
         ) : (
           <div className="space-y-3">
-            {semesterRows.map((sem) => (
-              <div className="flex items-center gap-3">
+            {semesterRows.map((sem, i) => (
+              <div key={i} className="flex items-center gap-3">
                 <div className="w-28 shrink-0">
                     <span className="text-xs text-muted-foreground">{sem.season} {sem.year}</span>
                     <p className="text-[10px] text-muted-foreground/60">{sem.totalStudents} students</p>

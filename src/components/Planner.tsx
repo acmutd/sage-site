@@ -55,6 +55,9 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const hasAutoSaved = useRef(false);
     const lastSavedState = usePlannerStore(state => state.lastSavedState);
 
+    // discovered courses 
+    const stagedCourses = usePlannerStore(s => s.stagedCourses);
+
     // student type 
     const studentType = determineStudentType(transcriptData);
 
@@ -560,6 +563,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 if (code) codesToFetch.add(code.toLowerCase().replace(/\s+/g, ""));
             });
 
+            stagedCourses.forEach((course) => {
+                const code = course.course_code;
+                if (code) codesToFetch.add(code.toLowerCase().replace(/\s+/g, ""));
+            });
+
             Object.values(allSemesters).forEach(yearSemesters => {
                 yearSemesters.forEach(semester => {
                     if (!semester.isFromTranscript) {
@@ -616,7 +624,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         };
 
         fetchCoursebook();
-    }, [allSuggestedCourses, allSemesters, user]);
+    }, [allSuggestedCourses, allSemesters, user, stagedCourses]);
 
     useEffect(() => {
         const fetchGrades = async () => {
@@ -629,6 +637,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 if (code) codesToFetch.add(code.toUpperCase().replace(/\s+/g, ""));
             });
 
+            stagedCourses.forEach((course) => {
+                const code = course.course_code;
+                if (code) codesToFetch.add(code.toLowerCase().replace(/\s+/g, ""));
+            });
+            
             Object.values(allSemesters).forEach(yearSemesters => {
                 yearSemesters.forEach(semester => {
                     if (!semester.isFromTranscript) {
@@ -674,7 +687,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         };
 
         fetchGrades();
-    }, [allSuggestedCourses, allSemesters, user]);
+    }, [allSuggestedCourses, allSemesters, user, stagedCourses]);
 
     const initializedYearKeysRef = useRef<Set<string>>(new Set());
 

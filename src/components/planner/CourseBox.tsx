@@ -1,4 +1,4 @@
-import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2, CirclePlus, TriangleAlert, Maximize2 } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2, CirclePlus, TriangleAlert, Maximize2, X } from 'lucide-react';
 import { useDrag } from "react-dnd";
 import { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
@@ -28,6 +28,7 @@ interface CourseBoxProps {
     rules?: string[] | null;
     coursebookSemester?: string | null;
     isPrereqBlocked?: boolean;
+    isDiscovered?: boolean;
 }
 
 let closeActiveTooltip: (() => void) | null = null; // singleton to prevent multi-drags
@@ -153,6 +154,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     rules = [],
     coursebookSemester,
     isPrereqBlocked,
+    isDiscovered = false,
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -211,7 +213,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     sourceYear,
                     sourceSemesterIndex,
                     courseId: course.id,
-                    isSuggested: isSuggested,
+                    isSuggested: isSuggested || isDiscovered,
                 }
             },
             canDrag: () => !isFromTranscript && !isLocked && !isPlaced,
@@ -263,11 +265,14 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const dragRef = !isFromTranscript && !isPlaced ? drag : null;
 
     const getStatusStyles = () => {
+        if (isPlaced) {
+            return 'border-gray-300 bg-gray-100 opacity-50';
+        }
         if (isPrereqBlocked) {
             return 'border-dashed border-gray-400 bg-gray-50 opacity-75';
         }
-        if (isPlaced) {
-            return 'border-gray-300 bg-gray-100 opacity-50';
+        if (isDiscovered) {
+            return 'border-purple-300 bg-purple-50';
         }
         if (isSuggested) {
             return 'border-yellow-300 bg-yellow-50';
@@ -714,6 +719,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 Locked
                             </span>
                         )}
+                        {isDiscovered && !isPlaced && (
+                            <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
+                                Staged
+                            </span>
+                        )}
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
                                 Suggested
@@ -730,6 +740,15 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                             >
                                 <Info className="w-4 h-4 text-blue-500" />
+                            </button>
+                        )}
+                        {isDiscovered && onRemove && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                                className="p-1 hover:bg-purple-100 rounded-full transition-colors"
+                                title="Remove from staging"
+                            >
+                                <X className="w-3.5 h-3.5 text-purple-400 hover:text-purple-600" />
                             </button>
                         )}
                     </div>

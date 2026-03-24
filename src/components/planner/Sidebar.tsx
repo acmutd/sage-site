@@ -6,6 +6,7 @@ import CoursesCarousel from '@/components/planner/CoursesCarousel';
 import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/plannerCredits";
 import type { SemestersForCredits } from "@/utils/plannerCredits";
 import { CartItem } from "./CourseDiscoveryModal";
+import { usePlannerStore } from '@/stores/plannerStore';
 
 interface SidebarProps {
     requirements: {
@@ -79,7 +80,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     gradesData = {},
     coursebookSemester,
     onOpenDiscovery,
-    discoveryCart = [],
 }) => {
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
     const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -87,6 +87,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
     const [highlightedKey, setHighlightedKey] = useState<string | null>(null);
     const prevSuggestedByKeyRef = useRef<Record<string, Set<string>>>({});
+
+    // discovery of courses hooks
+    const stagedCourses = usePlannerStore(s => s.stagedCourses);
+    const removeStagedCourse = usePlannerStore(s => s.removeStagedCourse);
 
     // Collect all suggested courses from all categories with their category paths
     const allSuggestedCourses = React.useMemo(() => {
@@ -562,35 +566,40 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm font-medium text-green-800">
-                                        {discoveryCart.length > 0 ? 'Shop more courses' : 'Discover Courses'}
+                                        {stagedCourses.length > 0 ? 'Shop more courses' : 'Discover Courses'}
                                     </div>
                                     <div className="text-xs text-green-600">Browse &amp; add to your plan</div>
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-green-400 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
                             </button>
 
-                            {discoveryCart.length > 0 && (
-                                <div className="mb-4 space-y-1.5">
-                                    <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-1 mb-2">
-                                        In cart · {discoveryCart.length} course{discoveryCart.length !== 1 ? 's' : ''}
-                                    </div>
-                                    {discoveryCart.map(item => (
-                                        <div
-                                            key={item.course.course_id}
-                                            onClick={onOpenDiscovery}
-                                            className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-white border border-green-200
-                    hover:border-green-300 hover:bg-green-50 transition-colors cursor-pointer group"
-                                        >
-                                            <div className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-xs font-semibold text-gray-700 truncate">{item.course.course_code}</div>
-                                                <div className="text-[10px] text-gray-400 truncate">{item.course.course_name}</div>
-                                            </div>
-                                            <span className="text-[10px] text-gray-400 flex-shrink-0">{item.course.credits}cr</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                            {stagedCourses.length > 0 && (
+    <div className="mb-4">
+        <div className="flex items-center justify-between px-1 mb-2">
+            <div className="text-[10px] font-semibold text-purple-500 uppercase tracking-wide flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+                Staged · {stagedCourses.length} course{stagedCourses.length !== 1 ? 's' : ''}
+            </div>
+            <button
+                onClick={() => usePlannerStore.getState().clearStagedCourses()}
+                className="text-[10px] text-gray-400 hover:text-red-400 transition-colors"
+            >
+                Clear all
+            </button>
+        </div>
+        <CoursesCarousel
+            courses={stagedCourses}
+            type="discovered"
+            onRemove={removeStagedCourse}
+            coursebookData={coursebookData}
+            gradesData={gradesData}
+            coursebookSemester={coursebookSemester}
+            availableSemesters={[]} 
+            placedSuggestedCourses={placedSuggestedCourses}
+        />
+    </div>
+)}
+
 
                             <h2 className="text-xl font-bold text-gray-900 mb-4">
                                 Degree Requirements

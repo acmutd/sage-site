@@ -10,7 +10,7 @@ import {
 
 interface CoursesCarouselProps {
     courses: any[];
-    type: 'suggested' | 'completed' | 'prereq_blocked';
+    type: 'suggested' | 'completed' | 'prereq_blocked' | 'discovered';
     placedSuggestedCourses?: Set<string>;
     categoryName?: string;
     availableSemesters?: Array<{ yearKey: string, semesterIndex: number, title: string }>;
@@ -26,6 +26,7 @@ interface CoursesCarouselProps {
     coursebookData?: Record<string, any[]>;
     gradesData?: Record<string, any>;
     coursebookSemester?: string | null;
+    onRemove?: (courseCode: string) => void;
 }
 
 const normalizeCorequisiteGroups = (corequisites: unknown): string[][] => {
@@ -67,6 +68,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
     coursebookData = {},
     gradesData = {},
     coursebookSemester,
+    onRemove,
 }) => {
     const COURSES_PER_PAGE = 5;
     const [currentPage, setCurrentPage] = useState(0);
@@ -118,7 +120,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                 completedCodesSet.has(coreqCode)
             );
             if (isAlreadySatisfied) continue;
-            
+
             // If ANY course in this group is in the suggested list, add the whole group
             const hasAnyCoreqInSuggested = coreqGroup.some((coreqCode: string) =>
                 suggestedCodesSet.has(coreqCode)
@@ -232,9 +234,11 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
 
     const dotColor = type === 'suggested'
         ? 'bg-yellow-400'
-        : type === 'prereq_blocked'
-            ? 'bg-gray-400'
-            : 'bg-green-400';
+        : type === 'discovered'
+            ? 'bg-purple-400'
+            : type === 'prereq_blocked'
+                ? 'bg-gray-400'
+                : 'bg-green-400';
 
     return (
         <div className="w-full">
@@ -324,7 +328,58 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 rules={course.rules}
                             />
                         );
-                    } else {
+                    } else if (type === 'discovered') {
+                        const courseCode = course.code || course.course_code;
+                        const isPlaced = placedSuggestedCourses.has(
+                            normalizeCourseCode(courseCode) ?? courseCode
+                        );
+                        const coreqWarnings = getCorequisiteWarnings(course);
+                        const prerequisiteWarnings = getPrerequisiteWarnings(course);
+                        const warnings = [
+                            ...(coreqWarnings ? [{
+                                type: 'corequisite' as const,
+                                severity: 'warning' as const,
+                                message: 'Corequisite Warning:',
+                                details: coreqWarnings
+                            }] : []),
+                            ...(prerequisiteWarnings ? [{
+                                type: 'prerequisite' as const,
+                                severity: 'warning' as const,
+                                message: 'Prerequisite Warning:',
+                                details: prerequisiteWarnings
+                            }] : [])
+                        ];
+
+                        return (
+                            <CourseBox
+                                key={`discovered-${startIndex + idx}`}
+                                course={{
+                                    ...course,
+                                    course_code: courseCode,
+                                    course_name: course.course_name,
+                                    description: course.description,
+                                    credits_planned: course.credits,
+                                    id: `discovered-${categoryName}-${courseCode}-${startIndex + idx}`,
+                                    sections: coursebookData[courseCode?.toLowerCase().replace(/\s+/g, "")] || []
+                                }}
+                                
+                                status="warning"
+                                icon="info"
+                                isDiscovered={true}
+                                inSidebar={true}
+                                isPlaced={isPlaced}
+                                warnings={isPlaced || warnings.length === 0 ? null : warnings}
+                                onAdd={() => handleAddClick({ ...course, course_code: courseCode, code: courseCode })}
+                                onRemove={() => onRemove?.(course.course_id)}
+                                gradesData={gradesData}
+                                coursebookSemester={coursebookSemester}
+                                footnotes={course.footnote}
+                                rules={course.rules}
+                            />
+                        );
+                    }
+
+                    else {
                         // Completed courses
                         return (
                             <CourseBox
@@ -365,8 +420,8 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 onClick={firstPage}
                                 disabled={currentPage === 0}
                                 className={`text-xs transition-colors ${currentPage === 0
-                                        ? 'text-gray-300 cursor-not-allowed'
-                                        : 'text-gray-600 hover:text-gray-900'
+                                    ? 'text-gray-300 cursor-not-allowed'
+                                    : 'text-gray-600 hover:text-gray-900'
                                     }`}
                                 title="First page"
                             >
@@ -379,8 +434,8 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                             onClick={prevPage}
                             disabled={currentPage === 0}
                             className={`text-xs transition-colors ${currentPage === 0
-                                    ? 'text-gray-300 cursor-not-allowed'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                ? 'text-gray-300 cursor-not-allowed'
+                                : 'text-gray-600 hover:text-gray-900'
                                 }`}
                             title="Previous page"
                         >
@@ -405,8 +460,8 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                         key={idx}
                                         onClick={() => goToPage(idx)}
                                         className={`transition-all duration-200 ${idx === currentPage
-                                                ? `w-6 h-2 rounded-full ${dotColor}`
-                                                : 'w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400'
+                                            ? `w-6 h-2 rounded-full ${dotColor}`
+                                            : 'w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400'
                                             }`}
                                         aria-label={`Go to page ${idx + 1}`}
                                         title={`Page ${idx + 1}`}
@@ -420,8 +475,8 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                             onClick={nextPage}
                             disabled={currentPage === totalPages - 1}
                             className={`text-xs transition-colors ${currentPage === totalPages - 1
-                                    ? 'text-gray-300 cursor-not-allowed'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                ? 'text-gray-300 cursor-not-allowed'
+                                : 'text-gray-600 hover:text-gray-900'
                                 }`}
                             title="Next page"
                         >
@@ -434,8 +489,8 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 onClick={lastPage}
                                 disabled={currentPage === totalPages - 1}
                                 className={`text-xs transition-colors ${currentPage === totalPages - 1
-                                        ? 'text-gray-300 cursor-not-allowed'
-                                        : 'text-gray-600 hover:text-gray-900'
+                                    ? 'text-gray-300 cursor-not-allowed'
+                                    : 'text-gray-600 hover:text-gray-900'
                                     }`}
                                 title="Last page"
                             >

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { getCoursePrerequisiteGroups, getMissingPrerequisiteGroups, normalizeCourseCode } from '@/utils/prerequisiteUtils';
 import { getCurrentCatalogYear } from '@/utils/studentInfo';
+import { usePlannerStore, StagedCourse } from "@/stores/plannerStore";
 
 export interface DiscoverySection {
     section: string;
@@ -635,28 +636,19 @@ const CartPanel: React.FC<CartPanelProps> = ({ cart, onRemove, onCheckout }) => 
 
 interface CheckoutPanelProps {
     cart: CartItem[];
-    semesters: Record<string, { title: string; courses: any[]; isFromTranscript?: boolean; isLocked?: boolean }[]>;
     onBack: () => void;
-    onConfirm: (targetYear: string, targetSemesterIndex: number) => void;
+    onConfirm: () => void;
 }
 
-const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, semesters, onBack, onConfirm }) => {
+const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, onBack, onConfirm }) => {
     const totalCredits = cart.reduce((s, item) => s + item.course.credits, 0);
 
-    const semesterOptions = useMemo(() =>
-        Object.entries(semesters).flatMap(([yearKey, semList]) =>
-            semList
-                .map((sem, idx) => ({ yearKey, idx, title: sem.title, locked: !!sem.isFromTranscript || !!sem.isLocked }))
-                .filter(s => !s.locked)
-        ), [semesters]);
-
-    const [selected, setSelected] = useState<{ yearKey: string; idx: number } | null>(null);
-
-    useEffect(() => {
-        if (!selected && semesterOptions.length > 0) {
-            setSelected({ yearKey: semesterOptions[0].yearKey, idx: semesterOptions[0].idx });
-        }
-    }, [semesterOptions]);
+    const creditStatus =
+        totalCredits > 18
+            ? { text: `${totalCredits} hrs — may need advisor approval`, color: 'text-red-600 bg-red-50' }
+            : totalCredits >= 12
+                ? { text: `${totalCredits} hrs — full-time load`, color: 'text-green-600 bg-green-50' }
+                : { text: `${totalCredits} hrs`, color: 'text-yellow-600 bg-yellow-50' };
 
     return (
         <div className="flex flex-col h-full">
@@ -664,31 +656,15 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, semesters, onBack, 
                 <button onClick={onBack} className="text-xs text-green-600 hover:text-green-700 flex items-center gap-1 mb-3">
                     ← Back to cart
                 </button>
-                <div className="text-sm font-semibold text-gray-900">Review Selections</div>
-                <div className="text-xs text-gray-500 mt-0.5">Choose a semester to add these courses to.</div>
-            </div>
-
-            <div className="px-4 pt-3 pb-2 border-b border-gray-100 flex-shrink-0">
-                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Add to semester</div>
-                <div className="flex flex-wrap gap-1.5">
-                    {semesterOptions.map(s => (
-                        <button
-                            key={`${s.yearKey}-${s.idx}`}
-                            onClick={() => setSelected({ yearKey: s.yearKey, idx: s.idx })}
-                            className={`text-xs px-2.5 py-1 rounded-md border transition-colors whitespace-nowrap
-                                ${selected?.yearKey === s.yearKey && selected?.idx === s.idx
-                                    ? 'bg-green-500 border-green-500 text-white font-medium'
-                                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}
-                        >
-                            {s.title}
-                        </button>
-                    ))}
+                <div className="text-sm font-semibold text-gray-900">Ready to Plan</div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                    These courses will appear in your sidebar. Drag them into any semester whenever you're ready.
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {cart.map(item => (
-                    <div key={item.course.course_id} className="border border-gray-200 rounded-md p-3 bg-gray-50">
+                    <div key={item.course.course_id} className="border border-purple-200 rounded-md p-3 bg-purple-50">
                         <div className="text-xs font-semibold text-gray-800">{item.course.course_code} · {item.course.course_name}</div>
                         <div className="text-[11px] text-gray-500 mt-0.5">{item.course.credits} cr · {item.course.department}</div>
                         <div className="flex items-center gap-2 mt-1.5">
@@ -696,27 +672,24 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, semesters, onBack, 
                             <StarRating rating={item.course.avg_rating} count={item.course.rating_count} />
                         </div>
                         {item.pinned_section && (
-                            <div className="text-[10px] text-green-600 mt-1">Section {item.pinned_section} pinned</div>
+                            <div className="text-[10px] text-purple-600 mt-1">Section {item.pinned_section} noted</div>
                         )}
                     </div>
                 ))}
             </div>
 
             <div className="p-4 border-t border-gray-200 flex-shrink-0 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Total credit hours</span>
-                    <span className="font-semibold text-gray-900">{totalCredits} hrs</span>
+                <div className={`text-[11px] font-medium px-2.5 py-1.5 rounded-md ${creditStatus.color}`}>
+                    {creditStatus.text}
                 </div>
                 <button
-                    onClick={() => selected && onConfirm(selected.yearKey, selected.idx)}
-                    disabled={!selected}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-md bg-green-500 text-white
-                        hover:bg-green-600 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    onClick={onConfirm}
+                    disabled={cart.length === 0}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-md bg-purple-500 text-white
+                        hover:bg-purple-600 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                     <CheckCircle className="w-4 h-4" />
-                    {selected
-                        ? `Add to ${semesterOptions.find(s => s.yearKey === selected.yearKey && s.idx === selected.idx)?.title}`
-                        : 'Select a semester'}
+                    Move to Sidebar →
                 </button>
             </div>
         </div>
@@ -727,18 +700,17 @@ type RightPanel = 'detail' | 'cart' | 'checkout' | null;
 
 const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     onClose,
-    onAddToPlan,
+    onAddToPlan: _onAddToPlan,
     semester = '',
     cart,
     onCartChange,
-    semesters,
-    dropCourse,
+    semesters: _semesters,
+    dropCourse: _dropCourse,
     apiBaseUrl,
     authToken,
     educationLevel = 'undergraduate',
     completedCourseCodes = [],
 }) => {
-
     const [query, setQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
@@ -766,7 +738,9 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const [noPerm, setNoPerm] = useState(false);
     const [selectedStanding, setSelectedStanding] = useState<string[]>([]);
     const [hideCompleted, setHideCompleted] = useState(true);
+    const [hideStaged, setHideStaged] = useState(true);
 
+    const addStagedCourses = usePlannerStore(s => s.addStagedCourses);
     const searchRef = useRef<HTMLInputElement>(null);
 
     const fetchCourses = useCallback(async (newOffset: number = 0) => {
@@ -775,10 +749,10 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         setError(null);
 
         const params = new URLSearchParams();
-        
+
         const upperQuery = debouncedQuery.trim().toUpperCase();
         const isPrefix = allPrefixes.includes(upperQuery);
-        
+
         if (debouncedQuery) {
             if (isPrefix) {
                 params.set('subjects', upperQuery);
@@ -893,20 +867,28 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         minMatchCharLength: 2,
     }), [coursesWithInstructors]);
 
+    const stagedCourses = usePlannerStore(s => s.stagedCourses);
+
     const filteredCourses = useMemo(() => {
         const completedSet = new Set(completedCourseCodes.map(c => normalizeCourseCode(c)));
+        const stagedSet = new Set(stagedCourses.map(c => c.course_id));
+
         let results = hideCompleted
             ? courses.filter(c => !completedSet.has(normalizeCourseCode(c.course_code)))
             : courses;
-    
+
+        if (hideCompleted) results = results.filter(c => !completedSet.has(normalizeCourseCode(c.course_code)));
+        if (hideStaged) results = results.filter(c => !stagedSet.has(c.course_id));
+
         if (!query.trim()) return results;
-    
+
         const resultIds = new Set(results.map(c => c.course_id));
         return fuse.search(query).map(r => r.item).filter(c => resultIds.has(c.course_id));
-    }, [query, fuse, courses, hideCompleted, completedCourseCodes]);
+    }, [query, fuse, courses, hideCompleted, hideStaged, completedCourseCodes, stagedCourses]);
 
     const selectedCourse = courses.find(c => c.course_id === selectedCourseId) ?? null;
     const cartItem = selectedCourse ? cart.find(i => i.course.course_id === selectedCourse.course_id) : undefined;
+    const isClientFiltering = !hideCompleted || !hideStaged || !!query.trim();
 
     const addToCart = useCallback((courseId: string, section?: string) => {
         const course = courses.find(c => c.course_id === courseId);
@@ -938,31 +920,30 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const handleCheckout = () => setRightPanel('checkout');
     const handleBackToCart = () => setRightPanel('cart');
 
-    const handleConfirm = (targetYear: string, targetSemesterIndex: number) => {
+    const handleConfirm = () => {
         setConfirmed(true);
+
+        const staged: StagedCourse[] = cart.map(item => ({
+            course_id: item.course.course_id,
+            course_code: item.course.course_code,
+            course_name: item.course.course_name,
+            credits: item.course.credits,
+            prereqs_met: item.course.prereqs_met,
+            prereqs_text: item.course.prereqs_text,
+            coreqs_text: item.course.coreqs_text,
+            satisfies_core: item.course.satisfies_core,
+            description: item.course.description,
+            prerequisites: item.course.prereqs_raw,
+            'Pre-Requisite': item.course.prereqs_raw,
+        }));
+
+        addStagedCourses(staged);
+        onCartChange([]);
+
         setTimeout(() => {
-            cart.forEach(item => {
-                dropCourse({
-                    targetYear,
-                    targetSemesterIndex,
-                    course: {
-                        course_code: item.course.course_code,
-                        course_name: item.course.course_name,
-                        code: item.course.course_code,
-                        name: item.course.course_name,
-                    },
-                    sourceYear: '',
-                    sourceSemesterIndex: -1,
-                    isSuggested: true,
-                    allSemesters: semesters,
-                });
-            });
-            onAddToPlan(cart);
-            onCartChange([]);
             setConfirmed(false);
             setRightPanel(null);
-            onClose();
-        }, 2200);
+        }, 1200);
     };
 
     const handleSchoolChange = (schools: string[]) => {
@@ -984,6 +965,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         setSelectedStanding([]);
     };
 
+    const showingAll = !hideCompleted && !hideStaged;
     const year = getCurrentCatalogYear();
 
     return ReactDOM.createPortal(
@@ -1187,13 +1169,6 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                             onChange={setSelectedStanding}
                                             allLabel="Any Standing"
                                         />
-                                        <button onClick={() => setHideCompleted(p => !p)}
-                                            className={`text-xs px-2.5 py-1 rounded-md border transition-colors flex items-center gap-1 whitespace-nowrap
-        ${!hideCompleted
-                                                    ? 'bg-green-500 border-green-500 text-white font-medium'
-                                                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}>
-                                            <CheckCircle className="w-3 h-3" /> Show Completed
-                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1225,9 +1200,29 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                             ) : (
                                 <div className="p-4">
                                     <div className="text-xs text-gray-400 mb-3 flex items-center gap-2">
-                                        <span>{query ? filteredCourses.length : total} course{total !== 1 ? 's' : ''} found</span>
+                                        <span>
+                                            {isClientFiltering ? `${filteredCourses.length} of ${total}` : total} course{total !== 1 ? 's' : ''} found
+                                        </span>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => { setHideCompleted(showingAll); setHideStaged(showingAll); }}
+                                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
+                                                ${showingAll ? 'bg-gray-200 text-gray-700' : 'text-gray-400 hover:bg-gray-100'}`}
+                                            >All</button>
+                                            <button
+                                                onClick={() => setHideCompleted(p => !p)}
+                                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
+                                                ${!hideCompleted ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`}
+                                            >Completed</button>
+                                            <button
+                                                onClick={() => setHideStaged(p => !p)}
+                                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
+                                                ${!hideStaged ? 'bg-purple-100 text-purple-700' : 'text-gray-400 hover:bg-gray-100'}`}
+                                            >Staged</button>
+                                        </div>
                                         {loading && <Loader2 className="w-3 h-3 animate-spin opacity-40" />}
                                     </div>
+
                                     <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
                                         {filteredCourses.map((course, i) => (
                                             <CourseCard
@@ -1291,7 +1286,6 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                     {rightPanel === 'checkout' && (
                                         <CheckoutPanel
                                             cart={cart}
-                                            semesters={semesters}
                                             onBack={handleBackToCart}
                                             onConfirm={handleConfirm}
                                         />
