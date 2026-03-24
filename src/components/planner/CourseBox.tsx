@@ -88,6 +88,10 @@ const WarningSection: React.FC<{ warnings: Warning[] }> = ({ warnings }) => {
         return lastPart.includes(':') ? lastPart.split(':')[0].trim() : lastPart;
     };
 
+    const formatPrereqDetail = (detail: string): string => {
+        return detail.replace(/([A-Z]+\s*\d+[A-Z0-9]*)\|([A-Z][+-]?)/g, '$1 with a grade of $2 or better');
+    };
+
     return (
         <div className="space-y-2">
             {warnings.map((warning, idx) => {
@@ -110,7 +114,7 @@ const WarningSection: React.FC<{ warnings: Warning[] }> = ({ warnings }) => {
                             {nonLocationDetails.length > 0 && (
                                 <ul className="list-disc ml-4 mt-1">
                                     {nonLocationDetails.map((detail, i) => (
-                                        <li key={i}>{detail}</li>
+                                        <li key={i}>{formatPrereqDetail(detail)}</li>
                                     ))}
                                 </ul>
                             )}
