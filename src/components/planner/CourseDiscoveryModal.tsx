@@ -775,10 +775,16 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         setError(null);
 
         const params = new URLSearchParams();
-
-        const looksLikeCourseCode = /\d/.test(debouncedQuery) || allPrefixes.includes(debouncedQuery.toUpperCase());;
-        if (debouncedQuery && looksLikeCourseCode) {
-            params.set('q', debouncedQuery.toLowerCase().replace(/\s+/g, ''));
+        
+        const upperQuery = debouncedQuery.trim().toUpperCase();
+        const isPrefix = allPrefixes.includes(upperQuery);
+        
+        if (debouncedQuery) {
+            if (isPrefix) {
+                params.set('subjects', upperQuery);
+            } else {
+                params.set('q', debouncedQuery.toLowerCase().trim());
+            }
         }
 
         if (selectedSchools.length) params.set('schools', selectedSchools.join(','));
@@ -888,34 +894,15 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     }), [coursesWithInstructors]);
 
     const filteredCourses = useMemo(() => {
-        const completedSet = new Set(
-            completedCourseCodes.map(c => normalizeCourseCode(c))
-        );
-
+        const completedSet = new Set(completedCourseCodes.map(c => normalizeCourseCode(c)));
         let results = hideCompleted
             ? courses.filter(c => !completedSet.has(normalizeCourseCode(c.course_code)))
             : courses;
-
+    
         if (!query.trim()) return results;
-
-        const q = query.trim().toLowerCase().replace(/\s+/g, '');
-
-        // Exact/prefix match first — handles "CS 3345", "cs3345", "3345"
-        const exact = results.filter(c => {
-            const code = c.course_code.toLowerCase().replace(/\s+/g, '');
-            const name = c.course_name.toLowerCase();
-        
-            const nameMatches = q.length <= 3
-                ? name.split(/\s+/).some(word => word.startsWith(q))
-                : name.includes(q);
-        
-            return code.startsWith(q) || code.includes(q) || nameMatches;
-        });
-
-        if (exact.length > 0) return exact;
-
-        // Fall back to Fuse for fuzzy matching (typos, professor names, etc.)
-        return fuse.search(query).map(r => r.item).filter(c => results.includes(c));
+    
+        const resultIds = new Set(results.map(c => c.course_id));
+        return fuse.search(query).map(r => r.item).filter(c => resultIds.has(c.course_id));
     }, [query, fuse, courses, hideCompleted, completedCourseCodes]);
 
     const selectedCourse = courses.find(c => c.course_id === selectedCourseId) ?? null;
