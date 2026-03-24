@@ -24,6 +24,7 @@ import { usePlannerStore } from "@/stores/plannerStore";
 import { usePlannerTutorial } from "@/hooks/usePlannerTutorial";
 import { exportPlanAsCSV, exportPlanAsJPG, exportPlanAsPDF, exportPlanAsPNG } from "@/utils/planExport";
 import CourseDiscoveryModal, { CartItem } from "@/components/planner/CourseDiscoveryModal";
+import z from "zod";
 
 interface PlannerProps {
     semesters: {
@@ -39,6 +40,13 @@ interface PlannerProps {
     onSidebarToggle?: (collapsed: boolean) => void;
 }
 
+const PlanNameSchema = z.string()
+  .min(1)
+  .max(50)
+  .trim()
+  .refine(val => /^[a-zA-Z0-9\s.,!'\-()+]+$/.test(val), {
+    message: "Invalid characters"
+});
 
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding, onRegisterConflictHandler, onSidebarToggle }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -220,10 +228,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         deletePlan();
     };
 
-    const handleRenamePlan = (newName: string) => {
-        const trimmed = newName.trim();
-        if (!trimmed) return;
-        renamePlan(trimmed);
+    const handleRenamePlan = (name: string) => {
+        const parsed = PlanNameSchema.safeParse(name);
+        if (!parsed.success) return;
+        renamePlan(parsed.data);
+        setShowRenameModal(false);
     };
 
     const savePlannerState = async () => {
