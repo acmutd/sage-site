@@ -1205,7 +1205,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                     />
 
                                     {!isYearCollapsed && (
-                                        <div className="flex flex-wrap gap-4 justify-start" data-tour="semester-area">
+                                        <div className="flex flex-wrap gap-4 justify-start 2xl:justify-center" data-tour="semester-area">
                                             {allSemesters[yearKey].map((semester, idx) => (
                                                 <SemesterBox
                                                     key={idx}
