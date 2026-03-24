@@ -8,6 +8,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuSub,
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
@@ -41,12 +42,12 @@ interface PlannerProps {
 }
 
 const PlanNameSchema = z.string()
-  .min(1)
-  .max(50)
-  .trim()
-  .refine(val => /^[a-zA-Z0-9\s.,!'\-()+]+$/.test(val), {
-    message: "Invalid characters"
-});
+    .min(1)
+    .max(50)
+    .trim()
+    .refine(val => /^[a-zA-Z0-9\s.,!'\-()+]+$/.test(val), {
+        message: "Invalid characters"
+    });
 
 const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptData, onRestartOnboarding, onRegisterConflictHandler, onSidebarToggle }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -166,7 +167,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const planInitializedRef = useRef(false);
     const createNewPlanRef = useRef(createNewPlan);
     const initialPlannerStateRef = useRef(initialPlannerState);
-    
+
     useEffect(() => {
         if (plans.length === 0 && !planInitializedRef.current) {
             planInitializedRef.current = true;
@@ -208,8 +209,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     };
 
     const educationLevel = useMemo(() => {
-        const hasGradCredits = 
-            transcriptData?.credit_hours?.graduate || 
+        const hasGradCredits =
+            transcriptData?.credit_hours?.graduate ||
             transcriptData?.gpa?.graduate;
         return hasGradCredits ? 'graduate' : 'undergraduate';
     }, [transcriptData]);
@@ -355,7 +356,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     ) => {
         setPendingConflictChoice({ choice, degrees, fetchedData, targetPlanId });
     });
-    
+
     useEffect(() => {
         onRegisterConflictHandler?.(
             conflictCallbackRef.current,  // stable reference — never changes
@@ -380,7 +381,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const [gradesData, setGradesData] = useState<Record<string, any>>({});
     const [error, setError] = useState<string | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    
+
     // when we want "educational" worthy students to use SAGE
     const [showExtendYearsModal, setShowExtendYearsModal] = useState(false);
     const [requestedYears, setRequestedYears] = useState(12);
@@ -439,20 +440,20 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             if (planEval) return Array.isArray(planEval) ? planEval : planEval?.results ?? [];
             return [];
         })();
-        
+
         if (studentType === "grad") {
             return base.filter((req: any) => (req.degree ?? req.name) !== "Core Requirements");
         }
 
         if (studentType === "undergrad") {
-            const hasBachelor = base.some((req: any) => 
+            const hasBachelor = base.some((req: any) =>
                 (req.degree ?? req.name)?.includes("Bachelor")
             );
             if (!hasBachelor) {
                 return base.filter((req: any) => (req.degree ?? req.name) !== "Core Requirements");
             }
         }
-    
+
         return base;
     }, [activePlan?.evaluation, requirements, studentType]);
 
@@ -679,25 +680,25 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
     useEffect(() => {
         if (Object.keys(allSemesters).length === 0) return;
-    
+
         const now = new Date();
         const currentMonth = now.getMonth();
         const academicYearStart = currentMonth >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-    
+
         const unprocessedKeys = Object.keys(allSemesters).filter(
             k => !initializedYearKeysRef.current.has(k)
         );
         if (unprocessedKeys.length === 0) return;
-    
+
         unprocessedKeys.forEach(k => initializedYearKeysRef.current.add(k));
-    
+
         const additions: Record<string, boolean> = {};
         unprocessedKeys.forEach((yearKey) => {
             const firstTitle = allSemesters[yearKey][0]?.title;
             const yearNum = Number(firstTitle?.match(/\d{4}/)?.[0]);
             additions[yearKey] = !!yearNum && yearNum < academicYearStart;
         });
-    
+
         setUISnapshot(prev => ({
             ...prev,
             collapsedYears: { ...prev.collapsedYears, ...additions },
@@ -932,8 +933,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         onClick={runQuickEvaluation}
                         disabled={isRunningQuickEvaluation || isLoading}
                         className={`px-6 py-3 rounded-full bg-white border border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-gray-700 font-medium text-sm whitespace-nowrap ${isRunningQuickEvaluation || isLoading
-                                ? 'cursor-not-allowed opacity-70'
-                                : 'hover:-translate-y-0.5'
+                            ? 'cursor-not-allowed opacity-70'
+                            : 'hover:-translate-y-0.5'
                             }`}
                         data-tour="suggest-future-classes"
                         title="Suggest Future Classes"
@@ -1049,6 +1050,17 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                         {plan.name}
                                     </DropdownMenuItem>
                                 ))}
+
+                                <DropdownMenuSeparator />
+
+                                <DropdownMenuItem
+                                    onClick={handleNewPlan}
+                                    className="text-[#3eb369] focus:text-[#3eb369] focus:bg-innercontainer cursor-pointer"
+                                >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    New plan
+                                </DropdownMenuItem>
+
                             </DropdownMenuContent>
                         </DropdownMenu>
 
@@ -1057,14 +1069,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 <Settings size={20} className="text-gray-600" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-white rounded-3xl shadow-lg p-3" align="end" side="right" sideOffset={10} alignOffset={-100}>
-                                <DropdownMenuItem
-                                    onClick={handleNewPlan}
-                                    className="text-[#3eb369] focus:text-[#3eb369] hover:bg-gray-100 focus:bg-gray-100 cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-[#3eb369]"
-                                >
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    Create new plan
-                                </DropdownMenuItem>
-
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setNewPlanName(activePlan?.name || '');
