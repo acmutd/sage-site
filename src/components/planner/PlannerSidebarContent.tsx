@@ -1,9 +1,10 @@
 import React, { useRef } from "react";
-import { NotebookPen } from "lucide-react";
+import { NotebookPen, Compass, ChevronRight } from "lucide-react";
 import RequirementCategory from "@/components/planner/RequirementCategory";
 import CoursesCarousel from "@/components/planner/CoursesCarousel";
 import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/plannerCredits";
 import type { SemestersForCredits } from "@/utils/plannerCredits";
+import { usePlannerStore } from "@/stores/plannerStore";
 
 interface PlannerSidebarContentProps {
   onClose: () => void;
@@ -26,7 +27,9 @@ interface PlannerSidebarContentProps {
   focusLabel?: string;
   semesters?: SemestersForCredits;
   coursebookData?: Record<string, any[]>;
-  gradesData?: Record<string, any>
+  gradesData?: Record<string, any>;
+  coursebookSemester?: string | null;
+  onOpenDiscovery?: () => void;
 }
 
 const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
@@ -42,10 +45,16 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
   semesters,
   coursebookData,
   gradesData,
+  coursebookSemester,
+  onOpenDiscovery,
 }) => {
   const [autoExpandedCategories, setAutoExpandedCategories] = React.useState<{ [key: number]: boolean }>({});
   const [expandedSubcategories, setExpandedSubcategories] = React.useState<Record<string, boolean>>({});
   const prevSuggestedByKeyRef = useRef<Record<string, Set<string>>>({});
+
+  // Course discovery store
+  const stagedCourses = usePlannerStore(s => s.stagedCourses);
+  const removeStagedCourse = usePlannerStore(s => s.removeStagedCourse);
 
   // Collect all suggested courses from all categories with their category paths
   const allSuggestedCourses = React.useMemo(() => {
@@ -375,6 +384,52 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
         </button>
       </div>
 
+      {/* Course Discovery banner */}
+      <button
+        onClick={onOpenDiscovery}
+        className="w-full flex items-center gap-2.5 p-3 rounded-xl border border-dashed
+          border-green-300 bg-green-50 hover:bg-green-100 transition-colors text-left mb-4 group"
+      >
+        <div className="w-7 h-7 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0">
+          <Compass className="w-4 h-4 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-green-800">
+            {stagedCourses.length > 0 ? 'Shop more courses' : 'Discover Courses'}
+          </div>
+          <div className="text-xs text-green-600">Browse &amp; add to your plan</div>
+        </div>
+        <ChevronRight className="w-4 h-4 text-green-400 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
+      </button>
+
+      {/* Staged courses */}
+      {stagedCourses.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between px-1 mb-2">
+            <div className="text-[10px] font-semibold text-purple-500 uppercase tracking-wide flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+              Staged · {stagedCourses.length} course{stagedCourses.length !== 1 ? 's' : ''}
+            </div>
+            <button
+              onClick={() => usePlannerStore.getState().clearStagedCourses()}
+              className="text-[10px] text-gray-400 hover:text-red-400 transition-colors"
+            >
+              Clear all
+            </button>
+          </div>
+          <CoursesCarousel
+            courses={stagedCourses}
+            type="discovered"
+            onRemove={removeStagedCourse}
+            coursebookData={coursebookData}
+            gradesData={gradesData}
+            coursebookSemester={coursebookSemester}
+            availableSemesters={[]}
+            placedSuggestedCourses={placedSuggestedCourses}
+          />
+        </div>
+      )}
+
       <h2 className="text-xl font-bold text-gray-900 mb-4">
         Degree Requirements
       </h2>
@@ -398,7 +453,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
               }}
               hasSubcategories={req.categories && req.categories.length > 0}
               creditsBreakdown={reqCreditsBreakdown}
-              footnote={(req as any).footnote}  // ← add
+              footnote={(req as any).footnote}
               rules={(req as any).rules}
             >
               {req.categories && req.categories.length > 0 ? (

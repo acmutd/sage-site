@@ -33,6 +33,8 @@ interface PlannerNavbarProps {
   semesters?: import("@/utils/plannerCredits").SemestersForCredits;
   coursebookData?: Record<string, any[]>;
   gradesData?: Record<string, any>;
+  onOpenDiscovery?: () => void;
+  coursebookSemester?: string | null
 }
 
 const PlannerNavbar: React.FC<PlannerNavbarProps> = ({ 
@@ -50,6 +52,8 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
   semesters,
   coursebookData,
   gradesData,
+  onOpenDiscovery,
+  coursebookSemester,
 }) => {
   const { user, logout, profilePicture } = useAuth();
   const location = useLocation();
@@ -155,6 +159,8 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
             semesters={semesters}
             coursebookData={coursebookData}
             gradesData={gradesData}
+            onOpenDiscovery={onOpenDiscovery}
+            coursebookSemester={coursebookSemester}
           />
         )}
       />

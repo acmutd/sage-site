@@ -937,6 +937,8 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 semesters={allSemesters}
                 coursebookData={coursebookData}
                 gradesData={gradesData}
+                onOpenDiscovery={() => setShowDiscovery(true)}
+                coursebookSemester={coursebookSemester}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
                 {/* Action buttons */}
