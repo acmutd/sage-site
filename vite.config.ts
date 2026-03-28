@@ -13,5 +13,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",
     globals: true,
+    env: {
+      VITE_CRUD_API: 'http://localhost:3000/CRUD',
+    },
   },
 });

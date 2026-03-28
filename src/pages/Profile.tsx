@@ -36,7 +36,12 @@ function EditableCardContent({ card, onSave }: { card: Card; onSave: (val: strin
   useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
 
   const commit = () => {
-    const parsed = CardLabelSchema.safeParse(draft.trim() || card.label);
+    if (!draft.trim()) {
+      setDraft(card.label);
+      setEditing(false);
+      return;
+    }
+    const parsed = CardLabelSchema.safeParse(draft.trim());
     if (!parsed.success) return;
     onSave(parsed.data);
     setEditing(false);

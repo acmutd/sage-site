@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor, within, cleanup } from "@testing-library/react";
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import { useProfileStore, DEFAULT_CARDS } from "@/stores/profileStore";
 import Profile from "./Profile";
 
 const mockNavigate = vi.fn();
@@ -89,8 +90,18 @@ function addCardFromTray(cardId: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
-  vi.stubEnv('VITE_CRUD_API', 'http://localhost:3000/CRUD');
-  Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 1280 });
+
+  useProfileStore.setState({
+    cards: DEFAULT_CARDS.map((c) => ({ ...c })),
+    profilePictureType: 1,
+  });
+
+  vi.stubEnv("VITE_CRUD_API", "http://localhost:3000/CRUD");
+  Object.defineProperty(window, "innerWidth", {
+    writable: true,
+    configurable: true,
+    value: 1280,
+  });
   global.fetch = makeFetch();
 });
 
