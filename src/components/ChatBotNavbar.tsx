@@ -35,7 +35,7 @@ const ChatBotNavbar = () => {
   return (
     <>
       {/* Desktop navbar */}
-      {ENVIRONMENT === 'dev' && (
+      {ENVIRONMENT === 'development' && (
         <div className="fixed top-0 left-0 right-0 h-4 bg-purple-600 text-white text-center text-xs font-medium z-[200] shadow-sm flex items-center justify-center">
           Dev Environment
         </div>
@@ -44,7 +44,7 @@ const ChatBotNavbar = () => {
       <nav className={`
         ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
         py-2.5 px-6 fixed w-full z-10 hidden md:block
-        ${ENVIRONMENT === 'dev' ? 'top-4' : 'top-0'}
+        ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
       `}>
         <div className="flex items-center justify-between w-full">
           <Link to="/" className="ml-0">

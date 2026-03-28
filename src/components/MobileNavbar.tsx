@@ -49,7 +49,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
       <nav className={`
         ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
         py-4 px-6 fixed w-full h-[4.2rem] z-10 md:hidden block
-        ${ENVIRONMENT === 'dev' ? 'top-4' : 'top-0'}
+        ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
       `}>
         <div className="flex items-center justify-between w-full">
           {showSidebar && (
