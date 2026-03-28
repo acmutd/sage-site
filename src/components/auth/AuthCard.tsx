@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 
 interface AuthCardProps {
-  title: string;
+  title?: string;
   form: ReactNode;
   mobileView: boolean;
 }

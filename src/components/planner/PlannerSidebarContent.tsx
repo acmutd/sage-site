@@ -1,9 +1,10 @@
 import React, { useRef } from "react";
-import { NotebookPen } from "lucide-react";
+import { NotebookPen, Compass, ChevronRight } from "lucide-react";
 import RequirementCategory from "@/components/planner/RequirementCategory";
 import CoursesCarousel from "@/components/planner/CoursesCarousel";
 import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/plannerCredits";
 import type { SemestersForCredits } from "@/utils/plannerCredits";
+import { usePlannerStore } from "@/stores/plannerStore";
 
 interface PlannerSidebarContentProps {
   onClose: () => void;
@@ -21,12 +22,14 @@ interface PlannerSidebarContentProps {
     semesterOrder: number;
   }>;
   onRestartOnboarding?: () => void;
-  availableSemesters?: Array<{yearKey: string, semesterIndex: number, title: string}>;
+  availableSemesters?: Array<{ yearKey: string, semesterIndex: number, title: string }>;
   onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
   focusLabel?: string;
   semesters?: SemestersForCredits;
   coursebookData?: Record<string, any[]>;
-  gradesData?: Record<string, any>
+  gradesData?: Record<string, any>;
+  coursebookSemester?: string | null;
+  onOpenDiscovery?: () => void;
 }
 
 const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
@@ -42,21 +45,27 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
   semesters,
   coursebookData,
   gradesData,
+  coursebookSemester,
+  onOpenDiscovery,
 }) => {
   const [autoExpandedCategories, setAutoExpandedCategories] = React.useState<{ [key: number]: boolean }>({});
   const [expandedSubcategories, setExpandedSubcategories] = React.useState<Record<string, boolean>>({});
   const prevSuggestedByKeyRef = useRef<Record<string, Set<string>>>({});
 
+  // Course discovery store
+  const stagedCourses = usePlannerStore(s => s.stagedCourses);
+  const removeStagedCourse = usePlannerStore(s => s.removeStagedCourse);
+
   // Collect all suggested courses from all categories with their category paths
   const allSuggestedCourses = React.useMemo(() => {
     const courses: any[] = [];
-    
+
     const collectSuggestedCourses = (categories: any[], parentPath: string[] = []) => {
       if (!categories) return;
-      
+
       categories.forEach((category) => {
         const currentPath = [...parentPath, category.name];
-        
+
         if (category.suggested && category.suggested.length > 0) {
           // Add category location to each suggested course
           const coursesWithLocation = category.suggested.map((course: any) => ({
@@ -70,21 +79,21 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
         }
       });
     };
-    
+
     requirements.forEach((req) => {
       if (req.categories) {
         collectSuggestedCourses(req.categories, [req.degree]);
       }
     });
-    
+
     return courses;
   }, [requirements]);
 
   React.useEffect(() => {
     if (!focusLabel) return;
     setTimeout(() => {
-        document.querySelector('.highlight-pulse')
-            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.querySelector('.highlight-pulse')
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 100);
   }, [focusLabel]);
 
@@ -218,18 +227,18 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
 
   const hasCompletion = (category: any): boolean => {
     if (category.progress > 0) return true;
-    
+
     if (category.classes && category.classes.length > 0) {
-      const hasCompletedClasses = category.classes.some((course: any) => 
+      const hasCompletedClasses = category.classes.some((course: any) =>
         course.status === "completed" || course.status === "in progress"
       );
       if (hasCompletedClasses) return true;
     }
-    
+
     if (category.categories && category.categories.length > 0) {
       return category.categories.some((subcat: any) => hasCompletion(subcat));
     }
-    
+
     return false;
   };
 
@@ -238,21 +247,21 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
       const categoryName = category.name?.toUpperCase() || '';
       const isOR = categoryName === 'OR';
       const isAND = categoryName === 'AND';
-      
+
       if (isAND && !hasCompletion(category)) {
         return false;
       }
-      
+
       if (isOR && category.categories && category.categories.length > 0) {
         const childrenWithCompletion = category.categories.filter((child: any) => {
           return hasCompletion(child);
         });
-        
+
         if (childrenWithCompletion.length === 0) {
           return false;
         }
       }
-      
+
       return true;
     });
   };
@@ -298,19 +307,19 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
           hasSubcategories={subCategoriesToRender.length > 0}
           creditsBreakdown={creditsBreakdown}
           footnote={category.footnote}
-          rules={category.rules} 
+          rules={category.rules}
         >
           {category.classes && category.classes.length > 0 ? (
-              <CoursesCarousel
-                  courses={category.classes} 
-                  type="completed"
-              />
+            <CoursesCarousel
+              courses={category.classes}
+              type="completed"
+            />
           ) : subCategoriesToRender.length > 0 ? null : (
-              !category.suggested?.length && (
-                  <div className="text-sm text-gray-500">
-                      No courses in this category
-                  </div>
-              )
+            !category.suggested?.length && (
+              <div className="text-sm text-gray-500">
+                No courses in this category
+              </div>
+            )
           )}
 
           {category.suggested && category.suggested.length > 0 && (
@@ -336,6 +345,23 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
             </>
           )}
 
+          {category.prereq_blocked && category.prereq_blocked.length > 0 && (
+            <>
+              <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
+                <span className="text-xs text-gray-500 font-medium">Needs Prerequisites</span>
+              </div>
+              <CoursesCarousel
+                courses={category.prereq_blocked}
+                type="prereq_blocked"
+                categoryName={category.name}
+                allSuggestedCourses={allSuggestedCourses}
+                allCompletedCourseCodes={allCompletedCourseCodes}
+                allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
+                coursebookData={coursebookData}
+                gradesData={gradesData}
+              />
+            </>
+          )}
           {subCategoriesToRender.length > 0 &&
             renderCategories(subCategoriesToRender, reqIdx, nextParentPath, isOR)}
         </RequirementCategory>
@@ -346,7 +372,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
   return (
     <div className="h-full overflow-y-auto p-4" style={{ scrollbarWidth: 'none' }}>
       <div className="mb-6">
-        <button 
+        <button
           className="w-full flex items-center justify-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:bg-buttonhover transition-all duration-100"
           onClick={() => {
             onRestartOnboarding?.();
@@ -358,6 +384,52 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
         </button>
       </div>
 
+      {/* Course Discovery banner */}
+      <button
+        onClick={onOpenDiscovery}
+        className="w-full flex items-center gap-2.5 p-3 rounded-xl border border-dashed
+          border-green-300 bg-green-50 hover:bg-green-100 transition-colors text-left mb-4 group"
+      >
+        <div className="w-7 h-7 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0">
+          <Compass className="w-4 h-4 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-green-800">
+            {stagedCourses.length > 0 ? 'Shop more courses' : 'Discover Courses'}
+          </div>
+          <div className="text-xs text-green-600">Browse &amp; add to your plan</div>
+        </div>
+        <ChevronRight className="w-4 h-4 text-green-400 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
+      </button>
+
+      {/* Staged courses */}
+      {stagedCourses.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between px-1 mb-2">
+            <div className="text-[10px] font-semibold text-purple-500 uppercase tracking-wide flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+              Staged · {stagedCourses.length} course{stagedCourses.length !== 1 ? 's' : ''}
+            </div>
+            <button
+              onClick={() => usePlannerStore.getState().clearStagedCourses()}
+              className="text-[10px] text-gray-400 hover:text-red-400 transition-colors"
+            >
+              Clear all
+            </button>
+          </div>
+          <CoursesCarousel
+            courses={stagedCourses}
+            type="discovered"
+            onRemove={removeStagedCourse}
+            coursebookData={coursebookData}
+            gradesData={gradesData}
+            coursebookSemester={coursebookSemester}
+            availableSemesters={[]}
+            placedSuggestedCourses={placedSuggestedCourses}
+          />
+        </div>
+      )}
+
       <h2 className="text-xl font-bold text-gray-900 mb-4">
         Degree Requirements
       </h2>
@@ -367,31 +439,31 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
           const reqCompletion = semesters ? getCompletionForCategory(req, semesters) : { completed: req.progress, total: req.total, isCreditBased: true };
           const reqCreditsBreakdown = reqCompletion.isCreditBased && semesters ? getCreditsBreakdownRecursive(req, semesters) : undefined;
           return (
-          <RequirementCategory
-            key={reqIdx}
-            title={req.degree}
-            completed={reqCompletion.completed}
-            total={reqCompletion.total}
-            isExpanded={autoExpandedCategories[reqIdx]}
-            onToggle={() => {
-              setAutoExpandedCategories((prev) => ({
-                ...prev,
-                [reqIdx]: !prev[reqIdx],
-              }));
-            }}
-            hasSubcategories={req.categories && req.categories.length > 0}
-            creditsBreakdown={reqCreditsBreakdown}
-            footnote={(req as any).footnote}  // ← add
-            rules={(req as any).rules} 
-          >
-            {req.categories && req.categories.length > 0 ? (
-              renderCategories(req.categories, reqIdx)
-            ) : (
-              <div className="text-sm text-gray-500">
-                No categories available
-              </div>
-            )}
-          </RequirementCategory>
+            <RequirementCategory
+              key={reqIdx}
+              title={req.degree}
+              completed={reqCompletion.completed}
+              total={reqCompletion.total}
+              isExpanded={autoExpandedCategories[reqIdx]}
+              onToggle={() => {
+                setAutoExpandedCategories((prev) => ({
+                  ...prev,
+                  [reqIdx]: !prev[reqIdx],
+                }));
+              }}
+              hasSubcategories={req.categories && req.categories.length > 0}
+              creditsBreakdown={reqCreditsBreakdown}
+              footnote={(req as any).footnote}
+              rules={(req as any).rules}
+            >
+              {req.categories && req.categories.length > 0 ? (
+                renderCategories(req.categories, reqIdx)
+              ) : (
+                <div className="text-sm text-gray-500">
+                  No categories available
+                </div>
+              )}
+            </RequirementCategory>
           );
         })}
       </div>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { AuthProvider, useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 import { Menu, MessageCirclePlus, Route, UserRound} from "lucide-react";
 import { useEffect, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
@@ -8,10 +8,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, profilePicture } = useAuth();
   const [isInWebapp, setIsInWebapp] = useState(false);
   const [isOnboardingActive, setIsOnboardingActive] = useState(false);  
-  const [profilePicture, setProfilePicture] = useState<string>("");
 
   let location = useLocation().pathname;
 
@@ -47,35 +46,9 @@ const Navbar = () => {
   // Dark mode when: NOT in webapp OR onboarding is active
   // Light mode when: in webapp AND onboarding is NOT active
   const useDarkMode = !isInWebapp || isOnboardingActive;
-  // check for an pfp 
-  useEffect(() => {
-    const updateProfilePicture = () => {
-      const cachedType = localStorage.getItem('profilePictureType');
-      if (cachedType) {
-        const type = parseInt(cachedType);
-        if (type === 0 && user?.photoURL) {
-          setProfilePicture(user.photoURL);
-        } else {
-          setProfilePicture(`/assets/profile_pics/${type}.png`);
-        }
-      } else if (user?.photoURL) {
-        setProfilePicture(user.photoURL);
-      }
-    };
-  
-    updateProfilePicture();
-
-    window.addEventListener('storage', updateProfilePicture);
-    window.addEventListener('profilePictureUpdated', updateProfilePicture);
-    return () => 
-    { 
-      window.removeEventListener('storage', updateProfilePicture);
-      window.removeEventListener('profilePictureUpdated', updateProfilePicture);
-    }
-  }, [user?.photoURL])
 
   return (
-    <AuthProvider>
+    <>
       {/* Standard navbar */}
       <>
         {ENVIRONMENT === 'development' && (
@@ -228,7 +201,7 @@ const Navbar = () => {
           </DropdownMenu>
         </div>
       </nav>
-    </AuthProvider>
+    </>
   );
 };
 

@@ -1,6 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { driver } from "driver.js";
-import "driver.js/dist/driver.css";
 import { useAuth } from "../context/AuthContext";
 import {
   ArrowLeftToLineIcon,
@@ -21,10 +19,10 @@ import MessageDisplay from "@/components/chatbot/MessageDisplay";
 import { chatEventEmitter } from "../utils/chatEventEmitter";
 import { useChatbot } from "@/hooks/useChatbot";
 import { Message, Conversation } from "@/types/chat";
+import { useChatbotTutorial } from "@/hooks/useChatbotTutorial";
 
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
-// ---- Moved outside component so it's reusable across both cache paths ----
 const hydrateMessages = (msgs: Message[]): Message[] =>
   msgs.map((msg) => {
     if (msg.role === "assistant") {
@@ -42,7 +40,7 @@ const hydrateMessages = (msgs: Message[]): Message[] =>
   });
 
 const ChatBot: React.FC = () => {
-  const { user } = useAuth();
+  const { user, hasSeenChatbotTutorial } = useAuth();
   const [query, setQuery] = useState("");
   const handleClickQueryFlag = useRef(false);
   const ellipsisButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -62,81 +60,8 @@ const ChatBot: React.FC = () => {
     initialLoad
   } = useChatbot();
 
-  const [driverObj, setDriverObj] = useState<any>(null);
-
-  useEffect(() => {
-    const driverInstance = driver({
-      showProgress: true,
-      showButtons: ['next', 'previous', 'close'],
-      steps: [
-        {
-          element: '[data-tour="sidebar"]',
-          popover: {
-            title: 'Conversation History',
-            description: 'View and manage your conversation history here. Click on any past conversation to continue it. Hovering over the conversation allows you to manage it.',
-            side: "right"
-          }
-        },
-        {
-          element: '[data-tour="new-chat-expanded"]',
-          popover: {
-            title: 'New Chat',
-            description: 'Start a fresh conversation with SAGE anytime.',
-            side: "bottom"
-          }
-        },
-        {
-          element: '[data-tour="sidebar-collapse"]',
-          popover: {
-            title: 'Collapse Sidebar',
-            description: 'You can collapse the sidebar to expand your chat view. Click again to reopen it.',
-            side: "bottom"
-          }
-        },
-        {
-          element: '[data-tour="chat-input"]',
-          popover: {
-            title: 'Ask Questions',
-            description: 'Type your questions here and press Enter or click the send button to your right.',
-            side: "top"
-          }
-        },
-        {
-          element: '[data-tour="mode-toggle"]',
-          popover: {
-            title: 'Mode Toggle',
-            description: 'Switch between general advising questions and schedule generation mode.',
-            side: "top"
-          }
-        },
-        {
-          element: '[data-tour="help-button"]',
-          popover: {
-            title: 'Tutorial',
-            description: 'Click here to replay the tutorial at any time',
-            side: "left"
-          }
-        }
-      ],
-      onDestroyed: () => {
-        localStorage.setItem('hasSeenChatbotTutorial', 'true');
-      },
-      popoverClass: 'sage-driver-theme'
-    });
-
-    setDriverObj(driverInstance);
-    const hasSeenTutorial = localStorage.getItem('hasSeenChatbotTutorial');
-    if (!hasSeenTutorial) {
-      setTimeout(() => driverInstance.drive(), 500);
-    }
-  }, []);
-
-  const startTutorial = () => {
-    if (driverObj) {
-      driverObj.drive();
-    }
-  };
-
+  const { startTutorial } = useChatbotTutorial({ user, hasSeenTutorial: hasSeenChatbotTutorial });
+  
   const updateConversations = (newConversations: Conversation[] | ((prev: Conversation[]) => Conversation[])) => {
     if (typeof newConversations === 'function') {
       setConversations((prevConversations) => {
@@ -862,9 +787,9 @@ const ChatBot: React.FC = () => {
 
               {/* Expanded */}
               {!sidebarCollapsed && (
-                <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-hidden gap-8 transition-all duration-150`}>
+                <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-visible gap-8 transition-all duration-150`}>
                   <div className="flex gap-3 justify-between items-center">
-                    <button data-tour="new-chat-expanded" aria-label="Start a new chat conversation" className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
+                    <button data-tour="new-chat-expanded"  aria-label="Start a new chat conversation" className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
                       <MessageCirclePlusIcon size={24} aria-hidden="true" />
                       <span>Start new chat</span>
                     </button>

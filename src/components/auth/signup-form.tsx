@@ -114,7 +114,7 @@ export default function SignupForm(props: {
 
       props.setLoading(false); // Unrender loading animation for user
       toast.success("Successfully signed up with Google!");
-      navigate("/chatbot", { replace: true });
+      navigate("/", { replace: true });
     } catch (error) {
       console.error("Error during Google sign-up:", error);
       toast.error("Failed to sign up with Google. Please try again.");
@@ -151,7 +151,7 @@ export default function SignupForm(props: {
 
       props.setLoading(false); // Unrender loading animation for user
       toast.success("Successfully signed up!");
-      navigate("/chatbot", { replace: true });
+      navigate("/", { replace: true });
     } catch (error: unknown) {
       props.setLoading(false); // Unrender loading animation for user
       if (typeof error === "object" && error !== null && "code" in error) {

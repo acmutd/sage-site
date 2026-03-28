@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { toast } from 'sonner';
 import { getCreditsFromCourseCode } from "@/utils/plannerCredits";
+import { normalizeCourseCode } from '@/utils/prerequisiteUtils';
 
 interface SavedPlannerState {
     id: string;
@@ -29,6 +30,20 @@ interface SavedPlannerState {
 interface PlannerData {
     plans: SavedPlannerState[];
     activePlanId: string;
+}
+
+export interface StagedCourse {
+    course_id: string;
+    course_code: string;
+    course_name: string;
+    credits: number;
+    prereqs_met: boolean;
+    prereqs_text?: string;
+    coreqs_text?: string;
+    satisfies_core: boolean;
+    prerequisites?: any;
+    'Pre-Requisite'?: any;
+    description?: string;
 }
 
 interface PlannerStore extends PlannerData {
@@ -65,6 +80,11 @@ interface PlannerStore extends PlannerData {
     // schedule generation 
     saveSchedulePlan: (semesterTitle: string, selectedSections: Record<string, string>, colorOverrides: Record<string, string>) => void;
 
+    stagedCourses: StagedCourse[];
+    addStagedCourses: (courses: StagedCourse[]) => void;
+    removeStagedCourse: (courseId: string) => void;
+    clearStagedCourses: () => void;
+
     // Helper to update active plan
     updateActivePlan: (updates: Partial<SavedPlannerState>) => void;
 
@@ -86,6 +106,7 @@ export const usePlannerStore = create<PlannerStore>()(
             lastSavedState: null,
             past: [],
             future: [],
+            stagedCourses: [],
 
             // Unsaved Changes Tracking
             
@@ -556,7 +577,7 @@ export const usePlannerStore = create<PlannerStore>()(
 
                             targetSemester.courses.push(newCourse);
                             
-                            plan.placedCourses = Array.from(new Set([...plan.placedCourses, courseCode]));
+                            plan.placedCourses = Array.from(new Set([...plan.placedCourses, normalizeCourseCode(courseCode) || courseCode]));
                         }
                     } else {
                         // Moving existing course
@@ -609,6 +630,28 @@ export const usePlannerStore = create<PlannerStore>()(
                     }
                 });
             },
+            
+            // discovery courses (capped at 15 because across all five plans, we have 75 of these which is prob worth like a few bytes (maybe KBs)? but def don't approach MBs)
+            addStagedCourses: (courses: StagedCourse[]) => {
+                set((state) => {
+                    const existingIds = new Set(state.stagedCourses.map(c => c.course_id));
+                    const newOnes = courses.filter(c => !existingIds.has(c.course_id));
+                    // Cap at 15 total staged courses
+                    state.stagedCourses = [...state.stagedCourses, ...newOnes].slice(0, 15);
+                });
+            },
+             
+            removeStagedCourse: (courseId: string) => {
+                set((state) => {
+                    state.stagedCourses = state.stagedCourses.filter(c => c.course_id !== courseId);
+                });
+            },
+             
+            clearStagedCourses: () => {
+                set((state) => {
+                    state.stagedCourses = [];
+                });
+            },
 
             // Cloud Sync
             syncFromCloud: (cloudData: { plans: SavedPlannerState[]; activePlanId: string }) => {
@@ -623,6 +666,7 @@ export const usePlannerStore = create<PlannerStore>()(
         partialize: (state) => ({
             plans: state.plans,
             activePlanId: state.activePlanId,
+            stagedCourses: state.stagedCourses,
         }), 
         }
     )

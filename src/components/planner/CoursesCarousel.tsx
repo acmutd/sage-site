@@ -10,10 +10,10 @@ import {
 
 interface CoursesCarouselProps {
     courses: any[];
-    type: 'suggested' | 'completed';
+    type: 'suggested' | 'completed' | 'prereq_blocked' | 'discovered';
     placedSuggestedCourses?: Set<string>;
     categoryName?: string;
-    availableSemesters?: Array<{yearKey: string, semesterIndex: number, title: string}>;
+    availableSemesters?: Array<{ yearKey: string, semesterIndex: number, title: string }>;
     onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
     allSuggestedCourses?: any[];
     allCompletedCourseCodes?: string[];
@@ -26,6 +26,7 @@ interface CoursesCarouselProps {
     coursebookData?: Record<string, any[]>;
     gradesData?: Record<string, any>;
     coursebookSemester?: string | null;
+    onRemove?: (courseCode: string) => void;
 }
 
 const normalizeCorequisiteGroups = (corequisites: unknown): string[][] => {
@@ -67,6 +68,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
     coursebookData = {},
     gradesData = {},
     coursebookSemester,
+    onRemove,
 }) => {
     const COURSES_PER_PAGE = 5;
     const [currentPage, setCurrentPage] = useState(0);
@@ -74,17 +76,17 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
     // resize windowed dots based on container size (so dynamically computed)
     const dotsContainerRef = React.useRef<HTMLDivElement>(null);
     const [maxDots, setMaxDots] = useState(7);
-    
+
     useEffect(() => {
         if (!dotsContainerRef.current) return;
-        
+
         const observer = new ResizeObserver((entries) => {
             const width = entries[0].contentRect.width;
             const availableWidth = width - 60;
             const dotsCount = Math.max(3, Math.floor(availableWidth / 14));
             setMaxDots(dotsCount % 2 === 0 ? dotsCount - 1 : dotsCount); // odd so current page centers nicely
         });
-        
+
         observer.observe(dotsContainerRef.current);
         return () => observer.disconnect();
     }, []);
@@ -103,12 +105,24 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                 .filter(Boolean)
         );
 
+        const completedCodesSet = new Set(
+            allCompletedCourseCodes
+                .map((c) => normalizeCourseCode(c))
+                .filter(Boolean)
+        );
+
         const warningCoreqs: string[] = [];
 
         // Check each corequisite group
         for (const coreqGroup of normalizedCoreqGroups) {
+
+            const isAlreadySatisfied = coreqGroup.some((coreqCode: string) =>
+                completedCodesSet.has(coreqCode)
+            );
+            if (isAlreadySatisfied) continue;
+
             // If ANY course in this group is in the suggested list, add the whole group
-            const hasAnyCoreqInSuggested = coreqGroup.some((coreqCode: string) => 
+            const hasAnyCoreqInSuggested = coreqGroup.some((coreqCode: string) =>
                 suggestedCodesSet.has(coreqCode)
             );
 
@@ -218,7 +232,13 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
         setSelectedCourse(null);
     };
 
-    const dotColor = type === 'suggested' ? 'bg-yellow-400' : 'bg-green-400';
+    const dotColor = type === 'suggested'
+        ? 'bg-yellow-400'
+        : type === 'discovered'
+            ? 'bg-purple-400'
+            : type === 'prereq_blocked'
+                ? 'bg-gray-400'
+                : 'bg-green-400';
 
     return (
         <div className="w-full">
@@ -246,7 +266,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                         ];
                         const displayedWarnings =
                             isPlaced || warnings.length === 0 ? null : warnings;
-                        
+
                         return (
                             <CourseBox
                                 key={`suggested-${startIndex + idx}`}
@@ -265,14 +285,101 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 inSidebar={true}
                                 isPlaced={isPlaced}
                                 warnings={displayedWarnings}
-                                onAdd={() => handleAddClick({...course, course_code: courseCode, code: courseCode})}
+                                onAdd={() => handleAddClick({ ...course, course_code: courseCode, code: courseCode })}
                                 gradesData={gradesData}
                                 coursebookSemester={coursebookSemester}
                                 footnotes={course.footnote}
                                 rules={course.rules}
                             />
                         );
-                    } else {
+                    }
+
+                    else if (type === 'prereq_blocked') {
+                        const courseCode = course.code || course.course_code;
+                        const blockedWarnings = course.missing_prereqs?.length ? [{
+                            type: 'prerequisite' as const,
+                            severity: 'warning' as const,
+                            message: 'Prerequisites needed:',
+                            details: course.missing_prereqs.map((m: any) =>
+                                Array.isArray(m) ? m.join(' or ') : String(m)
+                            ),
+                        }] : null;
+
+                        return (
+                            <CourseBox
+                                key={`blocked-${startIndex + idx}`}
+                                course={{
+                                    ...course,
+                                    course_code: courseCode,
+                                    course_name: course.name || course.course_name,
+                                    description: course.description,
+                                    credits_planned: course.credits,
+                                    id: `blocked-${categoryName}-${courseCode}-${startIndex + idx}`,
+                                    sections: []
+                                }}
+                                status="default"
+                                icon={null}
+                                isPrereqBlocked={true}
+                                inSidebar={true}
+                                warnings={blockedWarnings}
+                                gradesData={gradesData}
+                                coursebookSemester={coursebookSemester}
+                                footnotes={course.footnote}
+                                rules={course.rules}
+                            />
+                        );
+                    } else if (type === 'discovered') {
+                        const courseCode = course.code || course.course_code;
+                        const isPlaced = placedSuggestedCourses.has(
+                            normalizeCourseCode(courseCode) ?? courseCode
+                        );
+                        const coreqWarnings = getCorequisiteWarnings(course);
+                        const prerequisiteWarnings = getPrerequisiteWarnings(course);
+                        const warnings = [
+                            ...(coreqWarnings ? [{
+                                type: 'corequisite' as const,
+                                severity: 'warning' as const,
+                                message: 'Corequisite Warning:',
+                                details: coreqWarnings
+                            }] : []),
+                            ...(prerequisiteWarnings ? [{
+                                type: 'prerequisite' as const,
+                                severity: 'warning' as const,
+                                message: 'Prerequisite Warning:',
+                                details: prerequisiteWarnings
+                            }] : [])
+                        ];
+
+                        return (
+                            <CourseBox
+                                key={`discovered-${startIndex + idx}`}
+                                course={{
+                                    ...course,
+                                    course_code: courseCode,
+                                    course_name: course.course_name,
+                                    description: course.description,
+                                    credits_planned: course.credits,
+                                    id: `discovered-${categoryName}-${courseCode}-${startIndex + idx}`,
+                                    sections: coursebookData[courseCode?.toLowerCase().replace(/\s+/g, "")] || []
+                                }}
+                                
+                                status="warning"
+                                icon="info"
+                                isDiscovered={true}
+                                inSidebar={true}
+                                isPlaced={isPlaced}
+                                warnings={isPlaced || warnings.length === 0 ? null : warnings}
+                                onAdd={() => handleAddClick({ ...course, course_code: courseCode, code: courseCode })}
+                                onRemove={() => onRemove?.(course.course_id)}
+                                gradesData={gradesData}
+                                coursebookSemester={coursebookSemester}
+                                footnotes={course.footnote}
+                                rules={course.rules}
+                            />
+                        );
+                    }
+
+                    else {
                         // Completed courses
                         return (
                             <CourseBox
@@ -305,129 +412,124 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
 
             {/* Navigation Controls - more than five courses */}
             {totalPages > 1 && (
-            <>
-                <div className="flex items-center justify-center gap-2 mt-3">
-                    {/* First Page Button - show if 3+ pages */}
-                    {totalPages > 2 && (
-                        <button
-                            onClick={firstPage}
-                            disabled={currentPage === 0}
-                            className={`text-xs transition-colors ${
-                                currentPage === 0 
-                                    ? 'text-gray-300 cursor-not-allowed' 
-                                    : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                            title="First page"
-                        >
-                            <ChevronsLeft className="w-4 h-4" />
-                        </button>
-                    )}
-
-                    {/* Previous Button */}
-                    <button
-                        onClick={prevPage}
-                        disabled={currentPage === 0}
-                        className={`text-xs transition-colors ${
-                            currentPage === 0 
-                                ? 'text-gray-300 cursor-not-allowed' 
-                                : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                        title="Previous page"
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                    </button>
-
-                    {/* Page Dots (windowed because apparently LOTS of courses can show up for certain majors...) */}
-                    <div ref={dotsContainerRef} className="flex gap-1.5 mx-1">
-                        {(() => {
-                            const MAX_DOTS = maxDots;
-                            const half = Math.floor(MAX_DOTS / 2);
-                            
-                            let start = Math.max(0, currentPage - half);
-                            let end = Math.min(totalPages - 1, start + MAX_DOTS - 1);
-                            
-                            if (end - start < MAX_DOTS - 1) {
-                                start = Math.max(0, end - MAX_DOTS + 1);
-                            }
-                            
-                            return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => goToPage(idx)}
-                                    className={`transition-all duration-200 ${
-                                        idx === currentPage
-                                            ? `w-6 h-2 rounded-full ${dotColor}`
-                                            : 'w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400'
-                                    }`}
-                                    aria-label={`Go to page ${idx + 1}`}
-                                    title={`Page ${idx + 1}`}
-                                />
-                            ));
-                        })()}
-                    </div>
-
-                    {/* Next Button */}
-                    <button
-                        onClick={nextPage}
-                        disabled={currentPage === totalPages - 1}
-                        className={`text-xs transition-colors ${
-                            currentPage === totalPages - 1
-                                ? 'text-gray-300 cursor-not-allowed'
-                                : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                        title="Next page"
-                    >
-                        <ChevronRight className="w-4 h-4" />
-                    </button>
-
-                    {/* Last Page Button - show if 3+ pages */}
-                    {totalPages > 2 && (
-                        <button
-                            onClick={lastPage}
-                            disabled={currentPage === totalPages - 1}
-                            className={`text-xs transition-colors ${
-                                currentPage === totalPages - 1
+                <>
+                    <div className="flex items-center justify-center gap-2 mt-3">
+                        {/* First Page Button - show if 3+ pages */}
+                        {totalPages > 2 && (
+                            <button
+                                onClick={firstPage}
+                                disabled={currentPage === 0}
+                                className={`text-xs transition-colors ${currentPage === 0
                                     ? 'text-gray-300 cursor-not-allowed'
                                     : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                            title="Last page"
-                        >
-                            <ChevronsRight className="w-4 h-4" />
-                        </button>
-                    )}
-                </div>
-
-                {/* Page Counter */}
-                <div className="text-center mt-2 text-xs text-gray-500">
-                    Page {currentPage + 1} of {totalPages} • {courses.length} courses
-                </div>
-            </>
-        )}
-        {showSemesterModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={() => setShowSemesterModal(false)}>
-                <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-sm mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                    <h3 className="text-lg font-semibold mb-4">Select Semester</h3>
-                    <p className="text-sm text-gray-600 mb-4">Choose where to add {selectedCourse?.code || selectedCourse?.course_code}</p>
-                    <div className="space-y-2">
-                        {availableSemesters.map((sem, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => handleSemesterSelect(sem)}
-                                className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded border border-gray-200"
+                                    }`}
+                                title="First page"
                             >
-                                {sem.title}
+                                <ChevronsLeft className="w-4 h-4" />
                             </button>
-                        ))}
+                        )}
+
+                        {/* Previous Button */}
+                        <button
+                            onClick={prevPage}
+                            disabled={currentPage === 0}
+                            className={`text-xs transition-colors ${currentPage === 0
+                                ? 'text-gray-300 cursor-not-allowed'
+                                : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            title="Previous page"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                        </button>
+
+                        {/* Page Dots (windowed because apparently LOTS of courses can show up for certain majors...) */}
+                        <div ref={dotsContainerRef} className="flex gap-1.5 mx-1">
+                            {(() => {
+                                const MAX_DOTS = maxDots;
+                                const half = Math.floor(MAX_DOTS / 2);
+
+                                let start = Math.max(0, currentPage - half);
+                                let end = Math.min(totalPages - 1, start + MAX_DOTS - 1);
+
+                                if (end - start < MAX_DOTS - 1) {
+                                    start = Math.max(0, end - MAX_DOTS + 1);
+                                }
+
+                                return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => goToPage(idx)}
+                                        className={`transition-all duration-200 ${idx === currentPage
+                                            ? `w-6 h-2 rounded-full ${dotColor}`
+                                            : 'w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400'
+                                            }`}
+                                        aria-label={`Go to page ${idx + 1}`}
+                                        title={`Page ${idx + 1}`}
+                                    />
+                                ));
+                            })()}
+                        </div>
+
+                        {/* Next Button */}
+                        <button
+                            onClick={nextPage}
+                            disabled={currentPage === totalPages - 1}
+                            className={`text-xs transition-colors ${currentPage === totalPages - 1
+                                ? 'text-gray-300 cursor-not-allowed'
+                                : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            title="Next page"
+                        >
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+
+                        {/* Last Page Button - show if 3+ pages */}
+                        {totalPages > 2 && (
+                            <button
+                                onClick={lastPage}
+                                disabled={currentPage === totalPages - 1}
+                                className={`text-xs transition-colors ${currentPage === totalPages - 1
+                                    ? 'text-gray-300 cursor-not-allowed'
+                                    : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                                title="Last page"
+                            >
+                                <ChevronsRight className="w-4 h-4" />
+                            </button>
+                        )}
                     </div>
-                    <button 
-                        onClick={() => setShowSemesterModal(false)}
-                        className="w-full mt-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                    >
-                        Cancel
-                    </button>
+
+                    {/* Page Counter */}
+                    <div className="text-center mt-2 text-xs text-gray-500">
+                        Page {currentPage + 1} of {totalPages} • {courses.length} courses
+                    </div>
+                </>
+            )}
+            {showSemesterModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={() => setShowSemesterModal(false)}>
+                    <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-sm mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-semibold mb-4">Select Semester</h3>
+                        <p className="text-sm text-gray-600 mb-4">Choose where to add {selectedCourse?.code || selectedCourse?.course_code}</p>
+                        <div className="space-y-2">
+                            {availableSemesters.map((sem, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => handleSemesterSelect(sem)}
+                                    className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded border border-gray-200"
+                                >
+                                    {sem.title}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => setShowSemesterModal(false)}
+                            className="w-full mt-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 </div>
-            </div>
-        )}
+            )}
         </div>
     );
 };

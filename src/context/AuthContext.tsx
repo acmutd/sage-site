@@ -13,9 +13,12 @@ interface AuthContextType {
   loading: boolean;
   logout: () => void;
   profilePicture: string | null;
+  setProfilePicture: (url: string) => void;
   authChecking: boolean;
   setAuthChecking: (checking: boolean) => void;
   allowedYears: number;
+  hasSeenChatbotTutorial: boolean;
+  hasSeenPlannerTutorial: boolean;
 }
 
 const loadClarity = (projectId: string) => {
@@ -30,9 +33,12 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   logout: () => {},
   profilePicture: null,
+  setProfilePicture: () => {},
   authChecking: false,
   setAuthChecking: () => {},
   allowedYears: 10,
+  hasSeenChatbotTutorial: false,
+  hasSeenPlannerTutorial: false,
 });
 
 const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
@@ -43,10 +49,12 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [profilePicture, setProfilePicture] = useState(null);
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [authChecking, setAuthChecking] = useState(false);
   const [allowedYears, setAllowedYears] = useState<number>(10);
+  const [hasSeenChatbotTutorial, setHasSeenChatbotTutorial] = useState(false);
+  const [hasSeenPlannerTutorial, setHasSeenPlannerTutorial] = useState(false);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -54,6 +62,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await setPersistence(auth, browserLocalPersistence);
 
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
+          setUser(user);
+          setLoading(false);
+
           if (user) {
             setUser(user);
             const token = await user.getIdToken();
@@ -78,10 +89,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
 
             const data = await response.json();
+            const picType = data.profile?.["user-fields"]?.profile_picture_type;
+            const photoUrl = data.profile?.["user-fields"]?.photo_url || user.photoURL || "";
+            
             setProfilePicture(
-              data.photo_url || `/assets/profile_pics/${data.profile_picture_type}.png`
+              picType === 0 && photoUrl
+                ? photoUrl
+                : `/assets/profile_pics/${picType}.png`
             );
+
             setAllowedYears(data.profile?.["system-fields"]?.allowedYears ?? 10);
+            setHasSeenChatbotTutorial(data.profile?.["system-fields"]?.hasSeenChatbotTutorial ?? false);
+            setHasSeenPlannerTutorial(data.profile?.["system-fields"]?.hasSeenPlannerTutorial ?? false);
+          
           } else {
             setUser(null);
             setProfilePicture(null);
@@ -112,7 +132,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, profilePicture, authChecking, setAuthChecking, allowedYears, }}>
+    <AuthContext.Provider value={{ user, loading, logout, profilePicture, setProfilePicture, authChecking, setAuthChecking, allowedYears, hasSeenChatbotTutorial, hasSeenPlannerTutorial, }}>
       {!loading && children}
     </AuthContext.Provider>
   );

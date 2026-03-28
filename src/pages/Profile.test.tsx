@@ -18,6 +18,11 @@ vi.mock("../context/AuthContext", () => ({
       getIdToken: async () => "fake-token",
       photoURL: null,
     },
+    profilePicture: null,
+    setProfilePicture: vi.fn(),
+    hasSeenChatbotTutorial: false,
+    hasSeenPlannerTutorial: false,
+    allowedYears: 10,
   }),
 }));
 

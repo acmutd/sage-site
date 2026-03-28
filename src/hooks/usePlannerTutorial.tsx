@@ -7,9 +7,10 @@ interface UsePlannerTutorialOptions {
     scrollContainerRef: React.RefObject<HTMLDivElement>;
     user: User | null | undefined;
     onForceExpandSidebar?: () => void;
+    hasSeenTutorial: boolean;
 }
 
-export function usePlannerTutorial({ scrollContainerRef, user, onForceExpandSidebar }: UsePlannerTutorialOptions) {
+export function usePlannerTutorial({ scrollContainerRef, user, onForceExpandSidebar, hasSeenTutorial }: UsePlannerTutorialOptions) {
     onHighlightStarted: () => {
         onForceExpandSidebar?.();
     }
@@ -256,10 +257,15 @@ export function usePlannerTutorial({ scrollContainerRef, user, onForceExpandSide
 
         setDriverObj(driverInstance);
 
-        const hasSeenTutorial = localStorage.getItem('hasSeenPlannerTutorial');
-        if (!hasSeenTutorial) {
+        const seenInStorage = localStorage.getItem('hasSeenPlannerTutorial');
+        if (hasSeenTutorial && !seenInStorage) {
+            localStorage.setItem('hasSeenPlannerTutorial', 'true');
+        }
+        
+        if (!seenInStorage && !hasSeenTutorial) {
             setTimeout(() => driverInstance.drive(), 500);
         }
+        
     }, []);
 
     const startTutorial = () => {

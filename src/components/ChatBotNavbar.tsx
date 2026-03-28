@@ -15,40 +15,14 @@ import ChatSidebarContent from '@/components/chatbot/ChatSidebarContent';
 const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
 
 const ChatBotNavbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, profilePicture } = useAuth();
   const location = useLocation();
   const { initialLoad } = useChatbot();
   
   const [isInWebapp, setIsInWebapp] = useState(false);
-  const [profilePicture, setProfilePicture] = useState<string>("");
-
   useEffect(() => {
     initialLoad();
   }, []);
-
-  useEffect(() => {
-    const updateProfilePicture = () => {
-      const cachedType = localStorage.getItem('profilePictureType');
-      if (cachedType) {
-        const type = parseInt(cachedType);
-        if (type === 0 && user?.photoURL) {
-          setProfilePicture(user.photoURL);
-        } else {
-          setProfilePicture(`/assets/profile_pics/${type}.png`);
-        }
-      } else if (user?.photoURL) {
-        setProfilePicture(user.photoURL);
-      }
-    };
-    updateProfilePicture();
-    window.addEventListener('storage', updateProfilePicture);
-    window.addEventListener('profilePictureUpdated', updateProfilePicture);
-    return () => 
-    { 
-      window.removeEventListener('storage', updateProfilePicture);
-      window.removeEventListener('profilePictureUpdated', updateProfilePicture);
-    }
-  }, [user?.photoURL]);
 
   useEffect(() => {
     if (location.pathname === "/" || location.pathname === "/login" || location.pathname === "/signup" || location.pathname === "/forgot-password") {

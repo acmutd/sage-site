@@ -29,12 +29,12 @@ const VITE_CRUD_API = import.meta.env.VITE_CRUD_API;
 
 const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
 const isEmailAllowedInDev = (email: string | null): boolean => {
-  if (ENVIRONMENT !== 'development') return true;
+  if (ENVIRONMENT !== 'dev') return true;
   return email?.toLowerCase().endsWith('@acmutd.co') || false;
 };
 
 const isUserAllowedInDev = async (user: any, resolvedEmail?: string): Promise<boolean> => {
-  if (ENVIRONMENT !== 'development') return true;
+  if (ENVIRONMENT !== 'dev') return true;
   const emailToCheck = resolvedEmail || user.email;
   if (emailToCheck?.toLowerCase().endsWith('@acmutd.co')) return true;
   try {
@@ -109,18 +109,20 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
       const profilePictureType = 0;
       const photoUrl = user.photoURL || "";
 
-      await fetch(VITE_CRUD_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: result.user.uid,
-          token: token,
-          action: "createUser",
-          profile_picture_type: profilePictureType,
-          photo_url: photoUrl,
-        }),
-      });
-
+      if (isNewUser) {
+        await fetch(VITE_CRUD_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: result.user.uid,
+            token: token,
+            action: "createUser",
+            profile_picture_type: profilePictureType,
+            photo_url: photoUrl,
+          }),
+        });
+      } 
+      
       toast.success("Successfully signed in with Google!");
       navigate(from, { replace: true });
       props.setLoading(false); // Unrender loading animation for user

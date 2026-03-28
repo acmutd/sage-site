@@ -13,14 +13,14 @@ interface ClassValidationAProps {
 const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, transcriptData }) => {
   const [editingSemester, setEditingSemester] = useState<string | null>(null);
   const [editedCourses, setEditedCourses] = useState<any>({});
-  const [localTranscript, setLocalTranscript] = useState(() => 
+  const [localTranscript, setLocalTranscript] = useState(() =>
     JSON.parse(JSON.stringify(transcriptData)) // deep copy on init
   );
 
   const courses = localTranscript?.courses || {};
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  
+
   const handleEdit = (semester: string) => {
     setEditingSemester(semester);
     if (semester === "Transferred Credits") {
@@ -68,18 +68,20 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
     );
   };
 
-  const renderDropdownOptions = () => {
-    const allCourses = [
-      ...(courses.transfer_credits || []),
-      ...(courses.test_credits || []),
-      ...Object.values(courses.utd_classes || {}).flat(),
-    ];
+  const getRestorableCourses = () => {
+    if (!editingSemester) return [];
+    let originalCourses: any[] = [];
+    if (editingSemester === "Transferred Credits") {
+      originalCourses = transcriptData?.courses?.transfer_credits || [];
+    } else if (editingSemester === "Test Credits") {
+      originalCourses = transcriptData?.courses?.test_credits || [];
+    } else {
+      originalCourses = transcriptData?.courses?.utd_classes?.[editingSemester] || [];
+    }
 
-    return allCourses.map((course: any, index: number) => (
-      <option key={index} value={`${course.course_code} - ${course.course_name}`}>
-        {course.course_code} - {course.course_name}
-      </option>
-    ));
+    return originalCourses.filter((course: any) =>
+      !editedCourses.some((ec: any) => ec.course_code === course.course_code)
+    );
   };
 
   const renderCourseSection = (title: string, coursesArray: any[]) => (
@@ -131,8 +133,14 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
                   onChange={(e) => handleCourseChange(index, e.target.value)}
                   className="border border-gray-300 rounded px-2 py-1 flex-1"
                 >
-                  <option value="">Select a course</option>
-                  {renderDropdownOptions()}
+                  <option value={`${course.course_code} - ${course.course_name}`}>
+                    {course.course_code} - {course.course_name}
+                  </option>
+                  {getRestorableCourses().map((course: any, index: number) => (  // <- replaces renderDropdownOptions()
+                    <option key={index} value={`${course.course_code} - ${course.course_name}`}>
+                      {course.course_code} - {course.course_name}
+                    </option>
+                  ))}
                 </select>
                 <Button
                   variant="ghost"
@@ -144,15 +152,17 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
                 </Button>
               </div>
             ))}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-green-500 hover:bg-green-50"
-              onClick={handleAddCourse}
-            >
-              <PlusCircle color="#22c55e" className="w-4 h-4" />
-              Add Course
-            </Button>
+            {getRestorableCourses().length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-green-500 hover:bg-green-50"
+                onClick={handleAddCourse}
+              >
+                <PlusCircle color="#22c55e" className="w-4 h-4" />
+                Add Course
+              </Button>
+            )}
           </>
         ) : (
           coursesArray.map((course, index) => (
@@ -203,24 +213,24 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
               We detected these classes on your transcript — do these look right?
             </p>
           </div>
-    
+
           {/* Transferred Credits Container */}
-          {courses.transfer_credits && courses.transfer_credits.length > 0 && 
+          {courses.transfer_credits && courses.transfer_credits.length > 0 &&
             renderCourseSection("Transferred Credits", courses.transfer_credits)
           }
-    
+
           {/* Test Credits Container */}
-          {courses.test_credits && courses.test_credits.length > 0 && 
+          {courses.test_credits && courses.test_credits.length > 0 &&
             renderCourseSection("Test Credits", courses.test_credits)
           }
-    
+
           {/* UTD Classes by Semester */}
           {courses.utd_classes && Object.keys(courses.utd_classes).length > 0 && (
-            Object.entries(courses.utd_classes).map(([semester, semesterCourses]) => 
+            Object.entries(courses.utd_classes).map(([semester, semesterCourses]) =>
               renderCourseSection(semester, semesterCourses as any[])
             )
           )}
-    
+
           <div className="flex justify-between items-center mt-8">
             <button
               onClick={onBack}
@@ -228,7 +238,7 @@ const ClassValidationA: React.FC<ClassValidationAProps> = ({ onNext, onBack, tra
             >
               Back
             </button>
-    
+
             <button
               className="px-8 py-2 bg-green-400 text-gray-900 font-medium rounded-lg hover:bg-green-500 transition"
               onClick={() => onNext(localTranscript)}

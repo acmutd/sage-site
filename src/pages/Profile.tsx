@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, GripVertical, MoveLeft, MoveRight, Pencil, Plus, SaveIcon, Sparkles, X } from "lucide-react";
 import DegreeProgressCard from "@/components/profile/degreeprogresscard";
@@ -7,6 +7,8 @@ import SectionSwitcher, { ProfileSection } from "@/components/profile/sectionswi
 import ChatConversationCard from "@/components/profile/chatconversationcard"
 import { chatEventEmitter } from "../utils/chatEventEmitter";
 import { Conversation } from "@/types/chat"
+import { useProfileStore } from "@/stores/profileStore";
+import { z } from "zod";
 
 interface Card {
   id: string;
@@ -16,19 +18,14 @@ interface Card {
   editable: boolean;
 }
 
-const MAX_CARDS = 3;
 
-const DEFAULT_CARDS: Card[] = [
-  { id: "undergrad", label: "0 Credit Hours", sublabel: "Undergraduate", enabled: true, editable: false },
-  { id: "startdate", label: "—", sublabel: "Start Date", enabled: true, editable: false },
-  { id: "gpaundergrad", label: "—", sublabel: "GPA Average (Undergrad)", enabled: true, editable: false },
-  { id: "gpagrad", label: "—", sublabel: "GPA Average (Grad)", enabled: false, editable: false },
-  { id: "grad", label: "0 Credit Hours", sublabel: "Graduate", enabled: false, editable: false },
-  { id: "advisor", label: "Add advisor…", sublabel: "Advisor", enabled: false, editable: true },
-  { id: "holds", label: "No Holds", sublabel: "Deadlines & Holds", enabled: false, editable: true },
-  { id: "note", label: "Add a note…", sublabel: "Personal Note", enabled: false, editable: true },
-  { id: "utdid", label: "—", sublabel: "UTD ID", enabled: false, editable: false },
-];
+const CardLabelSchema = z.string()
+  .min(1)
+  .max(100)
+  .trim()
+  .refine(val => /^[a-zA-Z0-9\s.,!?'"@#&*()\-\/+%]+$/.test(val), {
+    message: "Invalid characters"
+  });
 
 function EditableCardContent({ card, onSave }: { card: Card; onSave: (val: string) => void }) {
   const [editing, setEditing] = useState(false);
@@ -39,8 +36,14 @@ function EditableCardContent({ card, onSave }: { card: Card; onSave: (val: strin
   useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
 
   const commit = () => {
-    const val = draft.trim() || card.label;
-    onSave(val);
+    if (!draft.trim()) {
+      setDraft(card.label);
+      setEditing(false);
+      return;
+    }
+    const parsed = CardLabelSchema.safeParse(draft.trim());
+    if (!parsed.success) return;
+    onSave(parsed.data);
     setEditing(false);
   };
 
@@ -71,8 +74,11 @@ function EditableCardContent({ card, onSave }: { card: Card; onSave: (val: strin
   );
 }
 
+const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
+const MAX_CARDS = 3;
+
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, setProfilePicture: setContextProfilePicture } = useAuth();
   const [showMissingInfoModal, setShowMissingInfoModal] = useState(false);
   const [mobileView, setMobileView] = useState(false);
   const [tabletView, setTabletView] = useState(false);
@@ -111,13 +117,21 @@ const Profile = () => {
   const navigate = useNavigate();
 
   // ── Customizable Cards state ──
-  const [cards, setCards] = useState<Card[]>(DEFAULT_CARDS);
   const [isEditing, setIsEditing] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [justDropped, setJustDropped] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState<string | null>(null);
   const dragNode = useRef<HTMLDivElement | null>(null);
+
+  const {
+    cards,
+    setCards,
+    toggleCard,
+    reorderCards,
+    saveCardLabel,
+    syncFromCloud,
+  } = useProfileStore();
 
   // loading/err state
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -188,29 +202,14 @@ const Profile = () => {
     const enabled = cards.filter(c => c.enabled);
     if (e.key === "ArrowUp" && i > 0) {
       e.preventDefault();
-      const reordered = [...enabled];
-      [reordered[i - 1], reordered[i]] = [reordered[i], reordered[i - 1]];
-      setCards([...reordered, ...cards.filter(c => !c.enabled)]);
+      reorderCards(i, i - 1);
+      syncToCloud();
     }
     if (e.key === "ArrowDown" && i < enabled.length - 1) {
       e.preventDefault();
-      const reordered = [...enabled];
-      [reordered[i + 1], reordered[i]] = [reordered[i], reordered[i + 1]];
-      setCards([...reordered, ...cards.filter(c => !c.enabled)]);
+      reorderCards(i, i + 1);
+      syncToCloud();
     }
-  };
-
-  const toggleCard = (id: string) =>
-    setCards((p) => {
-      const target = p.find((c) => c.id === id)!;
-      // If turning on, only allow if under the max
-      if (!target.enabled && p.filter((c) => c.enabled).length >= MAX_CARDS) return p;
-      return p.map((c) => c.id === id ? { ...c, enabled: !c.enabled } : c);
-    });
-  const saveCardLabel = (id: string, val: string) => {
-    setCards((p) => p.map((c) => c.id === id ? { ...c, label: val } : c));
-    setSavedFlash(id);
-    setTimeout(() => setSavedFlash(null), 1800);
   };
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
@@ -224,34 +223,36 @@ const Profile = () => {
   };
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const syncToCloud = useCallback(async () => {
+    const currentCards = useProfileStore.getState().cards;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(async () => {
+      const token = await user?.getIdToken();
+      if (!token || !CRUD_API) return;
+      const editableLabels = Object.fromEntries(
+        currentCards.filter((c) => c.editable).map((c) => [c.id, c.label])
+      );
+      await fetch(CRUD_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.uid,
+          action: 'updateProfile',
+          token,
+          card_order: currentCards.map((c) => ({ id: c.id, enabled: c.enabled })),
+          card_labels: editableLabels,
+        }),
+      });
+    }, 800);
+  }, [user, CRUD_API]);
+
   const handleDragEnd = () => {
     if (dragNode.current) dragNode.current.style.opacity = "1";
     if (dragOverIndex !== null && dragOverIndex !== dragIndex && dragIndex !== null) {
-      const enabled = cards.filter((c) => c.enabled);
-      const disabled = cards.filter((c) => !c.enabled);
-      const moved = enabled.splice(dragIndex, 1)[0];
-      enabled.splice(dragOverIndex, 0, moved);
-      const newCards = [...enabled, ...disabled];
-      setCards(newCards);
-      setJustDropped(moved.id);
-      setTimeout(() => setJustDropped(null), 600);
-
-      // ← persist card order
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(async () => {
-        const token = await user?.getIdToken();
-        if (!token || !CRUD_API) return;
-        await fetch(CRUD_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user?.uid,
-            action: 'updateProfile',
-            token,
-            card_order: newCards.map(c => ({ id: c.id, enabled: c.enabled }))
-          })
-        });
-      }, 800);
+      reorderCards(dragIndex, dragOverIndex);
+      const movedId = cards.filter(c => c.enabled)[dragIndex]?.id;
+      if (movedId) { setJustDropped(movedId); setTimeout(() => setJustDropped(null), 600); }
+      syncToCloud(); // debounced
     }
     setDragIndex(null);
     setDragOverIndex(null);
@@ -293,8 +294,6 @@ const Profile = () => {
   }, [currentIndex, cardWidthPercent]);
 
   useEffect(() => { setCurrentIndex(0); }, [program]);
-
-  const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
   const cardsPerView = mobileView ? 1 : tabletView ? 1 : 2;
 
   const filteredCarouselData = carouselData.filter((card) => {
@@ -390,10 +389,13 @@ const Profile = () => {
     }
     setProfilePictureType(newType);
     localStorage.setItem('profilePictureType', newType.toString());
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('profilePictureUpdated'));
-    if (newType === 0 && googlePhotoURL) setProfilePic(googlePhotoURL);
-    else setProfilePic(`/assets/profile_pics/${newType}.png`);
+    if (newType === 0 && googlePhotoURL) {
+      setProfilePic(googlePhotoURL);
+      setContextProfilePicture(googlePhotoURL);
+    } else {
+      setProfilePic(`/assets/profile_pics/${newType}.png`);
+      setContextProfilePicture(`/assets/profile_pics/${newType}.png`);
+    }
     closePickerModal()
   }
 
@@ -420,11 +422,17 @@ const Profile = () => {
       const savedPhotoURL = data.profile?.["user-fields"]?.photo_url ?? null;
       const googleURL = user?.photoURL ?? savedPhotoURL;
       if (googleURL) setGooglePhotoURL(googleURL);
+
       setProfilePictureType(picType);
       localStorage.setItem('profilePictureType', picType.toString());
-      window.dispatchEvent(new Event('profilePictureUpdated'));
-      if (picType === 0 && googleURL) setProfilePic(googleURL);
-      else setProfilePic(`/assets/profile_pics/${picType}.png`);
+
+      if (picType === 0 && googleURL) {
+        setProfilePic(googleURL);
+        setContextProfilePicture(googleURL);
+      } else {
+        setProfilePic(`/assets/profile_pics/${picType}.png`);
+        setContextProfilePicture(`/assets/profile_pics/${picType}.png`);
+      }
 
       if (!data.majors || !data.credit_hours) {
         setShowMissingInfoModal(true);
@@ -434,32 +442,22 @@ const Profile = () => {
       setName(data.name);
 
       const ug = data.credit_hours.undergraduate ?? 0;
-      setCards((prev) =>
-        prev.map((c) => {
+      setCards(
+        cards.map((c) => {
           if (c.id === "undergrad") return { ...c, label: `${ug} Credit Hours` };
-          if (c.id === "grad") return { ...c, label: `0 Credit Hours` };
-          if (c.id === "startdate") return { ...c, label: data.majors[0].start_date || "—" };
-          if (c.id === "gpaundergrad") return { ...c, label: data.gpa.undergraduate || "-" };
-          if (c.id === "gpagrad") return { ...c, label: data.gpa.graduate || "-" };
-          if (c.id === "utdid") return { ...c, label: data.utd_id };
+          if (c.id === "grad")        return { ...c, label: `0 Credit Hours` };
+          if (c.id === "startdate")   return { ...c, label: data.majors[0].start_date || "—" };
+          if (c.id === "gpaundergrad")return { ...c, label: data.gpa.undergraduate || "-" };
+          if (c.id === "gpagrad")     return { ...c, label: data.gpa.graduate || "-" };
+          if (c.id === "utdid")       return { ...c, label: data.utd_id };
           return c;
         })
       );
 
-      const savedOrder = data.profile?.["user-fields"]?.card_order;
-      if (savedOrder?.length) {
-        setCards(prev => {
-          const mapped = savedOrder
-            .map((saved: { id: string; enabled: boolean }) => {
-              const card = prev.find(c => c.id === saved.id);
-              return card ? { ...card, enabled: saved.enabled } : null;
-            })
-            .filter(Boolean);
-          const savedIds = new Set(savedOrder.map((s: any) => s.id));
-          const unsaved = prev.filter(c => !savedIds.has(c.id));
-          return [...mapped, ...unsaved];
-        });
-      }
+      syncFromCloud(
+        data.profile?.["user-fields"]?.card_order ?? [],
+        data.profile?.["user-fields"]?.card_labels ?? {}
+      );
 
       if (!CRUD_API) {
         setLoadError('API missing');
@@ -720,7 +718,7 @@ const Profile = () => {
                               <GripVertical className="absolute top-2 left-2 w-5 h-5 text-gray-400 cursor-grab" aria-hidden="true" />
                               <button
                                 data-testid="card-remove-btn"
-                                onClick={() => toggleCard(card.id)}
+                                onClick={() => { toggleCard(card.id); syncToCloud(); }}
                                 aria-label={`Remove ${card.sublabel} card`}
                                 className="absolute top-2 right-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center hover:bg-red-600 leading-none"
                               ><X className="w-8.5 h-8.5 stroke-white" aria-hidden="true" /></button>
@@ -737,7 +735,7 @@ const Profile = () => {
 
                           <div className={`flex flex-col items-center ${isEditing ? "mt-2" : ""}`}>
                             {card.editable && !isEditing
-                              ? <EditableCardContent card={card} onSave={(v) => saveCardLabel(card.id, v)} />
+                              ? <EditableCardContent card={card} onSave={(v) => { saveCardLabel(card.id, v); syncToCloud(); setSavedFlash(card.id); setTimeout(() => setSavedFlash(null), 1800); }} />
                               : <h3>{card.label}</h3>
                             }
                             <p className="text-[#6C6C6C]">{card.sublabel}</p>
