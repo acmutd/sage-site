@@ -275,7 +275,7 @@ const PlannerPage = () => {
       const response = await fetch(VITE_EVALUATOR_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: transcriptData?.id || "student123", transcriptData, token }),
+        body: JSON.stringify({ id: user.uid || "student123", transcriptData, token }),
         signal: controller.signal,
       });
 
