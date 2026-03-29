@@ -26,6 +26,7 @@ import { usePlannerTutorial } from "@/hooks/usePlannerTutorial";
 import { exportPlanAsCSV, exportPlanAsJPG, exportPlanAsPDF, exportPlanAsPNG } from "@/utils/planExport";
 import CourseDiscoveryModal, { CartItem } from "@/components/planner/CourseDiscoveryModal";
 import z from "zod";
+import { getToken } from "@/utils/auth";
 
 interface PlannerProps {
     semesters: {
@@ -407,11 +408,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const coursebookFetchedRef = useRef<Set<string>>(new Set());
     const errorRef = useRef<HTMLDivElement>(null);
     const [discoveryCart, setDiscoveryCart] = useState<CartItem[]>([]);
-    const [authToken, setAuthToken] = useState<string>('');
-
-    useEffect(() => {
-        user?.getIdToken().then(setAuthToken);
-    }, [user]);
 
     useEffect(() => {
         if (error && scrollContainerRef.current) {
@@ -437,12 +433,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     }, []);
 
     const adaptedRequirements = useMemo(() => {
+        const planEval = activePlan?.evaluation;
+        const fromPlan = planEval
+            ? (Array.isArray(planEval) ? planEval : planEval?.results ?? [])
+            : [];
+        
         const fromProp = Array.isArray(requirements) ? requirements : requirements?.results ?? [];
-        const base = fromProp.length > 0 ? fromProp : (() => {
-            const planEval = activePlan?.evaluation;
-            if (planEval) return Array.isArray(planEval) ? planEval : planEval?.results ?? [];
-            return [];
-        })();
+        const base = fromPlan.length > 0 ? fromPlan : fromProp;
 
         if (studentType === "grad") {
             return base.filter((req: any) => (req.degree ?? req.name) !== "Core Requirements");
@@ -591,7 +588,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             const controller = new AbortController();
 
             try {
-                const token = await user.getIdToken();
+                const token = await getToken(user);
                 const CRUD_API = import.meta.env.VITE_CRUD_API;
                 const base = CRUD_API.replace("/CRUD", "");
 
@@ -664,7 +661,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
             const controller = new AbortController();
 
             try {
-                const token = await user.getIdToken();
+                const token = await getToken(user);
                 const CRUD_API = import.meta.env.VITE_CRUD_API;
                 const base = CRUD_API.replace("/CRUD", "");
 
@@ -1437,7 +1434,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             semesters={activePlan?.semesters ?? {}}
                             dropCourse={dropCourse}
                             apiBaseUrl={import.meta.env.VITE_CRUD_API}
-                            authToken={authToken}
+                            getAuthToken={() => getToken(user!)}
                             completedCourseCodes={allCompletedCourseCodes}
                             educationLevel={educationLevel}
                         />
@@ -1486,7 +1483,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                             <button
                                                 onClick={async () => {
                                                     try {
-                                                        const token = await user?.getIdToken();
+                                                        const token = await getToken(user!);
                                                         await fetch(import.meta.env.VITE_CRUD_API, {
                                                             method: 'POST',
                                                             headers: { 'Content-Type': 'application/json' },

@@ -75,7 +75,7 @@ export interface CourseDiscoveryModalProps {
     semesters: Record<string, { title: string; courses: any[]; isFromTranscript?: boolean; isLocked?: boolean }[]>;
     dropCourse: (params: any) => { success: boolean; error?: string };
     apiBaseUrl: string;
-    authToken: string;
+    getAuthToken: () => Promise<string>
     educationLevel?: 'undergraduate' | 'graduate';
     completedCourseCodes?: string[];
 }
@@ -707,7 +707,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     semesters: _semesters,
     dropCourse: _dropCourse,
     apiBaseUrl,
-    authToken,
+    getAuthToken,
     educationLevel = 'undergraduate',
     completedCourseCodes = [],
 }) => {
@@ -744,7 +744,8 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const searchRef = useRef<HTMLInputElement>(null);
 
     const fetchCourses = useCallback(async (newOffset: number = 0) => {
-        if (!authToken) return;
+        const token = await getAuthToken();
+        if (!token) return;
         setLoading(true);
         setError(null);
 
@@ -774,7 +775,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
         try {
             const res = await fetch(`${apiBaseUrl}/discover?${params}`, {
-                headers: { Authorization: `Bearer ${authToken}` },
+                headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) throw new Error('Failed to fetch');
             const data = await res.json();
@@ -809,7 +810,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         } finally {
             setLoading(false);
         }
-    }, [selectedSchools, selectedPrefixes, selectedCredits, coreOnly, educationLevel, apiBaseUrl, authToken, completedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding]);
+    }, [selectedSchools, selectedPrefixes, selectedCredits, coreOnly, educationLevel, apiBaseUrl, completedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding]);
 
     useEffect(() => { searchRef.current?.focus(); }, []);
 
