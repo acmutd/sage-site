@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { auth } from "../firebase-config";
-import { getToken } from "@/utils/auth";
 import {
   onAuthStateChanged,
   User,
@@ -8,41 +7,19 @@ import {
   browserLocalPersistence,
   signOut,
 } from "firebase/auth";
+import Cookies from "js-cookie";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   logout: () => void;
-  profilePicture: string | null;
-  setProfilePicture: (url: string) => void;
-  authChecking: boolean;
-  setAuthChecking: (checking: boolean) => void;
-  allowedYears: number;
-  hasSeenChatbotTutorial: boolean;
-  hasSeenPlannerTutorial: boolean;
 }
-
-const loadClarity = (projectId: string) => {
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = `https://www.clarity.ms/tag/${projectId}`;
-  document.head.appendChild(script);
-};
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   logout: () => {},
-  profilePicture: null,
-  setProfilePicture: () => {},
-  authChecking: false,
-  setAuthChecking: () => {},
-  allowedYears: 10,
-  hasSeenChatbotTutorial: false,
-  hasSeenPlannerTutorial: false,
 });
-
-const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
 
 export const useAuth = () => {
   return useContext(AuthContext);
@@ -50,12 +27,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [authChecking, setAuthChecking] = useState(false);
-  const [allowedYears, setAllowedYears] = useState<number>(10);
-  const [hasSeenChatbotTutorial, setHasSeenChatbotTutorial] = useState(false);
-  const [hasSeenPlannerTutorial, setHasSeenPlannerTutorial] = useState(false);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -63,49 +35,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await setPersistence(auth, browserLocalPersistence);
 
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
-          setUser(user);
-          setLoading(false);
-
           if (user) {
             setUser(user);
-            const token = await getToken(user);
-
-            if (import.meta.env.MODE !== "development") {
-              loadClarity(import.meta.env.VITE_CLARITY_PROJECT_ID);
-            }
-
-            // add in pfp globally to navbar
-            const response = await fetch(CRUD_API as string, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                userId: user?.uid,
-                action: "getProfile",
-                token,
-              }),
-            });
-          
-            if (!response.ok) {
-              throw new Error("Failed to fetch user info");
-            }
-
-            const data = await response.json();
-            const picType = data.profile?.["user-fields"]?.profile_picture_type;
-            const photoUrl = data.profile?.["user-fields"]?.photo_url || user.photoURL || "";
-            
-            setProfilePicture(
-              picType === 0 && photoUrl
-                ? photoUrl
-                : `/assets/profile_pics/${picType}.png`
-            );
-
-            setAllowedYears(data.profile?.["system-fields"]?.allowedYears ?? 10);
-            setHasSeenChatbotTutorial(data.profile?.["system-fields"]?.hasSeenChatbotTutorial ?? false);
-            setHasSeenPlannerTutorial(data.profile?.["system-fields"]?.hasSeenPlannerTutorial ?? false);
-          
+            const token = await user.getIdToken();
+            Cookies.set("authToken", token, { expires: 7 });
           } else {
             setUser(null);
-            setProfilePicture(null);
+            Cookies.remove("authToken");
           }
 
           setLoading(false);
@@ -124,8 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     try {
       await signOut(auth);
-      localStorage.clear();
-      sessionStorage.clear();
+      Cookies.remove("authToken");
       setUser(null);
     } catch (error) {
       console.error("Logout failed:", error);
@@ -133,7 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, profilePicture, setProfilePicture, authChecking, setAuthChecking, allowedYears, hasSeenChatbotTutorial, hasSeenPlannerTutorial, }}>
+    <AuthContext.Provider value={{ user, loading, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );

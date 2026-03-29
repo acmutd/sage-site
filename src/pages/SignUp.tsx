@@ -1,16 +1,9 @@
 import AuthCard from "@/components/auth/AuthCard";
 import SignupForm from "@/components/auth/signup-form";
-import { useState, useEffect} from "react";
+import { useState } from "react";
 
 const SignupPage = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [mobileView, setMobileView] = useState(false);
-
-  useEffect(() => {
-    if(window.innerWidth < 768) {
-      setMobileView(true);
-    };
-  }, []);
 
   function handleLoading(loading: boolean) {
     setIsLoading(loading);
@@ -29,7 +22,7 @@ const SignupPage = () => {
         Loading...
       </div>
 
-      <AuthCard title="Make an account with Sage" mobileView={mobileView} form={<SignupForm setLoading={handleLoading} />} />
+      <AuthCard title="Make an account with Sage" form={<SignupForm setLoading={handleLoading} />} />
     </div>
   );
 };

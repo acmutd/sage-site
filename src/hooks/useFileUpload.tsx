@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-
 const useFileUpload = (uploadUrl: string) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -13,48 +12,22 @@ const useFileUpload = (uploadUrl: string) => {
   };
 
   // Upload file function
-  const uploadFile = async (userId: string, token: string | null): Promise<any> => {
+  const uploadFile = async (): Promise<any> => {
     if (!selectedFile) return;
-    // Read file as base64
-    const toBase64 = (file: File) =>
-      new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => {
-          // Remove the data URL prefix
-          const result = reader.result as string;
-          const base64 = result.split(",")[1];
-          resolve(base64);
-        };
-        reader.onerror = (error) => reject(error);
-      });
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
 
     try {
       setIsUploading(true);
-      const base64_pdf = await toBase64(selectedFile);
-
-      // const token = user ? await user.getIdToken() : null;
-
-      const payload = {
-        id: userId,
-        pdf_content: base64_pdf,
-        token: token,
-      };
-
-      console.log(
-        "Sending payload to backend:",
-        JSON.stringify(payload, null, 2)
-      );
-
       const response = await fetch(uploadUrl, {
         method: "POST",
+        body: formData,
+        // This headers is only required for now because we are using a proxy server to test the endpoint
         headers: {
-          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
         },
-        body: JSON.stringify(payload),
       });
-
-      console.log("Received response:", await response.clone().json());
 
       if (!response.ok) {
         throw new Error("useFileUpload: Upload failed");
