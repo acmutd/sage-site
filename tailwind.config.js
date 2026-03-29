@@ -37,6 +37,7 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+          bord: "hsl(var(--card-bord))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",

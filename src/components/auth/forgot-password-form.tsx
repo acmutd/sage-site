@@ -5,7 +5,6 @@ import { z } from "zod";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/firebase-config";
 import { Link } from "react-router-dom";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,8 +23,12 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function ForgotPasswordForm(props: { setLoading: (loading: boolean) => void }) {
+export default function ForgotPasswordForm(props: { 
+    setLoading: (loading: boolean) => void;
+    onSubmitted?: () => void;
+}) {
     const [error, setError] = useState<string | null>(null);
+    const [submitted, setSubmitted] = useState(false);
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -36,14 +39,32 @@ export default function ForgotPasswordForm(props: { setLoading: (loading: boolea
         try {
             props.setLoading(true);
             await sendPasswordResetEmail(auth, data.email);
-            toast.success("Password reset link sent! Check your email.");
+            setSubmitted(true);
+            props.onSubmitted?.();
             props.setLoading(false);
         } catch (error: unknown) {
             props.setLoading(false);
-            setError("Error sending password reset email. Try again.");
-            toast.error("Error sending password reset email. Try again.");
+            const code = (error as any)?.code;
+            if (code === 'auth/too-many-requests') {
+                setError("Too many attempts. Please try again later.");
+            } else {
+                setError("Something went wrong. Please try again.");
+            }
         }
     }
+
+    if (submitted) return (
+        <div className="w-full space-y-4 pb-4 text-center">
+            <p className="text-sm text-textdark">If an account exists for that email, a reset link has been sent.</p>
+            <p className="text-xs text-textsecondary">
+                Didn't get an email? You may have signed up with Google —{" "}
+                <Link to="/login" className="text-buttonhover opacity-100 hover:underline">try signing in with Google instead</Link>.
+            </p>
+            <Link to="/login" className="text-[15px] text-textsecondary hover:underline block">
+                Back to Login
+            </Link>
+        </div>
+    );
 
     return (
         <div className="w-full space-y-6 pb-4">

@@ -3,82 +3,123 @@ import {
   Route,
   BrowserRouter as Router,
   Routes,
+  useLocation,
 } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import ChatBotNavbar from "./components/ChatBotNavbar";
 import { AuthProvider } from "./context/AuthContext";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignUp";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Planner from "./pages/Planner";
+import Planner from "./pages/PlannerPage";
+import PublicRoute from "./components/PublicRoute";
 import ChatBot from "./pages/ChatBot";
-import { useState, useEffect } from "react";
+import Profile from "./pages/Profile";
+import { useEffect, useState } from "react";
 
-const App = () => {
-  const [showWarning, setShowWarning] = useState(false);
+// Component to conditionally render navbar based on route
+const ConditionalNavbar = () => {
+  const location = useLocation();
+  const [isOnboarding, setIsOnboarding] = useState(false);
 
   useEffect(() => {
-    const isMobile = window.innerWidth < 768;
-    const alreadyShown = sessionStorage.getItem("mobileWarningShown");
+    const checkOnboarding = () => {
+      setIsOnboarding(document.body.hasAttribute('data-onboarding-active'));
+    };
+    
+    // Check initially
+    checkOnboarding();
+    
+    const observer = new MutationObserver(checkOnboarding);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-onboarding-active'] });
+    
+    return () => observer.disconnect();
+  }, [location]);
+  
+  // Show ChatBotNavbar only on the chatbot route
+  if (location.pathname === "/chatbot") {
+    return <ChatBotNavbar />;
+  }
+  
+  if (location.pathname === "/planner" && isOnboarding) {
+    return <Navbar />;
+  }
+  
+  if (location.pathname === "/planner")
+  { 
+    return null;
+  }
+  // Show regular Navbar for all other routes
+  return <Navbar />;
+};
 
-    if (isMobile && !alreadyShown) {
-      setShowWarning(true);
-      sessionStorage.setItem("mobileWarningShown", "true");
-    }
-  }, []);
+const App = () => {
 
   return (
     <div className="flex flex-col h-screen">
       <AuthProvider>
         <Router>
-          <Navbar /> {/* Always show PublicNavbar */}
-          <div className="min-h-screen">
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignupPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route
-                path="/planner"
-                element={
-                  <ProtectedRoute>
-                    <Planner />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/chatbot"
-                element={
-                  <ProtectedRoute>
-                    <ChatBot />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
+          <ConditionalNavbar />
+          <main className="min-h-screen">
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route 
+                  path="/login" 
+                  element={
+                    <PublicRoute>
+                      <LoginPage />
+                    </PublicRoute>
+                  } 
+                />
+                <Route 
+                  path="/signup" 
+                  element={
+                    <PublicRoute>
+                      <SignupPage />
+                    </PublicRoute>
+                  } 
+                />
+                <Route 
+                  path="/forgot-password" 
+                  element={
+                    <PublicRoute>
+                      <ForgotPasswordPage />
+                    </PublicRoute>
+                  } 
+                />
+                <Route
+                  path="/planner"
+                  element={
+                    <ProtectedRoute>
+                      <Planner />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/chatbot"
+                  element={
+                    <ProtectedRoute>
+                      <ChatBot />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+          </main>
         </Router>
       </AuthProvider>
 
       {/* Global Warning Modal */}
-      {showWarning && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl max-w-sm text-center shadow-lg">
-            <h2 className="text-xl font-bold mb-4">Mobile View Detected</h2>
-            <p className="text-gray-700 mb-4">
-              This website is best experienced on a desktop. Please switch to a
-              larger screen.
-            </p>
-            <button
-              onClick={() => setShowWarning(false)}
-              className="bg-[#5AED86] px-6 py-2 rounded-full font-semibold text-black hover:bg-[#45c970] transition"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
