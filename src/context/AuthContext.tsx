@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { auth } from "../firebase-config";
+import { getToken } from "@/utils/auth";
 import {
   onAuthStateChanged,
   User,
@@ -67,7 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           if (user) {
             setUser(user);
-            const token = await user.getIdToken();
+            const token = await getToken(user);
 
             if (import.meta.env.MODE !== "development") {
               loadClarity(import.meta.env.VITE_CLARITY_PROJECT_ID);

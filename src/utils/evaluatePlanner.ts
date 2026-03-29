@@ -1,4 +1,5 @@
 import { auth } from "@/firebase-config";
+import { getToken } from "@/utils/auth";
 
 function getPlannerState(): any {
   const raw = localStorage.getItem("planner-state");
@@ -304,7 +305,7 @@ async function requestPlannerEvaluation(
 ): Promise<any> {
   const user = auth.currentUser;
   if (!user) throw new Error("No auth token found — are you logged in?");
-  const token = await user.getIdToken();
+  const token = await getToken(user);
 
   const id = user.uid;
   if (!id) throw new Error("No account ID found for user");
