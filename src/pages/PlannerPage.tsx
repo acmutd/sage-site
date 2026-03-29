@@ -8,6 +8,7 @@ import { MultiBackend, TouchTransition, MouseTransition } from "react-dnd-multi-
 import { useAuth } from "@/context/AuthContext";
 import { usePlannerStore } from "@/stores/plannerStore";
 import { toast } from "sonner";
+import { getToken } from "@/utils/auth";
 
 type PlanConflictOption = "overwrite" | "select" | "new";
 
@@ -192,7 +193,7 @@ const PlannerPage = () => {
       return;
     }
 
-    const token = await user.getIdToken();
+    const token = await getToken(user);
     if (!token) {
       sessionStorage.setItem('hasCheckedCloudThisSession', 'true');
       return;
@@ -268,7 +269,7 @@ const PlannerPage = () => {
       const controller = new AbortController();
       fetchAbortRef.current = controller;
 
-      const token = await user.getIdToken();
+      const token = await getToken(user);
       if (!token) throw new Error("Failed to retrieve auth token.");
 
       const response = await fetch(VITE_EVALUATOR_API, {
