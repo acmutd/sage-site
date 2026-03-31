@@ -794,21 +794,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         setIsRunningQuickEvaluation(true);
 
         try {
-            await evaluatePlannerAndMergeSuggestions({
-                quickEvaluation: true,
-                assumeMinimumGradePass: true,
-                plannerStateOverride: { plans, activePlanId },
-            });
-            toast.success("Suggested courses refreshed");
-            setLastQuickEvalPlannedCoursesSignature(plannedCoursesSignature);
-
-        } catch (error: any) {
-            if (error?.status === 429 || error?.message?.includes('429')) {
-                toast.warning("You've hit the daily evaluation limit. Try again tomorrow.");
-            } else {
-                toast.error("Could not refresh suggested courses");
-            }
-        } finally {
             try {
                 await savePlannerState();
             } catch (saveError) {
@@ -819,6 +804,23 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     console.error("localStorage fallback also failed:", e);
                 }
             }
+            
+            const mergedRequirements = await evaluatePlannerAndMergeSuggestions({
+                quickEvaluation: true,
+                assumeMinimumGradePass: true,
+                plannerStateOverride: { plans, activePlanId },
+            });
+            updateActivePlan({ evaluation: mergedRequirements }); 
+            toast.success("Suggested courses refreshed");
+            setLastQuickEvalPlannedCoursesSignature(plannedCoursesSignature);
+
+        } catch (error: any) {
+            if (error?.status === 429 || error?.message?.includes('429')) {
+                toast.warning("You've hit the daily evaluation limit. Try again tomorrow.");
+            } else {
+                toast.error("Could not refresh suggested courses");
+            }
+        } finally {
             setIsRunningQuickEvaluation(false);
         }
     };
