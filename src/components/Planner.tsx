@@ -148,6 +148,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return updatedSemesters;
     }, [semesters]);
 
+    
     // Zustand store selectors
     const plans = usePlannerStore(state => state.plans);
     const activePlanId = usePlannerStore(state => state.activePlanId);
@@ -515,6 +516,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return Array.from(completedCodes);
     }, [adaptedRequirements]);
 
+    
     const availableSemesters = useMemo(() => {
         const result: Array<{ yearKey: string; semesterIndex: number; title: string }> = [];
         Object.keys(allSemesters).forEach(yearKey => {
@@ -749,6 +751,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return allPlannedCoursesWithOrder.map((course) => course.code);
     }, [allPlannedCoursesWithOrder]);
 
+    const discoveryCompletedCodes = useMemo(() => 
+        [...allCompletedCourseCodes, ...allPlannedCourseCodes],
+        [allCompletedCourseCodes, allPlannedCourseCodes]
+    );
+    
     const plannedCoursesSignature = useMemo(() => {
         const plannedCoursePlacements: string[] = [];
 
@@ -1437,7 +1444,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                             dropCourse={dropCourse}
                             apiBaseUrl={import.meta.env.VITE_CRUD_API}
                             getAuthToken={() => getToken(user!)}
-                            completedCourseCodes={allCompletedCourseCodes}
+                            completedCourseCodes={discoveryCompletedCodes}
                             educationLevel={educationLevel}
                         />
                     )}

@@ -690,7 +690,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                     ><CirclePlus className="w-4 h-4 mr-2" />
                                     </button>
                                 )}
-                                {!inSidebar && onRemove && !isFromTranscript && (
+                                {!inSidebar && onRemove && !isFromTranscript && course.status === 'planned' && (
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -742,7 +742,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 <Info className="w-4 h-4 text-blue-500" />
                             </button>
                         )}
-                        {isDiscovered && onRemove && (
+                        {isDiscovered && !isPlaced && onRemove && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); onRemove(); }}
                                 className="p-1 hover:bg-purple-100 rounded-full transition-colors"
