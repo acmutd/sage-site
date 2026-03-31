@@ -356,7 +356,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         if (category.suggested && category.suggested.length > 0) return true;
         if (category.prereq_blocked && category.prereq_blocked.length > 0) return true;
-        
+
         // Recursively check subcategories
         if (category.categories && category.categories.length > 0) {
             return category.categories.some((subcat: any) => hasCompletion(subcat));
@@ -394,59 +394,72 @@ const Sidebar: React.FC<SidebarProps> = ({
         });
     };
 
-    const renderCategoryContent = (category: any, reqIdx: number, nextParentPath: string, isOR: boolean, subCategoriesToRender: any[]): React.ReactNode => (
-        <>
-            {category.classes && category.classes.length > 0 ? (
-                <CoursesCarousel courses={category.classes} type="completed" />
-            ) : subCategoriesToRender.length > 0 ? null : (
-                !category.suggested?.length && (
-                    <div className="text-sm text-gray-500">No courses in this category</div>
-                )
-            )}
+    const renderCategoryContent = (category: any, reqIdx: number, nextParentPath: string, isOR: boolean, subCategoriesToRender: any[]): React.ReactNode => {
+        const suggestedCodes = new Set((category.suggested || []).map((c: any) => c.code));
+        const filteredPrereqBlocked = (category.prereq_blocked || []).filter(
+            (c: any) => !suggestedCodes.has(c.code)
+        );
+        
+        return (
+            <>
+                {category.classes && category.classes.length > 0 ? (
+                    <CoursesCarousel courses={category.classes} type="completed" />
+                ) : subCategoriesToRender.length > 0 ? null : (
+                    !category.suggested?.length && (
+                        category.evaluatable === false ? (
+                            <div className="text-sm text-gray-500">
+                                Contact your advisor for more info on how to complete this requirement.
+                            </div>
+                        ) : (
+                            <div className="text-sm text-gray-500">No courses in this category</div>
+                        )
+                    )
+                )}
 
-            {category.suggested && category.suggested.length > 0 && (
-                <>
-                    <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
-                        <span className="text-xs text-gray-500 font-medium">Suggested Courses</span>
-                    </div>
-                    <CoursesCarousel
-                        courses={category.suggested}
-                        type="suggested"
-                        placedSuggestedCourses={placedSuggestedCourses}
-                        categoryName={category.name}
-                        allSuggestedCourses={allSuggestedCourses}
-                        allCompletedCourseCodes={allCompletedCourseCodes}
-                        allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
-                        coursebookData={coursebookData}
-                        coursebookSemester={coursebookSemester}
-                        gradesData={gradesData}
-                    />
-                </>
-            )}
+                {category.suggested && category.suggested.length > 0 && (
+                    <>
+                        <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
+                            <span className="text-xs text-gray-500 font-medium">Suggested Courses</span>
+                        </div>
+                        <CoursesCarousel
+                            courses={category.suggested}
+                            type="suggested"
+                            placedSuggestedCourses={placedSuggestedCourses}
+                            categoryName={category.name}
+                            allSuggestedCourses={allSuggestedCourses}
+                            allCompletedCourseCodes={allCompletedCourseCodes}
+                            allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
+                            coursebookData={coursebookData}
+                            coursebookSemester={coursebookSemester}
+                            gradesData={gradesData}
+                        />
+                    </>
+                )}
 
-            {category.prereq_blocked && category.prereq_blocked.length > 0 && (
-                <>
-                    <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
-                        <span className="text-xs text-gray-500 font-medium">Needs Prerequisites</span>
-                    </div>
-                    <CoursesCarousel
-                        courses={category.prereq_blocked}
-                        type="prereq_blocked"
-                        categoryName={category.name}
-                        allSuggestedCourses={allSuggestedCourses}
-                        allCompletedCourseCodes={allCompletedCourseCodes}
-                        allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
-                        coursebookData={coursebookData}
-                        coursebookSemester={coursebookSemester}
-                        gradesData={gradesData}
-                    />
-                </>
-            )}
+                {filteredPrereqBlocked && filteredPrereqBlocked.length > 0 && (
+                    <>
+                        <div className="mt-2 mb-1 border-t border-gray-100 pt-1">
+                            <span className="text-xs text-gray-500 font-medium">Needs Prerequisites</span>
+                        </div>
+                        <CoursesCarousel
+                            courses={filteredPrereqBlocked}
+                            type="prereq_blocked"
+                            categoryName={category.name}
+                            allSuggestedCourses={allSuggestedCourses}
+                            allCompletedCourseCodes={allCompletedCourseCodes}
+                            allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
+                            coursebookData={coursebookData}
+                            coursebookSemester={coursebookSemester}
+                            gradesData={gradesData}
+                        />
+                    </>
+                )}
 
-            {subCategoriesToRender.length > 0 &&
-                renderCategories(subCategoriesToRender, reqIdx, nextParentPath, isOR)}
-        </>
-    );
+                {subCategoriesToRender.length > 0 &&
+                    renderCategories(subCategoriesToRender, reqIdx, nextParentPath, isOR)}
+            </>
+        );
+    }
 
     const renderCategories = (categories: any[], reqIdx: number, parentPath: string = "0", parentIsOR: boolean = false): React.ReactNode[] => {
         const filteredCategories = filterCategories(categories);
@@ -525,6 +538,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         });
     };
 
+    const normalizedPlaced = new Set([...placedSuggestedCourses].map(c => c.toLowerCase().replace(/\s+/g, '')));
+    const allStagedPlaced = stagedCourses.every(c => normalizedPlaced.has(c.course_id.toLowerCase().replace(/\s+/g, '')));
+
     return (
         <>
             <div data-tour="sidebar" className={`${isExpanded ? "w-80 rounded-lg" : "w-20 rounded-md"} bg-bglight rounded-lg border border-border transition-all duration-300 flex flex-col h-full overflow-hidden`}>
@@ -574,31 +590,35 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </button>
 
                             {stagedCourses.length > 0 && (
-    <div className="mb-4">
-        <div className="flex items-center justify-between px-1 mb-2">
-            <div className="text-[10px] font-semibold text-purple-500 uppercase tracking-wide flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
-                Staged · {stagedCourses.length} course{stagedCourses.length !== 1 ? 's' : ''}
-            </div>
-            <button
-                onClick={() => usePlannerStore.getState().clearStagedCourses()}
-                className="text-[10px] text-gray-400 hover:text-red-400 transition-colors"
-            >
-                Clear all
-            </button>
-        </div>
-        <CoursesCarousel
-            courses={stagedCourses}
-            type="discovered"
-            onRemove={removeStagedCourse}
-            coursebookData={coursebookData}
-            gradesData={gradesData}
-            coursebookSemester={coursebookSemester}
-            availableSemesters={[]} 
-            placedSuggestedCourses={placedSuggestedCourses}
-        />
-    </div>
-)}
+                                <div className="mb-4">
+                                    <div className="flex items-center justify-between px-1 mb-2">
+                                        <div className="text-[10px] font-semibold text-purple-500 uppercase tracking-wide flex items-center gap-1.5">
+                                            <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+                                            Staged · {stagedCourses.length} course{stagedCourses.length !== 1 ? 's' : ''}
+                                        </div>
+                                        <button
+                                            onClick={() => !allStagedPlaced && usePlannerStore.getState().clearStagedCourses()}
+                                            className={`text-[10px] transition-colors ${
+                                                allStagedPlaced 
+                                                    ? 'text-gray-300 cursor-not-allowed pointer-events-none' 
+                                                    : 'text-gray-400 hover:text-red-400 cursor-pointer'
+                                            }`}
+                                        >
+                                            Clear all
+                                        </button>
+                                    </div>
+                                    <CoursesCarousel
+                                        courses={stagedCourses}
+                                        type="discovered"
+                                        onRemove={removeStagedCourse}
+                                        coursebookData={coursebookData}
+                                        gradesData={gradesData}
+                                        coursebookSemester={coursebookSemester}
+                                        availableSemesters={[]}
+                                        placedSuggestedCourses={placedSuggestedCourses}
+                                    />
+                                </div>
+                            )}
 
 
                             <h2 className="text-xl font-bold text-gray-900 mb-4">
