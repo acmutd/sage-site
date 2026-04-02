@@ -8,6 +8,7 @@ import {
   browserLocalPersistence,
   signOut,
 } from "firebase/auth";
+import Clarity from '@microsoft/clarity';
 
 interface AuthContextType {
   user: User | null;
@@ -21,13 +22,6 @@ interface AuthContextType {
   hasSeenChatbotTutorial: boolean;
   hasSeenPlannerTutorial: boolean;
 }
-
-const loadClarity = (projectId: string) => {
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = `https://www.clarity.ms/tag/${projectId}`;
-  document.head.appendChild(script);
-};
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -71,7 +65,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const token = await getToken(user);
 
             if (import.meta.env.MODE !== "development") {
-              loadClarity(import.meta.env.VITE_CLARITY_PROJECT_ID);
+              Clarity.init(import.meta.env.VITE_CLARITY_PROJECT_ID);
             }
 
             // add in pfp globally to navbar
