@@ -20,12 +20,14 @@ interface ProgramValidationBProps {
     latestCatalog: any;
     studentCatalogYear: string;
     latestCatalogYear: string;
+    catalogYear: "assigned" | "latest";
 }
 
 const ProgramValidationB: React.FC<ProgramValidationBProps> = ({ 
     program, onNext, onRemove, onSave, 
     degreeCatalog, latestCatalog, 
-    studentCatalogYear, latestCatalogYear 
+    studentCatalogYear, latestCatalogYear,
+    catalogYear
 }) => {
     const [selectedProgramId] = useState<number | null>(program?.id || null);
     const [updatedProgram, setUpdatedProgram] = useState({
@@ -34,9 +36,8 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({
         title: "",
         ...program,
     });
-    const [useLatest, setUseLatest] = useState(false);
 
-    const activeCatalog = useLatest ? latestCatalog : degreeCatalog;
+    const activeCatalog = catalogYear === "latest" ? latestCatalog : degreeCatalog;
     const isNewProgram = !program?.id;
 
     const handleFieldChange = (fieldId: string, value: string) => {
@@ -45,17 +46,6 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({
             [fieldId]: value,
             ...(fieldId === "level" ? { type: "", title: "" } : {}),
             ...(fieldId === "type" ? { title: "" } : {}),
-        }));
-    };
-
-    // reset level/type/title when toggling so stale selections don't carry over
-    const handleToggle = () => {
-        setUseLatest(prev => !prev);
-        setUpdatedProgram((prev: any) => ({
-            ...prev,
-            level: "",
-            type: "",
-            title: "",
         }));
     };
 
@@ -121,7 +111,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({
     const handleSave = () => {
         onSave({
             ...updatedProgram,
-            catalog_year: useLatest ? latestCatalogYear : studentCatalogYear,
+            catalog_year: catalogYear === "latest" ? latestCatalogYear : studentCatalogYear,
         });
     };
 
@@ -139,33 +129,9 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({
                 <Card className="py-3 relative overflow-hidden">
                     <CardContent className="flex items-center">
                         <div className="flex flex-col gap-4 w-full">
-
-                            {/* Catalog year toggle - (if you aren't a freshman) */}
-                            {studentCatalogYear !== latestCatalogYear && (
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                                <span className={!useLatest ? "text-gray-800 font-medium" : ""}>
-                                    My catalog ({studentCatalogYear})
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={handleToggle}
-                                    className={`relative w-10 h-5 rounded-full transition-colors ${
-                                        useLatest ? "bg-accent" : "bg-gray-300"
-                                    }`}
-                                >
-                                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                                        useLatest ? "translate-x-5" : "translate-x-0"
-                                    }`} />
-                                </button>
-                                <span className={useLatest ? "text-gray-800 font-medium" : ""}>
-                                    Latest ({latestCatalogYear})
-                                </span>
-                            </div>
-                            )}
-
                             {formFields.map((field) => (
                                 <div 
-                                    key={`${field.id}-${useLatest ? "latest" : "assigned"}-${field.id === "type" ? updatedProgram.level : ""}`}
+                                    key={`${field.id}-${(catalogYear === "latest") ? "latest" : "assigned"}-${field.id === "type" ? updatedProgram.level : ""}`}
                                     className="dropdown-container flex flex-col items-start gap-2 w-full"
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={(e) => e.stopPropagation()}
@@ -205,7 +171,7 @@ const ProgramValidationB: React.FC<ProgramValidationBProps> = ({
                                     Program name
                                 </label>
                                 <Searchbox<{ name: string }>
-                                    key={useLatest ? "latest" : "assigned"}
+                                    key={(catalogYear === "latest") ? "latest" : "assigned"}
                                     items={getTitleOptions()}
                                     getLabel={(o: { name: string }) => o?.name ?? ""}
                                     searchKeys={["name"]}

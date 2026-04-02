@@ -97,6 +97,7 @@ const Navbar = () => {
                       {profilePicture ? (
                         <img 
                           src={profilePicture} 
+                          data-clarity-mask="True"
                           referrerPolicy="no-referrer"
                           alt="Profile" 
                           className="w-9 h-9 rounded-full object-cover justify-center"

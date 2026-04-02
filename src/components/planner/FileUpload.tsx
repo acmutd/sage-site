@@ -198,7 +198,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onNext, showManualOption = 
         </div>
 
         {selectedFile && (
-          <p className="text-xs sm:text-sm text-gray-600 mb-2">
+          <p data-clarity-mask="True" className="text-xs sm:text-sm text-gray-600 mb-2">
             Selected File: {selectedFile.name}
           </p>
         )}

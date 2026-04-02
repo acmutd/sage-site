@@ -69,7 +69,7 @@ const ChatBotNavbar = () => {
                   <DropdownMenuTrigger>
                     <div className="p-2 rounded-full">
                       {profilePicture ? (
-                        <img referrerPolicy="no-referrer" src={profilePicture} alt="Profile" className="w-9 h-9 rounded-full object-cover" />
+                        <img referrerPolicy="no-referrer" src={profilePicture} data-clarity-mask="True" alt="Profile" className="w-9 h-9 rounded-full object-cover" />
                       ) : (
                         <UserRound className="stroke-textdark"/>
                       )}
