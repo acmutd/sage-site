@@ -100,13 +100,14 @@ export function Searchbox<T>({
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          title={triggerLabel}
           className={cn(
-            "flex items-center justify-between w-full border border-slate-300 bg-white rounded-sm px-3 py-2 text-sm font-normal text-gray-800",
+            "flex items-center justify-between w-full border border-slate-300 bg-white rounded-sm px-3 py-2 text-sm font-normal text-gray-800 overflow-hidden",
             className
           )}
         >
           {triggerLabel}
-          <ChevronsUpDown size={14} className="opacity-50 shrink-0" />
+          <ChevronsUpDown size={14} className="opacity-50 shrink-0 ml-2" />
         </Button>
       </PopoverTrigger>
 

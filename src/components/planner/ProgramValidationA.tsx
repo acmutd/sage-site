@@ -344,7 +344,7 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
                 onClick={(e) => e.stopPropagation()}
               >
                 <Select
-                  defaultValue={mapStatusToDropdown(program.status)}
+                  value={mapStatusToDropdown(program.status)}
                   onValueChange={(value) => {
                     const updatedProgram = { ...program, status: mapDropdownToStatus(value) };
                     handleSave(updatedProgram);
