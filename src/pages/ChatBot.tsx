@@ -816,7 +816,7 @@ const ChatBot: React.FC = () => {
                             >
                               <div className="relative flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
                                 <div className="opacity-0 group-hover/conversation:opacity-100 absolute left-[calc(100%-2rem)] w-[2rem] h-full bg-gradient-to-r from-secondary/0 to-secondary transition-all duration-150" />
-                                <small className="truncate">{displayName}</small>
+                                <small className="truncate" data-clarity-mask="True">{displayName}</small>
                               </div>
                             </button>
 
@@ -917,6 +917,7 @@ const ChatBot: React.FC = () => {
                 <div className="flex flex-col flex-grow-[1] min-h-0 w-full bg-innercontainer rounded-lg border border-border">
                   <div
                     ref={chatContainerRef}
+                    data-clarity-mask="True"
                     className="p-8 overflow-y-auto space-y-2 flex flex-col items-center"
                     style={{ scrollbarWidth: "none" }}
                   >
@@ -1017,6 +1018,7 @@ const ChatBot: React.FC = () => {
 
                   <div className="relative w-full">
                     <textarea
+                      data-clarity-mask="True"
                       data-tour="chat-input"
                       ref={textareaRef}
                       rows={1}

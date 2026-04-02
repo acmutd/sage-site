@@ -108,7 +108,7 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
                   <DropdownMenuTrigger>
                     <div className="p-2 rounded-full">
                       {profilePicture ? (
-                        <img src={profilePicture} referrerPolicy="no-referrer" alt="Profile" className="w-9 h-9 rounded-full object-cover" />
+                        <img src={profilePicture} data-clarity-mask="True" referrerPolicy="no-referrer" alt="Profile" className="w-9 h-9 rounded-full object-cover" />
                       ) : (
                         <UserRound className="stroke-textdark"/>
                       )}
