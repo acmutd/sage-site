@@ -23,6 +23,7 @@ interface CatalogYearSelectorProps {
   onNext: (choice: CatalogChoice) => void;
   onBack: () => void;
   transcriptData: any;
+  isFirstTime?: boolean;
 }
 
 const CatalogYearSelector: React.FC<CatalogYearSelectorProps> = ({ onNext, onBack, transcriptData }) => {
@@ -31,7 +32,7 @@ const CatalogYearSelector: React.FC<CatalogYearSelectorProps> = ({ onNext, onBac
     transcriptData?.majors[0]?.start_date ?? transcriptData?.certifications[0]?.start_date
   );
   const latestYear = calculateLatestYear();
-  
+
   const details: Record<CatalogChoice, { year: string; label: string; desc: string; tag: string }> = {
     assigned: {
       year: `${assignedYear}-${assignedYear + 1}`,
@@ -62,11 +63,10 @@ const CatalogYearSelector: React.FC<CatalogYearSelectorProps> = ({ onNext, onBac
           <button
             key={opt}
             onClick={() => setSelected(opt as CatalogChoice)}
-            className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-              selected === opt
+            className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${selected === opt
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
-            }`}
+              }`}
           >
             {opt === "assigned" ? "My catalog" : "Latest"}
           </button>
@@ -77,9 +77,8 @@ const CatalogYearSelector: React.FC<CatalogYearSelectorProps> = ({ onNext, onBac
       <div className="border border-gray-200 rounded-2xl p-5 flex flex-col gap-2 transition-all duration-200">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{active.year}</span>
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-            selected === "assigned" ? "bg-green-50 text-green-600" : "bg-yellow-50 text-yellow-600"
-          }`}>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selected === "assigned" ? "bg-green-50 text-green-600" : "bg-yellow-50 text-yellow-600"
+            }`}>
             {active.tag}
           </span>
         </div>
@@ -89,12 +88,12 @@ const CatalogYearSelector: React.FC<CatalogYearSelectorProps> = ({ onNext, onBac
 
       {/* Nav */}
       <div className="flex justify-between items-center pt-1">
-        <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-700 transition">
-          Back
+        <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-700 transition underline">
+          Alternatively, reupload your transcript
         </button>
         <button
           onClick={() => onNext(selected)}
-          className="bg-black text-white text-sm px-6 py-2.5 rounded-full hover:bg-gray-800 transition"
+          className="bg-accent text-black text-sm px-6 py-2.5 rounded-full hover:bg-green-600 transition"
         >
           Continue
         </button>
@@ -103,34 +102,63 @@ const CatalogYearSelector: React.FC<CatalogYearSelectorProps> = ({ onNext, onBac
   );
 };
 
-const Onboarding: React.FC<OnboardingProps> = ({ 
-  setTranscriptData, 
-  onClose, 
-  onFinish, 
-  initialStep = "FileUpload", 
+const Onboarding: React.FC<OnboardingProps> = ({
+  setTranscriptData,
+  onClose,
+  onFinish,
+  initialStep = "FileUpload",
   isFirstTime,
-  transcriptData : initialTranscriptData
+  transcriptData: initialTranscriptData
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
-  const [modalStep, setModalStep] = useState<"FileUpload" | "Programs" | "CatalogYear" | "Classes">(initialStep);
+  const [modalStep, setModalStep] = useState<"FileUpload" | "Programs" | "CatalogYear" | "Classes">(() => {
+    if (initialStep === "Programs" && !isFirstTime) {
+      const assignedYear = calculateCatalogYear(
+        initialTranscriptData?.majors[0]?.start_date ?? initialTranscriptData?.certifications[0]?.start_date
+      );
+      const latestYear = calculateLatestYear();
+      if (assignedYear === latestYear) return "Programs"; // freshman, no choice to make
+      return "CatalogYear";
+    }
+    return initialStep;
+  });
+
   const [catalogYear, setCatalogYear] = useState<"assigned" | "latest">("latest");
   const [transcriptData, setLocalTranscriptData] = useState(initialTranscriptData || null);
 
   const handleFileUploadNext = (data: any) => {
     setLocalTranscriptData(data);
-    setModalStep("Programs");
+    if (isFirstTime) {
+      setModalStep("Programs");
+      return;
+    }
+
+    const assignedYear = calculateCatalogYear(
+      data?.majors[0]?.start_date ?? data?.certifications[0]?.start_date
+    );
+    const latestYear = calculateLatestYear();
+    if (assignedYear === latestYear) {
+      setCatalogYear("assigned");
+      setModalStep("Programs");
+    } else {
+      setModalStep("CatalogYear");
+    }
   };
 
   const handleManualFill = () => {
-    setModalStep("Programs"); 
+    if (isFirstTime) {
+      setModalStep("Programs");
+    } else {
+      setModalStep("CatalogYear");
+    }
   };
 
   const handleCatalogYearNext = (choice: "assigned" | "latest") => {
     setCatalogYear(choice);
-    setModalStep("Classes");
+    setModalStep("Programs");
   };
 
   const handleProgramsNext = (updatedPrograms: any[]) => {
@@ -140,37 +168,23 @@ const Onboarding: React.FC<OnboardingProps> = ({
       status: program.status,
       school: program.school,
       start_date: program.start_date,
-      concentration: program.concentration
+      concentration: program.concentration,
+      catalog_year: program.catalog_year, // keep this now
     });
     const majors = updatedPrograms.filter(p => p.type === "Major");
     const certs = updatedPrograms.filter(p => p.type === "Certificate");
     if (majors.length === 0 && certs.length === 0) {
-        toast.error("Please add at least one major before continuing.");
-        return;
+      toast.error("Please add at least one major before continuing.");
+      return;
     }
-    
     const updatedTranscript = {
       ...transcriptData,
       majors: updatedPrograms.filter(p => p.type === "Major").map(transformToTranscriptData),
       minors: updatedPrograms.filter(p => p.type === "Minor").map(transformToTranscriptData),
-      certifications: updatedPrograms.filter(p => p.type === "Certificate").map(transformToTranscriptData)
+      certifications: updatedPrograms.filter(p => p.type === "Certificate").map(transformToTranscriptData),
     };
     setLocalTranscriptData(updatedTranscript);
-
-    if (isFirstTime) {
-      setModalStep("Classes");
-    } else {
-      const assignedYear = calculateCatalogYear(updatedTranscript.majors[0]?.start_date ?? updatedTranscript.certifications[0]?.start_date);
-      const latestYear = calculateLatestYear();
-  
-      if (assignedYear === latestYear) {
-        // No meaningful choice to offer — skip straight to Classes
-        setCatalogYear("assigned");
-        setModalStep("Classes");
-      } else {
-        setModalStep("CatalogYear");
-      }
-    }
+    setModalStep("Classes");
   };
 
   const handleFinish = (updatedTranscript: any) => {
@@ -180,12 +194,19 @@ const Onboarding: React.FC<OnboardingProps> = ({
   };
 
   const handleBack = () => {
-    if (modalStep === "Programs") setModalStep("FileUpload");
-    else if (modalStep === "CatalogYear") setModalStep("Programs");
-    else if (modalStep === "Classes") {
-      const isCertOnly = transcriptData?.majors?.length === 0 && transcriptData?.certifications?.length > 0;
-      setModalStep(isFirstTime || isCertOnly ? "Programs" : "CatalogYear");
+    if (modalStep === "CatalogYear") setModalStep("FileUpload");
+    else if (modalStep === "Programs") {
+      const assignedYear = calculateCatalogYear(
+        transcriptData?.majors[0]?.start_date ?? transcriptData?.certifications[0]?.start_date
+      );
+      const latestYear = calculateLatestYear();
+      if (!isFirstTime && assignedYear !== latestYear) {
+        setModalStep("CatalogYear");
+      } else {
+        setModalStep("FileUpload");
+      }
     }
+    else if (modalStep === "Classes") setModalStep("Programs");
   };
 
   const handleOutsideClick = (e: MouseEvent) => {
@@ -230,17 +251,18 @@ const Onboarding: React.FC<OnboardingProps> = ({
           <FileUploader
             userId={user?.uid || "test-user-123"}
             onNext={handleFileUploadNext}
-            showManualOption={!isFirstTime} 
+            showManualOption={!isFirstTime}
             onManualFill={handleManualFill}
           />
         )}
         {modalStep === "Programs" && (
-          <ProgramValidationA 
-            transcriptData={transcriptData} 
-            onNext={handleProgramsNext} 
+          <ProgramValidationA
+            transcriptData={transcriptData}
+            onNext={handleProgramsNext}
             onBack={handleBack}
             dropdownRef={dropdownRef}
             isFirstTime={isFirstTime}
+            catalogYear={catalogYear}
           />
         )}
         {modalStep === "CatalogYear" && (
@@ -248,12 +270,13 @@ const Onboarding: React.FC<OnboardingProps> = ({
             onNext={handleCatalogYearNext}
             onBack={handleBack}
             transcriptData={transcriptData}
+            isFirstTime={isFirstTime}
           />
         )}
         {modalStep === "Classes" && (
-          <ClassValidationA 
-            transcriptData={transcriptData} 
-            onNext={handleFinish} 
+          <ClassValidationA
+            transcriptData={transcriptData}
+            onNext={handleFinish}
             onBack={handleBack}
           />
         )}
@@ -268,7 +291,7 @@ const Onboarding: React.FC<OnboardingProps> = ({
   // First time onboarding — full dark screen
   return (
     <>
-      <div 
+      <div
         className="fixed inset-0 z-[60] flex items-center justify-center px-4 pt-16 pb-16"
         style={{ background: 'radial-gradient(circle at center, #111111 0%, #181818 100%)' }}
       >

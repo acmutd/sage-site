@@ -1,4 +1,4 @@
-import { Pencil, PlusIcon } from "lucide-react";
+import { Pencil, PlusIcon, TriangleAlert } from "lucide-react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -83,6 +83,7 @@ interface ProgramValidationAProps {
   showUploadOption?: boolean;
   onUploadClick?: () => void;
   isFirstTime?: boolean;
+  catalogYear: "assigned" | "latest";
 }
 
 const getCurrentSemester = (): string => {
@@ -93,7 +94,7 @@ const getCurrentSemester = (): string => {
   return `${year} ${season}`;
 };
 
-const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, onBack, dropdownRef, isFirstTime = true
+const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData, onNext, onBack, dropdownRef, isFirstTime = true, catalogYear
 }) => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false); // State to toggle "Edit" mode
@@ -110,7 +111,7 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
   const [studentCatalogYear, setStudentCatalogYear] = useState<string>("");
   const latestCatalogYear = getCurrentCatalogYear();
   const hasFetched = useRef(false);
-  
+
   // mount degree catalog
   useEffect(() => {
     if (!transcriptData || !user?.uid || hasFetched.current) return;
@@ -119,24 +120,24 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
     const activeMajor = transcriptData?.majors?.find((m: any) => m.status === "Active");
     let resolvedYear = "";
     if (activeMajor?.start_date) {
-        let year = calculateCatalogYear(activeMajor.start_date);
-        const currentYear = getCurrentCatalogYear();
-        if (parseInt(currentYear) - parseInt(year) > 6) year = currentYear;
-        resolvedYear = year;
-        setStudentCatalogYear(resolvedYear);
+      let year = calculateCatalogYear(activeMajor.start_date);
+      const currentYear = getCurrentCatalogYear();
+      if (parseInt(currentYear) - parseInt(year) > 6) year = currentYear;
+      resolvedYear = year;
+      setStudentCatalogYear(resolvedYear);
     }
 
     const isFreshman = resolvedYear === latestCatalogYear;
 
     retrieveDegreeCatalog(transcriptData, user).then(catalog => {
-        setDegreeCatalog(catalog);
-        if (isFreshman) setLatestCatalog(catalog);
+      setDegreeCatalog(catalog);
+      if (isFreshman) setLatestCatalog(catalog);
     });
 
     if (!isFreshman) {
-        fetchCatalog("latest", user).then(catalog => {
-            setLatestCatalog(catalog);
-        });
+      fetchCatalog("latest", user).then(catalog => {
+        setLatestCatalog(catalog);
+      });
     }
   }, [transcriptData, user]);
 
@@ -209,8 +210,8 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
         )
       );
     } else {
-      const newProgram = { 
-        ...updatedProgram, 
+      const newProgram = {
+        ...updatedProgram,
         id: Date.now(),
         start_date: updatedProgram.start_date ?? getCurrentSemester(),
       };
@@ -218,6 +219,26 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
     }
     setIsEditing(false); // Exit "Edit" mode
   };
+
+  const invalidPrograms = useMemo(() => {
+    const activeCatalog = catalogYear === "latest" ? latestCatalog : degreeCatalog;
+    if (!activeCatalog) return new Set();
+
+    const allTitles = new Set([
+      ...(activeCatalog.undergraduate?.bachelor || []),
+      ...(activeCatalog.undergraduate?.minor || []),
+      ...(activeCatalog.undergraduate?.certificate || []),
+      ...(activeCatalog.graduate?.masters || []),
+      ...(activeCatalog.graduate?.doctorate || []),
+      ...(activeCatalog.graduate?.certificate || []),
+    ]);
+
+    return new Set(
+      programsData
+        .filter(p => !allTitles.has(p.title))
+        .map(p => p.id)
+    );
+  }, [programsData, catalogYear, latestCatalog, degreeCatalog]);
 
   const mapStatusToDropdown = (status: string) => {
     const mapping: Record<string, string> = {
@@ -278,6 +299,7 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
         latestCatalog={latestCatalog}
         studentCatalogYear={studentCatalogYear}
         latestCatalogYear={latestCatalogYear}
+        catalogYear={catalogYear}
       />
     );
   }
@@ -293,8 +315,8 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
       </div>
       <div className="flex flex-col gap-4 bg-gray-100 p-2 rounded-sm">
         {sortedPrograms.map((program) => (
-          <Card key={program.id} className="py-3 relative">
-            <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <Card className={`pt-3 pb-0 relative ${invalidPrograms.has(program.id) ? "border-red-400" : "pb-3"}`}>
+            <CardContent className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${invalidPrograms.has(program.id) ? "pb-0" : ""}`}>
               <div className="flex flex-col">
                 <h4 className="mb-1">
                   {program.type === "Certificate"
@@ -341,6 +363,14 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
                 </Select>
               </div>
             </CardContent>
+            {invalidPrograms.has(program.id) && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-t border-red-200 rounded-b-xl mt-2">
+                <TriangleAlert className="w-3.5 h-3.5 stroke-red-500 flex-shrink-0" />
+                <p className="text-xs text-red-500">
+                  Not available in the latest catalog; replace or remove to continue.
+                </p>
+              </div>
+            )}
           </Card>
         ))}
         <Button
@@ -364,17 +394,15 @@ const ProgramValidationA: React.FC<ProgramValidationAProps> = ({ transcriptData,
         {onBack && (
           <button
             onClick={onBack}
-            className={isFirstTime 
-              ? "px-8 py-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
-              : "text-sm text-gray-500 hover:text-gray-700 underline"
-            }
+            className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-green-600 transition"
           >
-            {isFirstTime ? "Back" : "Alternatively, reupload your transcript"}
+            Back
           </button>
         )}
-        
+
         <button
-          className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-blue-700 transition"
+          disabled={invalidPrograms.size > 0}
+          className="px-8 py-2 bg-accent text-black rounded-lg hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleFinish}
         >
           Next

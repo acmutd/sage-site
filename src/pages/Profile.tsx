@@ -580,12 +580,12 @@ const Profile = () => {
           <div className="text-textdark w-full flex flex-col gap-5">
             <div className="border border-card-bord rounded-3xl bg-innercontainer p-4 flex flex-row gap-4 items-stretch">
               <button onClick={() => setIsPopUpOpen(true)} className="flex-shrink-0">
-                <img src={profilepic} draggable={false} alt={name ? `${name}'s profile picture` : "Profile picture"} className="w-28 h-28 object-cover rounded-2xl" />
+                <img src={profilepic} data-clarity-mask="True" draggable={false} alt={name ? `${name}'s profile picture` : "Profile picture"} className="w-28 h-28 object-cover rounded-2xl" />
               </button>
               <div className="flex flex-col gap-2 flex-1 min-w-0">
-                <p className="font-semibold text-lg">{name}</p>
+                <p className="font-semibold text-lg" data-clarity-mask="True">{name}</p>
                 {enabledCards.map((card) => (
-                  <div key={card.id} data-testid={`profile-card-${card.id}`} className="border border-card-bord bg-white rounded-xl px-3 py-2 flex flex-col">
+                  <div key={card.id} data-clarity-mask="True" data-testid={`profile-card-${card.id}`} className="border border-card-bord bg-white rounded-xl px-3 py-2 flex flex-col">
                     <span className="font-semibold text-sm">{card.label}</span>
                     <span className="text-xs text-[#6C6C6C]">{card.sublabel}</span>
                   </div>
@@ -613,7 +613,7 @@ const Profile = () => {
               </div>
             </div>
 
-            <div className="relative w-full">
+            <div className="relative w-full" data-clarity-mask="True">
               {carouselData.length > 0 && (
                 <DegreeProgressCard
                   title={carouselData[currentIndex].title}
@@ -652,13 +652,13 @@ const Profile = () => {
             {/* Profile header */}
             <div className="border border-card-bord rounded-[3rem] bg-innercontainer px-4 py-6 sm:px-8 sm:py-8 md:px-12 md:py-10 flex flex-col sm:flex-row sm:space-x-6 md:space-x-12 space-y-6 sm:space-y-0">
               <button aria-label="change profile picture" className="self-center sm:self-start" onClick={() => setIsPopUpOpen(true)}>
-                <img src={profilepic} alt={name ? `${name}'s profile picture` : "Profile picture"} draggable={false} className="w-32 h-32 sm:w-40 sm:h-40 md:w-[200px] md:h-[200px] object-cover rounded-3xl" />
+                <img src={profilepic} data-clarity-mask="True" alt={name ? `${name}'s profile picture` : "Profile picture"} draggable={false} className="w-32 h-32 sm:w-40 sm:h-40 md:w-[200px] md:h-[200px] object-cover rounded-3xl" />
               </button>
 
               <div className="flex-1 min-w-0 flex flex-col">
                 {/* Name row + Customize button */}
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-center sm:text-left">{name}</h2>
+                  <h2 className="text-center sm:text-left" data-clarity-mask="True">{name}</h2>
                   <button
                     onClick={() => setIsEditing(!isEditing)}
                     aria-pressed={isEditing}
@@ -692,6 +692,7 @@ const Profile = () => {
                         <div
                           key={card.id}
                           data-testid={`profile-card-${card.id}`}
+                          data-clarity-mask="True"
                           tabIndex={isEditing ? 0 : -1}
                           onKeyDown={(e) => handleCardKeyDown(e, i)}
                           aria-label={isEditing ? `${card.sublabel} card, use arrow keys to reorder` : undefined}
@@ -815,7 +816,7 @@ const Profile = () => {
               <div className="relative w-full overflow-hidden">
                 <div ref={carouselRef} className="flex gap-0 items-stretch transition-transform duration-300 ease-in-out">
                   {filteredCarouselData.map((card, index) => (
-                    <div key={index} aria-hidden={index < currentIndex || index >= currentIndex + cardsPerView} className="flex-shrink-0 pr-4 flex items-start"
+                    <div key={index} data-clarity-mask="True" aria-hidden={index < currentIndex || index >= currentIndex + cardsPerView} className="flex-shrink-0 pr-4 flex items-start"
                       style={{ width: filteredCarouselData.length < cardsPerView ? "auto" : `${cardWidthPercent}%` }}>
                       <DegreeProgressCard title={card.title} categories={card.categories} completed={card.completed}
                         total={card.total} percentage={card.percentage} startDate={card.startDate ?? undefined}
@@ -868,7 +869,7 @@ const Profile = () => {
                     conversationsData.map((conv, index) => {
                       const lastMsgTs = conv.messages?.[conv.messages.length - 1]?.timestamp ?? 0;
                       return (
-                        <div key={conv.conversation_id} aria-hidden={index < convIndex || index >= convIndex + cardsPerView} className="flex-shrink-0 pr-4 flex items-start" style={{ width: `${cardWidthPercent}%` }}>
+                        <div key={conv.conversation_id} data-clarity-mask="True" aria-hidden={index < convIndex || index >= convIndex + cardsPerView} className="flex-shrink-0 pr-4 flex items-start" style={{ width: `${cardWidthPercent}%` }}>
                           <ChatConversationCard
                             title={conv.title || conv.messages?.[0]?.content || "Untitled Conversation"}
                             timestamp={formatConvoTimestamp(lastMsgTs)}
@@ -926,7 +927,7 @@ const Profile = () => {
               {[1, 2, 3].map((num) => (
                 <button key={num} className="hover:scale-105 transition-transform" onClick={() => pickProfile(num)}>
                   {profilePictureType === num && googlePhotoURL
-                    ? <img referrerPolicy="no-referrer" src={googlePhotoURL} alt="Your Google profile picture" className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" draggable={false} />
+                    ? <img referrerPolicy="no-referrer" data-clarity-mask="True" src={googlePhotoURL} alt="Your Google profile picture" className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" draggable={false} />
                     : <img src={`/assets/profile_pics/${num}.png`} alt={`Profile picture option ${num}`} className="w-24 h-24 sm:w-40 sm:h-40 object-cover" draggable={false} />}
                 </button>
               ))}
@@ -935,7 +936,7 @@ const Profile = () => {
               {[4, 5, 6].map((num) => (
                 <button key={num} className="hover:scale-105 transition-transform" onClick={() => pickProfile(num)}>
                   {profilePictureType === num && googlePhotoURL
-                    ? <img referrerPolicy="no-referrer" src={googlePhotoURL} className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" draggable={false} />
+                    ? <img referrerPolicy="no-referrer" data-clarity-mask="True" src={googlePhotoURL} className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" draggable={false} />
                     : <img src={`/assets/profile_pics/${num}.png`} alt={`Profile picture option ${num}`} className="w-24 h-24 sm:w-40 sm:h-40 object-cover" draggable={false} />}
                 </button>
               ))}
