@@ -1277,6 +1277,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                                     coursebookData={coursebookData}
                                                     coursebookSemester={coursebookSemester}
                                                     isCurrentSemester={isCurrentSemester(semester.title)}
+                                                    transcriptData={transcriptData}
                                                 />
                                             ))}
 
