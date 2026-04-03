@@ -15,7 +15,7 @@ import {
     DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Toaster, toast } from "sonner";
-import { calculateCatalogYear, calculateLatestYear, determineStudentType, isCurrentSemester } from "@/utils/studentInfo";
+import { calculateCatalogYear, calculateLatestYear, determineStudentType, getGPAState, isCurrentSemester } from "@/utils/studentInfo";
 import YearDivider from "@/components/planner/YearDivider";
 import { useUISnapshot } from "@/hooks/useUISnapshot";
 import { useAuth } from "@/context/AuthContext";
@@ -148,7 +148,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return updatedSemesters;
     }, [semesters]);
 
-    
+
     // Zustand store selectors
     const plans = usePlannerStore(state => state.plans);
     const activePlanId = usePlannerStore(state => state.activePlanId);
@@ -438,7 +438,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         const fromPlan = planEval
             ? (Array.isArray(planEval) ? planEval : planEval?.results ?? [])
             : [];
-        
+
         const fromProp = Array.isArray(requirements) ? requirements : requirements?.results ?? [];
         const base = fromPlan.length > 0 ? fromPlan : fromProp;
 
@@ -516,7 +516,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return Array.from(completedCodes);
     }, [adaptedRequirements]);
 
-    
+
     const availableSemesters = useMemo(() => {
         const result: Array<{ yearKey: string; semesterIndex: number; title: string }> = [];
         Object.keys(allSemesters).forEach(yearKey => {
@@ -640,7 +640,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                 const code = course.course_code;
                 if (code) codesToFetch.add(code.toLowerCase().replace(/\s+/g, ""));
             });
-            
+
             Object.values(allSemesters).forEach(yearSemesters => {
                 yearSemesters.forEach(semester => {
                     if (!semester.isFromTranscript) {
@@ -751,11 +751,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return allPlannedCoursesWithOrder.map((course) => course.code);
     }, [allPlannedCoursesWithOrder]);
 
-    const discoveryCompletedCodes = useMemo(() => 
+    const discoveryCompletedCodes = useMemo(() =>
         [...allCompletedCourseCodes, ...allPlannedCourseCodes],
         [allCompletedCourseCodes, allPlannedCourseCodes]
     );
-    
+
     const plannedCoursesSignature = useMemo(() => {
         const plannedCoursePlacements: string[] = [];
 
@@ -811,13 +811,13 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     console.error("localStorage fallback also failed:", e);
                 }
             }
-            
+
             const mergedRequirements = await evaluatePlannerAndMergeSuggestions({
                 quickEvaluation: true,
                 assumeMinimumGradePass: true,
                 plannerStateOverride: { plans, activePlanId },
             });
-            updateActivePlan({ evaluation: mergedRequirements }); 
+            updateActivePlan({ evaluation: mergedRequirements });
             toast.success("Suggested courses refreshed");
             setLastQuickEvalPlannedCoursesSignature(plannedCoursesSignature);
 
@@ -1152,6 +1152,42 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                 </span>
                             </span>
                         )}
+
+                        {(() => {
+                            const gpaState = getGPAState(transcriptData) as 'at-risk' | 'borderline' | 'good' | 'N/A';
+                            if (gpaState === 'good' || gpaState === 'N/A') return null;
+
+                            const isGrad = determineStudentType(transcriptData) === 'grad';
+                            const gpa = isGrad
+                                ? transcriptData?.gpa?.graduate
+                                : transcriptData?.gpa?.undergraduate;
+
+                            if (!gpa) return null;
+
+                            const activeState = gpaState as 'at-risk' | 'borderline';
+
+                            const stateStyles: Record<'at-risk' | 'borderline', string> = {
+                                'at-risk': 'bg-amber-50 border-amber-300 text-amber-800',
+                                'borderline': 'bg-yellow-50 border-yellow-200 text-yellow-800',
+                            };
+                            const stateLabels: Record<'at-risk' | 'borderline', string> = {
+                                'at-risk': `GPA ${gpa.toFixed(3)} — at risk`,
+                                'borderline': `GPA ${gpa.toFixed(3)} — near minimum`,
+                            };
+                            const stateTooltips: Record<'at-risk' | 'borderline', string> = {
+                                'at-risk': `Your GPA is below the ${isGrad ? '3.0' : '2.0'} minimum required to graduate. ${isGrad ? 'Raise it within 2 semesters to avoid dismissal.' : 'Raise it to meet graduation requirements.'}`,
+                                'borderline': `Your GPA is close to the ${isGrad ? '3.0' : '2.0'} minimum. Grade averages are visible to help you stay on track.`,
+                            };
+
+                            return (
+                                <span
+                                    title={stateTooltips[activeState]}
+                                    className={`text-xs border rounded-full px-3 py-1.5 whitespace-nowrap cursor-help ${stateStyles[activeState]}`}
+                                >
+                                    {stateLabels[activeState]}
+                                </span>
+                            );
+                        })()}
                     </div>
 
                     {error && (
