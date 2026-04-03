@@ -54,6 +54,7 @@ interface SemesterBoxProps {
     isCurrentSemester?: boolean;
     coursebookData?: Record<string, any[]>;
     coursebookSemester?: string | null;
+    transcriptData?: any;
 }
 
 const normalizeCorequisiteGroups = (corequisites: unknown): string[][] => {
@@ -113,6 +114,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     isCurrentSemester = false,
     coursebookData = {},
     coursebookSemester,
+    transcriptData,
 }) => {
     const [locked, setLocked] = useState(isLocked);
     const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -955,6 +957,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                     initialSelectedSections={activePlan?.schedulePlan?.[title]?.selectedSections}
                     initialColorOverrides={activePlan?.schedulePlan?.[title]?.colorOverrides}
                     coursebookSemester={coursebookSemester}
+                    transcriptData={transcriptData}
                 />
             )}
         </div>
