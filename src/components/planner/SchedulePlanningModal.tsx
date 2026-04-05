@@ -315,7 +315,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     }, [courses]);
 
     const projectedGPA = useMemo(() => {
-        if (!transcriptData) { 
+        if (!transcriptData) {
             return null;
         }
 
@@ -899,7 +899,20 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                                     return profs.length > 0 ? `${profs[0]}${profs.length > 1 ? ' +' : ''}` : '';
                                                                                 })()}
                                                                             </div>
-                                                                            <div className="text-gray-400">{sec.activity_type}</div>
+                                                                            <div className="text-gray-400 text-[10px]">{sec.activity_type}</div>
+                                                                            {(sec.grade_avg || sec.rmp) && (
+                                                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                                                    {sec.grade_avg && (
+                                                                                        <span className={`text-[9px] font-medium ${sec.grade_avg.startsWith('A') ? 'text-green-600' :
+                                                                                                sec.grade_avg.startsWith('B') ? 'text-yellow-700' :
+                                                                                                    'text-orange-600'
+                                                                                            }`}>{sec.grade_avg} avg</span>
+                                                                                    )}
+                                                                                    {sec.rmp && (
+                                                                                        <span className="text-[9px] text-gray-400">· {sec.rmp} ★</span>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                         <div className="flex flex-col gap-1">
                                                                             {sec.days && <DayPips days={sec.days} />}
@@ -1073,22 +1086,23 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                             {plannableCourses.filter(p => p.sections.length > 0).length} courses with a section picked
                         </p>
 
-                        {projectedGPA && (
-                            <span className="text-xs flex items-center gap-1.5 text-gray-500 whitespace-nowrap">
-                                Est. GPA if avg grades earned:
-                                <span className={`font-semibold ${projectedGPA >= (determineStudentType(transcriptData) === 'grad' ? 3.0 : 2.0)
+                        <div className="flex items-center gap-4">
+                            {projectedGPA && (
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[10px] text-gray-400">Est. GPA if avg grades earned</span>
+                                    <span className={`text-sm font-semibold ${projectedGPA >= (determineStudentType(transcriptData) === 'grad' ? 3.0 : 2.0)
                                         ? 'text-green-600'
                                         : 'text-red-600'
-                                    }`}>
-                                    {projectedGPA.toFixed(3)}
-                                </span>
-                            </span>
-                        )}
-
-                        <button onClick={() => { onSave?.(selectedSections, colorOverrides); onClose(); }}
-                            className="px-4 py-1.5 text-sm bg-accent rounded-md hover:bg-green-800 transition-colors">
-                            Done
-                        </button>
+                                        }`}>
+                                        {projectedGPA.toFixed(3)}
+                                    </span>
+                                </div>
+                            )}
+                            <button onClick={() => { onSave?.(selectedSections, colorOverrides); onClose(); }}
+                                className="px-4 py-1.5 text-sm bg-accent rounded-md hover:bg-green-800 transition-colors">
+                                Done
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
