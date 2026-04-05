@@ -1275,6 +1275,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                                                     isCollapsed={!!collapsedSemesters[`${yearKey}-${idx}`]}
                                                     onToggleCollapse={() => toggleSemesterCollapse(yearKey, idx)}
                                                     coursebookData={coursebookData}
+                                                    gradesData={gradesData}
                                                     coursebookSemester={coursebookSemester}
                                                     isCurrentSemester={isCurrentSemester(semester.title)}
                                                     transcriptData={transcriptData}

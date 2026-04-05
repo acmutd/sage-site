@@ -53,6 +53,7 @@ interface SemesterBoxProps {
     'data-tour'?: string;
     isCurrentSemester?: boolean;
     coursebookData?: Record<string, any[]>;
+    gradesData?: Record<string, any>;
     coursebookSemester?: string | null;
     transcriptData?: any;
 }
@@ -113,6 +114,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
     'data-tour': dataTour,
     isCurrentSemester = false,
     coursebookData = {},
+    gradesData = {},
     coursebookSemester,
     transcriptData,
 }) => {
@@ -609,9 +611,8 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                     aria-label={isCollapsed ? `Expand ${title}` : `Collapse ${title}`}
                 >
                     <ChevronUp
-                        className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
-                            isCollapsed ? "-rotate-180" : "rotate-0"
-                        }`}
+                        className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isCollapsed ? "-rotate-180" : "rotate-0"
+                            }`}
                     />
                     <h3 className="text-base font-semibold text-gray-800 truncate">{title}</h3>
                 </button>
@@ -627,11 +628,10 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                     onClick={() => setShowWarnings(prev => !prev)}
                                     className="hover:bg-red-50 p-1 rounded relative"
                                 >
-                                    <TriangleAlert className={`w-4 h-4 ${
-                                        displayedCreditWarnings?.some(w => w.severity === 'error')
+                                    <TriangleAlert className={`w-4 h-4 ${displayedCreditWarnings?.some(w => w.severity === 'error')
                                             ? 'stroke-red-600'
                                             : 'stroke-orange-600'
-                                    }`} />
+                                        }`} />
                                     <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                                         {(prerequisiteCollisions?.length || 0) + (unmetPrerequisites?.length || 0) + (unmetCorequisites?.length || 0) + (displayedCreditWarnings?.length || 0)}
                                     </span>
@@ -815,10 +815,10 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                 hasWarnings
                                     ? 'Resolve warnings before planning schedule'
                                     : scheduleState === 'disabled'
-                                    ? 'Exceeds maximum credit hours'
-                                    : scheduleState === 'pulse'
-                                    ? 'Plan your schedule'
-                                    : 'Add courses to plan schedule'
+                                        ? 'Exceeds maximum credit hours'
+                                        : scheduleState === 'pulse'
+                                            ? 'Plan your schedule'
+                                            : 'Add courses to plan schedule'
                             }
                         >
                             <Calendar className={`w-4 h-4 ${effectivelyDisabled ? 'text-gray-300' : ''}`} />
@@ -944,10 +944,66 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
             {showSchedulePlanning && (
                 <SchedulePlanningModal
                     title={title}
-                    courses={courses.map(c => ({
-                        ...c,
-                        sections: coursebookData[c.course_code?.toLowerCase().replace(/\s+/g, '')] || []
-                    }))}
+                    courses={courses.map(c => {
+                        const courseKey = c.course_code?.toUpperCase().replace(/\s+/g, '');
+                        const courseGrades = gradesData?.[courseKey];
+                        const rawSections = coursebookData[c.course_code?.toLowerCase().replace(/\s+/g, '')] || [];
+
+                        const enrichedSections = rawSections.map((sec: any) => {
+                            const instructorName = Array.isArray(sec.instructors)
+                                ? (sec.instructors[0] ?? '')
+                                : String(sec.instructors ?? '');
+
+                            const normalize = (name: string) =>
+                                name.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+
+                            const parseName = (name: string) => {
+                                if (name.includes(',')) {
+                                    const [last, firstPart] = name.split(',').map(s => s.trim());
+                                    return { first: normalize(firstPart.split(' ')[0]), last: normalize(last) };
+                                }
+                                const parts = normalize(name).split(' ');
+                                return { first: parts[0] ?? '', last: parts[parts.length - 1] ?? '' };
+                            };
+
+                            const input = parseName(instructorName);
+                            const instData = courseGrades?.instructors?.find((inst: any) => {
+                                const parsed = parseName(inst.instructor?.name ?? '');
+                                return input.first === parsed.first && input.last === parsed.last;
+                            });
+
+                            const rmp = instData?.instructor?.rmp?.quality_rating ?? null;
+                            const grades = instData?.aggregate?.grades;
+                            const grade_avg = grades ? (() => {
+                                const GRADE_POINTS_MAP: Record<string, number> = {
+                                    'A+': 4.0, 'A': 4.0, 'A-': 3.7,
+                                    'B+': 3.3, 'B': 3.0, 'B-': 2.7,
+                                    'C+': 2.3, 'C': 2.0, 'C-': 1.7,
+                                    'D+': 1.3, 'D': 1.0, 'D-': 0.7,
+                                    'F': 0.0,
+                                };
+                                let total = 0, count = 0;
+                                for (const [letter, n] of Object.entries(grades)) {
+                                    total += (GRADE_POINTS_MAP[letter] ?? 0) * (n as number);
+                                    count += n as number;
+                                }
+                                if (count === 0) return null;
+                                const avg = total / count;
+                                if (avg >= 3.85) return 'A';
+                                if (avg >= 3.5) return 'A-';
+                                if (avg >= 3.15) return 'B+';
+                                if (avg >= 2.85) return 'B';
+                                if (avg >= 2.5) return 'B-';
+                                if (avg >= 2.15) return 'C+';
+                                if (avg >= 1.85) return 'C';
+                                return 'C-';
+                            })() : null;
+
+                            return { ...sec, grade_avg, rmp };
+                        });
+
+                        return { ...c, sections: enrichedSections };
+                    })}
                     onClose={() => setShowSchedulePlanning(false)}
                     onSave={(sections, colors) => {
                         saveSchedulePlan(title, sections, colors);
