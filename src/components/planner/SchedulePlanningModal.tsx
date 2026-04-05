@@ -4,6 +4,7 @@ import { exportAsPNG, exportAsJPG, exportAsPDF, exportAsICS, exportToGoogleCalen
 import { Course } from '@/types/course';
 import ReactDOM from 'react-dom';
 import SemesterDatePickerPopover from './SemesterDatePickPopover';
+import { determineStudentType, getGPAState } from '@/utils/studentInfo';
 
 interface Break {
     id: string;
@@ -21,7 +22,17 @@ interface SchedulePlanningModalProps {
     initialSelectedSections?: Record<string, string>;
     initialColorOverrides?: Record<string, string>;
     coursebookSemester?: string | null;
+    transcriptData?: any;
 }
+
+// GPA table (from utdallas catalog)
+const GRADE_POINTS: Record<string, number> = {
+    'A+': 4.0, 'A': 4.0, 'A-': 3.67,
+    'B+': 3.33, 'B': 3.0, 'B-': 2.67,
+    'C+': 2.33, 'C': 2.0, 'C-': 1.67,
+    'D+': 1.33, 'D': 1.0, 'D-': 0.67,
+    'F': 0.0
+};
 
 const DAY_ABBR: Record<string, string> = {
     Monday: "M", Tuesday: "Tu", Wednesday: "W", Thursday: "Th", Friday: "F", Saturday: "S"
@@ -54,11 +65,11 @@ const hexToColorSet = (hex: string): { bg: string; border: string; text: string 
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
-    
+
     // Mix with white instead of using rgba transparency
     const mix = (v: number) => Math.round(v * 0.15 + 255 * 0.85);
     const bg = `rgb(${mix(r)},${mix(g)},${mix(b)})`;
-    
+
     const darken = (v: number) => Math.max(0, Math.round(v * 0.45));
     const text = `rgb(${darken(r)},${darken(g)},${darken(b)})`;
     return { bg, border: hex, text };
@@ -217,6 +228,7 @@ const SORT_OPTIONS = [
     { value: 'default', label: 'Default' },
     { value: 'professor', label: 'Professor' },
     { value: 'location', label: 'Location' },
+    { value: 'grade_avg', label: 'Best Grades' },
 ];
 
 const guessModality = (sec: any): 'online' | 'hybrid' | 'inperson' => {
@@ -236,7 +248,7 @@ const formatCoursebookSemester = (sem: string | null): string | null => {
     return `${name} ${year}`;
 };
 
-const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, courses, onClose, onSave, initialSelectedSections, initialColorOverrides, coursebookSemester }) => {
+const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, courses, onClose, onSave, initialSelectedSections, initialColorOverrides, coursebookSemester, transcriptData }) => {
     const [selectedSections, setSelectedSections] = useState<Record<string, string>>(initialSelectedSections ?? {});
     const [breaks, setBreaks] = useState<Break[]>([]);
     const [showFilters, setShowFilters] = useState(false);
@@ -277,6 +289,13 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
         return () => document.removeEventListener('mousedown', handler);
     }, [showExportMenu]);
 
+    const gpaState = useMemo(() =>
+        getGPAState(transcriptData) as 'at-risk' | 'borderline' | 'good' | 'N/A',
+        [transcriptData]
+    );
+
+    const isGPAWarning = gpaState === 'at-risk' || gpaState === 'borderline';
+
     const classPaddingMinutes = useMemo(() => {
         if (customPadding !== '') {
             const val = parseFloat(customPadding);
@@ -294,6 +313,48 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                 sections: (c as any).sections as any[] || [],
             }));
     }, [courses]);
+
+    const projectedGPA = useMemo(() => {
+        if (!transcriptData) {
+            return null;
+        }
+
+        const isGrad = determineStudentType(transcriptData) === 'grad';
+        const currentGPA = isGrad
+            ? transcriptData?.gpa?.graduate
+            : transcriptData?.gpa?.undergraduate;
+        const currentCredits = isGrad
+            ? transcriptData?.credit_hours?.graduate
+            : transcriptData?.credit_hours?.undergraduate;
+
+        if (!currentGPA || !currentCredits) {
+            return null;
+        }
+
+        const selected = plannableCourses
+            .map(({ course, sections }) => {
+                const key = selectedSections[course.course_code ?? ''];
+                const sec = key ? sections.find((s: any) => s.section?.trim() === key) : null;
+                return sec;
+            })
+            .filter(Boolean)
+            .filter((sec: any) => sec?.grade_avg);
+
+        if (selected.length === 0) return null;
+
+        const newPoints = selected.reduce((acc: number, sec: any) => {
+            const points = GRADE_POINTS[sec.grade_avg] ?? 0;
+            const credits = sec.credit_hours ?? 3;
+            return acc + (points * credits);
+        }, 0);
+
+        const newCredits = selected.reduce((acc: number, sec: any) =>
+            acc + (sec.credit_hours ?? 3), 0
+        );
+
+        const projected = ((currentGPA * currentCredits) + newPoints) / (currentCredits + newCredits);
+        return Math.round(projected * 1000) / 1000;
+    }, [selectedSections, plannableCourses, transcriptData, isGPAWarning]);
 
     // Assign a color to each course by index
     const courseColorMap = useMemo(() => {
@@ -316,6 +377,12 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
     const filterAndSort = (sections: any[], courseCode: string) => {
         const profFilter = professorFilters[courseCode] ?? 'all';
+        
+        const gradeToPoints = (grade: string | null): number => {
+            if (!grade) return -1;
+            return GRADE_POINTS[grade] ?? -1;
+        };
+
         let result = sections.filter(sec => {
             if (sessionFilter !== 'all' && sec.session !== sessionFilter) return false;
             if (modalityFilter !== 'all' && guessModality(sec) !== modalityFilter) return false;
@@ -330,13 +397,24 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
             const bProf = (Array.isArray(b.instructors) ? b.instructors.join(', ') : (b.instructors || ''));
             return aProf.localeCompare(bProf);
         });
-        
+
         else if (sortBy === 'location') result = [...result].sort((a, b) => {
             const aLoc = (Array.isArray(a.location) ? a.location.join(', ') : (a.location || ''));
             const bLoc = (Array.isArray(b.location) ? b.location.join(', ') : (b.location || ''));
             return aLoc.localeCompare(bLoc);
-        });        
-        
+        });
+
+        else if (sortBy === 'grade_avg') result = [...result].sort((a, b) =>
+            gradeToPoints(b.grade_avg) - gradeToPoints(a.grade_avg)
+        );
+
+        // allow struggling students to have easier time finding good classes with somewhat high grades
+        else if (isGPAWarning && sortBy === 'default') {
+            result = [...result].sort((a, b) =>
+                gradeToPoints(b.grade_avg) - gradeToPoints(a.grade_avg)
+            );
+        }
+
         return result;
     };
 
@@ -428,8 +506,8 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     return ReactDOM.createPortal(
         <>
             <div className="fixed inset-0 bg-black bg-opacity-40 z-[9998]" />
-                <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
-                    <div style={{ WebkitOverflowScrolling: 'touch' }} className={`bg-white sm:rounded-xl rounded-t-2xl shadow-2xl w-full h-[95dvh] sm:h-auto sm:max-h-[90vh] flex flex-col pointer-events-auto transition-all duration-300 ${showPreview ? 'sm:max-w-5xl' : 'sm:max-w-2xl'}`}>
+            <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
+                <div style={{ WebkitOverflowScrolling: 'touch' }} className={`bg-white sm:rounded-xl rounded-t-2xl shadow-2xl w-full h-[95dvh] sm:h-auto sm:max-h-[90vh] flex flex-col pointer-events-auto transition-all duration-300 ${showPreview ? 'sm:max-w-5xl' : 'sm:max-w-2xl'}`}>
 
                     {/* Header */}
                     <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
@@ -473,7 +551,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                         setShowDatePicker(null);
                                                         setShowExportMenu(false);
                                                     }}
-                                                    // Future: prefillRange={semesterDateRange} when session data exists
+                                                // Future: prefillRange={semesterDateRange} when session data exists
                                                 />
                                             )}
                                         </div>
@@ -583,6 +661,29 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                         </div>
                     )}
 
+                    {/* GPA warning for student to have transparency */}
+                    {isGPAWarning && (
+                        <div className="px-5 py-2 text-xs flex items-center justify-between gap-2 border-b flex-shrink-0 bg-amber-50 border-amber-200 text-amber-800">
+                            <span>
+                                {gpaState === 'at-risk'
+                                    ? 'Your GPA is below the minimum. Sections are sorted by grade average to help you recover.'
+                                    : 'Your GPA is near the minimum. Sections are sorted by grade average to help you stay on track.'
+                                }
+                            </span>
+                            {projectedGPA && (
+                                <span className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-amber-200 rounded-full px-3 py-1 whitespace-nowrap">
+                                    Est. GPA if avg grades earned:&nbsp;
+                                    <span className={`font-semibold ${projectedGPA >= (determineStudentType(transcriptData) === 'grad' ? 3.0 : 2.0)
+                                        ? 'text-green-600'
+                                        : 'text-red-600'
+                                        }`}>
+                                        {projectedGPA.toFixed(3)}
+                                    </span>
+                                </span>
+                            )}
+                        </div>
+                    )}
+
                     {/* Main content area - row layout */}
                     <div className="flex flex-row flex-1 overflow-hidden">
 
@@ -669,6 +770,10 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                         (Array.isArray(sec.instructors) ? sec.instructors : (sec.instructors || '').split(',')).map((p: string) => p.trim()).filter(Boolean)
                                     )
                                 )].sort();
+
+                                const bestGPASectionKey = isGPAWarning && filtered.length > 0
+                                    ? [...filtered].sort((a, b) => (b.grade_avg ?? 0) - (a.grade_avg ?? 0))[0]?.section?.trim()
+                                    : null;
 
                                 return (
                                     <div key={code} className="px-5 py-4">
@@ -802,7 +907,20 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                                     return profs.length > 0 ? `${profs[0]}${profs.length > 1 ? ' +' : ''}` : '';
                                                                                 })()}
                                                                             </div>
-                                                                            <div className="text-gray-400">{sec.activity_type}</div>
+                                                                            <div className="text-gray-400 text-[10px]">{sec.activity_type}</div>
+                                                                            {(sec.grade_avg || sec.rmp) && (
+                                                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                                                    {sec.grade_avg && (
+                                                                                        <span className={`text-[9px] font-medium ${sec.grade_avg.startsWith('A') ? 'text-green-600' :
+                                                                                                sec.grade_avg.startsWith('B') ? 'text-yellow-700' :
+                                                                                                    'text-orange-600'
+                                                                                            }`}>{sec.grade_avg} avg</span>
+                                                                                    )}
+                                                                                    {sec.rmp && (
+                                                                                        <span className="text-[9px] text-gray-400">· {sec.rmp} ★</span>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                         <div className="flex flex-col gap-1">
                                                                             {sec.days && <DayPips days={sec.days} />}
@@ -818,6 +936,21 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                             </div>
                                                                         </div>
                                                                     </div>
+
+                                                                    {isGPAWarning && sec.grade_avg && (
+                                                                        <div className="hidden sm:flex flex-col items-end gap-1 flex-shrink-0 ml-2">
+                                                                            {secKey === bestGPASectionKey && (
+                                                                                <span className="text-[9px] font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                                                                    Best for GPA
+                                                                                </span>
+                                                                            )}
+                                                                            <span className={`text-[10px] font-medium ${(sec.grade_avg ?? 0) >= 3.0 ? 'text-green-600' : 'text-amber-600'
+                                                                                }`}>
+                                                                                {sec.grade_avg} avg
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+
                                                                 </div>
 
                                                                 <TriangleAlert className={`w-3.5 h-3.5 flex-shrink-0
@@ -826,7 +959,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                         : wouldConflictIfSelected
                                                                             ? 'text-orange-400'
                                                                             : 'invisible'}`} />
-                                                                
+
                                                             </label>
                                                         );
                                                     })}
@@ -873,8 +1006,8 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                 {/* Hour lines */}
                                                 {hourLabels.map(h => (
                                                     <div key={h}
-                                                    style={{ position: 'absolute', top: (h * 60 - GRID_START) * PX_PER_MIN, left: 0, right: 0 }}
-                                                    className="border-t border-gray-200" /> 
+                                                        style={{ position: 'absolute', top: (h * 60 - GRID_START) * PX_PER_MIN, left: 0, right: 0 }}
+                                                        className="border-t border-gray-200" />
                                                 ))}
 
                                                 {/* Break blocks */}
@@ -915,7 +1048,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                 backgroundColor: hasConflict ? '#fee2e2' : color.bg,
                                                                 borderLeft: `2px solid ${hasConflict ? '#ef4444' : color.border}`,
                                                                 borderRadius: '5px',
-                                                                
+
                                                             }}
                                                             className="rounded-sm px-1 pt-1.5">
                                                             {/* NO overflow-hidden anywhere on the container */}
@@ -960,10 +1093,24 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                             {Object.keys(selectedSections).length} of{' '}
                             {plannableCourses.filter(p => p.sections.length > 0).length} courses with a section picked
                         </p>
-                        <button onClick={() => { onSave?.(selectedSections, colorOverrides); onClose(); }}
-                            className="px-4 py-1.5 text-sm bg-accent rounded-md hover:bg-green-800 transition-colors">
-                            Done
-                        </button>
+
+                        <div className="flex items-center gap-4">
+                            {projectedGPA && (
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[10px] text-gray-400">Est. GPA if avg grades earned</span>
+                                    <span className={`text-sm font-semibold ${projectedGPA >= (determineStudentType(transcriptData) === 'grad' ? 3.0 : 2.0)
+                                        ? 'text-green-600'
+                                        : 'text-red-600'
+                                        }`}>
+                                        {projectedGPA.toFixed(3)}
+                                    </span>
+                                </div>
+                            )}
+                            <button onClick={() => { onSave?.(selectedSections, colorOverrides); onClose(); }}
+                                className="px-4 py-1.5 text-sm bg-accent rounded-md hover:bg-green-800 transition-colors">
+                                Done
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
