@@ -377,6 +377,12 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
     const filterAndSort = (sections: any[], courseCode: string) => {
         const profFilter = professorFilters[courseCode] ?? 'all';
+        
+        const gradeToPoints = (grade: string | null): number => {
+            if (!grade) return -1;
+            return GRADE_POINTS[grade] ?? -1;
+        };
+
         let result = sections.filter(sec => {
             if (sessionFilter !== 'all' && sec.session !== sessionFilter) return false;
             if (modalityFilter !== 'all' && guessModality(sec) !== modalityFilter) return false;
@@ -399,12 +405,14 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
         });
 
         else if (sortBy === 'grade_avg') result = [...result].sort((a, b) =>
-            (b.grade_avg ?? 0) - (a.grade_avg ?? 0)
+            gradeToPoints(b.grade_avg) - gradeToPoints(a.grade_avg)
         );
 
         // allow struggling students to have easier time finding good classes with somewhat high grades
         else if (isGPAWarning && sortBy === 'default') {
-            result = [...result].sort((a, b) => (b.grade_avg ?? 0) - (a.grade_avg ?? 0));
+            result = [...result].sort((a, b) =>
+                gradeToPoints(b.grade_avg) - gradeToPoints(a.grade_avg)
+            );
         }
 
         return result;
