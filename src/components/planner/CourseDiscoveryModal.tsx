@@ -37,6 +37,7 @@ export interface DiscoveryCourse {
     subject_prefix: string;
     satisfies_core: boolean;
     credits: number;
+    Schedule?: string;
     avg_grade?: string;
     grade_score?: number;
     avg_rating?: number;
@@ -81,6 +82,16 @@ export interface CourseDiscoveryModalProps {
 }
 
 const LIMIT = 20;
+
+const FREQUENCY_LABELS: Record<string, string> = {
+    S: 'Every Semester',
+    Y: 'Every Year',
+    T: 'Every 2 Years',
+    R: 'By Demand',
+    P: 'Spring',
+    F: 'Fall',
+    U: 'Summer',
+};
 
 const GRADE_ORDER: Record<string, number> = {
     'A+': 4.3, 'A': 4.0, 'A-': 3.7, 'B+': 3.3, 'B': 3.0, 'B-': 2.7,
@@ -151,6 +162,7 @@ const PrereqDot = ({ met, text }: { met: boolean; text?: string }) => (
 interface FilterDropdownProps {
     label: string;
     options: string[];
+    optionLabels?: Record<string, string>;
     selected: string[];
     onChange: (vals: string[]) => void;
     single?: boolean;
@@ -158,7 +170,7 @@ interface FilterDropdownProps {
 }
 
 const FilterDropdown: React.FC<FilterDropdownProps> = ({
-    label, options, selected, onChange, single = false, allLabel,
+    label, options, optionLabels, selected, onChange, single = false, allLabel,
 }) => {
     const [open, setOpen] = useState(false);
     const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
@@ -223,8 +235,8 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
     const displayLabel = selected.length === 0
         ? (allLabel ?? label)
         : selected.length === 1
-            ? selected[0]
-            : `${selected[0]} +${selected.length - 1}`;
+            ? (optionLabels?.[selected[0]] ?? selected[0])
+            : `${optionLabels?.[selected[0]] ?? selected[0]} +${selected.length - 1}`;
 
     const isActive = selected.length > 0;
 
@@ -281,7 +293,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                                 onClick={() => toggle(opt)}
                                 className="w-full flex items-center justify-between gap-3 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
                             >
-                                <span className="font-medium">{opt}</span>
+                                <span className="font-medium">{optionLabels?.[opt] ?? opt}</span>
                                 {selected.includes(opt) && <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
                             </button>
                         ))}
@@ -717,6 +729,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const [selectedDept, setSelectedDept] = useState('All');
     const [selectedPrefixes, setSelectedPrefixes] = useState<string[]>([]);
     const [selectedCredits, setSelectedCredits] = useState<string[]>([]);
+    const [selectedFrequency, setSelectedFrequency] = useState<string[]>([]);
     const [coreOnly, setCoreOnly] = useState(false);
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
     const [rightPanel, setRightPanel] = useState<RightPanel>(null);
@@ -764,7 +777,6 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
         if (selectedSchools.length) params.set('schools', selectedSchools.join(','));
         if (selectedPrefixes.length) params.set('subjects', selectedPrefixes.join(','));
-        if (selectedCredits.length) params.set('credits', selectedCredits.map(c => c === '4+' ? '4' : c).join(','));
         if (noAleks) params.set('no_aleks', 'true');
         if (noPerm) params.set('no_perm', 'true');
         if (selectedStanding.length) params.set('standing', selectedStanding.join(','));
@@ -810,7 +822,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         } finally {
             setLoading(false);
         }
-    }, [selectedSchools, selectedPrefixes, selectedCredits, coreOnly, educationLevel, apiBaseUrl, completedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding]);
+    }, [selectedSchools, selectedPrefixes, selectedCredits, selectedFrequency, coreOnly, educationLevel, apiBaseUrl, completedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding]);
 
     useEffect(() => { searchRef.current?.focus(); }, []);
 
@@ -823,7 +835,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     // Fetch on filter change, reset to page 0
     useEffect(() => {
         fetchCourses(0);
-    }, [selectedSchools, selectedPrefixes, selectedCredits, coreOnly, selectedDept, educationLevel, debouncedQuery, noAleks, noPerm, selectedStanding]);
+    }, [selectedSchools, selectedPrefixes, coreOnly, selectedDept, educationLevel, debouncedQuery, noAleks, noPerm, selectedStanding]);
 
     const coursesWithInstructors = useMemo(() =>
         courses.map(c => ({
@@ -841,11 +853,12 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         selectedDept !== 'All',
         selectedPrefixes.length > 0,
         selectedCredits.length > 0,
+        selectedFrequency.length > 0,
         coreOnly,
         noAleks,
         noPerm,
         selectedStanding.length > 0,
-    ].filter(Boolean).length, [selectedSchools, selectedDept, selectedPrefixes, selectedCredits, coreOnly, noAleks, noPerm, selectedStanding]);
+    ].filter(Boolean).length, [selectedSchools, selectedDept, selectedPrefixes, selectedCredits, selectedFrequency, coreOnly, noAleks, noPerm, selectedStanding]);
 
     useEffect(() => {
         if (courses.length === 0) return;
@@ -880,16 +893,32 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
         if (hideCompleted) results = results.filter(c => !completedSet.has(normalizeCourseCode(c.course_code)));
         if (hideStaged) results = results.filter(c => !stagedSet.has(c.course_id));
+        
+        if (selectedCredits.length) {
+            const mapped = selectedCredits.map(c => c === '4+' ? '4' : c.toLowerCase());
+            console.log('filtering credits, mapped:', mapped);
+            console.log('sample credits values:', results.slice(0, 5).map(c => ({ code: c.course_code, credits: c.credits, type: typeof c.credits })));
+            results = results.filter(c => {
+                const credit = String(c.credits);
+                if (mapped.includes('4')) return typeof c.credits === 'number' && c.credits >= 4;
+                return mapped.includes(credit);
+            });
+            console.log('after filter:', results.length);
+        }
+
+        if (selectedFrequency.length) {
+            results = results.filter(c => selectedFrequency.includes(c.Schedule ?? ''));
+        }
 
         if (!query.trim()) return results;
 
         const resultIds = new Set(results.map(c => c.course_id));
         return fuse.search(query).map(r => r.item).filter(c => resultIds.has(c.course_id));
-    }, [query, fuse, courses, hideCompleted, hideStaged, completedCourseCodes, stagedCourses]);
+    }, [query, fuse, courses, hideCompleted, hideStaged, completedCourseCodes, stagedCourses, selectedFrequency, selectedCredits]);
 
     const selectedCourse = courses.find(c => c.course_id === selectedCourseId) ?? null;
     const cartItem = selectedCourse ? cart.find(i => i.course.course_id === selectedCourse.course_id) : undefined;
-    const isClientFiltering = !hideCompleted || !hideStaged || !!query.trim();
+    const isClientFiltering = !hideCompleted || !hideStaged || selectedCredits.length > 0 || selectedFrequency.length > 0 || !!query.trim();
 
     const addToCart = useCallback((courseId: string, section?: string) => {
         const course = courses.find(c => c.course_id === courseId);
@@ -964,6 +993,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         setNoAleks(false);
         setNoPerm(false);
         setSelectedStanding([]);
+        setSelectedFrequency([]);
     };
 
     const showingAll = !hideCompleted && !hideStaged;
@@ -1050,7 +1080,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                     </div>
 
                     {/* Active filter chips */}
-                    {(selectedSchools.length > 0 || selectedPrefixes.length > 0 || selectedCredits.length > 0 || coreOnly || noPerm || noAleks || selectedStanding.length > 0) && (
+                    {(selectedSchools.length > 0 || selectedPrefixes.length > 0 || selectedCredits.length > 0 || selectedFrequency.length > 0 || coreOnly || noPerm || noAleks || selectedStanding.length > 0) && (
                         <div className="px-5 py-1.5 flex items-center gap-2 flex-wrap border-b border-gray-100 flex-shrink-0">
                             <span className="text-xs text-gray-400">Active:</span>
                             {selectedSchools.map(s => (
@@ -1068,7 +1098,13 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                             {selectedCredits.map(c => (
                                 <button key={c} onClick={() => setSelectedCredits(prev => prev.filter(x => x !== c))}
                                     className="text-xs bg-green-100 text-green-700 rounded-full px-2.5 py-0.5 font-medium flex items-center gap-1 hover:bg-green-200">
-                                    {c} cr <X className="w-2.5 h-2.5" />
+                                    {c} sch <X className="w-2.5 h-2.5" />
+                                </button>
+                            ))}
+                            {selectedFrequency.map(f => (
+                                <button key={f} onClick={() => setSelectedFrequency(prev => prev.filter(x => x !== f))}
+                                    className="text-xs bg-green-100 text-green-700 rounded-full px-2.5 py-0.5 font-medium flex items-center gap-1 hover:bg-green-200">
+                                    {FREQUENCY_LABELS[f]} <X className="w-2.5 h-2.5" />
                                 </button>
                             ))}
                             {coreOnly && (
@@ -1135,10 +1171,22 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Credits</span>
                                     <FilterDropdown
                                         label="Credits"
-                                        options={['1', '2', '3', '4+']}
+                                        options={['1', '2', '3', '4+', 'Variable']}
                                         selected={selectedCredits}
                                         onChange={setSelectedCredits}
                                         allLabel="Any credits"
+                                    />
+                                </div>
+
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Frequency</span>
+                                    <FilterDropdown
+                                        label="Frequency"
+                                        options={['S', 'Y', 'T', 'R', 'P', 'F', 'U']}
+                                        optionLabels={FREQUENCY_LABELS}
+                                        selected={selectedFrequency}
+                                        onChange={setSelectedFrequency}
+                                        allLabel="Any frequency"
                                     />
                                 </div>
 
@@ -1152,7 +1200,13 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                                     : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}>
                                             <BookOpen className="w-3 h-3" /> Satisfies Core
                                         </button>
-
+                                        <FilterDropdown
+                                            label="Standing"
+                                            options={['Freshman', 'Sophomore', 'Junior', 'Senior']}
+                                            selected={selectedStanding}
+                                            onChange={setSelectedStanding}
+                                            allLabel="Any Standing"
+                                        />
                                         <button onClick={() => setNoPerm(p => !p)}
                                             className={`text-xs px-2.5 py-1 rounded-md border transition-colors flex items-center gap-1 whitespace-nowrap
                                                 ${noPerm ? 'bg-green-500 border-green-500 text-white font-medium' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}>
@@ -1163,13 +1217,6 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                                 ${noAleks ? 'bg-green-500 border-green-500 text-white font-medium' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}>
                                             <AlertCircle className="w-3 h-3" /> No ALEKS Required
                                         </button>
-                                        <FilterDropdown
-                                            label="Standing"
-                                            options={['Freshman', 'Sophomore', 'Junior', 'Senior']}
-                                            selected={selectedStanding}
-                                            onChange={setSelectedStanding}
-                                            allLabel="Any Standing"
-                                        />
                                     </div>
                                 </div>
                             </div>
