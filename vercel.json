@@ -1,5 +1,7 @@
 {
-    "buildCommand": "pnpm build --filter=@sage-site/main",
-    "installCommand": "pnpm install",
-    "outputDirectory": "main/dist"
-  }
+    "installCommand": "cd ../.. && pnpm install",
+    "buildCommand": "cd ../.. && pnpm turbo build --filter=@sage-site/main",
+    "rewrites": [
+      {"source": "/(.*)", "destination": "/"}
+    ]
+}
