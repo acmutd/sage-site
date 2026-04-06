@@ -1,6 +1,3 @@
 {
-  "installCommand": "pnpm install",
-  "buildCommand": "pnpm turbo build --filter=@sage-site/main",
-  "outputDirectory": "main/dist",
-  "rewrites": [{"source": "/(.*)", "destination": "/"}]
+  "installCommand": "pnpm install"
 }
