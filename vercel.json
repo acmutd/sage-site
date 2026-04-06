@@ -1,0 +1,5 @@
+{
+    "buildCommand": "pnpm build --filter=@sage-site/main",
+    "installCommand": "pnpm install",
+    "outputDirectory": "main/dist"
+  }

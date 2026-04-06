@@ -1,5 +1,5 @@
 {
-  "name": "sage-site",
+  "name": "@sage-site/main",
   "private": true,
   "version": "0.0.0",
   "type": "module",
