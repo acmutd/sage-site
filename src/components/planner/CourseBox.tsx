@@ -174,6 +174,19 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const [showModal, setShowModal] = useState(false);
     const [_, setExpandedSectionIndex] = useState<number | null>(null);
     const [isNarrowSidebar, setIsNarrowSidebar] = useState(inSidebar && window.innerWidth < 1024);
+    const codeRef = useRef<HTMLSpanElement>(null);
+    const [showNameTooltip, setShowNameTooltip] = useState(false);
+    const [nameTooltipPos, setNameTooltipPos] = useState({ x: 0, y: 0 });
+
+    const handleCodeMouseEnter = () => {
+        if (codeRef.current) {
+            const rect = codeRef.current.getBoundingClientRect();
+            setNameTooltipPos({ x: rect.left, y: rect.top - 8 });
+            setShowNameTooltip(true);
+        }
+    };
+
+    const handleCodeMouseLeave = () => setShowNameTooltip(false);
 
     useEffect(() => {
         if (!inSidebar) return;
@@ -466,11 +479,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         <div className={`
             ${(!canHover || isNarrowSidebar)
                 ? "bg-white text-black rounded-t-2xl p-4 shadow-2xl w-full border-t-2 border-gray-200 max-h-[80vh] overflow-y-auto scrollbar-hide"
-                : `bg-white text-black rounded-md p-3 shadow-lg border border-gray-200 ${sections.length > 0 ? "w-[min(560px,90vw)] max-h-[400px] overflow-y-auto" : "w-56 md:w-64"}`
+                : `bg-white text-black rounded-md p-3 shadow-lg border border-gray-200 ${sections.length > 0 ? "w-[min(560px,90vw)] max-h-[400px] overflow-y-auto" : "w-56 md:w-80"}`
             }
         `}>
             <div className="flex items-start justify-between mb-2 min-w-0 gap-2">
-                <h3 className={`font-semibold ${!canHover ? "text-base" : "text-sm"} text-gray-900 truncate`}>
+                <h3 className={`font-semibold ${!canHover ? "text-base" : "text-sm"} text-gray-900`}>
                     {course.course_name || "No Name Available"}
                 </h3>
                 <div className="flex items-center gap-1 shrink-0">
@@ -690,6 +703,23 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         </div>
     );
 
+    {showNameTooltip && course.course_name && ReactDOM.createPortal(
+        <div
+            style={{
+                position: "fixed",
+                left: nameTooltipPos.x,
+                top: nameTooltipPos.y,
+                transform: "translateY(-100%)",
+                zIndex: 99999,
+                pointerEvents: "none",
+            }}
+            className="px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-md whitespace-nowrap"
+        >
+            {course.course_name}
+        </div>,
+        document.body
+    )}
+
     return (
         <>
             <div ref={boxRef} className={`${inSidebar ? "relative" : "group relative"} ${flipLeft ? "near-right-edge" : ""}`}>
@@ -728,7 +758,15 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 <GripVertical className="w-4 h-4 text-gray-400" />
                             )
                         )}
-                        <span className="text-sm font-medium text-gray-700 ml-1">
+                        <span
+                            ref={codeRef}
+                            className="text-sm font-medium text-gray-700 ml-1"
+                            onMouseEnter={(e) => { 
+                                e.stopPropagation();
+                                handleCodeMouseEnter}
+                            }                
+                            onMouseLeave={handleCodeMouseLeave}
+                        >
                             {course.course_code || "Unknown Course"}
                         </span>
                     </div>
