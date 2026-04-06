@@ -42,6 +42,16 @@ const formatCoursebookSemester = (sem: string | null): string | null => {
     return `${name} ${year}`;
 };
 
+const FREQ_LABELS: Record<string, { label: string; className: string }> = {
+    S: { label: "Offered every semester", className: "text-green-700 bg-green-50 border-green-200" },
+    Y: { label: "Offered every year", className: "text-green-700 bg-green-50 border-green-200" },
+    T: { label: "Offered every 2 years", className: "text-blue-700 bg-blue-50 border-blue-200" },
+    R: { label: "Offered on request", className: "text-purple-700 bg-purple-50 border-purple-200" },
+    P: { label: "Offered every spring", className: "text-blue-700 bg-blue-50 border-blue-200" },
+    F: { label: "Offered every fall", className: "text-amber-700 bg-amber-50 border-amber-200" },
+    U: { label: "Offered every summer", className: "text-amber-700 bg-amber-50 border-amber-200" },
+};
+
 const DAY_ABBR: Record<string, string> = {
     Monday: "M", Tuesday: "Tu", Wednesday: "W", Thursday: "Th", Friday: "F", Saturday: "S"
 };
@@ -377,6 +387,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     const courseKey = course.course_code?.toUpperCase().replace(/\s+/g, "");
     const courseGrades = gradesData?.[courseKey];
 
+    const freqCode = course.description?.match(
+        /\((?:\d+(?:\.\d+)?|\[[^\]]+\])-(?:\d+(?:\.\d+)?|\[[^\]]+\])\)\s*([SYTRPFU])/
+    )?.[1];
+    const freq = freqCode ? FREQ_LABELS[freqCode] : null;
+
     const getAvgLetter = (grades: Record<string, number>): string | null => {
         if (!grades) return null;
         const gradePoints: Record<string, number> = {
@@ -459,6 +474,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     {course.course_name || "No Name Available"}
                 </h3>
                 <div className="flex items-center gap-1 shrink-0">
+                    {freq && (
+                        <span className={`inline-flex items-center text-[10px] border px-2 py-0.5 rounded-full ${freq.className}`}>
+                            {freq.label}
+                        </span>
+                    )}
                     {coursebookSemester && sections.length > 0 && (
                         <span className="inline-flex items-center text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
                             {formatCoursebookSemester(coursebookSemester)} — availability differs
