@@ -1,13 +1,16 @@
 {
-    "name": "sage-site",
-    "private": true,
-    "packageManager": "pnpm@9.5.0",
-    "scripts": {
-      "dev": "turbo dev",
-      "build": "turbo build",
-      "lint": "turbo lint"
-    },
-    "devDependencies": {
-      "turbo": "latest"
-    }
+  "name": "sage-site",
+  "private": true,
+  "packageManager": "pnpm@9.5.0",
+  "engines": {
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint"
+  },
+  "devDependencies": {
+    "turbo": "latest"
+  }
 }
