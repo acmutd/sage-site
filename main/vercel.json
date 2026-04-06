@@ -1,6 +1,6 @@
 {
     "buildCommand": "pnpm turbo build --filter=@sage-site/main",
-    "outputDirectory": "main/dist",
+    "outputDirectory": "dist",
     "rewrites": [
       {"source": "/(.*)", "destination": "/"}
     ]
