@@ -41,7 +41,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onNext, showManualOption = 
         return;
       }
 
-      const token = user ? await user.getIdToken() : null;
+      const token = await user.getIdToken(true).catch(() => null);
+
+      if (!token) {
+        setErrorMessage("Could not authenticate. Please refresh and try again.");
+        return;
+      }
+      
       const response = await uploadFile(user.uid, token);
       if (response?.message === "Transcript processed successfully") {
         onNext(response.transcript_data); 
