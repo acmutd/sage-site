@@ -12,7 +12,7 @@ vi.mock("react-router-dom", async () => {
 
 vi.mock("../context/AuthContext", () => ({
   useAuth: () => ({
-    user: { uid: "test-user-123", getIdToken: async () => "fake-token", photoURL: null },
+    user: { uid: "test-user-123", getIdToken: async () => "fake-token", getIdTokenResult: async () => ({ claims: {} }), photoURL: null },
     profilePicture: null,
     setProfilePicture: vi.fn(),
     hasSeenChatbotTutorial: false,
