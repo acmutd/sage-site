@@ -1,7 +1,6 @@
 import { Pencil, PlusIcon, TriangleAlert } from "lucide-react";
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button, Card, CardContent } from '@sage/ui';
 import ProgramValidationB from "./ProgramValidationB";
 import {
   Select,
@@ -9,7 +8,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from '@sage/ui'
 import { useAuth } from "@/context/AuthContext";
 import { getCurrentCatalogYear } from "@/utils/studentInfo";
 

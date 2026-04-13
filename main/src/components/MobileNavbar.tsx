@@ -5,7 +5,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-  } from "./ui/dropdown-menu";
+  } from "@sage/ui";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 

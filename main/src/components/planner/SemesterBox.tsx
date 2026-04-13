@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Lock, Unlock, MoreVertical, Trash2, Eraser, TriangleAlert, ChevronUp, Calendar, Download } from "lucide-react";
 import CourseBox from "@/components/planner/CourseBox";
 import { useDrop } from "react-dnd";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@sage/ui";
 import { Course } from "@/types/course";
 import { getScheduleButtonState, validateCourseLoad } from '@/utils/courseValidation';
 import { Warning } from "@/types/warning";

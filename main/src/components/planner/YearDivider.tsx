@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronUp, Download, Eraser, Menu, Plus, Trash2 } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@sage/ui';
 import { exportYearAsCSV, exportYearAsJPG, exportYearAsPDF, exportYearAsPNG, SavedPlannerState } from '@/utils/planExport';
 
 interface YearDividerProps {

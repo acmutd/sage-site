@@ -13,7 +13,7 @@ import {
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
     DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+} from "@sage/ui";
 import { Toaster, toast } from "sonner";
 import { calculateCatalogYear, calculateLatestYear, determineStudentType, getGPAState, isCurrentSemester } from "@/utils/studentInfo";
 import YearDivider from "@/components/planner/YearDivider";

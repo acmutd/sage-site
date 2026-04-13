@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+} from "@sage/ui";
 import MobileNavbar from './MobileNavbar';
 import PlannerSidebarContent from "@/components/planner/PlannerSidebarContent";
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@sage/ui";
 import SectionContent from "@/components/planner/utdgrades/sectioncontent";
 import { getAvgLetterGrade, getRMPColor, getGpaBadgeStyle } from "@/utils/grades";
 import type { InstructorGrades } from "@/types/grades";

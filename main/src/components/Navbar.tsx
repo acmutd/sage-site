@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Menu, MessageCirclePlus, Route, UserRound} from "lucide-react";
 import { useEffect, useState } from "react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@sage/ui";
 
 // check environment
 const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;

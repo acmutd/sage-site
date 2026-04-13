@@ -11,7 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Toaster, toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@sage/ui";
 import {
   Form,
   FormControl,
@@ -19,9 +19,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+} from "@sage/ui";
+import { Input } from "@sage/ui";
+import { Separator } from "@sage/ui";
 
 const VITE_CRUD_API = import.meta.env.VITE_CRUD_API;
 

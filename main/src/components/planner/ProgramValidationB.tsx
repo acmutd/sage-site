@@ -1,14 +1,12 @@
 import React, { useState } from "react";
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button, Card, CardContent, Searchbox } from '@sage/ui';
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from '@/components/ui/select';
-import { Searchbox } from "@/components/ui/SearchBox";
+} from '@sage/ui';
 
 interface ProgramValidationBProps {
     program: any;

@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+} from "@sage/ui";
 import { useChatbot } from "../hooks/useChatbot";
 import MobileNavbar from './MobileNavbar';
 import ChatSidebarContent from '@/components/chatbot/ChatSidebarContent';
