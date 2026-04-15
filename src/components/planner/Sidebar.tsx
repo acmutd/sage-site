@@ -777,14 +777,23 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                 {isExpanded && (
                     <div
+                        role="separator"
+                        aria-label="Resize sidebar"
+                        aria-orientation="vertical"
+                        tabIndex={0}
                         className="absolute right-0 top-0 bottom-0 w-3 flex items-center justify-center cursor-col-resize group/grip z-10 translate-x-1/2"
                         onMouseDown={handleResizeStart}
+                        onKeyDown={(e) => {
+                            const step = 10;
+                            if (e.key === 'ArrowRight') setPlannerSidebarWidth(Math.min(420, sidebarWidth + step));
+                            if (e.key === 'ArrowLeft') setPlannerSidebarWidth(Math.max(320, sidebarWidth - step));
+                        }}
                     >
-                        <div className="w-1.5 h-10 rounded-full bg-gray-200 opacity-0 group-hover/grip:opacity-100 transition-opacity duration-150 flex flex-col items-center justify-center gap-[3px]">
-                            <span className="w-[3px] h-[3px] rounded-full bg-gray-400" />
-                            <span className="w-[3px] h-[3px] rounded-full bg-gray-400" />
-                            <span className="w-[3px] h-[3px] rounded-full bg-gray-400" />
-                            <span className="w-[3px] h-[3px] rounded-full bg-gray-400" />
+                        <div className="w-1.5 h-10 rounded-full bg-gray-300 opacity-30 group-hover/grip:opacity-100 transition-opacity duration-150 flex flex-col items-center justify-center gap-[3px]">
+                            <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                            <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                            <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                            <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
                         </div>
                     </div>
                 )}
