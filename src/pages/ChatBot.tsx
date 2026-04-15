@@ -147,10 +147,6 @@ const ChatBot: React.FC = () => {
     };
   }, [setChatSidebarWidth]);
 
-  useEffect(() => {
-    if (sidebarCollapsed) setChatSidebarWidth(384);
-  }, [sidebarCollapsed]);
-
   const CHAT_API = import.meta.env.VITE_CHAT_API as string | undefined;
 
   const [mobileView, setMobileView] = useState(false);

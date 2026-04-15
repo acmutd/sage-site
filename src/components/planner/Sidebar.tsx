@@ -134,10 +134,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         };
     }, [setPlannerSidebarWidth]);
 
-    useEffect(() => {
-        if (!isExpanded) setPlannerSidebarWidth(320);
-    }, [isExpanded]);
-
     // discovery of courses hooks
     const stagedCourses = usePlannerStore(s => s.stagedCourses);
     const removeStagedCourse = usePlannerStore(s => s.removeStagedCourse);
