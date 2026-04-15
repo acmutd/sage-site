@@ -596,7 +596,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div
                 ref={sidebarRef}
                 data-tour="sidebar"
-                className={`${isExpanded ? "rounded-lg" : "w-20 rounded-md"} relative bg-bglight rounded-lg border border-border ${isResizing ? "transition-none" : "transition-all duration-300"} flex flex-col h-full`}
+                className={`${isExpanded ? "rounded-lg" : "w-20 rounded-md overflow-hidden"} relative bg-bglight border border-border ${isResizing ? "transition-none" : "transition-all duration-300"} flex flex-col h-full`}
                 style={isExpanded ? { width: sidebarWidth } : undefined}
             >
                 <div
