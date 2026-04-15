@@ -20,6 +20,7 @@ import { chatEventEmitter } from "../utils/chatEventEmitter";
 import { useChatbot } from "@/hooks/useChatbot";
 import { Message, Conversation } from "@/types/chat";
 import { useChatbotTutorial } from "@/hooks/useChatbotTutorial";
+import { useUIStore } from "@/stores/uiStore";
 
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
@@ -61,7 +62,7 @@ const ChatBot: React.FC = () => {
   } = useChatbot();
 
   const { startTutorial } = useChatbotTutorial({ user, hasSeenTutorial: hasSeenChatbotTutorial });
-  
+
   const updateConversations = (newConversations: Conversation[] | ((prev: Conversation[]) => Conversation[])) => {
     if (typeof newConversations === 'function') {
       setConversations((prevConversations) => {
@@ -104,6 +105,47 @@ const ChatBot: React.FC = () => {
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const conversationListRef = useRef<HTMLUListElement | null>(null);
+
+  // adjustable sidebar
+  const { chatSidebarWidth, setChatSidebarWidth } = useUIStore();
+  const [isResizing, setIsResizing] = useState(false);
+  const isResizingRef = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    if (sidebarCollapsed) return;
+    isResizingRef.current = true;
+    setIsResizing(true);
+    startX.current = e.clientX;
+    startWidth.current = chatSidebarWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const newWidth = Math.min(480, Math.max(384, startWidth.current + (e.clientX - startX.current)));
+      setChatSidebarWidth(newWidth);
+    };
+    const onMouseUp = () => {
+      if (!isResizingRef.current) return;
+      isResizingRef.current = false;
+      setIsResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      if (sidebarRef.current) setChatSidebarWidth(sidebarRef.current.offsetWidth);
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [setChatSidebarWidth]);
 
   const CHAT_API = import.meta.env.VITE_CHAT_API as string | undefined;
 
@@ -752,7 +794,7 @@ const ChatBot: React.FC = () => {
       ) : (
         <>
           {/* Chat History Bar */}
-          <aside aria-label="Conversation history" data-tour="sidebar" className={`${sidebarCollapsed ? "w-[5.25rem]" : "w-[24rem]"} h-full flex flex-col gap-4 transition-all duration-100`}>
+          <aside ref={sidebarRef} aria-label="Conversation history" data-tour="sidebar" className={`${sidebarCollapsed ? "w-[5.25rem]" : ""} relative h-full flex flex-col gap-4 ${isResizing ? "transition-none" : "transition-all duration-100"}`} style={!sidebarCollapsed ? { width: chatSidebarWidth } : undefined}>
             <div
               className={`${sidebarCollapsed ? "rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]" : "rounded-lg px-6"
                 } transition-all duration-100 group/sidebar pt-8 pb-4 gap-8 overflow-hidden bg-bglight border border-border flex flex-col items-center w-full h-full`}
@@ -789,7 +831,7 @@ const ChatBot: React.FC = () => {
               {!sidebarCollapsed && (
                 <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-visible gap-8 transition-all duration-150`}>
                   <div className="flex gap-3 justify-between items-center">
-                    <button data-tour="new-chat-expanded"  aria-label="Start a new chat conversation" className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
+                    <button data-tour="new-chat-expanded" aria-label="Start a new chat conversation" className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
                       <MessageCirclePlusIcon size={24} aria-hidden="true" />
                       <span>Start new chat</span>
                     </button>
@@ -908,6 +950,29 @@ const ChatBot: React.FC = () => {
                 </a>
               </small>
             </div>
+
+            {!sidebarCollapsed && (
+              <div
+                role="separator"
+                aria-label="Resize sidebar"
+                aria-orientation="vertical"
+                tabIndex={0}
+                className="absolute right-0 top-0 bottom-0 w-3 flex items-center justify-center cursor-col-resize group/grip z-10 translate-x-1/2"
+                onMouseDown={handleResizeStart}
+                onKeyDown={(e) => {
+                  const step = 10;
+                  if (e.key === 'ArrowRight') setChatSidebarWidth(Math.min(420, chatSidebarWidth + step));
+                  if (e.key === 'ArrowLeft') setChatSidebarWidth(Math.max(320, chatSidebarWidth - step));
+              }}
+              >
+                <div className="w-1.5 h-10 rounded-full bg-gray-300 opacity-30 group-hover/grip:opacity-100 transition-opacity duration-150 flex flex-col items-center justify-center gap-[3px]">
+                  <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                  <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                  <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                  <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                </div>
+              </div>
+            )}
           </aside>
 
           {/* Main chat area */}

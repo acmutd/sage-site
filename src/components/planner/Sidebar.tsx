@@ -7,6 +7,7 @@ import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/
 import type { SemestersForCredits } from "@/utils/plannerCredits";
 import { CartItem } from "./CourseDiscoveryModal";
 import { usePlannerStore } from '@/stores/plannerStore';
+import { useUIStore } from "@/stores/uiStore";
 
 interface SidebarProps {
     requirements: {
@@ -81,12 +82,57 @@ const Sidebar: React.FC<SidebarProps> = ({
     coursebookSemester,
     onOpenDiscovery,
 }) => {
+    const sidebarRef = useRef<HTMLDivElement>(null);
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
     const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
     const [autoExpandedCategories, setAutoExpandedCategories] = useState<{ [key: number]: boolean }>({});
     const [highlightedKey, setHighlightedKey] = useState<string | null>(null);
     const prevSuggestedByKeyRef = useRef<Record<string, Set<string>>>({});
+
+    // sidebar adjustment 
+    const { plannerSidebarWidth: sidebarWidth, setPlannerSidebarWidth } = useUIStore();
+    const [isResizing, setIsResizing] = useState(false);
+    const isResizingRef = useRef(false);
+    const startX = useRef(0);
+    const startWidth = useRef(0);
+
+    const handleResizeStart = (e: React.MouseEvent) => {
+        if (!isExpanded) return;
+        isResizingRef.current = true;
+        setIsResizing(true);
+        startX.current = e.clientX;
+        startWidth.current = sidebarWidth;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    };
+
+    useEffect(() => {
+        const onMouseMove = (e: MouseEvent) => {
+            if (!isResizingRef.current) return;
+            const newWidth = Math.min(420, Math.max(320, startWidth.current + (e.clientX - startX.current)));
+            setPlannerSidebarWidth(newWidth);
+        };
+
+        const onMouseUp = () => {
+            if (!isResizingRef.current) return;
+            isResizingRef.current = false;
+            setIsResizing(false);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            if (sidebarRef.current) {
+                setPlannerSidebarWidth(sidebarRef.current.offsetWidth);
+            }
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        return () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+    }, [setPlannerSidebarWidth]);
 
     // discovery of courses hooks
     const stagedCourses = usePlannerStore(s => s.stagedCourses);
@@ -399,7 +445,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         const filteredPrereqBlocked = (category.prereq_blocked || []).filter(
             (c: any) => !suggestedCodes.has(c.code)
         );
-        
+
         return (
             <>
                 {category.classes && category.classes.length > 0 ? (
@@ -543,7 +589,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     return (
         <>
-            <div data-tour="sidebar" className={`${isExpanded ? "w-80 rounded-lg" : "w-20 rounded-md"} bg-bglight rounded-lg border border-border transition-all duration-300 flex flex-col h-full overflow-hidden`}>
+            <div
+                ref={sidebarRef}
+                data-tour="sidebar"
+                className={`${isExpanded ? "rounded-lg" : "w-20 rounded-md overflow-hidden"} relative bg-bglight border border-border ${isResizing ? "transition-none" : "transition-all duration-300"} flex flex-col h-full`}
+                style={isExpanded ? { width: sidebarWidth } : undefined}
+            >
                 <div
                     ref={drop}
                     className={`flex-1 overflow-y-auto ${isOver ? 'bg-gray-100' : ''}`}
@@ -598,11 +649,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         </div>
                                         <button
                                             onClick={() => !allStagedPlaced && usePlannerStore.getState().clearStagedCourses()}
-                                            className={`text-[10px] transition-colors ${
-                                                allStagedPlaced 
-                                                    ? 'text-gray-300 cursor-not-allowed pointer-events-none' 
-                                                    : 'text-gray-400 hover:text-red-400 cursor-pointer'
-                                            }`}
+                                            className={`text-[10px] transition-colors ${allStagedPlaced
+                                                ? 'text-gray-300 cursor-not-allowed pointer-events-none'
+                                                : 'text-gray-400 hover:text-red-400 cursor-pointer'
+                                                }`}
                                         >
                                             Clear all
                                         </button>
@@ -720,6 +770,29 @@ const Sidebar: React.FC<SidebarProps> = ({
                         </div>
                     )}
                 </div>
+
+                {isExpanded && (
+                    <div
+                        role="separator"
+                        aria-label="Resize sidebar"
+                        aria-orientation="vertical"
+                        tabIndex={0}
+                        className="absolute right-0 top-0 bottom-0 w-3 flex items-center justify-center cursor-col-resize group/grip z-10 translate-x-1/2"
+                        onMouseDown={handleResizeStart}
+                        onKeyDown={(e) => {
+                            const step = 10;
+                            if (e.key === 'ArrowRight') setPlannerSidebarWidth(Math.min(420, sidebarWidth + step));
+                            if (e.key === 'ArrowLeft') setPlannerSidebarWidth(Math.max(320, sidebarWidth - step));
+                        }}
+                    >
+                        <div className="w-1.5 h-10 rounded-full bg-gray-300 opacity-30 group-hover/grip:opacity-100 transition-opacity duration-150 flex flex-col items-center justify-center gap-[3px]">
+                            <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                            <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                            <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                            <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                        </div>
+                    </div>
+                )}
             </div>
         </>
     );
