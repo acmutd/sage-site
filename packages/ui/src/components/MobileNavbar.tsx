@@ -1,58 +1,68 @@
-import { Route, Menu, MessageCirclePlus, UserRound, ArrowLeftFromLine} from "lucide-react";
+import { Route, Menu, MessageCirclePlus, UserRound, ArrowLeftFromLine } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-  } from "@sage/ui";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./dropdown-menu";
+import { NavBrand } from "./NavBrand";
 
-const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
+export interface MobileNavbarProps {
+  isInWebapp: boolean;
+  isDarkMode: boolean;
+  isDevelopment?: boolean;
+  user: unknown;
+  logout: () => void;
+  profilePicture?: string | null;
+  sidebarContent?: (onClose: () => void) => ReactNode;
+  showSidebar?: boolean;
+  sidebarIcon?: ReactNode;
+}
 
-interface MobileNavbarProps {
-    isInWebapp: boolean;
-    sidebarContent?: (onClose: () => void) => React.ReactNode;
-    showSidebar?: boolean;
-    sidebarIcon?: React.ReactNode;
-  }
+export function MobileNavbar({
+  isInWebapp,
+  isDarkMode,
+  isDevelopment = false,
+  user,
+  logout,
+  profilePicture,
+  sidebarContent,
+  showSidebar = true,
+  sidebarIcon,
+}: MobileNavbarProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-const MobileNavbar: React.FC<MobileNavbarProps> = ({ 
-    isInWebapp, 
-    sidebarContent,
-    showSidebar = true,
-    sidebarIcon
-  }) => {
-    const { user, logout } = useAuth();
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    const closeButtonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (sidebarOpen) closeButtonRef.current?.focus();
+  }, [sidebarOpen]);
 
-    useEffect(() => {
-      if (sidebarOpen) closeButtonRef.current?.focus();
-    }, [sidebarOpen]);
-    
-    useEffect(() => {
-        if (!sidebarOpen) return;
-        const onKeyDown = (e: KeyboardEvent) => e.key === "Escape" && setSidebarOpen(false);
-        window.addEventListener("keydown", onKeyDown);
-        return () => window.removeEventListener("keydown", onKeyDown);
-    
-    }, [sidebarOpen]);
-    
-    useEffect(() => {
-        document.body.style.overflow = sidebarOpen ? "hidden" : "";
-    }, [sidebarOpen]);
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => e.key === "Escape" && setSidebarOpen(false);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [sidebarOpen]);
 
-    return (
-      <>
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [sidebarOpen]);
+
+  return (
+    <>
       <nav className={`
-        ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
-        py-4 px-6 fixed w-full h-[4.2rem] z-10 md:hidden block
-        ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
+        ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined}
+        py-4 px-6 fixed w-full h-[4.2rem] z-[70] md:hidden block
+        ${isDevelopment ? 'top-4' : 'top-0'}
       `}>
         <div className="flex items-center justify-between w-full">
-          {showSidebar && (
+          {showSidebar ? (
             <button
               onClick={() => setSidebarOpen(true)}
               aria-label="Open sidebar"
@@ -61,11 +71,13 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
             >
               {sidebarIcon}
             </button>
+          ) : (
+            <span className="p-2 rounded-md outline-none" aria-hidden="true" />
           )}
 
           <DropdownMenu>
             <DropdownMenuTrigger aria-label="Open navigation menu">
-              <Menu className={isInWebapp ? "stroke-textdark" : "stroke-textlight"} />
+              <Menu className={isDarkMode ? "stroke-textlight" : "stroke-textdark"} />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-bglight flex flex-col p-2 gap-2 mr-6 items-center rounded-sm">
               <DropdownMenuItem className="focus:bg-innercontainer w-full">
@@ -102,7 +114,6 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
         </div>
       </nav>
 
-      {/* Overlay */}
       {showSidebar && (
         <div
           className={`fixed inset-0 z-30 md:hidden transition-opacity duration-300 ${sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
@@ -111,7 +122,6 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
         />
       )}
 
-      {/* Sidebar */}
       {showSidebar && (
         <div
           role="dialog"
@@ -124,22 +134,20 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
             ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
           `}
         >
-          {/* Header */}
           <div className="flex items-center justify-between px-4 py-3">
-            <Link to="/" onClick={() => setSidebarOpen(false)}>
-              <img src={isInWebapp ? "/Sage_Logo_Dark.svg" : "/Sage_Logo_Light.svg"} alt="SAGE" className="h-8 w-auto" />
-            </Link>
+            <NavBrand
+              isDarkMode={isDarkMode}
+              className="ml-0"
+              imgClassName="h-8 w-auto"
+            />
             <button ref={closeButtonRef} onClick={() => setSidebarOpen(false)} aria-label="Close sidebar" className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent">
               <ArrowLeftFromLine />
             </button>
           </div>
 
-          {/* Content */}
-          {sidebarContent?.(()=> setSidebarOpen(false))}
+          {sidebarContent?.(() => setSidebarOpen(false))}
         </div>
       )}
     </>
   );
-};
-
-export default MobileNavbar;
+}
