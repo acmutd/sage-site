@@ -116,7 +116,7 @@ export function MobileNavbar({
 
       {showSidebar && (
         <div
-          className={`fixed inset-0 z-30 md:hidden transition-opacity duration-300 ${sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          className={`fixed inset-0 z-[80] md:hidden transition-opacity duration-300 ${sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
           onClick={() => setSidebarOpen(false)}
           style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
         />
@@ -128,7 +128,7 @@ export function MobileNavbar({
           aria-modal="true"
           aria-hidden={!sidebarOpen}
           className={`
-            fixed left-0 top-0 h-full w-[84%] max-w-[22rem] z-40 md:hidden
+            fixed left-0 top-0 h-full w-[84%] max-w-[22rem] z-[90] md:hidden
             bg-bglight text-textdark border-r
             transform transition-transform duration-300 ease-in-out
             ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
