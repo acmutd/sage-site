@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { NotebookPen, ArrowLeftToLine, PanelLeftDashed, ArrowRightToLine, Compass, ChevronRight } from "lucide-react";
+import { NotebookPen, Compass, ChevronRight } from "lucide-react";
 import { useDrop } from "react-dnd";
 import RequirementCategory from '@/components/planner/RequirementCategory';
 import CoursesCarousel from '@/components/planner/CoursesCarousel';
@@ -7,6 +7,9 @@ import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/
 import type { SemestersForCredits } from "@/utils/plannerCredits";
 import { CartItem } from "./CourseDiscoveryModal";
 import { usePlannerStore } from '@/stores/plannerStore';
+import { SidebarTemplate } from "@sage/ui";
+
+void SidebarTemplate;
 
 interface SidebarProps {
     requirements: {
@@ -541,187 +544,127 @@ const Sidebar: React.FC<SidebarProps> = ({
     const normalizedPlaced = new Set([...placedSuggestedCourses].map(c => c.toLowerCase().replace(/\s+/g, '')));
     const allStagedPlaced = stagedCourses.every(c => normalizedPlaced.has(c.course_id.toLowerCase().replace(/\s+/g, '')));
 
+    const primaryAction = {
+        label: "Edit plans",
+        icon: <NotebookPen size={20} strokeWidth={2} />,
+        onClick: () => {
+            if (document.querySelector('.driver-active-element')) return;
+            onRestartOnboarding?.();
+        },
+        dataTour: "edit-plans",
+    };
+
+    const collapsedActions = [
+        primaryAction,
+        ...(onOpenDiscovery
+            ? [{
+                label: "Discover Courses",
+                icon: <Compass className="w-4 h-4 text-green-500" />,
+                onClick: () => onOpenDiscovery(),
+              }]
+            : []),
+    ];
+
     return (
-        <>
-            <div data-tour="sidebar" className={`${isExpanded ? "w-80 rounded-lg" : "w-20 rounded-md"} bg-bglight rounded-lg border border-border transition-all duration-300 flex flex-col h-full overflow-hidden`}>
-                <div
-                    ref={drop}
-                    className={`flex-1 overflow-y-auto ${isOver ? 'bg-gray-100' : ''}`}
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                >
-                    {isExpanded ? (
-                        <div className="p-6 pt-8">
-                            <div className="flex items-center justify-between mb-6">
-                                <button data-tour="edit-plans" aria-label="Edit Degree Plans" className="flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700" onClick={() => {
-                                    if (document.querySelector('.driver-active-element')) return;
-                                    onRestartOnboarding?.();
-                                }}>
-                                    <NotebookPen size={20} strokeWidth={2} />
-                                    <span>Edit plans</span>
-                                </button>
-                                <button
-                                    data-tour="sidebar-toggle"
-                                    aria-label="Planner Sidebar Toggle"
-                                    className="p-2 hover:bg-gray-200 rounded"
-                                    onClick={() => {
-                                        if (document.querySelector('.driver-active-element')) return;
-                                        handleToggleSidebar();
-                                    }}
-                                >
-                                    <ArrowLeftToLine className="w-5 h-5 text-gray-500" />
-                                </button>
-                            </div>
-
-                            <button
-                                onClick={onOpenDiscovery}
-                                className="w-full flex items-center gap-2.5 p-3 rounded-xl border border-dashed
-        border-green-300 bg-green-50 hover:bg-green-100 transition-colors text-left mb-4 group"
-                            >
-                                <div className="w-7 h-7 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0">
-                                    <Compass className="w-4 h-4 text-white" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-medium text-green-800">
-                                        {stagedCourses.length > 0 ? 'Shop more courses' : 'Discover Courses'}
-                                    </div>
-                                    <div className="text-xs text-green-600">Browse &amp; add to your plan</div>
-                                </div>
-                                <ChevronRight className="w-4 h-4 text-green-400 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                            </button>
-
-                            {stagedCourses.length > 0 && (
-                                <div className="mb-4">
-                                    <div className="flex items-center justify-between px-1 mb-2">
-                                        <div className="text-[10px] font-semibold text-purple-500 uppercase tracking-wide flex items-center gap-1.5">
-                                            <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
-                                            Staged · {stagedCourses.length} course{stagedCourses.length !== 1 ? 's' : ''}
-                                        </div>
-                                        <button
-                                            onClick={() => !allStagedPlaced && usePlannerStore.getState().clearStagedCourses()}
-                                            className={`text-[10px] transition-colors ${
-                                                allStagedPlaced 
-                                                    ? 'text-gray-300 cursor-not-allowed pointer-events-none' 
-                                                    : 'text-gray-400 hover:text-red-400 cursor-pointer'
-                                            }`}
-                                        >
-                                            Clear all
-                                        </button>
-                                    </div>
-                                    <CoursesCarousel
-                                        courses={stagedCourses}
-                                        type="discovered"
-                                        onRemove={removeStagedCourse}
-                                        coursebookData={coursebookData}
-                                        gradesData={gradesData}
-                                        coursebookSemester={coursebookSemester}
-                                        availableSemesters={[]}
-                                        placedSuggestedCourses={placedSuggestedCourses}
-                                    />
-                                </div>
-                            )}
-
-
-                            <h2 className="text-xl font-bold text-gray-900 mb-4">
-                                Degree Requirements
-                            </h2>
-
-                            <div className="space-y-3 pb-24">
-                                {requirements.map((req, reqIdx) => {
-                                    const reqCompletion = semesters ? getCompletionForCategory(req, semesters) : { completed: req.progress, total: req.total, isCreditBased: true };
-                                    const reqCreditsBreakdown = reqCompletion.isCreditBased && semesters ? getCreditsBreakdownRecursive(req, semesters) : undefined;
-                                    return (
-                                        <RequirementCategory
-                                            key={reqIdx}
-                                            title={req.degree}
-                                            completed={reqCompletion.completed}
-                                            total={reqCompletion.total}
-                                            isExpanded={autoExpandedCategories[reqIdx]}
-                                            onToggle={() => {
-                                                setAutoExpandedCategories((prev) => ({
-                                                    ...prev,
-                                                    [reqIdx]: !prev[reqIdx],
-                                                }));
-                                            }}
-                                            hasSubcategories={req.categories && req.categories.length > 0}
-                                            isFirstCategory={reqIdx === 0}
-                                            creditsBreakdown={reqCreditsBreakdown}
-                                            footnote={(req as any).footnote}
-                                            rules={(req as any).rules}
-                                        >
-                                            {req.categories && req.categories.length > 0 ? (
-                                                renderCategories(req.categories, reqIdx)
-                                            ) : (
-                                                <div className="text-sm text-gray-500">
-                                                    No categories available
-                                                </div>
-                                            )}
-                                        </RequirementCategory>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    ) : (
-                        <div
-                            className="flex flex-col items-center gap-8 pt-8 h-full cursor-pointer hover:bg-[#F5F7F5]"
-                            onClick={handleToggleSidebar}
-                            role="button"
-                            tabIndex={0}
-                            aria-label="Expand sidebar"
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    handleToggleSidebar();
-                                }
-                            }}
+        <div data-tour="sidebar" className="h-full">
+            <SidebarTemplate
+                isCollapsed={!isExpanded}
+                onToggleCollapse={handleToggleSidebar}
+                primaryAction={primaryAction}
+                collapsedActions={collapsedActions}
+                className={`${isExpanded ? "w-80 rounded-lg" : "w-20 rounded-md"} h-full`}
+                contentClassName="p-6 pt-8"
+                renderExpandedContent={
+                    <div
+                        ref={drop}
+                        className={`${isOver ? 'bg-gray-100' : ''}`}
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
+                        <button
+                            onClick={onOpenDiscovery}
+                            className="w-full flex items-center gap-2.5 p-3 rounded-xl border border-dashed border-green-300 bg-green-50 hover:bg-green-100 transition-colors text-left mb-4 group"
                         >
-                            <button
-                                data-tour="sidebar-toggle"
-                                aria-label="Expand sidebar"
-                                className="p-2 hover:bg-gray-200 rounded"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (document.querySelector('.driver-active-element')) return;
-                                    handleToggleSidebar();
-                                }}
-                            >
-                                <ArrowRightToLine size={24} className="w-5 h-5 text-gray-500" />
-                            </button>
-                            <button
-                                data-tour="edit-plans"
-                                className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
-                                aria-label="Edit Degree Plans"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (document.querySelector('.driver-active-element')) return;
-                                    onRestartOnboarding?.();
-                                }}
-                            >
-                                <NotebookPen className="w-5 h-5" strokeWidth={2} />
-                            </button>
-
-                            <button
-                                data-tour="course-discovery"
-                                className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
-                                aria-label="Discover Courses"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (document.querySelector('.driver-active-element')) return;
-                                    onOpenDiscovery?.();
-                                }}
-                            >
-                                <Compass className="w-5 h-5" strokeWidth={2} />
-                            </button>
-
-                            <div className="flex flex-grow" />
-
-                            <div className="w-12 h-12 flex items-center justify-center -translate-y-4">
-                                <PanelLeftDashed size={24} className="stroke-[#bbbbbb] group-hover/sidebar:stroke-[#dddddd] transition-colors duration-150" />
+                            <div className="w-7 h-7 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0">
+                                <Compass className="w-4 h-4 text-white" />
                             </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-green-800">
+                                    {stagedCourses.length > 0 ? 'Shop more courses' : 'Discover Courses'}
+                                </div>
+                                <div className="text-xs text-green-600">Browse &amp; add to your plan</div>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-green-400 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+
+                        {stagedCourses.length > 0 && (
+                            <div className="mb-4">
+                                <div className="flex items-center justify-between px-1 mb-2">
+                                    <div className="text-[10px] font-semibold text-purple-500 uppercase tracking-wide flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+                                        Staged · {stagedCourses.length} course{stagedCourses.length !== 1 ? 's' : ''}
+                                    </div>
+                                    <button
+                                        onClick={() => !allStagedPlaced && usePlannerStore.getState().clearStagedCourses()}
+                                        className={`text-[10px] transition-colors ${
+                                            allStagedPlaced
+                                                ? 'text-gray-300 cursor-not-allowed pointer-events-none'
+                                                : 'text-gray-400 hover:text-red-400 cursor-pointer'
+                                        }`}
+                                    >
+                                        Clear all
+                                    </button>
+                                </div>
+                                <CoursesCarousel
+                                    courses={stagedCourses}
+                                    type="discovered"
+                                    onRemove={removeStagedCourse}
+                                    coursebookData={coursebookData}
+                                    gradesData={gradesData}
+                                    coursebookSemester={coursebookSemester}
+                                    availableSemesters={[]}
+                                    placedSuggestedCourses={placedSuggestedCourses}
+                                />
+                            </div>
+                        )}
+
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">Degree Requirements</h2>
+
+                        <div className="space-y-3 pb-24">
+                            {requirements.map((req, reqIdx) => {
+                                const reqCompletion = semesters ? getCompletionForCategory(req, semesters) : { completed: req.progress, total: req.total, isCreditBased: true };
+                                const reqCreditsBreakdown = reqCompletion.isCreditBased && semesters ? getCreditsBreakdownRecursive(req, semesters) : undefined;
+                                return (
+                                    <RequirementCategory
+                                        key={reqIdx}
+                                        title={req.degree}
+                                        completed={reqCompletion.completed}
+                                        total={reqCompletion.total}
+                                        isExpanded={autoExpandedCategories[reqIdx]}
+                                        onToggle={() => {
+                                            setAutoExpandedCategories((prev) => ({
+                                                ...prev,
+                                                [reqIdx]: !prev[reqIdx],
+                                            }));
+                                        }}
+                                        hasSubcategories={req.categories && req.categories.length > 0}
+                                        isFirstCategory={reqIdx === 0}
+                                        creditsBreakdown={reqCreditsBreakdown}
+                                        footnote={(req as any).footnote}
+                                        rules={(req as any).rules}
+                                    >
+                                        {req.categories && req.categories.length > 0 ? (
+                                            renderCategories(req.categories, reqIdx)
+                                        ) : (
+                                            <div className="text-sm text-gray-500">No categories available</div>
+                                        )}
+                                    </RequirementCategory>
+                                );
+                            })}
                         </div>
-                    )}
-                </div>
-            </div>
-        </>
+                    </div>
+                }
+            />
+        </div>
     );
 };
 

@@ -7,6 +7,11 @@ export { NavPrimaryLinks } from "./components/NavPrimaryLinks";
 export { UserProfileMenu } from "./components/UserProfileMenu";
 export { MobileNavbar } from "./components/MobileNavbar";
 export type { MobileNavbarProps } from "./components/MobileNavbar";
+export { SidebarTemplate } from "./components/SidebarTemplate";
+export type { SidebarTemplateProps, SidebarActionItem } from "./components/SidebarTemplate";
+export { SidebarPrimaryAction } from "./components/SidebarPrimaryAction";
+export { SidebarCollapseToggle } from "./components/SidebarCollapseToggle";
+export { SidebarCollapsedRail } from "./components/SidebarCollapsedRail";
 export {
 	Card,
 	CardHeader,

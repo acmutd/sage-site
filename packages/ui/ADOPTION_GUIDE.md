@@ -118,6 +118,23 @@ Props:
 - `sidebarClassName` (string, optional) - Custom sidebar classes
 - `overlayClassName` (string, optional) - Custom overlay classes
 
+### Sidebar Template
+Shared sidebar shell for desktop collapse rails and configurable action slots:
+
+```typescript
+import { SidebarTemplate } from "@sage/ui";
+```
+
+Recommended props:
+- `isCollapsed` - Controls the expanded vs collapsed layout
+- `onToggleCollapse` - Toggles the sidebar state
+- `primaryAction` - One primary action slot for the expanded header
+- `collapsedActions` - Configurable icon/label action list for the collapsed rail
+- `renderExpandedContent` - Main sidebar body for the expanded state
+- `renderCollapsedFooter` - Optional footer content for the collapsed rail
+
+Use this when multiple apps share the same sidebar affordances but supply different content, actions, or open/close behavior.
+
 ### Environment Banner
 Development environment indicator:
 
