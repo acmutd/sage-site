@@ -56,15 +56,9 @@ export function SidebarTemplate({
         className
       )}
     >
-      {isCollapsed ? (
-        <SidebarCollapsedRail
-          actions={collapsedActions}
-          onToggleCollapse={onToggleCollapse}
-          footer={renderCollapsedFooter}
-          className={collapsedRailClassName}
-        />
-      ) : (
-        <div className={cn("flex-1 overflow-y-auto", contentClassName)} style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+      {/* Keep expanded content mounted to avoid unmounting child state on collapse. */}
+      <div className={cn("flex-1 overflow-y-auto relative", contentClassName)} style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+        <div className={cn(isCollapsed ? "pointer-events-none opacity-0 h-0 overflow-hidden" : "")}> 
           <div className={cn("flex items-center justify-between mb-6")}>
             {primaryAction ? (
               <SidebarPrimaryAction
@@ -81,7 +75,18 @@ export function SidebarTemplate({
 
           {renderExpandedContent}
         </div>
-      )}
+
+        {isCollapsed && (
+          <div className="absolute left-0 top-0 h-full w-full flex items-start">
+            <SidebarCollapsedRail
+              actions={collapsedActions}
+              onToggleCollapse={onToggleCollapse}
+              footer={renderCollapsedFooter}
+              className={collapsedRailClassName}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

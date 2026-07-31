@@ -1,14 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
-  ArrowLeftToLineIcon,
-  ArrowRightToLineIcon,
   CornerRightUpIcon,
-  MessageCirclePlusIcon,
   GraduationCapIcon,
   CalendarSearchIcon,
-  SquareAsterisk,
-  PanelLeftDashed,
   Trash2,
   Pencil,
   Ellipsis,
@@ -20,6 +15,7 @@ import { chatEventEmitter } from "../utils/chatEventEmitter";
 import { useChatbot } from "@/hooks/useChatbot";
 import { Message, Conversation } from "@/types/chat";
 import { useChatbotTutorial } from "@/hooks/useChatbotTutorial";
+import ChatSidebarShell from "@/components/chatbot/ChatSidebarShell";
 
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
 
@@ -47,6 +43,7 @@ const ChatBot: React.FC = () => {
   const renameModalRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const chatHook = useChatbot();
   const {
     conversations,
     conversation_id,
@@ -58,7 +55,7 @@ const ChatBot: React.FC = () => {
     fetchConversation,
     setConversationId,
     initialLoad
-  } = useChatbot();
+  } = chatHook;
 
   const { startTutorial } = useChatbotTutorial({ user, hasSeenTutorial: hasSeenChatbotTutorial });
   
@@ -751,164 +748,13 @@ const ChatBot: React.FC = () => {
         </>
       ) : (
         <>
-          {/* Chat History Bar */}
-          <aside aria-label="Conversation history" data-tour="sidebar" className={`${sidebarCollapsed ? "w-[5.25rem]" : "w-[24rem]"} h-full flex flex-col gap-4 transition-all duration-100`}>
-            <div
-              className={`${sidebarCollapsed ? "rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]" : "rounded-lg px-6"
-                } transition-all duration-100 group/sidebar pt-8 pb-4 gap-8 overflow-hidden bg-bglight border border-border flex flex-col items-center w-full h-full`}
-              onClick={sidebarCollapsed ? toggleSidebar : undefined}
-            >
-              {/* Collapsed */}
-              {sidebarCollapsed && (
-                <div className="flex flex-col gap-8 h-full">
-                  <button
-                    className="transition-all p-2 rounded-sm text-textdark hover:bg-border w-12 h-12 flex items-center justify-center"
-                    onClick={(e) => { e.stopPropagation(); toggleSidebar(); }}
-                    aria-label="Expand sidebar"
-                  >
-                    <ArrowRightToLineIcon size={24} aria-hidden="true" />
-                  </button>
-
-                  <button
-                    className="transition-all p-2 rounded-sm text-textdark border border-border bg-bglight hover:bg-border w-12 h-12 flex items-center justify-center"
-                    onClick={(e) => { e.stopPropagation(); startNewChat(); }}
-                    aria-label="Start new chat"
-                  >
-                    <MessageCirclePlusIcon size={24} className="stroke-textdark" aria-hidden="true" />
-                  </button>
-
-                  <div className="flex flex-grow" />
-
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    <PanelLeftDashed aria-hidden="true" size={24} className="stroke-[#bbbbbb] group-hover/sidebar:stroke-[#dddddd] transition-colors duration-150" />
-                  </div>
-                </div>
-              )}
-
-              {/* Expanded */}
-              {!sidebarCollapsed && (
-                <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-visible gap-8 transition-all duration-150`}>
-                  <div className="flex gap-3 justify-between items-center">
-                    <button data-tour="new-chat-expanded"  aria-label="Start a new chat conversation" className="flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
-                      <MessageCirclePlusIcon size={24} aria-hidden="true" />
-                      <span>Start new chat</span>
-                    </button>
-                    <button data-tour="sidebar-collapse" className="group p-2 text-black hover:text-gray-700 min-w-10 min-h-10 flex items-center justify-center" onClick={toggleSidebar} aria-label="Collapse sidebar">
-                      <ArrowLeftToLineIcon aria-hidden="true" className="stroke-textdark group-hover:stroke-textsecondary transition-colors duration-150" size={20} />
-                    </button>
-                  </div>
-
-                  {loading && <p className="text-textsecondary">Loading conversations...</p>}
-                  {error && <p className="text-destructive">{error}</p>}
-
-                  <ul aria-label="Past conversations" className="flex flex-col gap-2 overflow-y-scroll w-full" ref={conversationListRef} style={{ scrollbarWidth: "none" }} onScroll={updateScrollPosition}>
-                    {Array.isArray(conversations) && conversations.length > 0 ? (
-                      conversations.map((conv, index) => {
-                        const displayName = conv.title || conv.messages?.[0]?.content || "No messages";
-                        return (
-                          <li key={conv.conversation_id} ref={(el) => (contextButtonRefs.current[index] = el)} className={`group/conversation flex flex-row items-center w-full rounded-sm transition-colors overflow-visible ${conversation_id === conv.conversation_id ? "bg-secondary" : "hover:bg-secondary"
-                            }`}>
-                            <button
-                              className={`group/conversation flex flex-row gap-2 justify-between items-center w-full p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors overflow-visible text-left bg-transparent border-none outline-none ${conversation_id === conv.conversation_id ? "bg-secondary" : "bg-bglight"
-                                }`}
-                              onClick={() => loadConversation(conv.conversation_id, conv.messages)}
-                              aria-current={conversation_id === conv.conversation_id ? "true" : undefined}
-                            >
-                              <div className="relative flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
-                                <div className="opacity-0 group-hover/conversation:opacity-100 absolute left-[calc(100%-2rem)] w-[2rem] h-full bg-gradient-to-r from-secondary/0 to-secondary transition-all duration-150" />
-                                <small className="truncate" data-clarity-mask="True">{displayName}</small>
-                              </div>
-                            </button>
-
-                            <div className="relative flex h-full">
-                              <button
-                                ref={ellipsisButtonRef}
-                                aria-label={`More options for ${displayName}`}
-                                aria-expanded={moreOptionsOpenId === conv.conversation_id}
-                                aria-haspopup="menu"
-                                className="group/menu px-2 h-full group-hover/conversation:opacity-100 opacity-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setMoreOptionsOpenId((prev) => (prev === conv.conversation_id ? null : conv.conversation_id));
-                                }}
-                              >
-                                <Ellipsis aria-hidden="true" className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary" />
-                              </button>
-
-                              {moreOptionsOpenId === conv.conversation_id && showContextMenu && (
-                                <div
-                                  ref={contextMenuRef}
-                                  role="menu"
-                                  aria-label={`Options for ${displayName}`}
-                                  onKeyDown={handleContextMenuKeyDown}
-                                  className="fixed translate-x-[160%] translate-y-[40%] z-[9999] w-50 bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden transition-opacity duration-150"
-                                  style={{ top: contextMenuPosition.top, left: contextMenuPosition.left }}
-                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                                  onMouseEnter={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                                >
-                                  <ul className="py-1" role="presentation">
-                                    <li role="presentation">
-                                      <button
-                                        role="menuitem"
-                                        onClick={() => {
-                                          setConversationToRename(conv.conversation_id);
-                                          setNewName(conv.title || conv.messages?.[0]?.content || "");
-                                          setShowRenameModal(true);
-                                          setMoreOptionsOpenId(null);
-                                        }}
-                                        className="flex items-center justify-between gap-2 w-full px-4 py-2 text-left text-textdark hover:bg-gray-100"
-                                      >
-                                        Rename conversation
-                                        <Pencil aria-hidden="true" size={16} className="stroke-textdark" />
-                                      </button>
-                                    </li>
-                                    <li role="presentation">
-                                      <button
-                                        role="menuitem"
-                                        onClick={() => {
-                                          setConversationToDelete(conv.conversation_id);
-                                          setShowDeleteModal(true);
-                                          setMoreOptionsOpenId(null);
-                                        }}
-                                        className="flex items-center justify-between gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
-                                      >
-                                        Delete conversation
-                                        <Trash2 size={16} className="stroke-destructive" aria-hidden="true" />
-                                      </button>
-                                    </li>
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          </li>
-                        );
-                      })
-                    ) : (
-                      <li className="p-2">
-                        <small className="text-textsecondary">No conversations available</small>
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Beta Disclaimer */}
-            <div className={`${sidebarCollapsed ? "cursor-pointer rounded-md" : "rounded-full"} bg-textdark w-full py-3 px-6 flex gap-2 justify-center items-center`} onClick={!sidebarCollapsed ? undefined : toggleSidebar}>
-              <SquareAsterisk size={32} className="stroke-accent" aria-hidden="true" />
-              <small className={`${sidebarCollapsedDelayed ? "hidden" : "block"} text-textlight text-xs`}>
-                This app is in development. For issues or feedback,
-                <a
-                  href="https://docs.google.com/forms/d/1RX5YAecyJPVdbU_czip_rPm9d3w1LCLwwQVg06hG-dQ/edit"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent underline ml-1"
-                >
-                  click here.
-                </a>
-              </small>
-            </div>
-          </aside>
+          <ChatSidebarShell
+            isCollapsed={sidebarCollapsed}
+            sidebarCollapsedDelayed={sidebarCollapsedDelayed}
+            onToggleCollapse={toggleSidebar}
+            onStartNewChat={startNewChat}
+            chatHook={chatHook}
+          />
 
           {/* Main chat area */}
           <div className="flex justify-center h-full w-full">

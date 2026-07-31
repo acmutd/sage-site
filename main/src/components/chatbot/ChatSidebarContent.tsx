@@ -6,11 +6,14 @@ import { chatEventEmitter } from "@/utils/chatEventEmitter";
 import type { Conversation } from "@/types/chat";
 
 interface ChatSidebarContentProps {
-  onClose: () => void;
+  onClose?: () => void;
+  layout?: "mobile" | "template";
+  chatHook?: any;
 }
 
-const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
+const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose, layout = "mobile", chatHook }) => {
   const { user } = useAuth();
+  const chat = chatHook ?? useChatbot();
   const {
     conversations,
     conversation_id,
@@ -21,7 +24,7 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
     renameConversation,
     setConversationId,
     initialLoad
-  } = useChatbot();
+  } = chat;
 
   // Modal states
   const [showRenameModal, setShowRenameModal] = useState(false);
@@ -33,7 +36,8 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    initialLoad();
+    // Only run initialLoad when this component owns its hook instance.
+    if (!chatHook) initialLoad();
   }, []);
   
   useEffect(() => {
@@ -142,59 +146,37 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
 
   const { todayChats, pastChats } = groupConversationsByDate(conversations);
 
-  return (
+  const content = (
+    <div className="space-y-4">
+      {loading && <p className="text-textsecondary text-sm">Loading conversations...</p>}
+      {error && <p className="text-destructive text-sm">{error}</p>}
+
+      {Array.isArray(conversations) && conversations.length > 0 ? (
+        <div className="space-y-4">
+          {todayChats.length > 0 && (
+            <div>
+              <h3 className="text-[22px] mb-4">Today</h3>
+              <ul className="flex flex-col gap-2">{todayChats.map(renderConversationItem)}</ul>
+            </div>
+          )}
+
+          {pastChats.length > 0 && (
+            <div>
+              <h3 className="text-[22px] mb-4">Past Chats</h3>
+              <ul className="flex flex-col gap-2">{pastChats.map(renderConversationItem)}</ul>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <small className="text-textsecondary">No conversations yet</small>
+        </div>
+      )}
+    </div>
+  );
+
+  const modals = (
     <>
-      <div className="p-4 space-y-4 overflow-y-auto h-[calc(100%-3.25rem)]" style={{ scrollbarWidth: "none" }}>
-        <button
-          className="w-full flex transition-all duration-100 items-center justify-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700"
-          onClick={(e) => {
-            e.stopPropagation();
-            const newConversationId = `conversation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            const currentTime = Date.now();
-            const newConversation: Conversation = {
-              conversation_id: newConversationId,
-              user_id: user?.uid || "test-user-123",
-              messages: [{ role: "user", content: "New Chat", timestamp: currentTime }],
-              title: "New Chat",
-            };
-
-            setConversations((prev) => [newConversation, ...prev]);
-            setConversationId(newConversationId);
-            chatEventEmitter.emit("startNewChat");
-            onClose();
-          }}
-        >
-          <MessageCirclePlusIcon size={24} />
-          <span>Start new chat</span>
-        </button>
-
-        {loading && <p className="text-textsecondary text-sm">Loading conversations...</p>}
-        {error && <p className="text-destructive text-sm">{error}</p>}
-
-        {Array.isArray(conversations) && conversations.length > 0 ? (
-          <div className="space-y-4">
-            {todayChats.length > 0 && (
-              <div>
-                <h3 className="text-[22px] mb-4">Today</h3>
-                <ul className="flex flex-col gap-2">{todayChats.map(renderConversationItem)}</ul>
-              </div>
-            )}
-
-            {pastChats.length > 0 && (
-              <div>
-                <h3 className="text-[22px] mb-4">Past Chats</h3>
-                <ul className="flex flex-col gap-2">{pastChats.map(renderConversationItem)}</ul>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div>
-            <small className="text-textsecondary">No conversations yet</small>
-          </div>
-        )}
-      </div>
-
-      {/* Rename Modal */}
       {showRenameModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowRenameModal(false)}>
           <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
@@ -244,7 +226,6 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
         </div>
       )}
 
-      {/* Delete Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowDeleteModal(false)}>
           <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
@@ -267,11 +248,8 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
                   setDeleting(true);
                   try {
                     await deleteConversation(conversationToDelete);
-
-                    // Always reset to new chat
                     setConversationId(null);
                     chatEventEmitter.emit('startNewChat');
-
                     setShowDeleteModal(false);
                     setConversationToDelete(null);
                   } catch (err) {
@@ -287,6 +265,48 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
             </div>
           </div>
         </div>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      {layout === "template" ? (
+        <>
+          {content}
+          {modals}
+        </>
+      ) : (
+        <>
+          <div className="p-4 space-y-4 overflow-y-auto h-[calc(100%-3.25rem)]" style={{ scrollbarWidth: "none" }}>
+            <button
+              className="w-full flex transition-all duration-100 items-center justify-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700"
+              onClick={(e) => {
+                e.stopPropagation();
+                const newConversationId = `conversation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                const currentTime = Date.now();
+                const newConversation: Conversation = {
+                  conversation_id: newConversationId,
+                  user_id: user?.uid || "test-user-123",
+                  messages: [{ role: "user", content: "New Chat", timestamp: currentTime }],
+                  title: "New Chat",
+                };
+
+                setConversations((prev) => [newConversation, ...prev]);
+                setConversationId(newConversationId);
+                chatEventEmitter.emit("startNewChat");
+                onClose?.();
+              }}
+            >
+              <MessageCirclePlusIcon size={24} />
+              <span>Start new chat</span>
+            </button>
+
+            {content}
+          </div>
+
+          {modals}
+        </>
       )}
     </>
   );

@@ -16,7 +16,8 @@ const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
 
 const ChatBotNavbar = () => {
   const { user, logout, profilePicture } = useAuth();
-  const { initialLoad } = useChatbot();
+  const chatHook = useChatbot();
+  const { initialLoad } = chatHook;
   const { isInWebapp } = useRouteMode();
   useEffect(() => {
     initialLoad();
@@ -50,7 +51,7 @@ const ChatBotNavbar = () => {
         logout={logout}
         profilePicture={profilePicture}
         sidebarIcon={<MessagesSquare className={isDarkMode ? "stroke-textlight" : "stroke-textdark"} />}
-        sidebarContent={(onClose) => <ChatSidebarContent onClose={onClose} />}
+        sidebarContent={(onClose) => <ChatSidebarContent onClose={onClose} chatHook={chatHook} />}
       />
     </>
   );
