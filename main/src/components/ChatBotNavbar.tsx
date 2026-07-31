@@ -7,10 +7,11 @@ import {
   NavBrand,
   NavPrimaryLinks,
   UserProfileMenu,
-  useRouteMode,
 } from "@sage/ui";
 import { useChatbot } from "../hooks/useChatbot";
 import ChatSidebarContent from '@/components/chatbot/ChatSidebarContent';
+import { useRouteMode } from "../hooks/useRouteMode";
+import { PRIMARY_NAV_LINKS, MOBILE_NAV_LINKS } from "../lib/navLinks";
 
 const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
 
@@ -19,6 +20,7 @@ const ChatBotNavbar = () => {
   const chatHook = useChatbot();
   const { initialLoad } = chatHook;
   const { isInWebapp } = useRouteMode();
+
   useEffect(() => {
     initialLoad();
   }, []);
@@ -30,14 +32,14 @@ const ChatBotNavbar = () => {
       <DevEnvironmentBanner isDevelopment={ENVIRONMENT === 'development'} />
 
       <nav className={`
-        ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
+        ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined}
         py-2.5 px-6 fixed w-full z-10 hidden md:block
         ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
       `}>
         <div className="flex items-center justify-between w-full">
           <NavBrand isDarkMode={isDarkMode} />
           <ul className="flex items-center space-x-6 mr-0">
-            <NavPrimaryLinks isDarkMode={isDarkMode} />
+            <NavPrimaryLinks isDarkMode={isDarkMode} links={PRIMARY_NAV_LINKS} />
             <UserProfileMenu user={user} logout={logout} profilePicture={profilePicture} />
           </ul>
         </div>
@@ -49,9 +51,9 @@ const ChatBotNavbar = () => {
         isDevelopment={ENVIRONMENT === 'development'}
         user={user}
         logout={logout}
-        profilePicture={profilePicture}
         sidebarIcon={<MessagesSquare className={isDarkMode ? "stroke-textlight" : "stroke-textdark"} />}
         sidebarContent={(onClose) => <ChatSidebarContent onClose={onClose} chatHook={chatHook} />}
+        navLinks={MOBILE_NAV_LINKS}
       />
     </>
   );

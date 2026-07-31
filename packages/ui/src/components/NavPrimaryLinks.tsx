@@ -1,8 +1,15 @@
 import { Link } from "react-router-dom";
-import { MessageCirclePlus, Route } from "lucide-react";
+import type { ComponentType } from "react";
+
+export interface NavLinkItem {
+  to: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+}
 
 interface NavPrimaryLinksProps {
   isDarkMode: boolean;
+  links: NavLinkItem[];
   itemClassName?: string;
   linkClassName?: string;
   iconClassName?: string;
@@ -10,6 +17,7 @@ interface NavPrimaryLinksProps {
 
 export function NavPrimaryLinks({
   isDarkMode,
+  links,
   itemClassName = "",
   linkClassName,
   iconClassName = "stroke-accent",
@@ -20,18 +28,17 @@ export function NavPrimaryLinks({
 
   return (
     <>
-      <li className={itemClassName}>
-        <Link to="/planner" className={resolvedLinkClassName}>
-          <Route className={iconClassName} />
-          Plan your degree
-        </Link>
-      </li>
-      <li className={itemClassName}>
-        <Link to="/chatbot" className={resolvedLinkClassName}>
-          <MessageCirclePlus className={iconClassName} />
-          Start a chat
-        </Link>
-      </li>
+      {links.map((link) => {
+        const Icon = link.icon;
+        return (
+          <li key={link.to} className={itemClassName}>
+            <Link to={link.to} className={resolvedLinkClassName}>
+              <Icon className={iconClassName} />
+              {link.label}
+            </Link>
+          </li>
+        );
+      })}
     </>
   );
 }

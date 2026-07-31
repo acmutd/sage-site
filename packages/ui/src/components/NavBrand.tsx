@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 
 interface NavBrandProps {
   isDarkMode: boolean;
+  homeHref?: string;
   className?: string;
   imgClassName?: string;
   logoDarkSrc?: string;
@@ -11,6 +12,7 @@ interface NavBrandProps {
 
 export function NavBrand({
   isDarkMode,
+  homeHref = "/",
   className = "ml-0",
   imgClassName = "h-8 w-auto",
   logoDarkSrc = "/Sage_Logo_Dark.svg",
@@ -18,7 +20,7 @@ export function NavBrand({
   alt = "SAGE",
 }: NavBrandProps) {
   return (
-    <Link to="/" className={className}>
+    <Link to={homeHref} className={className}>
       <img
         src={isDarkMode ? logoLightSrc : logoDarkSrc}
         alt={alt}

@@ -1,7 +1,9 @@
 import { useAuth } from "../context/AuthContext";
 import { ListTodoIcon } from "lucide-react";
-import { useRouteMode, DevEnvironmentBanner, MobileNavbar, NavBrand, NavPrimaryLinks, UserProfileMenu } from "@sage/ui";
+import { DevEnvironmentBanner, MobileNavbar, NavBrand, NavPrimaryLinks, UserProfileMenu } from "@sage/ui";
 import PlannerSidebarContent from "@/components/planner/PlannerSidebarContent";
+import { useRouteMode } from "../hooks/useRouteMode";
+import { PRIMARY_NAV_LINKS, MOBILE_NAV_LINKS } from "../lib/navLinks";
 
 const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
 
@@ -26,10 +28,10 @@ interface PlannerNavbarProps {
   coursebookData?: Record<string, any[]>;
   gradesData?: Record<string, any>;
   onOpenDiscovery?: () => void;
-  coursebookSemester?: string | null
+  coursebookSemester?: string | null;
 }
 
-const PlannerNavbar: React.FC<PlannerNavbarProps> = ({ 
+const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
   requirements,
   expandedCategories,
   onToggleCategory,
@@ -56,7 +58,7 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
       <DevEnvironmentBanner isDevelopment={ENVIRONMENT === 'development'} />
 
       <nav className={`
-        ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined} 
+        ${isInWebapp ? "bg-bglight border-b-[1px] shadow-sm" : undefined}
         py-2.5 px-6 fixed w-full z-10 hidden md:block
         ${ENVIRONMENT === 'development' ? 'top-4' : 'top-0'}
       `}>
@@ -64,9 +66,9 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
           <div className="flex items-center gap-4">
             <NavBrand isDarkMode={isDarkMode} className="ml-0 flex-shrink-0" />
           </div>
-          
+
           <ul className="flex items-center space-x-6 mr-0">
-            <NavPrimaryLinks isDarkMode={isDarkMode} />
+            <NavPrimaryLinks isDarkMode={isDarkMode} links={PRIMARY_NAV_LINKS} />
             <UserProfileMenu user={user} logout={logout} profilePicture={profilePicture} />
           </ul>
         </div>
@@ -78,7 +80,6 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
         isDevelopment={ENVIRONMENT === 'development'}
         user={user}
         logout={logout}
-        profilePicture={profilePicture}
         sidebarIcon={<ListTodoIcon className={isDarkMode ? "stroke-textlight" : "stroke-textdark"} />}
         sidebarContent={(onClose) => (
           <PlannerSidebarContent
@@ -101,6 +102,7 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
             coursebookSemester={coursebookSemester}
           />
         )}
+        navLinks={MOBILE_NAV_LINKS}
       />
     </>
   );

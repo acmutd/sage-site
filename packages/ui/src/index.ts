@@ -1,9 +1,9 @@
 export { cn } from "./lib/utils";
-export { useRouteMode } from "./hooks/useRouteMode";
 export { Button, buttonVariants } from "./components/button";
 export { DevEnvironmentBanner } from "./components/DevEnvironmentBanner";
 export { NavBrand } from "./components/NavBrand";
 export { NavPrimaryLinks } from "./components/NavPrimaryLinks";
+export type { NavLinkItem } from "./components/NavPrimaryLinks";
 export { UserProfileMenu } from "./components/UserProfileMenu";
 export { MobileNavbar } from "./components/MobileNavbar";
 export type { MobileNavbarProps } from "./components/MobileNavbar";

@@ -1,4 +1,4 @@
-import { Route, Menu, MessageCirclePlus, UserRound, ArrowLeftFromLine } from "lucide-react";
+import { Menu, ArrowLeftFromLine } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu";
 import { NavBrand } from "./NavBrand";
+import type { NavLinkItem } from "./NavPrimaryLinks";
 
 export interface MobileNavbarProps {
   isInWebapp: boolean;
@@ -16,10 +17,11 @@ export interface MobileNavbarProps {
   isDevelopment?: boolean;
   user: unknown;
   logout: () => void;
-  profilePicture?: string | null;
   sidebarContent?: (onClose: () => void) => ReactNode;
   showSidebar?: boolean;
   sidebarIcon?: ReactNode;
+  navLinks: NavLinkItem[];
+  homeHref?: string;
 }
 
 export function MobileNavbar({
@@ -28,10 +30,11 @@ export function MobileNavbar({
   isDevelopment = false,
   user,
   logout,
-  profilePicture,
   sidebarContent,
   showSidebar = true,
   sidebarIcon,
+  navLinks,
+  homeHref = "/",
 }: MobileNavbarProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -80,24 +83,17 @@ export function MobileNavbar({
               <Menu className={isDarkMode ? "stroke-textlight" : "stroke-textdark"} />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-bglight flex flex-col p-2 gap-2 mr-6 items-center rounded-sm">
-              <DropdownMenuItem className="focus:bg-innercontainer w-full">
-                <Link to="/planner" className="text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2">
-                  <Route className="stroke-accent" />
-                  Plan your degree
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="focus:bg-innercontainer w-full">
-                <Link to="/chatbot" className="text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2">
-                  <MessageCirclePlus className="stroke-accent" />
-                  Start a chat
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="focus:bg-innercontainer w-full">
-                <Link to="/profile" className="text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2">
-                  <UserRound className="stroke-accent" />
-                  Your Profile
-                </Link>
-              </DropdownMenuItem>
+              {navLinks.map((link) => {
+                const Icon = link.icon;
+                return (
+                  <DropdownMenuItem key={link.to} className="focus:bg-innercontainer w-full">
+                    <Link to={link.to} className="text-textdark hover:text-gray-700 flex flex-row w-full justify-start items-center gap-2">
+                      <Icon className="stroke-accent" />
+                      {link.label}
+                    </Link>
+                  </DropdownMenuItem>
+                );
+              })}
               <DropdownMenuItem className="focus:bg-innercontainer w-full">
                 {user ? (
                   <button onClick={logout} className="bg-destructive w-full text-textlight text-base px-6 py-1.5 rounded-full font-semibold hover:bg-red-700 transition duration-300">
@@ -137,6 +133,7 @@ export function MobileNavbar({
           <div className="flex items-center justify-between px-4 py-3">
             <NavBrand
               isDarkMode={isDarkMode}
+              homeHref={homeHref}
               className="ml-0"
               imgClassName="h-8 w-auto"
             />
