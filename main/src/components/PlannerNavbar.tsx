@@ -1,7 +1,7 @@
 import { useAuth } from "../context/AuthContext";
 import { ListTodoIcon } from "lucide-react";
 import { DevEnvironmentBanner, MobileNavbar, NavBrand, NavPrimaryLinks, UserProfileMenu } from "@sage/ui";
-import PlannerSidebarContent from "@/components/planner/PlannerSidebarContent";
+import PlannerSidebarMobile from "@/components/planner/PlannerSidebarMobile";
 import { useRouteMode } from "../hooks/useRouteMode";
 import { PRIMARY_NAV_LINKS, MOBILE_NAV_LINKS } from "../lib/navLinks";
 
@@ -82,7 +82,7 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
         logout={logout}
         sidebarIcon={<ListTodoIcon className={isDarkMode ? "stroke-textlight" : "stroke-textdark"} />}
         sidebarContent={(onClose) => (
-          <PlannerSidebarContent
+          <PlannerSidebarMobile
             onClose={onClose}
             requirements={requirements}
             expandedCategories={expandedCategories}

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import Sidebar from "@/components/planner/Sidebar";
+import PlannerSidebarDesktop from "@/components/planner/PlannerSidebarDesktop";
 import SemesterBox from "@/components/planner/SemesterBox";
 import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2, RefreshCw, ChevronDown, Settings, Pencil, Plus, Copy, Trash2, Download } from "lucide-react";
 import PlannerNavbar from "./PlannerNavbar";
@@ -1002,7 +1002,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     </button>
                 </div>
                 <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex-col gap-4 hidden md:flex">
-                    <Sidebar
+                    <PlannerSidebarDesktop
                         requirements={adaptedRequirements}
                         expandedCategories={expandedCategories}
                         onToggleCategory={toggleCategory}
