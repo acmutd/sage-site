@@ -4,6 +4,7 @@ import PlannerSidebarDesktop from "@/components/planner/PlannerSidebarDesktop";
 import SemesterBox from "@/components/planner/SemesterBox";
 import { HelpCircle, PlusCircle, SquareAsterisk, Save, Check, Loader2, RefreshCw, ChevronDown, Settings, Pencil, Plus, Copy, Trash2, Download } from "lucide-react";
 import PlannerNavbar from "./PlannerNavbar";
+import PlannerSidebarMobile from "@/components/planner/PlannerSidebarMobile";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -927,24 +928,29 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         <>
             <Toaster position="top-center" richColors closeButton />
             <PlannerNavbar
-                requirements={adaptedRequirements}
-                expandedCategories={expandedCategories}
-                onToggleCategory={toggleCategory}
-                transcriptData={transcriptData}
-                onDropCourse={(courseId, sourceYear, sourceSemesterIndex) =>
-                    handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
-                }
-                placedSuggestedCourses={placedSuggestedCourses}
-                allCompletedCourseCodes={allCompletedCourseCodes}
-                allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
-                onRestartOnboarding={onRestartOnboarding}
-                availableSemesters={availableSemesters}
-                onAddCourse={handleDropCourse}
-                semesters={allSemesters}
-                coursebookData={coursebookData}
-                gradesData={gradesData}
-                onOpenDiscovery={() => setShowDiscovery(true)}
-                coursebookSemester={coursebookSemester}
+                sidebarContent={(onClose) => (
+                    <PlannerSidebarMobile
+                        onClose={onClose}
+                        requirements={adaptedRequirements}
+                        expandedCategories={expandedCategories}
+                        onToggleCategory={toggleCategory}
+                        transcriptData={transcriptData}
+                        onDropCourse={(courseId, sourceYear, sourceSemesterIndex) =>
+                            handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
+                        }
+                        placedSuggestedCourses={placedSuggestedCourses}
+                        allCompletedCourseCodes={allCompletedCourseCodes}
+                        allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
+                        onRestartOnboarding={onRestartOnboarding}
+                        availableSemesters={availableSemesters}
+                        onAddCourse={handleDropCourse}
+                        semesters={allSemesters}
+                        coursebookData={coursebookData}
+                        gradesData={gradesData}
+                        onOpenDiscovery={() => setShowDiscovery(true)}
+                        coursebookSemester={coursebookSemester}
+                    />
+                )}
             />
             <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] mt-[4rem] bg-gray-50 overflow-hidden p-6">
                 {/* Action buttons */}

@@ -77,12 +77,12 @@ export function SidebarTemplate({
         </div>
 
         {isCollapsed && (
-          <div className="absolute left-0 top-0 h-full w-full flex items-start">
+          <div className="absolute left-0 top-0 h-full w-full">
             <SidebarCollapsedRail
               actions={collapsedActions}
               onToggleCollapse={onToggleCollapse}
               footer={renderCollapsedFooter}
-              className={collapsedRailClassName}
+              className={cn("w-full", collapsedRailClassName)}
             />
           </div>
         )}

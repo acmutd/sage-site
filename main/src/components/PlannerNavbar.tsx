@@ -1,54 +1,17 @@
+import type { ReactNode } from "react";
 import { useAuth } from "../context/AuthContext";
 import { ListTodoIcon } from "lucide-react";
 import { DevEnvironmentBanner, MobileNavbar, NavBrand, NavPrimaryLinks, UserProfileMenu } from "@sage/ui";
-import PlannerSidebarMobile from "@/components/planner/PlannerSidebarMobile";
 import { useRouteMode } from "../hooks/useRouteMode";
 import { PRIMARY_NAV_LINKS, MOBILE_NAV_LINKS } from "../lib/navLinks";
 
 const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
 
 interface PlannerNavbarProps {
-  requirements: any[];
-  expandedCategories: Record<number, boolean>;
-  onToggleCategory: (index: number) => void;
-  transcriptData: any;
-  onDropCourse?: (courseId: string, sourceYear: string, sourceSemesterIndex: number) => void;
-  placedSuggestedCourses?: Set<string>;
-  allCompletedCourseCodes?: string[];
-  allPlannedCoursesWithOrder?: Array<{
-    code: string;
-    yearKey: string;
-    semesterIndex: number;
-    semesterOrder: number;
-  }>;
-  availableSemesters?: Array<{yearKey: string, semesterIndex: number, title: string}>;
-  onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
-  onRestartOnboarding?: () => void;
-  semesters?: import("@/utils/plannerCredits").SemestersForCredits;
-  coursebookData?: Record<string, any[]>;
-  gradesData?: Record<string, any>;
-  onOpenDiscovery?: () => void;
-  coursebookSemester?: string | null;
+  sidebarContent: (onClose: () => void) => ReactNode;
 }
 
-const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
-  requirements,
-  expandedCategories,
-  onToggleCategory,
-  transcriptData,
-  onDropCourse,
-  placedSuggestedCourses,
-  allCompletedCourseCodes = [],
-  allPlannedCoursesWithOrder = [],
-  onRestartOnboarding,
-  availableSemesters,
-  onAddCourse,
-  semesters,
-  coursebookData,
-  gradesData,
-  onOpenDiscovery,
-  coursebookSemester,
-}) => {
+const PlannerNavbar: React.FC<PlannerNavbarProps> = ({ sidebarContent }) => {
   const { user, logout, profilePicture } = useAuth();
   const { isInWebapp } = useRouteMode();
   const isDarkMode = !isInWebapp;
@@ -81,27 +44,7 @@ const PlannerNavbar: React.FC<PlannerNavbarProps> = ({
         user={user}
         logout={logout}
         sidebarIcon={<ListTodoIcon className={isDarkMode ? "stroke-textlight" : "stroke-textdark"} />}
-        sidebarContent={(onClose) => (
-          <PlannerSidebarMobile
-            onClose={onClose}
-            requirements={requirements}
-            expandedCategories={expandedCategories}
-            onToggleCategory={onToggleCategory}
-            transcriptData={transcriptData}
-            onDropCourse={onDropCourse}
-            placedSuggestedCourses={placedSuggestedCourses}
-            allCompletedCourseCodes={allCompletedCourseCodes}
-            allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
-            onRestartOnboarding={onRestartOnboarding}
-            onAddCourse={onAddCourse}
-            availableSemesters={availableSemesters}
-            semesters={semesters}
-            coursebookData={coursebookData}
-            gradesData={gradesData}
-            onOpenDiscovery={onOpenDiscovery}
-            coursebookSemester={coursebookSemester}
-          />
-        )}
+        sidebarContent={sidebarContent}
         navLinks={MOBILE_NAV_LINKS}
       />
     </>
