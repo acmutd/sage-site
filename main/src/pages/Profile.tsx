@@ -5,7 +5,6 @@ import DegreeProgressCard from "@/components/profile/degreeprogresscard";
 import { useAuth } from "../context/AuthContext";
 import SectionSwitcher, { ProfileSection } from "@/components/profile/sectionswitcher";
 import ChatConversationCard from "@/components/profile/chatconversationcard"
-import { chatEventEmitter } from "../utils/chatEventEmitter";
 import { Conversation } from "@/types/chat"
 import { useProfileStore } from "@/stores/profileStore";
 import { z } from "zod";
@@ -557,7 +556,6 @@ const Profile = () => {
   }
 
   const handleOpenConversation = (conv: Conversation) => {
-    chatEventEmitter.emit("loadConversation", { conversationId: conv.conversation_id, messages: conv.messages, userId: user?.uid });
     localStorage.setItem("chatbot_conversation", JSON.stringify({ messages: conv.messages, conversation_id: conv.conversation_id, timestamp: Date.now(), cacheUserId: user?.uid ?? null }));
     navigate("/chatbot");
   };

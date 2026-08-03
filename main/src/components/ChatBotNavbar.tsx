@@ -1,6 +1,5 @@
 import { useAuth } from "../context/AuthContext";
 import { MessagesSquare } from "lucide-react";
-import { useEffect } from "react";
 import {
   DevEnvironmentBanner,
   MobileNavbar,
@@ -8,7 +7,6 @@ import {
   NavPrimaryLinks,
   UserProfileMenu,
 } from "@sage/ui";
-import { useChatbot } from "../hooks/useChatbot";
 import ChatSidebarContent from '@/components/chatbot/ChatSidebarContent';
 import { useRouteMode } from "../hooks/useRouteMode";
 import { PRIMARY_NAV_LINKS, MOBILE_NAV_LINKS } from "../lib/navLinks";
@@ -17,14 +15,7 @@ const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
 
 const ChatBotNavbar = () => {
   const { user, logout, profilePicture } = useAuth();
-  const chatHook = useChatbot();
-  const { initialLoad } = chatHook;
   const { isInWebapp } = useRouteMode();
-
-  useEffect(() => {
-    initialLoad();
-  }, []);
-
   const isDarkMode = !isInWebapp;
 
   return (
@@ -52,7 +43,7 @@ const ChatBotNavbar = () => {
         user={user}
         logout={logout}
         sidebarIcon={<MessagesSquare className={isDarkMode ? "stroke-textlight" : "stroke-textdark"} />}
-        sidebarContent={(onClose) => <ChatSidebarContent onClose={onClose} chatHook={chatHook} />}
+        sidebarContent={(onClose) => <ChatSidebarContent onClose={onClose} />}
         navLinks={MOBILE_NAV_LINKS}
       />
     </>

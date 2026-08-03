@@ -8,7 +8,6 @@ interface ChatSidebarShellProps {
   sidebarCollapsedDelayed: boolean;
   onToggleCollapse: () => void;
   onStartNewChat: () => void;
-  chatHook?: any;
 }
 
 const ChatSidebarShell: FC<ChatSidebarShellProps> = ({
@@ -16,7 +15,6 @@ const ChatSidebarShell: FC<ChatSidebarShellProps> = ({
   sidebarCollapsedDelayed,
   onToggleCollapse,
   onStartNewChat,
-  chatHook,
 }) => {
   return (
     <aside aria-label="Conversation history" data-tour="sidebar" className="h-full flex flex-col gap-4 transition-all duration-100">
@@ -37,7 +35,7 @@ const ChatSidebarShell: FC<ChatSidebarShellProps> = ({
             dataTour: "new-chat-collapsed",
           },
         ]}
-        renderExpandedContent={<ChatSidebarContent layout="template" chatHook={chatHook} />}
+        renderExpandedContent={<ChatSidebarContent layout="template" />}
         className="h-full"
         contentClassName="p-6 pt-8"
         expandedWidthClassName="w-[24rem]"

@@ -1,32 +1,27 @@
 import { MessageCirclePlusIcon, Pencil, Trash2Icon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useChatbot } from "@/hooks/useChatbot"
+import { useState } from "react";
+import { useChatbotStore } from "@/stores/chatbotStore";
 import { useAuth } from "@/context/AuthContext";
-import { chatEventEmitter } from "@/utils/chatEventEmitter";
 import type { Conversation } from "@/types/chat";
 
 interface ChatSidebarContentProps {
   onClose?: () => void;
   layout?: "mobile" | "template";
-  chatHook?: any;
 }
 
-const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose, layout = "mobile", chatHook }) => {
+const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose, layout = "mobile" }) => {
   const { user } = useAuth();
-  const chat = chatHook ?? useChatbot();
   const {
     conversations,
-    conversation_id,
+    activeConversationId,
     error,
     loading,
-    setConversations,
+    setActiveConversationId,
+    startNewChat,
     deleteConversation,
     renameConversation,
-    setConversationId,
-    initialLoad
-  } = chat;
+  } = useChatbotStore();
 
-  // Modal states
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [newName, setNewName] = useState("");
   const [renaming, setRenaming] = useState(false);
@@ -34,32 +29,6 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose, layout
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    // Only run initialLoad when this component owns its hook instance.
-    if (!chatHook) initialLoad();
-  }, []);
-  
-  useEffect(() => {
-    // Sync conversations from ChatBot when they update
-    const handleConversationUpdate = (updatedConversations: Conversation[]) => {
-      setConversations(updatedConversations);
-    };
-  
-    // Sync active conversation ID from ChatBot
-    const handleActiveConversationUpdate = (newId: string | null) => {
-      setConversationId(newId);
-    };
-  
-    chatEventEmitter.on('conversationUpdate', handleConversationUpdate);
-    chatEventEmitter.on('activeConversationUpdate', handleActiveConversationUpdate);
-    chatEventEmitter.emit('requestConversations'); // Request current state from ChatBot on mount
-  
-    return () => {
-      chatEventEmitter.off('conversationUpdate', handleConversationUpdate);
-      chatEventEmitter.off('activeConversationUpdate', handleActiveConversationUpdate);
-    };
-  }, []);
 
   const groupConversationsByDate = (convs: Conversation[]) => {
     const today = new Date();
@@ -84,14 +53,14 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose, layout
     return { todayChats, pastChats };
   };
 
-  const truncateText = (text: string, maxLength: number = 24) => {
+  const truncateText = (text: string, maxLength = 24) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
   };
 
   const renderConversationItem = (conv: Conversation) => {
     const displayName = conv.title || conv.conversation_name || conv.messages?.[0]?.content || "No messages";
-    const active = conversation_id === conv.conversation_id;
+    const active = activeConversationId === conv.conversation_id;
     const displayText = truncateText(displayName, 20);
 
     return (
@@ -100,13 +69,8 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose, layout
           <button
             className={`flex-1 text-left rounded-sm px-3 py-2 ${active ? "bg-secondary" : "bg-bglight"} transition-colors`}
             onClick={() => {
-              setConversationId(conv.conversation_id);
-              chatEventEmitter.emit("loadConversation", {
-                conversationId: conv.conversation_id,
-                messages: conv.messages,
-                userId: user?.uid,
-              });
-              onClose();
+              setActiveConversationId(conv.conversation_id);
+              onClose?.();
             }}
             title={displayName}
           >
@@ -204,10 +168,10 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose, layout
               <button
                 className="px-4 py-2 text-sm bg-accent text-textdark rounded hover:bg-buttonhover disabled:opacity-50"
                 onClick={async () => {
-                  if (!conversationToRename || !newName.trim()) return;
+                  if (!conversationToRename || !newName.trim() || !user) return;
                   setRenaming(true);
                   try {
-                    await renameConversation(conversationToRename, newName.trim());
+                    await renameConversation(conversationToRename, newName.trim(), user);
                     setShowRenameModal(false);
                     setConversationToRename(null);
                     setNewName("");
@@ -244,12 +208,13 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose, layout
               <button
                 className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
                 onClick={async () => {
-                  if (!conversationToDelete) return;
+                  if (!conversationToDelete || !user) return;
                   setDeleting(true);
                   try {
-                    await deleteConversation(conversationToDelete);
-                    setConversationId(null);
-                    chatEventEmitter.emit('startNewChat');
+                    await deleteConversation(conversationToDelete, user);
+                    if (activeConversationId === conversationToDelete) {
+                      startNewChat();
+                    }
                     setShowDeleteModal(false);
                     setConversationToDelete(null);
                   } catch (err) {
@@ -283,18 +248,7 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose, layout
               className="w-full flex transition-all duration-100 items-center justify-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700"
               onClick={(e) => {
                 e.stopPropagation();
-                const newConversationId = `conversation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                const currentTime = Date.now();
-                const newConversation: Conversation = {
-                  conversation_id: newConversationId,
-                  user_id: user?.uid || "test-user-123",
-                  messages: [{ role: "user", content: "New Chat", timestamp: currentTime }],
-                  title: "New Chat",
-                };
-
-                setConversations((prev) => [newConversation, ...prev]);
-                setConversationId(newConversationId);
-                chatEventEmitter.emit("startNewChat");
+                startNewChat();
                 onClose?.();
               }}
             >

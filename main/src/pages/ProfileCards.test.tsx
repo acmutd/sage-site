@@ -39,9 +39,6 @@ vi.mock("@/components/profile/sectionswitcher", () => ({
   ),
 }));
 
-vi.mock("../utils/chatEventEmitter", () => ({
-  chatEventEmitter: { emit: vi.fn() },
-}));
 
 const baseProfile = {
   name: "Jane Smith",
