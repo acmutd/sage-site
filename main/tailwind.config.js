@@ -1,37 +1,14 @@
+import uiPreset from "../packages/ui/tailwind.preset.js";
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["class"],
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}", "../packages/ui/src/**/*.{js,ts,jsx,tsx}"],
+  presets: [uiPreset],
   theme: {
     extend: {
-      fontFamily: {
-        mermaid: ["Mermaid", "cursive"],
-        dmsans: ["DM Sans", "sans-serif"]
-      },
-      borderRadius: {
-        lg: "42px",
-        md: "18px",
-        sm: "8px",
-      },
       colors: {
-        accent: "#5AED86",
-        secondary: "#D3E2D8",
-        destructive: "#DB0000",
-        
-        bglight: "#F9FBF9",
-        bgdark: "#101211",
-        border: "#CBD5E1",
-        innercontainer: "#F4F4F4",
-        
-        textlight: "#ECF8F0",
-        textdark: "#0F172A",
-        textsecondary: "#6C6C6C",
-        
-        buttonhover: "#4DCC73",
-        buttondisabled: "#DDDDDD",
-        
-        
-        // Default tailwind config colors that will stick around for now so I don't break any shadcn styling
+        // shadcn tokens — backed by CSS custom properties
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
