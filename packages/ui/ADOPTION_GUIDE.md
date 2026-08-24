@@ -34,40 +34,29 @@ export default {
 
 **Why this matters:** Without this path, Tailwind will not scan shared component files, causing shared component styles to be purged from the CSS bundle and resulting in unstyled components at runtime.
 
-### 2. Ensure Theme Token Parity
-Your app's Tailwind theme **must** define all custom tokens used by shared components:
+### 2. Apply the Tailwind Preset
+Import and apply the `@sage/ui` preset so your app inherits the SAGE design tokens (colors, font families, border radii) without duplicating them:
 
-#### Required Color Tokens
-- `accent` - Primary action color (e.g., `#5AED86`)
-- `textlight` - Light text color for dark backgrounds
-- `textdark` - Dark text color for light backgrounds
-- `bglight` - Light background color
-- `bgdark` - Dark background color
-- `destructive` - Destructive action color (e.g., `#DB0000`)
-- `buttonhover` - Button hover state color
-- `innercontainer` - Inner container background color
-
-#### Example Theme Extension
 ```javascript
 // tailwind.config.js
+import uiPreset from "../packages/ui/tailwind.preset.js";
+
 export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+    "../packages/ui/src/**/*.{js,ts,jsx,tsx}"
+  ],
+  presets: [uiPreset],
   theme: {
     extend: {
-      colors: {
-        accent: "#5AED86",
-        textlight: "#F8F8F8",
-        textdark: "#1a1a1a",
-        bglight: "#F3F3F3",
-        bgdark: "#1a1a1a",
-        destructive: "#DB0000",
-        buttonhover: "#4AC570",
-        innercontainer: "#F8F8F8",
-      },
+      // Add only tokens specific to your app here
     },
   },
-  // ... rest of config
 };
 ```
+
+The preset is the single source of truth for the SAGE design system tokens (`accent`, `bglight`, `bgdark`, `textdark`, `textlight`, `buttonhover`, `destructive`, `innercontainer`, `font-dmsans`, `font-mermaid`, and custom border radii). Do not redefine these in your app's config — extend on top of the preset instead.
 
 ### 3. Dependency Verification
 Ensure your `package.json` includes all required peer dependencies:
@@ -302,7 +291,7 @@ When adding @sage/ui to a new site:
 
 - [ ] Add `@sage/ui` as workspace dependency in `package.json`
 - [ ] Update `tailwind.config.js` to include `../packages/ui/src/**/*.{js,ts,jsx,tsx}` in content paths
-- [ ] Define all required theme color tokens (`accent`, `textlight`, `textdark`, `bglight`, `bgdark`, `destructive`, `buttonhover`, `innercontainer`)
+- [ ] Apply `uiPreset` from `../packages/ui/tailwind.preset.js` via `presets: [uiPreset]` — do not manually redefine SAGE design tokens
 - [ ] Install all peer dependencies (`react`, `react-router-dom`, `lucide-react`, `@radix-ui/*`, etc.)
 - [ ] Define your app's `NavLinkItem[]` arrays for desktop and mobile nav
 - [ ] Implement `useRouteMode` locally with your app's public route list
