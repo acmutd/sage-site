@@ -35,6 +35,15 @@ interface PlannerSidebarMobileProps {
   onOpenDiscovery?: () => void;
 }
 
+const formatCoursebookSemester = (sem: string | null): string | null => {
+  if (!sem) return null;
+  const match = sem.match(/^(\d{2})([suf])$/);
+  if (!match) return null;
+  const year = `20${match[1]}`;
+  const name = { s: "Spring", u: "Summer", f: "Fall" }[match[2]] ?? "";
+  return `${name} ${year}`;
+};
+
 const PlannerSidebarMobile: React.FC<PlannerSidebarMobileProps> = ({
   onClose,
   requirements,
@@ -61,6 +70,7 @@ const PlannerSidebarMobile: React.FC<PlannerSidebarMobileProps> = ({
 
   const stagedCourses = usePlannerStore((s) => s.stagedCourses);
   const removeStagedCourse = usePlannerStore((s) => s.removeStagedCourse);
+  const [showAvailableOnly, setShowAvailableOnly] = React.useState(false);
 
   const renderCategoryContent = (category: any, reqIdx: number, nextParentPath: string, isOR: boolean, subCategoriesToRender: any[]): React.ReactNode => {
     const suggestedCodes = new Set((category.suggested || []).map((c: any) => c.code));
@@ -88,6 +98,7 @@ const PlannerSidebarMobile: React.FC<PlannerSidebarMobileProps> = ({
             <CoursesCarousel
               courses={category.suggested}
               type="suggested"
+              showAvailableOnly={showAvailableOnly}
               placedSuggestedCourses={placedSuggestedCourses}
               categoryName={category.name}
               availableSemesters={availableSemesters}
@@ -110,6 +121,7 @@ const PlannerSidebarMobile: React.FC<PlannerSidebarMobileProps> = ({
             <CoursesCarousel
               courses={filteredPrereqBlocked}
               type="prereq_blocked"
+              showAvailableOnly={showAvailableOnly}
               categoryName={category.name}
               allSuggestedCourses={allSuggestedCourses}
               allCompletedCourseCodes={allCompletedCourseCodes}
@@ -239,7 +251,25 @@ const PlannerSidebarMobile: React.FC<PlannerSidebarMobileProps> = ({
         </div>
       )}
 
-      <h2 className="text-xl font-bold text-gray-900 mb-4">Degree Requirements</h2>
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Degree Requirements</h2>
+        <div className="flex items-center gap-2.5 px-2.5 py-2 bg-white border border-gray-200 rounded-xl">
+          <button
+            role="switch"
+            aria-checked={showAvailableOnly}
+            onClick={() => setShowAvailableOnly(prev => !prev)}
+            className={`relative w-9 h-5 rounded-full transition-colors duration-200 flex-shrink-0 focus:outline-none ${showAvailableOnly ? 'bg-green-500' : 'bg-gray-300'}`}
+          >
+            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${showAvailableOnly ? 'left-[18px]' : 'left-0.5'}`} />
+          </button>
+          <label
+            className="text-xs text-gray-500 cursor-pointer select-none"
+            onClick={() => setShowAvailableOnly(prev => !prev)}
+          >
+            {coursebookSemester ? `Show ${formatCoursebookSemester(coursebookSemester)} offerings` : 'Show available sections only'}
+          </label>
+        </div>
+      </div>
 
       <div className="space-y-3 pb-6">
         {requirements.map((req, reqIdx) => {

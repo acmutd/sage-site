@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useUIStore } from "@/stores/uiStore";
 import {
   CornerRightUpIcon,
   GraduationCapIcon,
@@ -66,6 +67,13 @@ const ChatBot: React.FC = () => {
   const [generateSchedule, setGenerateSchedule] = useState(false);
   const [mobileView, setMobileView] = useState(false);
 
+  const { chatSidebarWidth, setChatSidebarWidth } = useUIStore();
+  const [isResizing, setIsResizing] = useState(false);
+  const isResizingRef = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
   const advisingExampleQuestions = [
     { question: "What courses are supported by the CSMC?" },
     { question: "What are the requirements for graduation?" },
@@ -99,6 +107,39 @@ const ChatBot: React.FC = () => {
     const delay = sidebarCollapsed ? 80 : 0;
     setTimeout(() => setSidebarCollapsedDelayed((prev) => !prev), delay);
   };
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    if (sidebarCollapsed) return;
+    isResizingRef.current = true;
+    setIsResizing(true);
+    startX.current = e.clientX;
+    startWidth.current = chatSidebarWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const newWidth = Math.min(480, Math.max(384, startWidth.current + (e.clientX - startX.current)));
+      setChatSidebarWidth(newWidth);
+    };
+    const onMouseUp = () => {
+      if (!isResizingRef.current) return;
+      isResizingRef.current = false;
+      setIsResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      if (sidebarRef.current) setChatSidebarWidth(sidebarRef.current.offsetWidth);
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [setChatSidebarWidth]);
 
   const handleStartNewChat = () => {
     setChatError(null);
@@ -422,12 +463,40 @@ const ChatBot: React.FC = () => {
         </div>
       ) : (
         <>
-          <ChatSidebarShell
-            isCollapsed={sidebarCollapsed}
-            sidebarCollapsedDelayed={sidebarCollapsedDelayed}
-            onToggleCollapse={toggleSidebar}
-            onStartNewChat={handleStartNewChat}
-          />
+          <div
+            ref={sidebarRef}
+            className={`relative h-full flex flex-col ${isResizing ? "transition-none" : "transition-all duration-100"}`}
+            style={sidebarCollapsed ? { width: "5.25rem" } : { width: chatSidebarWidth }}
+          >
+            <ChatSidebarShell
+              isCollapsed={sidebarCollapsed}
+              sidebarCollapsedDelayed={sidebarCollapsedDelayed}
+              onToggleCollapse={toggleSidebar}
+              onStartNewChat={handleStartNewChat}
+            />
+            {!sidebarCollapsed && (
+              <div
+                role="separator"
+                aria-label="Resize sidebar"
+                aria-orientation="vertical"
+                tabIndex={0}
+                className="absolute right-0 top-0 bottom-0 w-3 flex items-center justify-center cursor-col-resize group/grip z-10 translate-x-1/2"
+                onMouseDown={handleResizeStart}
+                onKeyDown={(e) => {
+                  const step = 10;
+                  if (e.key === 'ArrowRight') setChatSidebarWidth(Math.min(480, chatSidebarWidth + step));
+                  if (e.key === 'ArrowLeft') setChatSidebarWidth(Math.max(384, chatSidebarWidth - step));
+                }}
+              >
+                <div className="w-1.5 h-10 rounded-full bg-gray-300 opacity-30 group-hover/grip:opacity-100 transition-opacity duration-150 flex flex-col items-center justify-center gap-[3px]">
+                  <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                  <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                  <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                  <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-center h-full w-full">
             <div className="max-w-[80rem] h-full duration-300 ease-in-out flex flex-col flex-1 relative overflow-visible gap-6">

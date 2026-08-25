@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { NotebookPen, Compass } from "lucide-react";
 import { useDrop } from "react-dnd";
 import RequirementCategory from '@/components/planner/RequirementCategory';
@@ -10,6 +10,7 @@ import { filterCategories, hasCompletion } from "@/utils/plannerSidebarUtils";
 import { usePlannerSidebarCategories } from "@/hooks/usePlannerSidebarCategories";
 import { CartItem } from "./CourseDiscoveryModal";
 import { usePlannerStore } from '@/stores/plannerStore';
+import { useUIStore } from '@/stores/uiStore';
 import { SidebarTemplate } from "@sage/ui";
 
 interface PlannerSidebarDesktopProps {
@@ -69,6 +70,15 @@ interface PlannerSidebarDesktopProps {
     discoveryCart?: CartItem[];
 }
 
+const formatCoursebookSemester = (sem: string | null): string | null => {
+    if (!sem) return null;
+    const match = sem.match(/^(\d{2})([suf])$/);
+    if (!match) return null;
+    const year = `20${match[1]}`;
+    const name = { s: "Spring", u: "Summer", f: "Fall" }[match[2]] ?? "";
+    return `${name} ${year}`;
+};
+
 const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
     requirements,
     onDropCourse,
@@ -87,6 +97,14 @@ const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
 }) => {
     const [internalIsExpanded, setInternalIsExpanded] = React.useState(true);
     const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
+
+    const { plannerSidebarWidth, setPlannerSidebarWidth } = useUIStore();
+    const [isResizing, setIsResizing] = React.useState(false);
+    const [showAvailableOnly, setShowAvailableOnly] = React.useState(false);
+    const isResizingRef = useRef(false);
+    const startXRef = useRef(0);
+    const startWidthRef = useRef(0);
+    const sidebarRef = useRef<HTMLDivElement>(null);
 
     const {
         autoExpandedCategories,
@@ -120,6 +138,39 @@ const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
         }
     };
 
+    const handleResizeStart = (e: React.MouseEvent) => {
+        if (!isExpanded) return;
+        isResizingRef.current = true;
+        setIsResizing(true);
+        startXRef.current = e.clientX;
+        startWidthRef.current = plannerSidebarWidth;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    };
+
+    useEffect(() => {
+        const onMouseMove = (e: MouseEvent) => {
+            if (!isResizingRef.current) return;
+            const newWidth = Math.min(420, Math.max(320, startWidthRef.current + (e.clientX - startXRef.current)));
+            setPlannerSidebarWidth(newWidth);
+        };
+        const onMouseUp = () => {
+            if (!isResizingRef.current) return;
+            isResizingRef.current = false;
+            setIsResizing(false);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            if (sidebarRef.current) setPlannerSidebarWidth(sidebarRef.current.offsetWidth);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        return () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+    }, [setPlannerSidebarWidth]);
+
     const normalizedPlaced = new Set([...placedSuggestedCourses].map((c) => c.toLowerCase().replace(/\s+/g, '')));
     const allStagedPlaced = stagedCourses.every((c) => normalizedPlaced.has(c.course_id.toLowerCase().replace(/\s+/g, '')));
 
@@ -149,6 +200,7 @@ const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
                         <CoursesCarousel
                             courses={category.suggested}
                             type="suggested"
+                            showAvailableOnly={showAvailableOnly}
                             placedSuggestedCourses={placedSuggestedCourses}
                             categoryName={category.name}
                             allSuggestedCourses={allSuggestedCourses}
@@ -169,6 +221,7 @@ const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
                         <CoursesCarousel
                             courses={filteredPrereqBlocked}
                             type="prereq_blocked"
+                            showAvailableOnly={showAvailableOnly}
                             categoryName={category.name}
                             allSuggestedCourses={allSuggestedCourses}
                             allCompletedCourseCodes={allCompletedCourseCodes}
@@ -272,13 +325,18 @@ const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
     ];
 
     return (
-        <div data-tour="sidebar" className="h-full">
+        <div
+            ref={sidebarRef}
+            data-tour="sidebar"
+            className={`relative h-full ${isResizing ? "transition-none" : "transition-all duration-300"}`}
+            style={isExpanded ? { width: plannerSidebarWidth } : undefined}
+        >
             <SidebarTemplate
                 isCollapsed={!isExpanded}
                 onToggleCollapse={handleToggleSidebar}
                 primaryAction={primaryAction}
                 collapsedActions={collapsedActions}
-                className={`${isExpanded ? "w-80 rounded-lg" : "w-20 rounded-md"} h-full`}
+                className={`${isExpanded ? "rounded-lg w-full" : "w-20 rounded-md"} h-full`}
                 contentClassName="p-6 pt-8"
                 renderExpandedContent={
                     <div
@@ -315,7 +373,25 @@ const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
                             </div>
                         )}
 
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">Degree Requirements</h2>
+                        <div className="mb-4">
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">Degree Requirements</h2>
+                            <div className="flex items-center gap-2.5 px-2.5 py-2 bg-white border border-gray-200 rounded-xl">
+                                <button
+                                    role="switch"
+                                    aria-checked={showAvailableOnly}
+                                    onClick={() => setShowAvailableOnly(prev => !prev)}
+                                    className={`relative w-9 h-5 rounded-full transition-colors duration-200 flex-shrink-0 focus:outline-none ${showAvailableOnly ? 'bg-green-500' : 'bg-gray-300'}`}
+                                >
+                                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${showAvailableOnly ? 'left-[18px]' : 'left-0.5'}`} />
+                                </button>
+                                <label
+                                    className="text-xs text-gray-500 cursor-pointer select-none"
+                                    onClick={() => setShowAvailableOnly(prev => !prev)}
+                                >
+                                    {coursebookSemester ? `Show ${formatCoursebookSemester(coursebookSemester)} offerings` : 'Show available sections only'}
+                                </label>
+                            </div>
+                        </div>
 
                         <div className="space-y-3 pb-24">
                             {requirements.map((req, reqIdx) => {
@@ -347,6 +423,28 @@ const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
                     </div>
                 }
             />
+            {isExpanded && (
+                <div
+                    role="separator"
+                    aria-label="Resize sidebar"
+                    aria-orientation="vertical"
+                    tabIndex={0}
+                    className="absolute right-0 top-0 bottom-0 w-3 flex items-center justify-center cursor-col-resize group/grip z-10 translate-x-1/2"
+                    onMouseDown={handleResizeStart}
+                    onKeyDown={(e) => {
+                        const step = 10;
+                        if (e.key === 'ArrowRight') setPlannerSidebarWidth(Math.min(420, plannerSidebarWidth + step));
+                        if (e.key === 'ArrowLeft') setPlannerSidebarWidth(Math.max(320, plannerSidebarWidth - step));
+                    }}
+                >
+                    <div className="w-1.5 h-10 rounded-full bg-gray-300 opacity-30 group-hover/grip:opacity-100 transition-opacity duration-150 flex flex-col items-center justify-center gap-[3px]">
+                        <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                        <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                        <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                        <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
