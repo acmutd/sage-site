@@ -1,3 +1,12 @@
+export function formatCoursebookSemester(sem: string | null): string | null {
+  if (!sem) return null;
+  const match = sem.match(/^(\d{2})([suf])$/);
+  if (!match) return null;
+  const year = `20${match[1]}`;
+  const name = { s: "Spring", u: "Summer", f: "Fall" }[match[2]] ?? "";
+  return `${name} ${year}`;
+}
+
 export function hasCompletion(category: any): boolean {
   if (category.progress > 0) return true;
   if (category.classes?.some((c: any) => c.status === "completed" || c.status === "in progress")) return true;

@@ -6,7 +6,7 @@ import CoursesCarousel from '@/components/planner/CoursesCarousel';
 import PlannerDiscoveryBanner from '@/components/planner/PlannerDiscoveryBanner';
 import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/plannerCredits";
 import type { SemestersForCredits } from "@/utils/plannerCredits";
-import { filterCategories, hasCompletion } from "@/utils/plannerSidebarUtils";
+import { filterCategories, hasCompletion, formatCoursebookSemester } from "@/utils/plannerSidebarUtils";
 import { usePlannerSidebarCategories } from "@/hooks/usePlannerSidebarCategories";
 import { CartItem } from "./CourseDiscoveryModal";
 import { usePlannerStore } from '@/stores/plannerStore';
@@ -69,15 +69,6 @@ interface PlannerSidebarDesktopProps {
     onOpenDiscovery?: () => void;
     discoveryCart?: CartItem[];
 }
-
-const formatCoursebookSemester = (sem: string | null): string | null => {
-    if (!sem) return null;
-    const match = sem.match(/^(\d{2})([suf])$/);
-    if (!match) return null;
-    const year = `20${match[1]}`;
-    const name = { s: "Spring", u: "Summer", f: "Fall" }[match[2]] ?? "";
-    return `${name} ${year}`;
-};
 
 const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
     requirements,
