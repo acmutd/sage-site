@@ -11,6 +11,7 @@ import {
 interface CoursesCarouselProps {
     courses: any[];
     type: 'suggested' | 'completed' | 'prereq_blocked' | 'discovered';
+    showAvailableOnly?: boolean;
     placedSuggestedCourses?: Set<string>;
     categoryName?: string;
     availableSemesters?: Array<{ yearKey: string, semesterIndex: number, title: string }>;
@@ -58,6 +59,7 @@ const normalizeCorequisiteGroups = (corequisites: unknown): string[][] => {
 const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
     courses,
     type,
+    showAvailableOnly = false,
     placedSuggestedCourses = new Set(),
     categoryName,
     availableSemesters = [],
@@ -72,6 +74,10 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
 }) => {
     const COURSES_PER_PAGE = 5;
     const [currentPage, setCurrentPage] = useState(0);
+
+    useEffect(() => {
+        setCurrentPage(0);
+    }, [showAvailableOnly, courses]);
 
     // resize windowed dots based on container size (so dynamically computed)
     const dotsContainerRef = React.useRef<HTMLDivElement>(null);
@@ -183,10 +189,18 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
         );
     };
 
-    const totalPages = Math.ceil(courses.length / COURSES_PER_PAGE);
+    const visibleCourses = showAvailableOnly
+        ? courses.filter(course => {
+            const code = (course.code || course.course_code || '')
+                .toLowerCase()
+                .replace(/\s+/g, '');
+            return (coursebookData[code]?.length ?? 0) > 0;
+        })
+        : courses;
+
+    const totalPages = Math.ceil(visibleCourses.length / COURSES_PER_PAGE);
     const startIndex = currentPage * COURSES_PER_PAGE;
-    const endIndex = startIndex + COURSES_PER_PAGE;
-    const currentCourses = courses.slice(startIndex, endIndex);
+    const currentCourses = visibleCourses.slice(startIndex, startIndex + COURSES_PER_PAGE);
 
     const goToPage = (page: number) => {
         setCurrentPage(Math.max(0, Math.min(page, totalPages - 1)));
@@ -197,17 +211,18 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
     const nextPage = () => goToPage(currentPage + 1);
     const prevPage = () => goToPage(currentPage - 1);
 
-    if (courses.length === 0) {
+    // phone mode
+    const [showSemesterModal, setShowSemesterModal] = useState(false);
+    const [selectedCourse, setSelectedCourse] = useState<any>(null);
+
+    if (visibleCourses.length === 0) {
         return (
             <div className="text-sm text-gray-500">
-                No courses in this category
+                {showAvailableOnly ? 'No courses with available sections' : 'No courses in this category'}
             </div>
         );
     }
 
-    // phone mode
-    const [showSemesterModal, setShowSemesterModal] = useState(false);
-    const [selectedCourse, setSelectedCourse] = useState<any>(null);
     const handleAddClick = (course: any) => {
         if (availableSemesters.length === 0) {
             toast.error("Please add a semester first before adding courses");
@@ -362,7 +377,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                     id: `discovered-${categoryName}-${courseCode}-${startIndex + idx}`,
                                     sections: coursebookData[courseCode?.toLowerCase().replace(/\s+/g, "")] || []
                                 }}
-                                
+
                                 status="warning"
                                 icon="info"
                                 isDiscovered={true}
@@ -501,7 +516,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
 
                     {/* Page Counter */}
                     <div className="text-center mt-2 text-xs text-gray-500">
-                        Page {currentPage + 1} of {totalPages} • {courses.length} courses
+                        Page {currentPage + 1} of {totalPages} • {visibleCourses.length} courses
                     </div>
                 </>
             )}

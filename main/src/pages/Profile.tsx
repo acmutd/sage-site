@@ -81,6 +81,7 @@ const Profile = () => {
   const [showMissingInfoModal, setShowMissingInfoModal] = useState(false);
   const [mobileView, setMobileView] = useState(false);
   const [tabletView, setTabletView] = useState(false);
+  const [pickerPage, setPickerPage] = useState(0);
   const [profilepic, setProfilePic] = useState(() => {
     const cached = localStorage.getItem('profilePictureType');
     if (cached) {
@@ -94,6 +95,7 @@ const Profile = () => {
     return cached ? parseInt(cached) : 1;
   });
   const [googlePhotoURL, setGooglePhotoURL] = useState<string | null>(null);
+  const [isUserMilestone, setIsUserMilestone] = useState(false);
   const [isPopUpOpen, setIsPopUpOpen] = useState(false);
   const [program, setProgram] = useState("All");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -259,6 +261,7 @@ const Profile = () => {
 
   const closePickerModal = () => {
     setIsPopUpOpen(false);
+    setPickerPage(0);
     setTimeout(() => pickerTriggerRef.current?.focus(), 0);
   };
 
@@ -279,6 +282,13 @@ const Profile = () => {
     getUserInfo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.photoURL]);
+
+  useEffect(() => {
+    if (!user) return;
+    user.getIdTokenResult().then((result) => {
+      setIsUserMilestone(result.claims.userMilestone === "1000th");
+    });
+  }, [user?.uid]);
 
   useEffect(() => {
     const updateTransform = () => {
@@ -365,6 +375,7 @@ const Profile = () => {
   }
 
   async function pickProfile(picNumber: number) {
+    if (picNumber >= 7 && !isUserMilestone) return;
     const token = await user?.getIdToken();
     const currentType = parseInt(localStorage.getItem('profilePictureType') ?? '1');
     const newType = currentType === picNumber ? (googlePhotoURL ? 0 : 1) : picNumber;
@@ -444,11 +455,11 @@ const Profile = () => {
       setCards(
         cards.map((c) => {
           if (c.id === "undergrad") return { ...c, label: `${ug} Credit Hours` };
-          if (c.id === "grad")        return { ...c, label: `0 Credit Hours` };
-          if (c.id === "startdate")   return { ...c, label: data.majors[0].start_date || "—" };
-          if (c.id === "gpaundergrad")return { ...c, label: data.gpa.undergraduate || "-" };
-          if (c.id === "gpagrad")     return { ...c, label: data.gpa.graduate || "-" };
-          if (c.id === "utdid")       return { ...c, label: data.utd_id };
+          if (c.id === "grad") return { ...c, label: `0 Credit Hours` };
+          if (c.id === "startdate") return { ...c, label: data.majors[0].start_date || "—" };
+          if (c.id === "gpaundergrad") return { ...c, label: data.gpa.undergraduate || "-" };
+          if (c.id === "gpagrad") return { ...c, label: data.gpa.graduate || "-" };
+          if (c.id === "utdid") return { ...c, label: data.utd_id };
           return c;
         })
       );
@@ -559,6 +570,11 @@ const Profile = () => {
     localStorage.setItem("chatbot_conversation", JSON.stringify({ messages: conv.messages, conversation_id: conv.conversation_id, timestamp: Date.now(), cacheUserId: user?.uid ?? null }));
     navigate("/chatbot");
   };
+
+  const PICKER_PAGES = [
+    [1, 2, 3, 4, 5, 6],
+    ...(isUserMilestone ? [[7]] : []),
+  ];
 
   return (
     <>
@@ -917,28 +933,54 @@ const Profile = () => {
             role="dialog"
             aria-modal="true"
             aria-label="Pick your profile picture"
-            className="bg-white rounded-2xl p-6 sm:p-10 shadow-lg relative items-center text-center space-y-6 sm:space-y-10"
+            className="bg-white rounded-2xl p-6 sm:p-10 shadow-lg relative items-center text-center space-y-6"
             onClick={(e) => e.stopPropagation()}
           >
             <h2>Pick Your Favorite Peechi</h2>
-            <div className="flex flex-row space-x-4 sm:space-x-10">
-              {[1, 2, 3].map((num) => (
-                <button key={num} className="hover:scale-105 transition-transform" onClick={() => pickProfile(num)}>
+
+            {/* Grid */}
+            <div className="grid grid-cols-3 gap-4 sm:gap-10">
+              {PICKER_PAGES[pickerPage].map((num) => (
+                <button key={num} className="hover:scale-105 transition-transform relative" onClick={() => pickProfile(num)}>
                   {profilePictureType === num && googlePhotoURL
                     ? <img referrerPolicy="no-referrer" data-clarity-mask="True" src={googlePhotoURL} alt="Your Google profile picture" className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" draggable={false} />
-                    : <img src={`/assets/profile_pics/${num}.png`} alt={`Profile picture option ${num}`} className="w-24 h-24 sm:w-40 sm:h-40 object-cover" draggable={false} />}
+                    : <img src={`/assets/profile_pics/${num}.png`} alt={`Profile picture option ${num}`} className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" draggable={false} />
+                  }
+                  {profilePictureType === num && !googlePhotoURL && (
+                    <span className="absolute -top-2 -right-2 bg-accent text-black text-xs font-bold px-2 py-0.5 rounded-full">✓</span>
+                  )}
                 </button>
               ))}
             </div>
-            <div className="flex flex-row space-x-4 sm:space-x-10">
-              {[4, 5, 6].map((num) => (
-                <button key={num} className="hover:scale-105 transition-transform" onClick={() => pickProfile(num)}>
-                  {profilePictureType === num && googlePhotoURL
-                    ? <img referrerPolicy="no-referrer" data-clarity-mask="True" src={googlePhotoURL} className="w-24 h-24 sm:w-40 sm:h-40 object-cover rounded-3xl" draggable={false} />
-                    : <img src={`/assets/profile_pics/${num}.png`} alt={`Profile picture option ${num}`} className="w-24 h-24 sm:w-40 sm:h-40 object-cover" draggable={false} />}
+
+            {/* Carousel dots — only show if multiple pages */}
+            {PICKER_PAGES.length > 1 && (
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  onClick={() => setPickerPage((p) => Math.max(0, p - 1))}
+                  disabled={pickerPage === 0}
+                  className="p-2 rounded-full border border-card-bord bg-white disabled:opacity-30 hover:bg-gray-100"
+                >
+                  <MoveLeft className="w-4 h-4" />
                 </button>
-              ))}
-            </div>
+                <div className="flex gap-2">
+                  {PICKER_PAGES.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setPickerPage(i)}
+                      className={`h-2.5 rounded-full transition-all duration-300 ${i === pickerPage ? "bg-accent w-6" : "bg-gray-300 w-2.5"}`}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={() => setPickerPage((p) => Math.min(PICKER_PAGES.length - 1, p + 1))}
+                  disabled={pickerPage === PICKER_PAGES.length - 1}
+                  className="p-2 rounded-full border border-card-bord bg-white disabled:opacity-30 hover:bg-gray-100"
+                >
+                  <MoveRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

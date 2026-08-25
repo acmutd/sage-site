@@ -1,8 +1,7 @@
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within, cleanup } from "@testing-library/react";
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import Profile from "./Profile";
-
-
+import * as AuthModule from '../context/AuthContext';
 
 const mockNavigate = vi.fn();
 
@@ -11,20 +10,25 @@ vi.mock("react-router-dom", async () => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-vi.mock("../context/AuthContext", () => ({
-  useAuth: () => ({
-    user: {
-      uid: "test-user-123",
-      getIdToken: async () => "fake-token",
-      photoURL: null,
-    },
-    profilePicture: null,
-    setProfilePicture: vi.fn(),
-    hasSeenChatbotTutorial: false,
-    hasSeenPlannerTutorial: false,
-    allowedYears: 10,
-  }),
-}));
+const mockUser = {
+  uid: 'test-user-123',
+  photoURL: null,
+  getIdToken: vi.fn().mockResolvedValue('fake-token'),
+  getIdTokenResult: vi.fn().mockResolvedValue({ claims: {} }),
+} as any;
+
+const mockAuth = {
+  user: mockUser,
+  loading: false,
+  logout: vi.fn(),
+  profilePicture: null,
+  setProfilePicture: vi.fn(),
+  authChecking: false,
+  setAuthChecking: vi.fn(),
+  allowedYears: 10,
+  hasSeenChatbotTutorial: false,
+  hasSeenPlannerTutorial: false,
+};
 
 vi.mock("@/components/profile/degreeprogresscard", () => ({
   default: ({ title, percentage, completed, total }: any) => (
@@ -144,12 +148,19 @@ beforeEach(() => {
   vi.stubEnv('VITE_CRUD_API', 'http://localhost:3000/CRUD');
   Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 1280 });
   global.fetch = makeFetch();
+  vi.spyOn(AuthModule, 'useAuth').mockReturnValue(mockAuth);
 });
 
 afterEach(() => {
+  cleanup();
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
 });
+
+vi.mock('../firebase-config', () => ({
+  auth: {},
+  app: {},
+}));
 
 describe("Unit — profile info rendering", () => {
   test("displays the user's name from API", async () => {
