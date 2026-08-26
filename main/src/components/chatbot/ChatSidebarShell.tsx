@@ -38,7 +38,7 @@ const ChatSidebarShell: FC<ChatSidebarShellProps> = ({
         renderExpandedContent={<ChatSidebarContent layout="template" />}
         className="h-full"
         contentClassName="p-6 pt-8"
-        expandedWidthClassName="w-[24rem]"
+        expandedWidthClassName="w-full"
         collapsedWidthClassName="w-[5.25rem]"
         expandedRoundedClassName="rounded-lg"
         collapsedRoundedClassName="rounded-md"
