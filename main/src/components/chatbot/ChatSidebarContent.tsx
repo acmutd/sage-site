@@ -19,10 +19,11 @@ function groupConversationsByDate(convs: Conversation[]) {
 
 interface ChatSidebarContentProps {
   onClose?: () => void;
+  onStartNewChat?: () => void;
   layout?: "mobile" | "template";
 }
 
-const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose, layout = "mobile" }) => {
+const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose, onStartNewChat, layout = "mobile" }) => {
   const { user } = useAuth();
   const {
     conversations,
@@ -318,7 +319,7 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose, layout
               className="w-full flex transition-all duration-100 items-center justify-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700"
               onClick={(e) => {
                 e.stopPropagation();
-                startNewChat();
+                onStartNewChat ? onStartNewChat() : startNewChat();
                 onClose?.();
               }}
             >

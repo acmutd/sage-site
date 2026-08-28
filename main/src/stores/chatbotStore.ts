@@ -33,12 +33,15 @@ function saveListToCache(convs: Conversation[], userId: string): void {
 interface ChatbotState {
   conversations: Conversation[];
   activeConversationId: string | null;
+  activeMessages: Message[];
+  currentUserId: string | null;
   loading: boolean;
   error: string | null;
   initialLoad: (user: User) => Promise<void>;
   fetchConversations: (user: User) => Promise<Conversation[] | undefined>;
   setActiveConversationId: (id: string | null) => void;
   startNewChat: () => void;
+  setActiveMessages: (messages: Message[]) => void;
   setConversations: (convs: Conversation[], userId?: string) => void;
   deleteConversation: (id: string, user: User) => Promise<void>;
   renameConversation: (id: string, newTitle: string, user: User) => Promise<void>;
@@ -48,11 +51,14 @@ export const useChatbotStore = create<ChatbotState>()(
   immer((set, get) => ({
     conversations: [],
     activeConversationId: null,
+    activeMessages: [],
+    currentUserId: null,
     loading: false,
     error: null,
 
     initialLoad: async (user: User) => {
       if (!user?.uid || get().loading) return;
+      set(state => { state.currentUserId = user.uid; });
 
       const cachedSession = localStorage.getItem('chatbot_conversation');
       if (cachedSession) {
@@ -127,7 +133,28 @@ export const useChatbotStore = create<ChatbotState>()(
     },
 
     startNewChat: () => {
-      set(state => { state.activeConversationId = null; });
+      set(state => {
+        if (state.activeMessages.length > 0 && state.activeConversationId) {
+          const existing = state.conversations.find(c => c.conversation_id === state.activeConversationId);
+          const updated = sortByDate(normalizeConversations([
+            {
+              conversation_id: state.activeConversationId,
+              user_id: existing?.user_id || state.currentUserId || '',
+              messages: state.activeMessages,
+              title: existing?.title || state.activeMessages[0]?.content || 'Untitled Conversation',
+            },
+            ...state.conversations.filter(c => c.conversation_id !== state.activeConversationId),
+          ]));
+          state.conversations = updated;
+          if (state.currentUserId) saveListToCache(updated, state.currentUserId);
+        }
+        state.activeConversationId = null;
+        state.activeMessages = [];
+      });
+    },
+
+    setActiveMessages: (messages: Message[]) => {
+      set(state => { state.activeMessages = messages; });
     },
 
     setConversations: (convs: Conversation[], userId?: string) => {

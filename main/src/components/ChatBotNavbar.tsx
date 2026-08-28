@@ -13,7 +13,11 @@ import { PRIMARY_NAV_LINKS, MOBILE_NAV_LINKS } from "../lib/navLinks";
 
 const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT as string | undefined;
 
-const ChatBotNavbar = () => {
+interface ChatBotNavbarProps {
+  onStartNewChat?: () => void;
+}
+
+const ChatBotNavbar = ({ onStartNewChat }: ChatBotNavbarProps) => {
   const { user, logout, profilePicture } = useAuth();
   const { isInWebapp } = useRouteMode();
   const isDarkMode = !isInWebapp;
@@ -43,7 +47,7 @@ const ChatBotNavbar = () => {
         user={user}
         logout={logout}
         sidebarIcon={<MessagesSquare className={isDarkMode ? "stroke-textlight" : "stroke-textdark"} />}
-        sidebarContent={(onClose) => <ChatSidebarContent onClose={onClose} />}
+        sidebarContent={(onClose) => <ChatSidebarContent onClose={onClose} onStartNewChat={onStartNewChat} />}
         navLinks={MOBILE_NAV_LINKS}
       />
     </>

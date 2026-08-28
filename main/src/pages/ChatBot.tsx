@@ -48,6 +48,7 @@ const ChatBot: React.FC = () => {
     initialLoad,
     setActiveConversationId,
     startNewChat: storeStartNewChat,
+    setActiveMessages,
     setConversations,
   } = useChatbotStore();
 
@@ -56,6 +57,8 @@ const ChatBot: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+
+  useEffect(() => { setActiveMessages(messages); }, [messages, setActiveMessages]);
 
   const { startTutorial } = useChatbotTutorial({ user, hasSeenTutorial: hasSeenChatbotTutorial });
 
@@ -143,15 +146,6 @@ const ChatBot: React.FC = () => {
 
   const handleStartNewChat = () => {
     setChatError(null);
-    if (messages.length > 0 && activeConversationId) {
-      const filtered = conversations.filter((c) => c.conversation_id !== activeConversationId);
-      const updated = sortConversationsByDate([
-        { conversation_id: activeConversationId, user_id: user?.uid || "test-user-123", messages },
-        ...filtered,
-      ]);
-      setConversations(updated, user?.uid);
-    }
-
     setMessages([]);
     setIsNewConversation(true);
     storeStartNewChat();
