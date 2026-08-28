@@ -95,8 +95,6 @@ const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
     const isResizingRef = useRef(false);
     const startXRef = useRef(0);
     const startWidthRef = useRef(0);
-    const sidebarRef = useRef<HTMLDivElement>(null);
-
     const {
         autoExpandedCategories,
         setAutoExpandedCategories,
@@ -152,7 +150,6 @@ const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
             setIsResizing(false);
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
-            if (sidebarRef.current) setPlannerSidebarWidth(sidebarRef.current.offsetWidth);
         };
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
@@ -317,7 +314,7 @@ const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
 
     return (
         <div
-            ref={sidebarRef}
+            ref={drop}
             data-tour="sidebar"
             className={`relative h-full ${isResizing ? "transition-none" : "transition-all duration-300"}`}
             style={isExpanded ? { width: plannerSidebarWidth } : undefined}
@@ -331,7 +328,6 @@ const PlannerSidebarDesktop: React.FC<PlannerSidebarDesktopProps> = ({
                 contentClassName="p-6 pt-8"
                 renderExpandedContent={
                     <div
-                        ref={drop}
                         className={`${isOver ? 'bg-gray-100' : ''}`}
                         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
