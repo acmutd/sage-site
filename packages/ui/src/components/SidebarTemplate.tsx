@@ -20,8 +20,6 @@ export interface SidebarTemplateProps {
   collapsedActions?: SidebarActionItem[];
   renderExpandedContent?: ReactNode;
   renderCollapsedFooter?: ReactNode;
-  isMobileOpen?: boolean;
-  onMobileOpenChange?: (open: boolean) => void;
   className?: string;
   collapsedRailClassName?: string;
   contentClassName?: string;
@@ -42,6 +40,7 @@ export function SidebarTemplate({
   className,
   collapsedRailClassName,
   contentClassName,
+  headerClassName,
   expandedWidthClassName = "w-80",
   collapsedWidthClassName = "w-20",
   expandedRoundedClassName = "rounded-lg",
@@ -59,7 +58,7 @@ export function SidebarTemplate({
       {/* Keep expanded content mounted to avoid unmounting child state on collapse. */}
       <div className={cn("flex-1 overflow-y-auto relative", contentClassName)} style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
         <div className={cn(isCollapsed ? "pointer-events-none opacity-0 h-0 overflow-hidden" : "")}> 
-          <div className={cn("flex items-center justify-between mb-6")}>
+          <div className={cn("flex items-center justify-between mb-6", headerClassName)}>
             {primaryAction ? (
               <SidebarPrimaryAction
                 label={primaryAction.label}
