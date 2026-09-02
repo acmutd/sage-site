@@ -27,6 +27,7 @@ import { exportPlanAsCSV, exportPlanAsJPG, exportPlanAsPDF, exportPlanAsPNG } fr
 import CourseDiscoveryModal, { CartItem } from "@/components/planner/CourseDiscoveryModal";
 import z from "zod";
 import { getToken } from "@/utils/auth";
+import { getCreditsFromCourseCode } from "@/utils/plannerCredits";
 
 interface PlannerProps {
     semesters: {
@@ -746,6 +747,27 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
         return courses;
     }, [allSemesters, semesterOrderByKey]);
+    
+    const placedHoursByCode = useMemo(() => {
+        const hours = new Map<string, number>();
+
+        Object.keys(allSemesters).forEach((yearKey) => {
+            allSemesters[yearKey].forEach((semester) => {
+                semester.courses?.forEach((course: any) => {
+                    const status = String(course.status || "").toLowerCase();
+                    if (status === "failed") return; // no failed attempts counts toward the cap
+
+                    const code = normalizeCourseCode(course.course_code || course.code);
+                    if (!code) return;
+
+                    const credits = course.credits_planned ?? getCreditsFromCourseCode(code);
+                    hours.set(code, (hours.get(code) ?? 0) + credits);
+                });
+            });
+        });
+
+        return hours;
+    }, [allSemesters]);
 
     const allPlannedCourseCodes = useMemo(() => {
         return allPlannedCoursesWithOrder.map((course) => course.code);
@@ -935,6 +957,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
                 }
                 placedSuggestedCourses={placedSuggestedCourses}
+                placedHoursByCode={placedHoursByCode}
                 allCompletedCourseCodes={allCompletedCourseCodes}
                 allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                 onRestartOnboarding={onRestartOnboarding}
@@ -1013,6 +1036,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         isExpanded={!sidebarCollapsed}
                         onToggleExpanded={toggleSidebar}
                         placedSuggestedCourses={placedSuggestedCourses}
+                        placedHoursByCode={placedHoursByCode} 
                         allCompletedCourseCodes={allCompletedCourseCodes}
                         allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                         onRestartOnboarding={onRestartOnboarding}

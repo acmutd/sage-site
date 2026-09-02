@@ -49,6 +49,7 @@ interface SidebarProps {
     isExpanded?: boolean;
     onToggleExpanded?: () => void;
     placedSuggestedCourses?: Set<string>;
+    placedHoursByCode?: Map<string, number>;
     allCompletedCourseCodes?: string[];
     allPlannedCoursesWithOrder?: Array<{
         code: string;
@@ -83,6 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     isExpanded: externalIsExpanded,
     onToggleExpanded,
     placedSuggestedCourses = new Set(),
+    placedHoursByCode = new Map(),
     allCompletedCourseCodes = [],
     allPlannedCoursesWithOrder = [],
     onRestartOnboarding,
@@ -483,6 +485,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             type="suggested"
                             showAvailableOnly={showAvailableOnly}
                             placedSuggestedCourses={placedSuggestedCourses}
+                            placedHoursByCode={placedHoursByCode}
                             categoryName={category.name}
                             allSuggestedCourses={allSuggestedCourses}
                             allCompletedCourseCodes={allCompletedCourseCodes}
