@@ -1,20 +1,11 @@
 import { useMemo, useState, useEffect } from "react";
 import Fuse, { type IFuseOptions } from "fuse.js";
 import { ChevronsUpDown, PlusIcon, Search } from "lucide-react";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "./command";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { Button } from "./button";
+import { cn } from "../lib/utils";
 
 export interface SearchboxProps<T> {
   items: T[];

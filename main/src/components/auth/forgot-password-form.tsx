@@ -6,7 +6,7 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/firebase-config";
 import { Link } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@sage/ui";
 import {
     Form,
     FormControl,
@@ -14,8 +14,8 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+} from "@sage/ui";
+import { Input } from "@sage/ui";
 
 const formSchema = z.object({
     email: z.string().email({ message: "Please enter a valid email address" }),
