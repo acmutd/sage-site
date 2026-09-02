@@ -49,7 +49,7 @@ export function SidebarTemplate({
   return (
     <div
       className={cn(
-        "bg-bglight border border-border transition-all duration-300 flex flex-col h-full",
+        "bg-bglight border border-border transition-all duration-300 flex flex-col h-full overflow-hidden",
         isCollapsed ? collapsedWidthClassName : expandedWidthClassName,
         isCollapsed ? collapsedRoundedClassName : expandedRoundedClassName,
         className

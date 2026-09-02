@@ -20,7 +20,7 @@ export function SidebarCollapsedRail({ actions, onToggleCollapse, footer, classN
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-8 pt-8 h-full cursor-pointer hover:bg-[#F5F7F5]",
+        "group/sidebar flex flex-col items-center gap-8 pt-8 h-full cursor-pointer hover:bg-[#F5F7F5]",
         className
       )}
       onClick={onToggleCollapse}
