@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { User } from 'firebase/auth';
-import type { Conversation } from '@/types/chat';
+import type { Conversation, Message } from '@/types/chat';
 
 const CACHE_TTL = 1000 * 60 * 60;
 const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
@@ -133,20 +133,21 @@ export const useChatbotStore = create<ChatbotState>()(
     },
 
     startNewChat: () => {
+      const { activeMessages, activeConversationId, conversations, currentUserId } = get();
       set(state => {
-        if (state.activeMessages.length > 0 && state.activeConversationId) {
-          const existing = state.conversations.find(c => c.conversation_id === state.activeConversationId);
+        if (activeMessages.length > 0 && activeConversationId) {
+          const existing = conversations.find(c => c.conversation_id === activeConversationId);
           const updated = sortByDate(normalizeConversations([
             {
-              conversation_id: state.activeConversationId,
-              user_id: existing?.user_id || state.currentUserId || '',
-              messages: state.activeMessages,
-              title: existing?.title || state.activeMessages[0]?.content || 'Untitled Conversation',
+              conversation_id: activeConversationId,
+              user_id: existing?.user_id || currentUserId || '',
+              messages: activeMessages,
+              title: existing?.title || activeMessages[0]?.content || 'Untitled Conversation',
             },
-            ...state.conversations.filter(c => c.conversation_id !== state.activeConversationId),
+            ...conversations.filter(c => c.conversation_id !== activeConversationId),
           ]));
           state.conversations = updated;
-          if (state.currentUserId) saveListToCache(updated, state.currentUserId);
+          if (currentUserId) saveListToCache(updated, currentUserId);
         }
         state.activeConversationId = null;
         state.activeMessages = [];
