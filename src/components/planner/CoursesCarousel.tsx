@@ -353,9 +353,14 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                         );
                     } else if (type === 'discovered') {
                         const courseCode = course.code || course.course_code;
-                        const isPlaced = placedSuggestedCourses.has(
-                            normalizeCourseCode(courseCode) ?? courseCode
-                        );
+                        const repeatableCap = Number(course.max_repeat_credits) || 0;
+                        const normalizedCode = normalizeCourseCode(courseCode) ?? courseCode;
+                        const hoursPlaced = placedHoursByCode.get(normalizedCode) ?? 0;
+                    
+                        const isPlaced = repeatableCap > 0
+                            ? hoursPlaced >= repeatableCap
+                            : placedSuggestedCourses.has(normalizedCode);
+                        
                         const coreqWarnings = getCorequisiteWarnings(course);
                         const prerequisiteWarnings = getPrerequisiteWarnings(course);
                         const warnings = [
@@ -391,6 +396,8 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 isDiscovered={true}
                                 inSidebar={true}
                                 isPlaced={isPlaced}
+                                repeatableCap={repeatableCap}
+                                hoursPlaced={hoursPlaced}
                                 warnings={isPlaced || warnings.length === 0 ? null : warnings}
                                 onAdd={() => handleAddClick({ ...course, course_code: courseCode, code: courseCode })}
                                 onRemove={() => onRemove?.(course.course_id)}
