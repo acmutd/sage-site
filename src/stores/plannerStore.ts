@@ -145,6 +145,7 @@ export interface StagedCourse {
     prerequisites?: any;
     'Pre-Requisite'?: any;
     description?: string;
+    max_repeat_credits?: number;
 }
 
 interface PlannerStore extends PlannerData {
