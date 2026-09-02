@@ -18,6 +18,8 @@ interface CourseBoxProps {
     isLocked?: boolean;
     inSidebar?: boolean;
     isPlaced?: boolean;
+    repeatableCap?: number;
+    hoursPlaced?: number;
     warnings?: Warning[] | null;
     hasWarningBorder?: boolean;
     onAdd?: () => void;
@@ -154,6 +156,8 @@ const CourseBox: React.FC<CourseBoxProps> = ({
     isLocked = false,
     inSidebar = false,
     isPlaced = false,
+    repeatableCap = 0,
+    hoursPlaced = 0,
     warnings = null,
     hasWarningBorder = false,
     onAdd,
@@ -703,22 +707,24 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         </div>
     );
 
-    {showNameTooltip && course.course_name && ReactDOM.createPortal(
-        <div
-            style={{
-                position: "fixed",
-                left: nameTooltipPos.x,
-                top: nameTooltipPos.y,
-                transform: "translateY(-100%)",
-                zIndex: 99999,
-                pointerEvents: "none",
-            }}
-            className="px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-md whitespace-nowrap"
-        >
-            {course.course_name}
-        </div>,
-        document.body
-    )}
+    {
+        showNameTooltip && course.course_name && ReactDOM.createPortal(
+            <div
+                style={{
+                    position: "fixed",
+                    left: nameTooltipPos.x,
+                    top: nameTooltipPos.y,
+                    transform: "translateY(-100%)",
+                    zIndex: 99999,
+                    pointerEvents: "none",
+                }}
+                className="px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-md whitespace-nowrap"
+            >
+                {course.course_name}
+            </div>,
+            document.body
+        )
+    }
 
     return (
         <>
@@ -761,10 +767,11 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         <span
                             ref={codeRef}
                             className="text-sm font-medium text-gray-700 ml-1"
-                            onMouseEnter={(e) => { 
+                            onMouseEnter={(e) => {
                                 e.stopPropagation();
-                                handleCodeMouseEnter}
-                            }                
+                                handleCodeMouseEnter
+                            }
+                            }
                             onMouseLeave={handleCodeMouseLeave}
                         >
                             {course.course_code || "Unknown Course"}
@@ -788,6 +795,14 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
                                 Suggested
+                            </span>
+                        )}
+                        {repeatableCap > 0 && !isPlaced && (
+                            <span
+                                className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md whitespace-nowrap"
+                                title={`${hoursPlaced} of ${repeatableCap} credit hours planned`}
+                            >
+                                {hoursPlaced}/{repeatableCap} hrs
                             </span>
                         )}
                         {isPlaced && (

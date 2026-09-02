@@ -965,6 +965,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
             description: item.course.description,
             prerequisites: item.course.prereqs_raw,
             'Pre-Requisite': item.course.prereqs_raw,
+            max_repeat_credits: item.course.max_repeat_credits,
         }));
 
         addStagedCourses(staged);

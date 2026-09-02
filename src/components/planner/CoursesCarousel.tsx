@@ -13,6 +13,7 @@ interface CoursesCarouselProps {
     type: 'suggested' | 'completed' | 'prereq_blocked' | 'discovered';
     showAvailableOnly?: boolean;
     placedSuggestedCourses?: Set<string>;
+    placedHoursByCode?: Map<string, number>;
     categoryName?: string;
     availableSemesters?: Array<{ yearKey: string, semesterIndex: number, title: string }>;
     onAddCourse?: (targetYear: string, targetSemesterIndex: number, course: any, sourceYear: string, sourceSemesterIndex: number, courseId?: string, isSuggested?: boolean) => void;
@@ -61,6 +62,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
     type,
     showAvailableOnly = false,
     placedSuggestedCourses = new Set(),
+    placedHoursByCode = new Map(),
     categoryName,
     availableSemesters = [],
     onAddCourse,
@@ -262,7 +264,11 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                 {currentCourses.map((course: any, idx: number) => {
                     if (type === 'suggested') {
                         const courseCode = course.code || course.course_code;
-                        const isPlaced = placedSuggestedCourses.has(courseCode);
+                        const repeatableCap = Number(course.repeatable_for_hours) || 0;
+                        const hoursPlaced = placedHoursByCode.get(normalizeCourseCode(courseCode) ?? courseCode) ?? 0;
+                        const isPlaced = repeatableCap > 0
+                            ? hoursPlaced >= repeatableCap
+                            : placedSuggestedCourses.has(courseCode);
                         const coreqWarnings = getCorequisiteWarnings(course);
                         const prerequisiteWarnings = getPrerequisiteWarnings(course);
                         const warnings = [
@@ -299,6 +305,8 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 isSuggested={true}
                                 inSidebar={true}
                                 isPlaced={isPlaced}
+                                repeatableCap={repeatableCap}
+                                hoursPlaced={hoursPlaced}
                                 warnings={displayedWarnings}
                                 onAdd={() => handleAddClick({ ...course, course_code: courseCode, code: courseCode })}
                                 gradesData={gradesData}
@@ -345,9 +353,14 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                         );
                     } else if (type === 'discovered') {
                         const courseCode = course.code || course.course_code;
-                        const isPlaced = placedSuggestedCourses.has(
-                            normalizeCourseCode(courseCode) ?? courseCode
-                        );
+                        const repeatableCap = Number(course.max_repeat_credits) || 0;
+                        const normalizedCode = normalizeCourseCode(courseCode) ?? courseCode;
+                        const hoursPlaced = placedHoursByCode.get(normalizedCode) ?? 0;
+                    
+                        const isPlaced = repeatableCap > 0
+                            ? hoursPlaced >= repeatableCap
+                            : placedSuggestedCourses.has(normalizedCode);
+                        
                         const coreqWarnings = getCorequisiteWarnings(course);
                         const prerequisiteWarnings = getPrerequisiteWarnings(course);
                         const warnings = [
@@ -383,6 +396,8 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                                 isDiscovered={true}
                                 inSidebar={true}
                                 isPlaced={isPlaced}
+                                repeatableCap={repeatableCap}
+                                hoursPlaced={hoursPlaced}
                                 warnings={isPlaced || warnings.length === 0 ? null : warnings}
                                 onAdd={() => handleAddClick({ ...course, course_code: courseCode, code: courseCode })}
                                 onRemove={() => onRemove?.(course.course_id)}

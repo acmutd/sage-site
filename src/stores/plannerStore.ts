@@ -5,15 +5,116 @@ import { toast } from 'sonner';
 import { getCreditsFromCourseCode } from "@/utils/plannerCredits";
 import { normalizeCourseCode } from '@/utils/prerequisiteUtils';
 
+const isPlannedStatus = (course: any): boolean =>
+    String(course?.status ?? "").toLowerCase() === "planned";
+
+const getCourseCode = (course: any): string =>
+    normalizeCourseCode(course?.course_code ?? course?.code);
+
+const toFiniteNumber = (value: unknown): number => {
+    const n =
+        typeof value === "number"
+            ? value
+            : Number(String(value ?? ""));
+    return Number.isFinite(n) ? n : 0;
+};
+
+const getCourseCredits = (course: any): number => {
+    const rawCredits =
+        course?.credits_planned ??
+        course?.credits ??
+        course?.credits_attempted ??
+        course?.credits_earned;
+    const n = toFiniteNumber(rawCredits);
+    if (n > 0) return n;
+    return getCreditsFromCourseCode(course?.course_code ?? course?.code);
+};
+
+const getRepeatableMaxFromCourse = (course: any): number => {
+    const a = toFiniteNumber(course?.repeatable_for_hours);
+    const b = toFiniteNumber(course?.max_repeat_credits);
+    return Math.max(0, a, b);
+};
+
+const getRepeatableMaxByCodeFromEvaluation = (evaluation: any): Map<string, number> => {
+    const out = new Map<string, number>();
+    const requirements = Array.isArray(evaluation)
+        ? evaluation
+        : Array.isArray(evaluation?.results)
+            ? evaluation.results
+            : [];
+
+    const walkCategories = (categories: any[]) => {
+        if (!Array.isArray(categories)) return;
+        categories.forEach((category: any) => {
+            if (Array.isArray(category?.suggested)) {
+                category.suggested.forEach((c: any) => {
+                    const code = normalizeCourseCode(c?.code ?? c?.course_code);
+                    if (!code) return;
+                    const max = toFiniteNumber(c?.repeatable_for_hours);
+                    if (max <= 0) return;
+                    out.set(code, Math.max(out.get(code) ?? 0, max));
+                });
+            }
+            if (Array.isArray(category?.categories)) {
+                walkCategories(category.categories);
+            }
+        });
+    };
+
+    requirements.forEach((req: any) => {
+        if (Array.isArray(req?.categories)) walkCategories(req.categories);
+    });
+
+    return out;
+};
+
+const computePlacedCourses = (semesters: any, evaluation: any): string[] => {
+    const plannedCreditsByCode = new Map<string, number>();
+    const repeatableMaxByCode = getRepeatableMaxByCodeFromEvaluation(evaluation);
+
+    Object.values(semesters || {}).forEach((yearSemesters: any) => {
+        (yearSemesters || []).forEach((semester: any) => {
+            (semester?.courses || []).forEach((course: any) => {
+                if (!isPlannedStatus(course)) return;
+                const code = getCourseCode(course);
+                if (!code) return;
+
+                plannedCreditsByCode.set(
+                    code,
+                    (plannedCreditsByCode.get(code) ?? 0) + getCourseCredits(course)
+                );
+
+                const maxFromCourse = getRepeatableMaxFromCourse(course);
+                if (maxFromCourse > 0) {
+                    repeatableMaxByCode.set(code, Math.max(repeatableMaxByCode.get(code) ?? 0, maxFromCourse));
+                }
+            });
+        });
+    });
+
+    const placed = new Set<string>();
+    plannedCreditsByCode.forEach((plannedCredits, code) => {
+        const maxRepeatCredits = repeatableMaxByCode.get(code) ?? 0;
+        if (maxRepeatCredits > 0) {
+            if (plannedCredits >= maxRepeatCredits) placed.add(code);
+            return;
+        }
+        if (plannedCredits > 0) placed.add(code);
+    });
+
+    return Array.from(placed);
+};
+
 interface SavedPlannerState {
     id: string;
     name: string;
     semesters: {
         [key: string]: {
-        title: string;
-        courses: any[];
-        isFromTranscript?: boolean;
-        isLocked?: boolean;
+            title: string;
+            courses: any[];
+            isFromTranscript?: boolean;
+            isLocked?: boolean;
         }[];
     };
     placedCourses: string[];
@@ -44,6 +145,7 @@ export interface StagedCourse {
     prerequisites?: any;
     'Pre-Requisite'?: any;
     description?: string;
+    max_repeat_credits?: number;
 }
 
 interface PlannerStore extends PlannerData {
@@ -51,14 +153,14 @@ interface PlannerStore extends PlannerData {
     lastSavedState: string | null;
     markAsSaved: () => void;
     getHasUnsavedChanges: () => boolean;
-    
+
     // Plan Management Actions
     switchPlan: (planId: string) => void;
     createNewPlan: (initialPlannerState: any, evaluation: any, customName?: string) => void;
     duplicatePlan: () => void;
     deletePlan: () => void;
     renamePlan: (newName: string) => void;
-    
+
     // Semester Management Actions
     addYear: (allSemesters: any, allowedYears?: number) => void;
     clearYear: (yearKey: string, allSemesters: any) => void;
@@ -76,7 +178,7 @@ interface PlannerStore extends PlannerData {
         isSuggested?: boolean;
         allSemesters: any;
     }) => { success: boolean; error?: string };
-    
+
     // schedule generation 
     saveSchedulePlan: (semesterTitle: string, selectedSections: Record<string, string>, colorOverrides: Record<string, string>) => void;
 
@@ -100,26 +202,26 @@ interface PlannerStore extends PlannerData {
 
 export const usePlannerStore = create<PlannerStore>()(
     persist(
-        immer((set, get) => ({        
+        immer((set, get) => ({
             plans: [],
-            activePlanId: '',            
+            activePlanId: '',
             lastSavedState: null,
             past: [],
             future: [],
             stagedCourses: [],
 
             // Unsaved Changes Tracking
-            
+
             markAsSaved: () => {
                 const { plans, activePlanId } = get();
                 const currentState = { plans, activePlanId };
                 set({ lastSavedState: JSON.stringify(currentState) });
             },
-            
+
             getHasUnsavedChanges: () => {
                 const { plans, activePlanId, lastSavedState } = get();
                 if (!lastSavedState) return true;
-                
+
                 const currentState = JSON.stringify({ plans, activePlanId });
                 return currentState !== lastSavedState;
             },
@@ -143,53 +245,53 @@ export const usePlannerStore = create<PlannerStore>()(
                     state.plans = next;
                 });
             },
-            
+
             // Plan Management Actions
-            
+
             switchPlan: (planId: string) => {
                 set((state) => {
                     state.activePlanId = planId;
                 });
             },
-            
+
             createNewPlan: (initialPlannerState: any, evaluation: any, customName?: string) => {
                 const state = get();
                 if (state.plans.length >= 5) {
                     toast.error('Maximum of 5 plans allowed');
                     return;
                 }
-                
+
                 const newPlanId = crypto.randomUUID();
                 const planNumber = state.plans.length + 1;
                 const planName = customName || `Plan ${planNumber}`;
-                
+
                 set((draft) => {
-                draft.plans.push({
-                    id: newPlanId,
-                    name: planName,
-                    semesters: initialPlannerState,
-                    placedCourses: [],
-                    lastModified: Date.now(),
-                    evaluation: evaluation
+                    draft.plans.push({
+                        id: newPlanId,
+                        name: planName,
+                        semesters: initialPlannerState,
+                        placedCourses: [],
+                        lastModified: Date.now(),
+                        evaluation: evaluation
+                    });
+                    draft.activePlanId = newPlanId;
                 });
-                draft.activePlanId = newPlanId;
-                });
-                
+
                 toast.success('Created new plan');
             },
-            
+
             duplicatePlan: () => {
                 const state = get();
                 if (state.plans.length >= 5) {
                     toast.error('Maximum of 5 plans allowed');
                     return;
                 }
-                
+
                 const currentPlan = state.plans.find(p => p.id === state.activePlanId);
                 if (!currentPlan) return;
-                
+
                 const newPlanId = crypto.randomUUID();
-                
+
                 set((draft) => {
                     draft.plans.push({
                         ...currentPlan,
@@ -199,36 +301,36 @@ export const usePlannerStore = create<PlannerStore>()(
                     });
                     draft.activePlanId = newPlanId;
                 });
-                
+
                 toast.success('Duplicated plan');
             },
-            
+
             deletePlan: () => {
                 const state = get();
                 if (state.plans.length === 1) {
                     toast.error('Cannot delete the last plan');
                     return;
                 }
-                
+
                 const currentIndex = state.plans.findIndex(p => p.id === state.activePlanId);
-                const newActivePlanId = currentIndex > 0 
-                ? state.plans[currentIndex - 1].id 
-                : state.plans[1].id;
-                
+                const newActivePlanId = currentIndex > 0
+                    ? state.plans[currentIndex - 1].id
+                    : state.plans[1].id;
+
                 set((draft) => {
                     draft.plans = draft.plans.filter(p => p.id !== state.activePlanId);
                     draft.activePlanId = newActivePlanId;
                 });
-                
+
                 toast.success('Deleted plan');
             },
-            
+
             renamePlan: (newName: string) => {
                 if (!newName.trim()) {
                     toast.error('Plan name cannot be empty');
                     return;
                 }
-                
+
                 set((state) => {
                     const plan = state.plans.find(p => p.id === state.activePlanId);
                     if (plan) {
@@ -236,15 +338,15 @@ export const usePlannerStore = create<PlannerStore>()(
                         plan.lastModified = Date.now();
                     }
                 });
-                
+
                 toast.success('Renamed plan');
             },
-            
+
             // ========== Semester Management Actions ==========
-            
+
             addYear: (allSemesters: any, allowedYears: number = 10) => {
                 const yearCount = Object.keys(allSemesters).length;
-    
+
                 if (yearCount >= allowedYears) {
                     return;
                 }
@@ -285,20 +387,9 @@ export const usePlannerStore = create<PlannerStore>()(
                     }
                 });
             },
-            
-            clearYear: (yearKey: string, allSemesters: any) => {
-                const courseCodesToRemove: string[] = [];
-                allSemesters[yearKey].forEach((semester: any) => {
-                    if (!semester.isFromTranscript) {
-                        semester.courses?.forEach((course: any) => {
-                            if (course.status === 'planned') {
-                                const code = course.course_code || course.code;
-                                if (code) courseCodesToRemove.push(code);
-                            }
-                        });
-                    }
-                });
 
+            clearYear: (yearKey: string, allSemesters: any) => {
+                void allSemesters;
                 set((state) => {
                     state.past = [...state.past.slice(-49), JSON.parse(JSON.stringify(state.plans))];
                     state.future = [];
@@ -310,57 +401,36 @@ export const usePlannerStore = create<PlannerStore>()(
                                 semester.courses = [];
                             }
                         });
-                        
-                        // Update placed courses
-                        if (courseCodesToRemove.length > 0) {
-                            const newPlaced = new Set(plan.placedCourses);
-                            courseCodesToRemove.forEach(code => newPlaced.delete(code));
-                            plan.placedCourses = Array.from(newPlaced);
-                        }
-                        
+
+                        plan.placedCourses = computePlacedCourses(plan.semesters, plan.evaluation);
                         plan.lastModified = Date.now();
                     }
                 });
             },
-            
-            deleteYear: (yearKey: string, allSemesters: any) => {
-                const courseCodesToRemove: string[] = [];
-                allSemesters[yearKey].forEach((semester: any) => {
-                    semester.courses?.forEach((course: any) => {
-                        if (course.status === 'planned') {
-                            const code = course.course_code || course.code;
-                            if (code) courseCodesToRemove.push(code);
-                        }
-                    });
-                });
 
+            deleteYear: (yearKey: string, allSemesters: any) => {
+                void allSemesters;
                 set((state) => {
                     state.past = [...state.past.slice(-49), JSON.parse(JSON.stringify(state.plans))];
-                    state.future = [];                
+                    state.future = [];
                     const plan = state.plans.find(p => p.id === state.activePlanId);
                     if (plan) {
                         // Remove the year
                         delete plan.semesters[yearKey];
-                        
-                        // Update placed courses
-                        if (courseCodesToRemove.length > 0) {
-                            const newPlaced = new Set(plan.placedCourses);
-                            courseCodesToRemove.forEach(code => newPlaced.delete(code));
-                            plan.placedCourses = Array.from(newPlaced);
-                        }
-                        
+
+                        plan.placedCourses = computePlacedCourses(plan.semesters, plan.evaluation);
                         plan.lastModified = Date.now();
                     }
                 });
             },
-            
+
             addSemester: (yearKey: string, allSemesters: any) => {
                 const yearSemesters = [...allSemesters[yearKey]];
 
                 if (yearSemesters.length >= 3) {
-                    return { 
-                        success: false, 
-                        error: `Cannot add more than 3 semesters (Fall, Spring, Summer) to ${yearKey.replace("year", "Year ")}` 
+                    return {
+                        success: false,
+                        error: `Cannot add more than 3 semesters (Fall, Spring, Summer) to ${yearKey.replace("year", "Year ")}`
                     };
                 }
 
@@ -381,7 +451,7 @@ export const usePlannerStore = create<PlannerStore>()(
                 if (missingSemesters.length === 0) {
                     return { success: false };
                 }
-                
+
                 const updatedSemesters = [...yearSemesters, missingSemesters[0]];
                 updatedSemesters.sort((a, b) => {
                     const order: Record<string, number> = { 'Fall': 0, 'Spring': 1, 'Summer': 2 };
@@ -399,61 +469,34 @@ export const usePlannerStore = create<PlannerStore>()(
                         plan.lastModified = Date.now();
                     }
                 });
-                
+
                 return { success: true };
             },
-            
-            clearSemester: (yearKey: string, semesterIndex: number, allSemesters: any) => {
-                const semesterToClear = allSemesters[yearKey]?.[semesterIndex];
-                const courseCodesToRemove: string[] = [];
-                
-                if (semesterToClear?.courses) {
-                    semesterToClear.courses.forEach((course: any) => {
-                        if (course.status === 'planned') {
-                            const courseCode = course.course_code || course.code;
-                            if (courseCode) courseCodesToRemove.push(courseCode);
-                        }
-                    });
-                }
 
+            clearSemester: (yearKey: string, semesterIndex: number, allSemesters: any) => {
+                void allSemesters;
                 set((state) => {
                     state.past = [...state.past.slice(-49), JSON.parse(JSON.stringify(state.plans))];
                     state.future = [];
                     const plan = state.plans.find(p => p.id === state.activePlanId);
                     if (plan) {
                         plan.semesters[yearKey][semesterIndex].courses = [];
-                        
-                        if (courseCodesToRemove.length > 0) {
-                            const newPlaced = new Set(plan.placedCourses);
-                            courseCodesToRemove.forEach(code => newPlaced.delete(code));
-                            plan.placedCourses = Array.from(newPlaced);
-                        }
-                        
+
+                        plan.placedCourses = computePlacedCourses(plan.semesters, plan.evaluation);
                         plan.lastModified = Date.now();
                     }
                 });
             },
-            
-            removeSemester: (yearKey: string, semesterIndex: number, allSemesters: any) => {
-                const semesterToRemove = allSemesters[yearKey]?.[semesterIndex];
-                const courseCodesToRemove: string[] = [];
-                
-                if (semesterToRemove?.courses) {
-                    semesterToRemove.courses.forEach((course: any) => {
-                        if (course.status === 'planned') {
-                            const courseCode = course.course_code || course.code;
-                            if (courseCode) courseCodesToRemove.push(courseCode);
-                        }
-                    });
-                }
 
+            removeSemester: (yearKey: string, semesterIndex: number, allSemesters: any) => {
+                void allSemesters;
                 set((state) => {
                     state.past = [...state.past.slice(-49), JSON.parse(JSON.stringify(state.plans))];
                     state.future = [];
                     const plan = state.plans.find(p => p.id === state.activePlanId);
                     if (plan) {
                         const yearSemesters = [...plan.semesters[yearKey]];
-                        
+
                         if (yearSemesters.length === 1) {
                             // Remove entire year if it's the last semester
                             delete plan.semesters[yearKey];
@@ -462,18 +505,13 @@ export const usePlannerStore = create<PlannerStore>()(
                             yearSemesters.splice(semesterIndex, 1);
                             plan.semesters[yearKey] = yearSemesters;
                         }
-                        
-                        if (courseCodesToRemove.length > 0) {
-                            const newPlaced = new Set(plan.placedCourses);
-                            courseCodesToRemove.forEach(code => newPlaced.delete(code));
-                            plan.placedCourses = Array.from(newPlaced);
-                        }
-                        
+
+                        plan.placedCourses = computePlacedCourses(plan.semesters, plan.evaluation);
                         plan.lastModified = Date.now();
                     }
                 });
             },
-            
+
             dropCourse: (params) => {
                 const {
                     targetYear,
@@ -485,7 +523,7 @@ export const usePlannerStore = create<PlannerStore>()(
                     isSuggested,
                     allSemesters
                 } = params;
-                
+
                 const isRemoval =
                     !course || !targetYear ||
                     targetYear === '' ||
@@ -500,29 +538,30 @@ export const usePlannerStore = create<PlannerStore>()(
                         state.future = [];
                         const plan = state.plans.find(p => p.id === state.activePlanId);
                         if (!plan) return;
-                        
+
                         const sourceSemester = plan.semesters[sourceYear]?.[sourceSemesterIndex];
                         if (sourceSemester?.courses) {
                             const courseIndex = sourceSemester.courses.findIndex(
                                 (c: any) => c.id === courseId
                             );
                             if (courseIndex !== -1) {
-                                const removedCourse = sourceSemester.courses[courseIndex];
-                                if (removedCourse.status === 'planned') {
-                                    const courseCode = removedCourse.course_code || removedCourse.code;
-                                    const newPlaced = new Set(plan.placedCourses);
-                                    newPlaced.delete(courseCode);
-                                    plan.placedCourses = Array.from(newPlaced);
-                                }
                                 sourceSemester.courses.splice(courseIndex, 1);
                             }
                         }
+                        plan.placedCourses = computePlacedCourses(plan.semesters, plan.evaluation);
                         plan.lastModified = Date.now();
                     });
                     return { success: true };
                 }
 
-                const courseCode = course.code || course.course_code;
+                const courseCode = normalizeCourseCode(course.code || course.course_code);
+                const planForRules = get().plans.find(p => p.id === get().activePlanId);
+                const repeatableMaxByCode = getRepeatableMaxByCodeFromEvaluation(planForRules?.evaluation);
+                const repeatableMaxCredits =
+                    Math.max(
+                        getRepeatableMaxFromCourse(course),
+                        repeatableMaxByCode.get(courseCode) ?? 0
+                    );
 
                 if (!isSuggested && course.originalLocation) {
                     const isOriginalLocation =
@@ -531,25 +570,66 @@ export const usePlannerStore = create<PlannerStore>()(
 
                     if (!isOriginalLocation) {
                         const originalSemester = allSemesters[course.originalLocation.yearKey][course.originalLocation.semesterIndex];
-                        return { 
-                            success: false, 
-                            error: `${courseCode} can only be moved back to ${originalSemester.title}` 
+                        return {
+                            success: false,
+                            error: `${courseCode} can only be moved back to ${originalSemester.title}`
                         };
                     }
                 }
+
+                // Prevent duplicates within the same semester (regardless of repeatability).
+                const targetSemester = allSemesters?.[targetYear]?.[targetSemesterIndex];
+                if (targetSemester?.courses?.some((c: any) => {
+                    const code = normalizeCourseCode(c?.course_code ?? c?.code);
+                    if (!code) return false;
+                    if (code !== courseCode) return false;
+                    return !courseId || c?.id !== courseId;
+                })) {
+                    return {
+                        success: false,
+                        error: `${courseCode} is already in ${targetSemester.title}`
+                    };
+                }
                 
-                for (const yearKey in allSemesters) {
-                    for (let idx = 0; idx < allSemesters[yearKey].length; idx++) {
-                        const semester = allSemesters[yearKey][idx];
-                        if (yearKey === sourceYear && idx === sourceSemesterIndex) continue;
-                        
-                        const exists = semester.courses.some((c: any) => c.course_code === courseCode);
-                        if (exists) {
-                            return { 
-                                success: false, 
-                                error: `${courseCode} is already in ${semester.title}` 
-                            };
+                // Non-repeatable: block duplicates across semesters.
+                if (repeatableMaxCredits <= 0) {
+                    for (const yearKey in allSemesters) {
+                        for (let idx = 0; idx < allSemesters[yearKey].length; idx++) {
+                            const semester = allSemesters[yearKey][idx];
+                            if (yearKey === sourceYear && idx === sourceSemesterIndex) continue;
+
+                            const exists = (semester?.courses || []).some((c: any) =>
+                                normalizeCourseCode(c?.course_code ?? c?.code) === courseCode
+                            );
+                            if (exists) {
+                                return {
+                                    success: false,
+                                    error: `${courseCode} is already in ${semester.title}`
+                                };
+                            }
                         }
+                    }
+                } else if (isSuggested) {
+                    // Repeatable: enforce max repeat credits across the plan.
+                    let usedPlannedCredits = 0;
+                    for (const yearKey in allSemesters) {
+                        for (let idx = 0; idx < allSemesters[yearKey].length; idx++) {
+                            const semester = allSemesters[yearKey][idx];
+                            (semester?.courses || []).forEach((c: any) => {
+                                if (!isPlannedStatus(c)) return;
+                                const code = normalizeCourseCode(c?.course_code ?? c?.code);
+                                if (!code || code !== courseCode) return;
+                                usedPlannedCredits += getCourseCredits(c);
+                            });
+                        }
+                    }
+
+                    const nextCredits = usedPlannedCredits + getCourseCredits(course);
+                    if (nextCredits > repeatableMaxCredits) {
+                        return {
+                            success: false,
+                            error: `${courseCode} can only be repeated for ${repeatableMaxCredits} credit hours`
+                        };
                     }
                 }
 
@@ -561,23 +641,22 @@ export const usePlannerStore = create<PlannerStore>()(
                         // Adding a suggested course
                         const targetSemester = plan.semesters[targetYear][targetSemesterIndex];
                         if (targetSemester && Array.isArray(targetSemester.courses)) {
-                            const newCourseId = `${targetYear}-${targetSemester.title}-${course.course_code}-${targetSemester.courses.length}-${Date.now()}`;
+                            const newCourseId = `${targetYear}-${targetSemester.title}-${courseCode}-${targetSemester.courses.length}-${Date.now()}`;
 
-                            const courseCode = course.code || course.course_code;
                             const newCourse: Record<string, any> = {
                                 course_code: courseCode,
                                 course_name: course.name || course.course_name || `${courseCode} Course`,
-                                credits_planned: getCreditsFromCourseCode(courseCode),
+                                credits_planned: getCourseCredits(course),
                                 id: newCourseId,
                                 status: 'planned',
+                                repeatable_for_hours: toFiniteNumber(course.repeatable_for_hours),
+                                max_repeat_credits: toFiniteNumber(course.max_repeat_credits),
                             };
 
                             if (course.prerequisites) newCourse.prerequisites = course.prerequisites;
                             if (course['Pre-Requisite']) newCourse['Pre-Requisite'] = course['Pre-Requisite'];
 
                             targetSemester.courses.push(newCourse);
-                            
-                            plan.placedCourses = Array.from(new Set([...plan.placedCourses, normalizeCourseCode(courseCode) || courseCode]));
                         }
                     } else {
                         // Moving existing course
@@ -601,25 +680,27 @@ export const usePlannerStore = create<PlannerStore>()(
                             }
                         }
                     }
+
+                    plan.placedCourses = computePlacedCourses(plan.semesters, plan.evaluation);
                     
                     plan.lastModified = Date.now();
                 });
 
                 return { success: true };
             },
-            
+
             // ========== Helper to Update Active Plan ==========
-            
+
             updateActivePlan: (updates: Partial<SavedPlannerState>) => {
                 set((state) => {
-                const plan = state.plans.find(p => p.id === state.activePlanId);
-                if (plan) {
-                    Object.assign(plan, updates);
-                    plan.lastModified = Date.now();
-                }
+                    const plan = state.plans.find(p => p.id === state.activePlanId);
+                    if (plan) {
+                        Object.assign(plan, updates);
+                        plan.lastModified = Date.now();
+                    }
                 });
             },
-            
+
             saveSchedulePlan: (semesterTitle, selectedSections, colorOverrides) => {
                 set((state) => {
                     const plan = state.plans.find(p => p.id === state.activePlanId);
@@ -630,7 +711,7 @@ export const usePlannerStore = create<PlannerStore>()(
                     }
                 });
             },
-            
+
             // discovery courses (capped at 15 because across all five plans, we have 75 of these which is prob worth like a few bytes (maybe KBs)? but def don't approach MBs)
             addStagedCourses: (courses: StagedCourse[]) => {
                 set((state) => {
@@ -640,13 +721,13 @@ export const usePlannerStore = create<PlannerStore>()(
                     state.stagedCourses = [...state.stagedCourses, ...newOnes].slice(0, 15);
                 });
             },
-             
+
             removeStagedCourse: (courseId: string) => {
                 set((state) => {
                     state.stagedCourses = state.stagedCourses.filter(c => c.course_id !== courseId);
                 });
             },
-             
+
             clearStagedCourses: () => {
                 set((state) => {
                     state.stagedCourses = [];
@@ -656,13 +737,24 @@ export const usePlannerStore = create<PlannerStore>()(
             // Cloud Sync
             syncFromCloud: (cloudData: { plans: SavedPlannerState[]; activePlanId: string }) => {
                 set((state) => {
-                    state.plans = cloudData.plans;
+                    state.plans = (cloudData.plans || []).map((plan) => ({
+                        ...plan,
+                        placedCourses: computePlacedCourses(plan?.semesters, plan?.evaluation),
+                    }));
                     state.activePlanId = cloudData.activePlanId;
                 });
             },
-        })),    
+        })),
         {
         name: 'planner-state', // localStorage key
+        version: 2,
+        migrate: (persisted: any) => {
+            const nextPlans = (persisted?.plans || []).map((plan: any) => ({
+                ...plan,
+                placedCourses: computePlacedCourses(plan?.semesters, plan?.evaluation),
+            }));
+            return { ...persisted, plans: nextPlans };
+        },
         partialize: (state) => ({
             plans: state.plans,
             activePlanId: state.activePlanId,
