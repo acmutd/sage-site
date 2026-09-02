@@ -13,7 +13,7 @@ export function SidebarPrimaryAction({ label, icon, onClick, disabled, className
   return (
     <button
       aria-label={label}
-      className={className ?? "flex transition-all duration-100 items-center space-x-2 py-2 px-8 rounded-3xl bg-accent text-textdark text-base hover:text-gray-700"}
+      className={className ?? "flex transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700"}
       onClick={(event) => {
         event.stopPropagation();
         if (!disabled) onClick();
