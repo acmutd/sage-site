@@ -378,8 +378,8 @@ interface DetailPanelProps {
     cartPinnedSection?: string;
     cartCreditSource?: CreditSource;
     cartCreditSourceDetail?: CreditSourceDetail;
-    onAdd: (courseId: string, section?: string) => void;
-    onRemove: (courseId: string) => void;
+    defaultCreditSource: CreditSource;
+    onAdd: (courseId: string, section?: string, source?: CreditSource, detail?: CreditSourceDetail) => void; onRemove: (courseId: string) => void;
     onSwapSection: (courseId: string, section: string) => void;
     onSetCreditSource: (courseId: string, source: CreditSource, detail?: CreditSourceDetail) => void;
     semester?: string;
@@ -417,11 +417,26 @@ const CreditSourceBadge = ({ source, detail }: { source?: CreditSource; detail?:
 };
 
 const DetailPanel: React.FC<DetailPanelProps> = ({
-    course, inCart, cartPinnedSection, cartCreditSource, cartCreditSourceDetail,
+    course, inCart, cartPinnedSection, cartCreditSource, cartCreditSourceDetail, defaultCreditSource,
     onAdd, onRemove, onSwapSection, onSetCreditSource, semester,
     apiBaseUrl, getAuthToken,
 }) => {
-    const [expandedSection, setExpandedSection] = useState<string | null>(null);
+    const [selectedSection, setSelectedSection] = useState<string | null>(cartPinnedSection ?? course.sections[0]?.section ?? null);
+    const sectionsScrollRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        setSelectedSection(cartPinnedSection ?? course.sections[0]?.section ?? null);
+    }, [course.course_id]);
+
+    const selectedSectionData = course.sections.find(s => s.section === selectedSection) ?? course.sections[0];
+    const selectedDaysStr = selectedSectionData ? normalizeDays(selectedSectionData.days) : '';
+
+    const scrollSections = (dir: 'left' | 'right') => {
+        sectionsScrollRef.current?.scrollBy({ left: dir === 'left' ? -140 : 140, behavior: 'smooth' });
+    };
+
+    const effectiveSource: CreditSource | undefined = inCart ? cartCreditSource : defaultCreditSource;
+    const previewMode = !inCart && effectiveSource !== 'university';
 
     return (
         <div className="flex flex-col h-full overflow-y-auto">
@@ -443,24 +458,28 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                 <PrereqDot met={course.prereqs_met} text={course.prereqs_text} />
             </div>
 
-            {inCart && cartCreditSource && cartCreditSource !== 'university' && (
+            {effectiveSource && effectiveSource !== 'university' && (
                 <div className="p-4 border-b border-gray-100">
-                    <div className="border-2 border-green-500 rounded-md bg-green-50 p-3">
-                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-green-700 uppercase tracking-wide mb-1">
-                            {(() => { const Icon = CREDIT_SOURCE_ICON[cartCreditSource]; return <Icon className="w-3.5 h-3.5" />; })()}
-                            Credit Source: {CREDIT_SOURCE_LABELS[cartCreditSource]}
+                    <div className={`border-2 rounded-md p-3 ${previewMode ? 'border-gray-300 bg-gray-50' : 'border-green-500 bg-green-50'}`}>
+                        <div className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide mb-1 ${previewMode ? 'text-gray-600' : 'text-green-700'}`}>
+                            {(() => { const Icon = CREDIT_SOURCE_ICON[effectiveSource]; return <Icon className="w-3.5 h-3.5" />; })()}
+                            Credit Source: {CREDIT_SOURCE_LABELS[effectiveSource]}
                         </div>
-                        <div className="text-[10px] text-green-600 mb-2.5">
-                            Set from the Credit Source bar above · match it below
+                        <div className={`text-[10px] mb-2.5 ${previewMode ? 'text-gray-500' : 'text-green-600'}`}>
+                            {previewMode
+                                ? 'Not added yet! Check for a match, and picking one adds it to your cart'
+                                : 'Set from the Credit Source bar above · match it below'}
                         </div>
                         <CreditSourceEquivalencyPicker
                             courseCode={course.course_code}
-                            source={cartCreditSource}
-                            detail={cartCreditSourceDetail}
+                            source={effectiveSource}
+                            detail={previewMode ? undefined : cartCreditSourceDetail}
                             apiBaseUrl={apiBaseUrl}
                             getAuthToken={getAuthToken}
-                            onSelect={(detail) => onSetCreditSource(course.course_id, cartCreditSource, detail)}
-                            onClear={() => onSetCreditSource(course.course_id, cartCreditSource, undefined)}
+                            onSelect={(detail) => previewMode
+                                ? onAdd(course.course_id, undefined, effectiveSource, detail)
+                                : onSetCreditSource(course.course_id, effectiveSource, detail)}
+                            onClear={() => !previewMode && onSetCreditSource(course.course_id, effectiveSource, undefined)}
                         />
                     </div>
                 </div>
@@ -552,78 +571,92 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
             )}
 
             <div className="p-4 flex-1">
-                <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1">
-                    <Layers className="w-3 h-3" /> Sections{semester ? ` · ${semester}` : ''}
+                <div className="flex items-center justify-between mb-2">
+                    <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                        <Layers className="w-3 h-3" /> Sections{semester ? ` · ${semester}` : ''}
+                    </div>
+                    {course.sections.length > 1 && (
+                        <div className="flex items-center gap-1">
+                            <button onClick={() => scrollSections('left')} className="p-0.5 rounded hover:bg-gray-100 text-gray-400">
+                                <ChevronRight className="w-3.5 h-3.5 rotate-180" />
+                            </button>
+                            <button onClick={() => scrollSections('right')} className="p-0.5 rounded hover:bg-gray-100 text-gray-400">
+                                <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    )}
                 </div>
-                <div className="space-y-2">
+
+                <div
+                    ref={sectionsScrollRef}
+                    className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
+                    style={{ scrollbarWidth: 'none' }}
+                >
                     {course.sections.map(sec => {
                         const isPinned = inCart && cartPinnedSection === sec.section;
-                        const isOpen = expandedSection === sec.section;
+                        const isSelected = selectedSection === sec.section;
                         const modality = modalityFromSection(sec);
-                        const daysStr = normalizeDays(sec.days);
-
                         return (
-                            <div
+                            <button
                                 key={sec.section}
-                                className={`rounded-md border text-xs transition-all ${isPinned ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white'}`}
+                                onClick={() => setSelectedSection(sec.section)}
+                                className={`flex-shrink-0 w-[128px] snap-start text-left rounded-md border p-2.5 transition-all
+                                    ${isSelected
+                                        ? 'border-green-400 bg-green-50 ring-1 ring-green-300'
+                                        : isPinned
+                                            ? 'border-green-300 bg-green-50/50'
+                                            : 'border-gray-200 bg-white hover:border-gray-300'}`}
                             >
-                                <div
-                                    className="flex items-center gap-2 p-2.5 cursor-pointer"
-                                    onClick={() => setExpandedSection(isOpen ? null : sec.section)}
-                                >
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="font-semibold text-gray-800">{sec.section}</span>
-                                            <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${modalityBadge(modality)}`}>
-                                                {modalityLabel(modality)}
-                                            </span>
-                                            {isPinned && (
-                                                <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">Pinned</span>
-                                            )}
-                                        </div>
-                                        <div className="text-gray-500 mt-0.5 truncate">{sec.instructors}</div>
-                                        <div className="text-gray-400 mt-0.5">{sec.times_12h}</div>
-                                    </div>
-                                    {isOpen
-                                        ? <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                        : <ChevronRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                    }
+                                <div className="flex items-center gap-1">
+                                    <span className="font-semibold text-gray-800 text-xs truncate">{sec.section}</span>
+                                    {isPinned && <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />}
                                 </div>
-
-                                {isOpen && (
-                                    <div className="px-2.5 pb-2.5 pt-0 border-t border-gray-100 space-y-1.5">
-                                        {daysStr && (
-                                            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
-                                                <Clock className="w-3 h-3 flex-shrink-0" />
-                                                <span>{daysStr.split(',').map(d => d.trim().slice(0, 3)).join(' / ')} · {sec.times_12h}</span>
-                                            </div>
-                                        )}
-                                        {sec.location && (
-                                            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
-                                                <MapPin className="w-3 h-3 flex-shrink-0" />
-                                                <span>{sec.location}</span>
-                                            </div>
-                                        )}
-                                        {sec.syllabus && (
-                                            <a href={sec.syllabus} target="_blank" rel="noreferrer"
-                                                className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium">
-                                                <FileText className="w-3 h-3" /> Section Syllabus
-                                            </a>
-                                        )}
-                                        {inCart && cartPinnedSection !== sec.section && (
-                                            <button
-                                                onClick={() => onSwapSection(course.course_id, sec.section)}
-                                                className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium mt-1"
-                                            >
-                                                <RefreshCw className="w-3 h-3" /> Pin this section
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                                <span className={`inline-block mt-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full ${modalityBadge(modality)}`}>
+                                    {modalityLabel(modality)}
+                                </span>
+                                <div className="text-[10px] text-gray-500 mt-1 truncate">{sec.instructors}</div>
+                                <div className="text-[10px] text-gray-400 mt-0.5 truncate">{sec.times_12h}</div>
+                            </button>
                         );
                     })}
                 </div>
+
+                {selectedSectionData && (
+                    <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 p-3 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-800">Section {selectedSectionData.section}</span>
+                            {inCart && cartPinnedSection === selectedSectionData.section && (
+                                <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">Pinned</span>
+                            )}
+                        </div>
+                        {selectedDaysStr && (
+                            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+                                <Clock className="w-3 h-3 flex-shrink-0" />
+                                <span>{selectedDaysStr.split(',').map(d => d.trim().slice(0, 3)).join(' / ')} · {selectedSectionData.times_12h}</span>
+                            </div>
+                        )}
+                        {selectedSectionData.location && (
+                            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+                                <MapPin className="w-3 h-3 flex-shrink-0" />
+                                <span>{selectedSectionData.location}</span>
+                            </div>
+                        )}
+                        {selectedSectionData.syllabus && (
+                            <a href={selectedSectionData.syllabus} target="_blank" rel="noreferrer"
+                                className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium">
+                                <FileText className="w-3 h-3" /> Section Syllabus
+                            </a>
+                        )}
+                        {inCart && cartPinnedSection !== selectedSectionData.section && (
+                            <button
+                                onClick={() => onSwapSection(course.course_id, selectedSectionData.section)}
+                                className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium mt-1"
+                            >
+                                <RefreshCw className="w-3 h-3" /> Pin this section
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="p-4 border-t border-gray-200 flex-shrink-0">
@@ -658,10 +691,10 @@ const CartPanel: React.FC<CartPanelProps> = ({ cart, onRemove, onCheckout }) => 
     const totalCredits = cart.reduce((s, item) => s + item.course.credits, 0);
     const creditStatus =
         totalCredits > 18
-            ? { text: `${totalCredits} hrs — may need advisor approval`, color: 'text-red-600 bg-red-50' }
+            ? { text: `${totalCredits} hrs (may need advisor approval)`, color: 'text-red-600 bg-red-50' }
             : totalCredits >= 12
-                ? { text: `${totalCredits} hrs — full-time load`, color: 'text-green-600 bg-green-50' }
-                : { text: `${totalCredits} hrs — part-time load`, color: 'text-yellow-600 bg-yellow-50' };
+                ? { text: `${totalCredits} hrs (full-time load)`, color: 'text-green-600 bg-green-50' }
+                : { text: `${totalCredits} hrs (part-time load)`, color: 'text-yellow-600 bg-yellow-50' };
 
     if (cart.length === 0) return (
         <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400 p-6">
@@ -730,9 +763,9 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, onBack, onConfirm }
 
     const creditStatus =
         totalCredits > 18
-            ? { text: `${totalCredits} hrs — may need advisor approval`, color: 'text-red-600 bg-red-50' }
+            ? { text: `${totalCredits} hrs (may need advisor approval)`, color: 'text-red-600 bg-red-50' }
             : totalCredits >= 12
-                ? { text: `${totalCredits} hrs — full-time load`, color: 'text-green-600 bg-green-50' }
+                ? { text: `${totalCredits} hrs (full-time load)`, color: 'text-green-600 bg-green-50' }
                 : { text: `${totalCredits} hrs`, color: 'text-yellow-600 bg-yellow-50' };
 
     return (
@@ -830,7 +863,7 @@ async function fetchTransferCredits(apiBaseUrl: string, token: string, schoolNam
 
 interface CreditSourceEquivalencyPickerProps {
     courseCode: string;
-    source: 'test' | 'transfer';
+    source: Exclude<CreditSource, 'university'>;
     detail?: CreditSourceDetail;
     apiBaseUrl: string;
     getAuthToken: () => Promise<string>;
@@ -1240,11 +1273,11 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const cartItem = selectedCourse ? cart.find(i => i.course.course_id === selectedCourse.course_id) : undefined;
     const isClientFiltering = !hideCompleted || !hideStaged || selectedCredits.length > 0 || selectedFrequency.length > 0 || !!query.trim();
 
-    const addToCart = useCallback((courseId: string, section?: string) => {
+    const addToCart = useCallback((courseId: string, section?: string, source?: CreditSource, detail?: CreditSourceDetail) => {
         const course = courses.find(c => c.course_id === courseId);
         if (!course) return;
         if (cart.find(i => i.course.course_id === courseId)) return;
-        onCartChange([...cart, { course, pinned_section: section, credit_source: defaultCreditSource }]);
+        onCartChange([...cart, { course, pinned_section: section, credit_source: source ?? defaultCreditSource, credit_source_detail: detail }]);
     }, [courses, cart, onCartChange, defaultCreditSource]);
 
     const removeFromCart = useCallback((courseId: string) => {
@@ -1553,7 +1586,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                         </div>
                     )}
 
-                    {/* Credit Source — always visible, sets the default applied when you add a course to cart */}
+                    {/* Credit Source */}
                     <div className="px-5 py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50">
                         <div className="flex items-center gap-3 flex-wrap">
                             <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">How will you get credit for these courses?</span>
@@ -1682,6 +1715,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                             cartPinnedSection={cartItem?.pinned_section}
                                             cartCreditSource={cartItem?.credit_source}
                                             cartCreditSourceDetail={cartItem?.credit_source_detail}
+                                            defaultCreditSource={defaultCreditSource}
                                             onAdd={addToCart}
                                             onRemove={removeFromCart}
                                             onSwapSection={swapSection}
