@@ -641,12 +641,36 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                                 <span>{selectedSectionData.location}</span>
                             </div>
                         )}
-                        {selectedSectionData.syllabus && (
-                            <a href={selectedSectionData.syllabus} target="_blank" rel="noreferrer"
-                                className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium">
-                                <FileText className="w-3 h-3" /> Section Syllabus
-                            </a>
-                        )}
+
+                        {(() => {
+                            const syllabus = selectedSectionData.syllabus?.trim();
+
+                            if (!syllabus) return null;
+
+                            const syllabusUrl =
+                                syllabus.startsWith("http://") || syllabus.startsWith("https://")
+                                    ? syllabus
+                                    : `https://dox.utdallas.edu${syllabus.startsWith("/") ? "" : "/"
+                                    }${syllabus}`;
+
+                            try {
+                                new URL(syllabusUrl);
+
+                                return (
+                                    <a
+                                        href={syllabusUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium"
+                                    >
+                                        <FileText className="w-3 h-3" />
+                                        Section Syllabus
+                                    </a>
+                                );
+                            } catch {
+                                return null;
+                            }
+                        })()}
                         {inCart && cartPinnedSection !== selectedSectionData.section && (
                             <button
                                 onClick={() => onSwapSection(course.course_id, selectedSectionData.section)}
