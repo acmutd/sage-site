@@ -62,9 +62,22 @@ export interface DiscoveryCourse {
     prereqs_raw?: any;
 }
 
+export type CreditSource = 'university' | 'test' | 'transfer';
+
+export interface CreditSourceDetail {
+    label: string; // display string, e.g. "AP · Calculus BC (5)" or "Dallas College · MATH 2414"
+    test_type?: string; // 'AP' | 'IB' | 'CLEP' | 'A&AS'
+    exam?: string;
+    score?: string;
+    school_name?: string;
+    external_course?: string;
+}
+
 export interface CartItem {
     course: DiscoveryCourse;
     pinned_section?: string;
+    credit_source: CreditSource;
+    credit_source_detail?: CreditSourceDetail;
 }
 
 export interface CourseDiscoveryModalProps {
@@ -363,16 +376,67 @@ interface DetailPanelProps {
     course: DiscoveryCourse;
     inCart: boolean;
     cartPinnedSection?: string;
-    onAdd: (courseId: string, section?: string) => void;
-    onRemove: (courseId: string) => void;
+    cartCreditSource?: CreditSource;
+    cartCreditSourceDetail?: CreditSourceDetail;
+    defaultCreditSource: CreditSource;
+    onAdd: (courseId: string, section?: string, source?: CreditSource, detail?: CreditSourceDetail) => void; onRemove: (courseId: string) => void;
     onSwapSection: (courseId: string, section: string) => void;
+    onSetCreditSource: (courseId: string, source: CreditSource, detail?: CreditSourceDetail) => void;
     semester?: string;
+    apiBaseUrl: string;
+    getAuthToken: () => Promise<string>;
 }
 
+const CREDIT_SOURCE_LABELS: Record<CreditSource, string> = {
+    university: 'University',
+    test: 'Test Credits',
+    transfer: 'Transfer Credits',
+};
+
+const CREDIT_SOURCE_SUBTEXT: Record<CreditSource, string> = {
+    university: 'Taking it at UTD',
+    test: 'AP · IB · CLEP · A&AS',
+    transfer: 'Another school',
+};
+
+const CREDIT_SOURCE_ICON: Record<CreditSource, React.ElementType> = {
+    university: BookOpen,
+    test: Award,
+    transfer: RefreshCw,
+};
+
+const CreditSourceBadge = ({ source, detail }: { source?: CreditSource; detail?: CreditSourceDetail }) => {
+    if (!source || source === 'university') return null;
+    const Icon = CREDIT_SOURCE_ICON[source];
+    return (
+        <div className="text-[10px] text-green-700 mt-1.5 flex items-center gap-1">
+            <Icon className="w-3 h-3 flex-shrink-0" />
+            {CREDIT_SOURCE_LABELS[source]}{detail?.label ? ` · ${detail.label}` : ''}
+        </div>
+    );
+};
+
 const DetailPanel: React.FC<DetailPanelProps> = ({
-    course, inCart, cartPinnedSection, onAdd, onRemove, onSwapSection, semester,
+    course, inCart, cartPinnedSection, cartCreditSource, cartCreditSourceDetail, defaultCreditSource,
+    onAdd, onRemove, onSwapSection, onSetCreditSource, semester,
+    apiBaseUrl, getAuthToken,
 }) => {
-    const [expandedSection, setExpandedSection] = useState<string | null>(null);
+    const [selectedSection, setSelectedSection] = useState<string | null>(cartPinnedSection ?? course.sections[0]?.section ?? null);
+    const sectionsScrollRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        setSelectedSection(cartPinnedSection ?? course.sections[0]?.section ?? null);
+    }, [course.course_id]);
+
+    const selectedSectionData = course.sections.find(s => s.section === selectedSection) ?? course.sections[0];
+    const selectedDaysStr = selectedSectionData ? normalizeDays(selectedSectionData.days) : '';
+
+    const scrollSections = (dir: 'left' | 'right') => {
+        sectionsScrollRef.current?.scrollBy({ left: dir === 'left' ? -140 : 140, behavior: 'smooth' });
+    };
+
+    const effectiveSource: CreditSource | undefined = inCart ? cartCreditSource : defaultCreditSource;
+    const previewMode = !inCart && effectiveSource !== 'university';
 
     return (
         <div className="flex flex-col h-full overflow-y-auto">
@@ -393,6 +457,33 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                 </div>
                 <PrereqDot met={course.prereqs_met} text={course.prereqs_text} />
             </div>
+
+            {effectiveSource && effectiveSource !== 'university' && (
+                <div className="p-4 border-b border-gray-100">
+                    <div className={`border-2 rounded-md p-3 ${previewMode ? 'border-gray-300 bg-gray-50' : 'border-green-500 bg-green-50'}`}>
+                        <div className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide mb-1 ${previewMode ? 'text-gray-600' : 'text-green-700'}`}>
+                            {(() => { const Icon = CREDIT_SOURCE_ICON[effectiveSource]; return <Icon className="w-3.5 h-3.5" />; })()}
+                            Credit Source: {CREDIT_SOURCE_LABELS[effectiveSource]}
+                        </div>
+                        <div className={`text-[10px] mb-2.5 ${previewMode ? 'text-gray-500' : 'text-green-600'}`}>
+                            {previewMode
+                                ? 'Not added yet! Check for a match, and picking one adds it to your cart'
+                                : 'Set from the Credit Source bar above · match it below'}
+                        </div>
+                        <CreditSourceEquivalencyPicker
+                            courseCode={course.course_code}
+                            source={effectiveSource}
+                            detail={previewMode ? undefined : cartCreditSourceDetail}
+                            apiBaseUrl={apiBaseUrl}
+                            getAuthToken={getAuthToken}
+                            onSelect={(detail) => previewMode
+                                ? onAdd(course.course_id, undefined, effectiveSource, detail)
+                                : onSetCreditSource(course.course_id, effectiveSource, detail)}
+                            onClear={() => !previewMode && onSetCreditSource(course.course_id, effectiveSource, undefined)}
+                        />
+                    </div>
+                </div>
+            )}
 
             <div className="p-4 border-b border-gray-100">
                 {course.description && (
@@ -480,78 +571,116 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
             )}
 
             <div className="p-4 flex-1">
-                <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1">
-                    <Layers className="w-3 h-3" /> Sections{semester ? ` · ${semester}` : ''}
+                <div className="flex items-center justify-between mb-2">
+                    <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                        <Layers className="w-3 h-3" /> Sections{semester ? ` · ${semester}` : ''}
+                    </div>
+                    {course.sections.length > 1 && (
+                        <div className="flex items-center gap-1">
+                            <button onClick={() => scrollSections('left')} className="p-0.5 rounded hover:bg-gray-100 text-gray-400">
+                                <ChevronRight className="w-3.5 h-3.5 rotate-180" />
+                            </button>
+                            <button onClick={() => scrollSections('right')} className="p-0.5 rounded hover:bg-gray-100 text-gray-400">
+                                <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    )}
                 </div>
-                <div className="space-y-2">
+
+                <div
+                    ref={sectionsScrollRef}
+                    className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
+                    style={{ scrollbarWidth: 'none' }}
+                >
                     {course.sections.map(sec => {
                         const isPinned = inCart && cartPinnedSection === sec.section;
-                        const isOpen = expandedSection === sec.section;
+                        const isSelected = selectedSection === sec.section;
                         const modality = modalityFromSection(sec);
-                        const daysStr = normalizeDays(sec.days);
-
                         return (
-                            <div
+                            <button
                                 key={sec.section}
-                                className={`rounded-md border text-xs transition-all ${isPinned ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white'}`}
+                                onClick={() => setSelectedSection(sec.section)}
+                                className={`flex-shrink-0 w-[128px] snap-start text-left rounded-md border p-2.5 transition-all
+                                    ${isSelected
+                                        ? 'border-green-400 bg-green-50 ring-1 ring-green-300'
+                                        : isPinned
+                                            ? 'border-green-300 bg-green-50/50'
+                                            : 'border-gray-200 bg-white hover:border-gray-300'}`}
                             >
-                                <div
-                                    className="flex items-center gap-2 p-2.5 cursor-pointer"
-                                    onClick={() => setExpandedSection(isOpen ? null : sec.section)}
-                                >
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="font-semibold text-gray-800">{sec.section}</span>
-                                            <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${modalityBadge(modality)}`}>
-                                                {modalityLabel(modality)}
-                                            </span>
-                                            {isPinned && (
-                                                <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">Pinned</span>
-                                            )}
-                                        </div>
-                                        <div className="text-gray-500 mt-0.5 truncate">{sec.instructors}</div>
-                                        <div className="text-gray-400 mt-0.5">{sec.times_12h}</div>
-                                    </div>
-                                    {isOpen
-                                        ? <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                        : <ChevronRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                    }
+                                <div className="flex items-center gap-1">
+                                    <span className="font-semibold text-gray-800 text-xs truncate">{sec.section}</span>
+                                    {isPinned && <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />}
                                 </div>
-
-                                {isOpen && (
-                                    <div className="px-2.5 pb-2.5 pt-0 border-t border-gray-100 space-y-1.5">
-                                        {daysStr && (
-                                            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
-                                                <Clock className="w-3 h-3 flex-shrink-0" />
-                                                <span>{daysStr.split(',').map(d => d.trim().slice(0, 3)).join(' / ')} · {sec.times_12h}</span>
-                                            </div>
-                                        )}
-                                        {sec.location && (
-                                            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
-                                                <MapPin className="w-3 h-3 flex-shrink-0" />
-                                                <span>{sec.location}</span>
-                                            </div>
-                                        )}
-                                        {sec.syllabus && (
-                                            <a href={sec.syllabus} target="_blank" rel="noreferrer"
-                                                className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium">
-                                                <FileText className="w-3 h-3" /> Section Syllabus
-                                            </a>
-                                        )}
-                                        {inCart && cartPinnedSection !== sec.section && (
-                                            <button
-                                                onClick={() => onSwapSection(course.course_id, sec.section)}
-                                                className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium mt-1"
-                                            >
-                                                <RefreshCw className="w-3 h-3" /> Pin this section
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                                <span className={`inline-block mt-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full ${modalityBadge(modality)}`}>
+                                    {modalityLabel(modality)}
+                                </span>
+                                <div className="text-[10px] text-gray-500 mt-1 truncate">{sec.instructors}</div>
+                                <div className="text-[10px] text-gray-400 mt-0.5 truncate">{sec.times_12h}</div>
+                            </button>
                         );
                     })}
                 </div>
+
+                {selectedSectionData && (
+                    <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 p-3 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-800">Section {selectedSectionData.section}</span>
+                            {inCart && cartPinnedSection === selectedSectionData.section && (
+                                <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">Pinned</span>
+                            )}
+                        </div>
+                        {selectedDaysStr && (
+                            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+                                <Clock className="w-3 h-3 flex-shrink-0" />
+                                <span>{selectedDaysStr.split(',').map(d => d.trim().slice(0, 3)).join(' / ')} · {selectedSectionData.times_12h}</span>
+                            </div>
+                        )}
+                        {selectedSectionData.location && (
+                            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+                                <MapPin className="w-3 h-3 flex-shrink-0" />
+                                <span>{selectedSectionData.location}</span>
+                            </div>
+                        )}
+
+                        {(() => {
+                            const syllabus = selectedSectionData.syllabus?.trim();
+
+                            if (!syllabus) return null;
+
+                            const syllabusUrl =
+                                syllabus.startsWith("http://") || syllabus.startsWith("https://")
+                                    ? syllabus
+                                    : `https://dox.utdallas.edu${syllabus.startsWith("/") ? "" : "/"
+                                    }${syllabus}`;
+
+                            try {
+                                new URL(syllabusUrl);
+
+                                return (
+                                    <a
+                                        href={syllabusUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium"
+                                    >
+                                        <FileText className="w-3 h-3" />
+                                        Section Syllabus
+                                    </a>
+                                );
+                            } catch {
+                                return null;
+                            }
+                        })()}
+                        {inCart && cartPinnedSection !== selectedSectionData.section && (
+                            <button
+                                onClick={() => onSwapSection(course.course_id, selectedSectionData.section)}
+                                className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium mt-1"
+                            >
+                                <RefreshCw className="w-3 h-3" /> Pin this section
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="p-4 border-t border-gray-200 flex-shrink-0">
@@ -586,10 +715,10 @@ const CartPanel: React.FC<CartPanelProps> = ({ cart, onRemove, onCheckout }) => 
     const totalCredits = cart.reduce((s, item) => s + item.course.credits, 0);
     const creditStatus =
         totalCredits > 18
-            ? { text: `${totalCredits} hrs — may need advisor approval`, color: 'text-red-600 bg-red-50' }
+            ? { text: `${totalCredits} hrs (may need advisor approval)`, color: 'text-red-600 bg-red-50' }
             : totalCredits >= 12
-                ? { text: `${totalCredits} hrs — full-time load`, color: 'text-green-600 bg-green-50' }
-                : { text: `${totalCredits} hrs — part-time load`, color: 'text-yellow-600 bg-yellow-50' };
+                ? { text: `${totalCredits} hrs (full-time load)`, color: 'text-green-600 bg-green-50' }
+                : { text: `${totalCredits} hrs (part-time load)`, color: 'text-yellow-600 bg-yellow-50' };
 
     if (cart.length === 0) return (
         <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400 p-6">
@@ -628,6 +757,7 @@ const CartPanel: React.FC<CartPanelProps> = ({ cart, onRemove, onCheckout }) => 
                                 <CheckCircle className="w-3 h-3" /> Pinned: Section {item.pinned_section}
                             </div>
                         )}
+                        <CreditSourceBadge source={item.credit_source} detail={item.credit_source_detail} />
                     </div>
                 ))}
             </div>
@@ -657,9 +787,9 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, onBack, onConfirm }
 
     const creditStatus =
         totalCredits > 18
-            ? { text: `${totalCredits} hrs — may need advisor approval`, color: 'text-red-600 bg-red-50' }
+            ? { text: `${totalCredits} hrs (may need advisor approval)`, color: 'text-red-600 bg-red-50' }
             : totalCredits >= 12
-                ? { text: `${totalCredits} hrs — full-time load`, color: 'text-green-600 bg-green-50' }
+                ? { text: `${totalCredits} hrs (full-time load)`, color: 'text-green-600 bg-green-50' }
                 : { text: `${totalCredits} hrs`, color: 'text-yellow-600 bg-yellow-50' };
 
     return (
@@ -686,6 +816,7 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, onBack, onConfirm }
                         {item.pinned_section && (
                             <div className="text-[10px] text-purple-600 mt-1">Section {item.pinned_section} noted</div>
                         )}
+                        <CreditSourceBadge source={item.credit_source} detail={item.credit_source_detail} />
                     </div>
                 ))}
             </div>
@@ -704,6 +835,251 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, onBack, onConfirm }
                     Move to Sidebar →
                 </button>
             </div>
+        </div>
+    );
+};
+
+const EXAM_TYPES = ['A&AS', 'AP', 'CLEP', 'IB'] as const;
+
+const flattenCourseList = (v: any): string[] => (Array.isArray(v) ? v.flatMap(flattenCourseList) : [String(v)]);
+
+const testCreditsCache = new Map<string, Promise<any[]>>();
+const transferCreditsCache = new Map<string, Promise<any[]>>();
+
+async function fetchTestCredits(apiBaseUrl: string, token: string, testType: string): Promise<any[]> {
+    const cached = testCreditsCache.get(testType);
+    if (cached) return cached;
+
+    const promise = (async () => {
+        const params = new URLSearchParams({ test_type: testType, limit: '500' });
+        const res = await fetch(`${apiBaseUrl}/tests?${params}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error();
+        const json = await res.json();
+        return json.data ?? [];
+    })();
+
+    testCreditsCache.set(testType, promise);
+    promise.catch(() => testCreditsCache.delete(testType)); // don't cache a failed request
+    return promise;
+}
+
+async function fetchTransferCredits(apiBaseUrl: string, token: string, schoolName: string): Promise<any[]> {
+    const key = schoolName.trim().toLowerCase();
+    const cached = transferCreditsCache.get(key);
+    if (cached) return cached;
+
+    const promise = (async () => {
+        const params = new URLSearchParams({ school_name: schoolName.trim(), limit: '500' });
+        const res = await fetch(`${apiBaseUrl}/transfer?${params}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error();
+        const json = await res.json();
+        return json.data ?? [];
+    })();
+
+    transferCreditsCache.set(key, promise);
+    promise.catch(() => transferCreditsCache.delete(key));
+    return promise;
+}
+
+interface CreditSourceEquivalencyPickerProps {
+    courseCode: string;
+    source: Exclude<CreditSource, 'university'>;
+    detail?: CreditSourceDetail;
+    apiBaseUrl: string;
+    getAuthToken: () => Promise<string>;
+    onSelect: (detail: CreditSourceDetail) => void;
+    onClear: () => void;
+}
+
+const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps> = ({
+    courseCode, source, detail, apiBaseUrl, getAuthToken, onSelect, onClear,
+}) => {
+    const [testType, setTestType] = useState<string | null>(null);
+    const [schoolQuery, setSchoolQuery] = useState('');
+    const [searching, setSearching] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [matches, setMatches] = useState<any[] | null>(null);
+    const [availability, setAvailability] = useState<Record<string, boolean> | null>(null);
+
+    const targetCode = normalizeCourseCode(courseCode);
+
+    useEffect(() => {
+        if (source !== 'test' || detail) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const token = await getAuthToken();
+                const entries = await Promise.all(
+                    EXAM_TYPES.map(async (type) => {
+                        const rows = await fetchTestCredits(apiBaseUrl, token, type);
+                        const has = rows.some((row: any) =>
+                            flattenCourseList(row.utd_courses_list).some(c => normalizeCourseCode(c) === targetCode)
+                        );
+                        return [type, has] as const;
+                    })
+                );
+                if (!cancelled) setAvailability(Object.fromEntries(entries));
+            } catch {
+                // Availability check didn't happen so render all chips
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [source, detail, courseCode, apiBaseUrl]);
+
+    const noExamsApply = availability !== null && EXAM_TYPES.every(t => availability[t] === false);
+
+    const runTestSearch = async (type: string) => {
+        setTestType(type);
+        setSearching(true);
+        setError(null);
+        setMatches(null);
+        try {
+            const token = await getAuthToken();
+            const rows = await fetchTestCredits(apiBaseUrl, token, type);
+            const matched = rows.filter((row: any) =>
+                flattenCourseList(row.utd_courses_list).some(c => normalizeCourseCode(c) === targetCode)
+            );
+            setMatches(matched);
+        } catch {
+            setError('Could not load test credits right now.');
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const runTransferSearch = async () => {
+        if (!schoolQuery.trim()) return;
+        setSearching(true);
+        setError(null);
+        setMatches(null);
+        try {
+            const token = await getAuthToken();
+            const rows = await fetchTransferCredits(apiBaseUrl, token, schoolQuery);
+            const matched = rows.filter((row: any) =>
+                normalizeCourseCode(row.utd_equivalent ?? '') === targetCode
+            );
+            setMatches(matched);
+        } catch {
+            setError('Could not find that school. Check the spelling and try again.');
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    if (detail) {
+        return (
+            <div className="mb-2.5 flex items-center justify-between gap-2 text-[11px] bg-green-50 text-green-700 rounded-md px-2.5 py-2">
+                <span className="truncate">{detail.label}</span>
+                <button onClick={onClear} className="text-green-500 hover:text-green-700 flex-shrink-0">
+                    <X className="w-3 h-3" />
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="mb-2.5 border border-gray-200 rounded-md p-2.5 bg-gray-50">
+            {source === 'test' ? (
+                <>
+                    <div className="text-[10px] text-gray-500 mb-1.5 flex items-center gap-1.5">
+                        Which exam?
+                        {availability === null && !noExamsApply && (
+                            <Loader2 className="w-2.5 h-2.5 animate-spin text-gray-300" />
+                        )}
+                    </div>
+                    {noExamsApply ? (
+                        <p className="text-[10px] text-gray-400 mb-2">
+                            No test credit equivalencies found for {courseCode}, on any exam type.
+                        </p>
+                    ) : (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                            {EXAM_TYPES.map(type => {
+                                const disabled = availability?.[type] === false;
+                                return (
+                                    <button
+                                        key={type}
+                                        onClick={() => !disabled && runTestSearch(type)}
+                                        disabled={disabled}
+                                        title={disabled ? `No ${type} equivalency found for ${courseCode}` : undefined}
+                                        className={`text-[10px] font-medium px-2 py-1 rounded-full border transition-colors
+                                        ${testType === type
+                                                ? 'bg-green-500 border-green-500 text-white'
+                                                : disabled
+                                                    ? 'border-gray-100 bg-gray-50 text-gray-300 line-through cursor-not-allowed'
+                                                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}
+                                    >
+                                        {type}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </>
+            ) : (
+                <>
+                    <div className="text-[10px] text-gray-500 mb-1.5">Which school? (exact name, e.g. "Collin College")</div>
+                    <div className="flex gap-1.5 mb-2">
+                        <input
+                            value={schoolQuery}
+                            onChange={(e) => setSchoolQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && runTransferSearch()}
+                            placeholder="School name"
+                            className="flex-1 text-[11px] px-2 py-1 rounded border border-gray-200 focus:outline-none focus:border-green-400"
+                        />
+                        <button
+                            onClick={runTransferSearch}
+                            className="text-[10px] font-medium px-2.5 py-1 rounded bg-green-500 text-white hover:bg-green-600"
+                        >
+                            Search
+                        </button>
+                    </div>
+                </>
+            )}
+
+            {searching && <p className="text-[10px] text-gray-400">Searching…</p>}
+            {error && <p className="text-[10px] text-red-500">{error}</p>}
+
+            {matches && matches.length === 0 && !searching && (
+                <p className="text-[10px] text-gray-400">No equivalency found for {courseCode} there.</p>
+            )}
+
+            {matches && matches.length > 0 && (
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {source === 'test'
+                        ? matches.map((row, i) => (
+                            <button
+                                key={i}
+                                onClick={() => onSelect({
+                                    label: `${row.test_type} · ${row.exam} (${row.score})`,
+                                    test_type: row.test_type,
+                                    exam: row.exam,
+                                    score: row.score,
+                                })}
+                                className="w-full text-left text-[11px] px-2 py-1.5 rounded bg-white border border-gray-200 hover:border-green-300 hover:bg-green-50"
+                            >
+                                {row.exam} <span className="text-gray-400">— score {row.score}</span>
+                            </button>
+                        ))
+                        : matches.map((row, i) => (
+                            <button
+                                key={i}
+                                onClick={() => onSelect({
+                                    label: `${row.school_name} · ${row.external_course}`,
+                                    school_name: row.school_name,
+                                    external_course: row.external_course,
+                                })}
+                                className="w-full text-left text-[11px] px-2 py-1.5 rounded bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"
+                            >
+                                {row.external_course} <span className="text-gray-400">— {row.external_title}</span>
+                            </button>
+                        ))
+                    }
+                </div>
+            )}
         </div>
     );
 };
@@ -730,6 +1106,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const [selectedPrefixes, setSelectedPrefixes] = useState<string[]>([]);
     const [selectedCredits, setSelectedCredits] = useState<string[]>([]);
     const [selectedFrequency, setSelectedFrequency] = useState<string[]>([]);
+    const [defaultCreditSource, setDefaultCreditSource] = useState<CreditSource>('university');
     const [coreOnly, setCoreOnly] = useState(false);
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
     const [rightPanel, setRightPanel] = useState<RightPanel>(null);
@@ -893,7 +1270,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
         if (hideCompleted) results = results.filter(c => !completedSet.has(normalizeCourseCode(c.course_code)));
         if (hideStaged) results = results.filter(c => !stagedSet.has(c.course_id));
-        
+
         if (selectedCredits.length) {
             const mapped = selectedCredits.map(c => c === '4+' ? '4' : c.toLowerCase());
             console.log('filtering credits, mapped:', mapped);
@@ -920,12 +1297,12 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const cartItem = selectedCourse ? cart.find(i => i.course.course_id === selectedCourse.course_id) : undefined;
     const isClientFiltering = !hideCompleted || !hideStaged || selectedCredits.length > 0 || selectedFrequency.length > 0 || !!query.trim();
 
-    const addToCart = useCallback((courseId: string, section?: string) => {
+    const addToCart = useCallback((courseId: string, section?: string, source?: CreditSource, detail?: CreditSourceDetail) => {
         const course = courses.find(c => c.course_id === courseId);
         if (!course) return;
         if (cart.find(i => i.course.course_id === courseId)) return;
-        onCartChange([...cart, { course, pinned_section: section }]);
-    }, [courses, cart, onCartChange]);
+        onCartChange([...cart, { course, pinned_section: section, credit_source: source ?? defaultCreditSource, credit_source_detail: detail }]);
+    }, [courses, cart, onCartChange, defaultCreditSource]);
 
     const removeFromCart = useCallback((courseId: string) => {
         onCartChange(cart.filter(i => i.course.course_id !== courseId));
@@ -934,6 +1311,12 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const swapSection = useCallback((courseId: string, section: string) => {
         onCartChange(cart.map(i =>
             i.course.course_id === courseId ? { ...i, pinned_section: section } : i
+        ));
+    }, [cart, onCartChange]);
+
+    const setCreditSource = useCallback((courseId: string, source: CreditSource, detail?: CreditSourceDetail) => {
+        onCartChange(cart.map(i =>
+            i.course.course_id === courseId ? { ...i, credit_source: source, credit_source_detail: detail } : i
         ));
     }, [cart, onCartChange]);
 
@@ -966,6 +1349,8 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
             prerequisites: item.course.prereqs_raw,
             'Pre-Requisite': item.course.prereqs_raw,
             max_repeat_credits: item.course.max_repeat_credits,
+            credit_source: item.credit_source,
+            credit_source_detail: item.credit_source_detail,
         }));
 
         addStagedCourses(staged);
@@ -995,6 +1380,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         setNoPerm(false);
         setSelectedStanding([]);
         setSelectedFrequency([]);
+        setDefaultCreditSource('university');
     };
 
     const showingAll = !hideCompleted && !hideStaged;
@@ -1224,6 +1610,39 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                         </div>
                     )}
 
+                    {/* Credit Source */}
+                    <div className="px-5 py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50">
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">How will you get credit for these courses?</span>
+                            <div className="flex gap-2 flex-1 min-w-[420px]">
+                                {(Object.keys(CREDIT_SOURCE_LABELS) as CreditSource[]).map(src => {
+                                    const Icon = CREDIT_SOURCE_ICON[src];
+                                    const active = defaultCreditSource === src;
+                                    return (
+                                        <button
+                                            key={src}
+                                            onClick={() => setDefaultCreditSource(src)}
+                                            className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-md border-2 text-left transition-colors
+                                                ${active ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-100'}`}
+                                        >
+                                            <Icon className="w-4 h-4 flex-shrink-0" />
+                                            <span>
+                                                <span className="block text-xs font-semibold">{CREDIT_SOURCE_LABELS[src]}</span>
+                                                <span className="block text-[10px] opacity-75">{CREDIT_SOURCE_SUBTEXT[src]}</span>
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-gray-500">
+                            <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                            {defaultCreditSource === 'university'
+                                ? 'Every course you add below will be tagged as University enrollment.'
+                                : `Add any course below, then match it to ${defaultCreditSource === 'test' ? 'your exam' : 'the school you want to take it at'} right in its detail card.`}
+                        </div>
+                    </div>
+
                     {/* Main content */}
                     <div className="flex flex-1 overflow-hidden">
                         <div className={`flex-1 overflow-y-auto min-w-0 ${rightPanel ? 'hidden sm:block' : ''}`}>
@@ -1318,10 +1737,16 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                             course={selectedCourse}
                                             inCart={!!cartItem}
                                             cartPinnedSection={cartItem?.pinned_section}
+                                            cartCreditSource={cartItem?.credit_source}
+                                            cartCreditSourceDetail={cartItem?.credit_source_detail}
+                                            defaultCreditSource={defaultCreditSource}
                                             onAdd={addToCart}
                                             onRemove={removeFromCart}
                                             onSwapSection={swapSection}
+                                            onSetCreditSource={setCreditSource}
                                             semester={semester}
+                                            apiBaseUrl={apiBaseUrl}
+                                            getAuthToken={getAuthToken}
                                         />
                                     )}
                                     {rightPanel === 'cart' && (

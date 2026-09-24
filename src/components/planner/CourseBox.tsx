@@ -535,6 +535,16 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     </div>
                 )}
 
+                {course.credit_source && course.credit_source !== 'university' && (
+                    <div className="flex gap-2">
+                        <span className="text-gray-600 font-medium whitespace-nowrap flex-shrink-0">Credit Source:</span>
+                        <span className="text-gray-900">
+                            {course.credit_source === 'transfer' ? 'Transfer Credits' : 'Test Credits'}
+                            {course.credit_source_detail?.label ? ` · ${course.credit_source_detail.label}` : ''}
+                        </span>
+                    </div>
+                )}
+                
                 {warnings && warnings.length > 0 && (
                     <WarningSection warnings={warnings} />
                 )}
@@ -612,7 +622,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                             <span className="text-[10px] text-gray-500">{sec.times_12h?.split(";")[0].trim()}</span>
                                         </div>
                                         <div className={`text-xs ${sec.location === "Online" ? "text-[#5AED86] font-semibold" : "text-gray-600"}`}>
-                                            {sec.location.replace("_", " ")}
+                                            {sec.location?.replace("_", " ") ?? "TBA"}
                                         </div>
                                     </div>
                                 );
@@ -655,7 +665,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                             <span className="text-[10px] text-gray-500">{sec.times_12h?.split(";")[0].trim()}</span>
                                         </div>
                                         <div className={`text-xs ${sec.location === "Online" ? "text-[#5AED86] font-semibold" : "text-gray-600"}`}>
-                                            {sec.location.replace("_", " ")}
+                                            {sec.location?.replace("_", " ") ?? "TBA"}
                                         </div>
                                         <div className="flex flex-col gap-1 items-end">
                                             {avg && (
@@ -790,6 +800,14 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         {isDiscovered && !isPlaced && (
                             <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
                                 Staged
+                            </span>
+                        )}
+                        {course.credit_source && course.credit_source !== 'university' && (
+                            <span
+                                className="text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md truncate max-w-[90px]"
+                                title={course.credit_source_detail?.label ?? (course.credit_source === 'test' ? 'Test Credits' : 'Transfer Credits')}
+                            >
+                                {course.credit_source === 'test' ? 'Test Credit' : 'Transfer'}
                             </span>
                         )}
                         {isSuggested && !isPlaced && (

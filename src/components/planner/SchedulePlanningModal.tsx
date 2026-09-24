@@ -308,6 +308,10 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     const plannableCourses = useMemo(() => {
         return courses
             .filter(c => String(c.status || '').toLowerCase() !== 'completed')
+            .filter(c => {
+                const source = (c as any).credit_source;
+                return !source || source === 'university';
+            })
             .map(c => ({
                 course: c,
                 sections: (c as any).sections as any[] || [],
