@@ -786,6 +786,48 @@ const EXAM_TYPES = ['A&AS', 'AP', 'CLEP', 'IB'] as const;
 
 const flattenCourseList = (v: any): string[] => (Array.isArray(v) ? v.flatMap(flattenCourseList) : [String(v)]);
 
+const testCreditsCache = new Map<string, Promise<any[]>>();
+const transferCreditsCache = new Map<string, Promise<any[]>>();
+
+async function fetchTestCredits(apiBaseUrl: string, token: string, testType: string): Promise<any[]> {
+    const cached = testCreditsCache.get(testType);
+    if (cached) return cached;
+
+    const promise = (async () => {
+        const params = new URLSearchParams({ test_type: testType, limit: '500' });
+        const res = await fetch(`${apiBaseUrl}/tests?${params}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error();
+        const json = await res.json();
+        return json.data ?? [];
+    })();
+
+    testCreditsCache.set(testType, promise);
+    promise.catch(() => testCreditsCache.delete(testType)); // don't cache a failed request
+    return promise;
+}
+
+async function fetchTransferCredits(apiBaseUrl: string, token: string, schoolName: string): Promise<any[]> {
+    const key = schoolName.trim().toLowerCase();
+    const cached = transferCreditsCache.get(key);
+    if (cached) return cached;
+
+    const promise = (async () => {
+        const params = new URLSearchParams({ school_name: schoolName.trim(), limit: '500' });
+        const res = await fetch(`${apiBaseUrl}/transfer?${params}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error();
+        const json = await res.json();
+        return json.data ?? [];
+    })();
+
+    transferCreditsCache.set(key, promise);
+    promise.catch(() => transferCreditsCache.delete(key));
+    return promise;
+}
+
 interface CreditSourceEquivalencyPickerProps {
     courseCode: string;
     source: 'test' | 'transfer';
@@ -804,8 +846,34 @@ const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps
     const [searching, setSearching] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [matches, setMatches] = useState<any[] | null>(null);
+    const [availability, setAvailability] = useState<Record<string, boolean> | null>(null);
 
     const targetCode = normalizeCourseCode(courseCode);
+
+    useEffect(() => {
+        if (source !== 'test' || detail) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const token = await getAuthToken();
+                const entries = await Promise.all(
+                    EXAM_TYPES.map(async (type) => {
+                        const rows = await fetchTestCredits(apiBaseUrl, token, type);
+                        const has = rows.some((row: any) =>
+                            flattenCourseList(row.utd_courses_list).some(c => normalizeCourseCode(c) === targetCode)
+                        );
+                        return [type, has] as const;
+                    })
+                );
+                if (!cancelled) setAvailability(Object.fromEntries(entries));
+            } catch {
+                // Availability check didn't happen so render all chips
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [source, detail, courseCode, apiBaseUrl]);
+
+    const noExamsApply = availability !== null && EXAM_TYPES.every(t => availability[t] === false);
 
     const runTestSearch = async (type: string) => {
         setTestType(type);
@@ -870,18 +938,39 @@ const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps
         <div className="mb-2.5 border border-gray-200 rounded-md p-2.5 bg-gray-50">
             {source === 'test' ? (
                 <>
-                    <div className="text-[10px] text-gray-500 mb-1.5">Which exam?</div>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                        {EXAM_TYPES.map(type => (
-                            <button
-                                key={type}
-                                onClick={() => runTestSearch(type)}
-                                className={`text-[10px] font-medium px-2 py-1 rounded-full border transition-colors
-                                    ${testType === type ? 'bg-green-500 border-green-500 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}                            >
-                                {type}
-                            </button>
-                        ))}
+                    <div className="text-[10px] text-gray-500 mb-1.5 flex items-center gap-1.5">
+                        Which exam?
+                        {availability === null && !noExamsApply && (
+                            <Loader2 className="w-2.5 h-2.5 animate-spin text-gray-300" />
+                        )}
                     </div>
+                    {noExamsApply ? (
+                        <p className="text-[10px] text-gray-400 mb-2">
+                            No test credit equivalencies found for {courseCode}, on any exam type.
+                        </p>
+                    ) : (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                            {EXAM_TYPES.map(type => {
+                                const disabled = availability?.[type] === false;
+                                return (
+                                    <button
+                                        key={type}
+                                        onClick={() => !disabled && runTestSearch(type)}
+                                        disabled={disabled}
+                                        title={disabled ? `No ${type} equivalency found for ${courseCode}` : undefined}
+                                        className={`text-[10px] font-medium px-2 py-1 rounded-full border transition-colors
+                                        ${testType === type
+                                                ? 'bg-green-500 border-green-500 text-white'
+                                                : disabled
+                                                    ? 'border-gray-100 bg-gray-50 text-gray-300 line-through cursor-not-allowed'
+                                                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}
+                                    >
+                                        {type}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </>
             ) : (
                 <>
