@@ -612,7 +612,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                             <span className="text-[10px] text-gray-500">{sec.times_12h?.split(";")[0].trim()}</span>
                                         </div>
                                         <div className={`text-xs ${sec.location === "Online" ? "text-[#5AED86] font-semibold" : "text-gray-600"}`}>
-                                            {sec.location.replace("_", " ")}
+                                            {sec.location?.replace("_", " ") ?? "TBA"}
                                         </div>
                                     </div>
                                 );
@@ -655,7 +655,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                             <span className="text-[10px] text-gray-500">{sec.times_12h?.split(";")[0].trim()}</span>
                                         </div>
                                         <div className={`text-xs ${sec.location === "Online" ? "text-[#5AED86] font-semibold" : "text-gray-600"}`}>
-                                            {sec.location.replace("_", " ")}
+                                            {sec.location?.replace("_", " ") ?? "TBA"}
                                         </div>
                                         <div className="flex flex-col gap-1 items-end">
                                             {avg && (
