@@ -534,7 +534,16 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         <span className="text-gray-900">{course.status}</span>
                     </div>
                 )}
-
+                
+                {course.credit_source && course.credit_source !== 'university' && (
+                    <div className="flex gap-2">
+                        <span className="text-gray-600 font-medium">Credit Source:</span>
+                        <span className="text-gray-900">
+                            {course.credit_source === 'transfer' ? 'Transfer Credits' : 'Test Credits'}
+                            {course.credit_source_detail?.label ? ` · ${course.credit_source_detail.label}` : ''}
+                        </span>
+                    </div>
+                )}
                 {warnings && warnings.length > 0 && (
                     <WarningSection warnings={warnings} />
                 )}
