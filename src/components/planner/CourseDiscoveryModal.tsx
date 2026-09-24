@@ -62,9 +62,22 @@ export interface DiscoveryCourse {
     prereqs_raw?: any;
 }
 
+export type CreditSource = 'university' | 'test' | 'transfer';
+
+export interface CreditSourceDetail {
+    label: string; // display string, e.g. "AP · Calculus BC (5)" or "Dallas College · MATH 2414"
+    test_type?: string; // 'AP' | 'IB' | 'CLEP' | 'A&AS'
+    exam?: string;
+    score?: string;
+    school_name?: string;
+    external_course?: string;
+}
+
 export interface CartItem {
     course: DiscoveryCourse;
     pinned_section?: string;
+    credit_source: CreditSource;
+    credit_source_detail?: CreditSourceDetail;
 }
 
 export interface CourseDiscoveryModalProps {
@@ -893,7 +906,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
         if (hideCompleted) results = results.filter(c => !completedSet.has(normalizeCourseCode(c.course_code)));
         if (hideStaged) results = results.filter(c => !stagedSet.has(c.course_id));
-        
+
         if (selectedCredits.length) {
             const mapped = selectedCredits.map(c => c === '4+' ? '4' : c.toLowerCase());
             console.log('filtering credits, mapped:', mapped);
@@ -924,7 +937,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         const course = courses.find(c => c.course_id === courseId);
         if (!course) return;
         if (cart.find(i => i.course.course_id === courseId)) return;
-        onCartChange([...cart, { course, pinned_section: section }]);
+        onCartChange([...cart, { course, pinned_section: section, credit_source: 'university' }]);
     }, [courses, cart, onCartChange]);
 
     const removeFromCart = useCallback((courseId: string) => {
@@ -934,6 +947,12 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const swapSection = useCallback((courseId: string, section: string) => {
         onCartChange(cart.map(i =>
             i.course.course_id === courseId ? { ...i, pinned_section: section } : i
+        ));
+    }, [cart, onCartChange]);
+
+    const setCreditSource = useCallback((courseId: string, source: CreditSource, detail?: CreditSourceDetail) => {
+        onCartChange(cart.map(i =>
+            i.course.course_id === courseId ? { ...i, credit_source: source, credit_source_detail: detail } : i
         ));
     }, [cart, onCartChange]);
 
@@ -966,6 +985,8 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
             prerequisites: item.course.prereqs_raw,
             'Pre-Requisite': item.course.prereqs_raw,
             max_repeat_credits: item.course.max_repeat_credits,
+            credit_source: item.credit_source,
+            credit_source_detail: item.credit_source_detail,
         }));
 
         addStagedCourses(staged);
