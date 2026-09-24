@@ -383,11 +383,14 @@ interface DetailPanelProps {
     onSwapSection: (courseId: string, section: string) => void;
     onSetCreditSource: (courseId: string, source: CreditSource, detail?: CreditSourceDetail) => void;
     semester?: string;
+    apiBaseUrl: string;
+    getAuthToken: () => Promise<string>;
 }
 
 const DetailPanel: React.FC<DetailPanelProps> = ({
     course, inCart, cartPinnedSection, cartCreditSource, cartCreditSourceDetail,
     onAdd, onRemove, onSwapSection, onSetCreditSource, semester,
+    apiBaseUrl, getAuthToken,
 }) => {
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
@@ -573,10 +576,23 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
 
             <div className="p-4 border-t border-gray-200 flex-shrink-0">
                 {inCart && (
-                    <CreditSourceSelector
-                        value={cartCreditSource ?? 'university'}
-                        onChange={(src) => onSetCreditSource(course.course_id, src)}
-                    />
+                    <>
+                        <CreditSourceSelector
+                            value={cartCreditSource ?? 'university'}
+                            onChange={(src) => onSetCreditSource(course.course_id, src)}
+                        />
+                        {(cartCreditSource === 'test' || cartCreditSource === 'transfer') && (
+                            <CreditSourceEquivalencyPicker
+                                courseCode={course.course_code}
+                                source={cartCreditSource}
+                                detail={cartCreditSourceDetail}
+                                apiBaseUrl={apiBaseUrl}
+                                getAuthToken={getAuthToken}
+                                onSelect={(detail) => onSetCreditSource(course.course_id, cartCreditSource, detail)}
+                                onClear={() => onSetCreditSource(course.course_id, cartCreditSource, undefined)}
+                            />
+                        )}
+                    </>
                 )}
                 {inCart ? (
                     <button
@@ -777,6 +793,173 @@ const CreditSourceBadge = ({ source, detail }: { source?: CreditSource; detail?:
         <div className="text-[10px] text-indigo-600 mt-1.5 flex items-center gap-1">
             <Icon className="w-3 h-3 flex-shrink-0" />
             {CREDIT_SOURCE_LABELS[source]}{detail?.label ? ` · ${detail.label}` : ''}
+        </div>
+    );
+};
+
+const EXAM_TYPES = ['A&AS', 'AP', 'CLEP', 'IB'] as const;
+
+const flattenCourseList = (v: any): string[] => (Array.isArray(v) ? v.flatMap(flattenCourseList) : [String(v)]);
+
+interface CreditSourceEquivalencyPickerProps {
+    courseCode: string;
+    source: 'test' | 'transfer';
+    detail?: CreditSourceDetail;
+    apiBaseUrl: string;
+    getAuthToken: () => Promise<string>;
+    onSelect: (detail: CreditSourceDetail) => void;
+    onClear: () => void;
+}
+
+const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps> = ({
+    courseCode, source, detail, apiBaseUrl, getAuthToken, onSelect, onClear,
+}) => {
+    const [testType, setTestType] = useState<string | null>(null);
+    const [schoolQuery, setSchoolQuery] = useState('');
+    const [searching, setSearching] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [matches, setMatches] = useState<any[] | null>(null);
+
+    const targetCode = normalizeCourseCode(courseCode);
+
+    const runTestSearch = async (type: string) => {
+        setTestType(type);
+        setSearching(true);
+        setError(null);
+        setMatches(null);
+        try {
+            const token = await getAuthToken();
+            const params = new URLSearchParams({ test_type: type, limit: '500' });
+            const res = await fetch(`${apiBaseUrl}/CRUD/tests?${params}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error();
+            const json = await res.json();
+            const rows = (json.data ?? []).filter((row: any) =>
+                flattenCourseList(row.utd_courses_list).some(c => normalizeCourseCode(c) === targetCode)
+            );
+            setMatches(rows);
+        } catch {
+            setError('Could not load test credits right now.');
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const runTransferSearch = async () => {
+        if (!schoolQuery.trim()) return;
+        setSearching(true);
+        setError(null);
+        setMatches(null);
+        try {
+            const token = await getAuthToken();
+            const params = new URLSearchParams({ school_name: schoolQuery.trim(), limit: '500' });
+            const res = await fetch(`${apiBaseUrl}/CRUD/transfer?${params}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error();
+            const json = await res.json();
+            const rows = (json.data ?? []).filter((row: any) =>
+                normalizeCourseCode(row.utd_equivalent ?? '') === targetCode
+            );
+            setMatches(rows);
+        } catch {
+            setError('Could not find that school. Check the spelling and try again.');
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    if (detail) {
+        return (
+            <div className="mb-2.5 flex items-center justify-between gap-2 text-[11px] bg-indigo-50 text-indigo-700 rounded-md px-2.5 py-2">
+                <span className="truncate">{detail.label}</span>
+                <button onClick={onClear} className="text-indigo-400 hover:text-indigo-600 flex-shrink-0">
+                    <X className="w-3 h-3" />
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="mb-2.5 border border-gray-200 rounded-md p-2.5 bg-gray-50">
+            {source === 'test' ? (
+                <>
+                    <div className="text-[10px] text-gray-500 mb-1.5">Which exam?</div>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                        {EXAM_TYPES.map(type => (
+                            <button
+                                key={type}
+                                onClick={() => runTestSearch(type)}
+                                className={`text-[10px] font-medium px-2 py-1 rounded-full border transition-colors
+                                    ${testType === type ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}
+                            >
+                                {type}
+                            </button>
+                        ))}
+                    </div>
+                </>
+            ) : (
+                <>
+                    <div className="text-[10px] text-gray-500 mb-1.5">Which school? (exact name, e.g. "Collin College")</div>
+                    <div className="flex gap-1.5 mb-2">
+                        <input
+                            value={schoolQuery}
+                            onChange={(e) => setSchoolQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && runTransferSearch()}
+                            placeholder="School name"
+                            className="flex-1 text-[11px] px-2 py-1 rounded border border-gray-200 focus:outline-none focus:border-indigo-400"
+                        />
+                        <button
+                            onClick={runTransferSearch}
+                            className="text-[10px] font-medium px-2.5 py-1 rounded bg-indigo-500 text-white hover:bg-indigo-600"
+                        >
+                            Search
+                        </button>
+                    </div>
+                </>
+            )}
+
+            {searching && <p className="text-[10px] text-gray-400">Searching…</p>}
+            {error && <p className="text-[10px] text-red-500">{error}</p>}
+
+            {matches && matches.length === 0 && !searching && (
+                <p className="text-[10px] text-gray-400">No equivalency found for {courseCode} there.</p>
+            )}
+
+            {matches && matches.length > 0 && (
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {source === 'test'
+                        ? matches.map((row, i) => (
+                            <button
+                                key={i}
+                                onClick={() => onSelect({
+                                    label: `${row.test_type} · ${row.exam} (${row.score})`,
+                                    test_type: row.test_type,
+                                    exam: row.exam,
+                                    score: row.score,
+                                })}
+                                className="w-full text-left text-[11px] px-2 py-1.5 rounded bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"
+                            >
+                                {row.exam} <span className="text-gray-400">— score {row.score}</span>
+                            </button>
+                        ))
+                        : matches.map((row, i) => (
+                            <button
+                                key={i}
+                                onClick={() => onSelect({
+                                    label: `${row.school_name} · ${row.external_course}`,
+                                    school_name: row.school_name,
+                                    external_course: row.external_course,
+                                })}
+                                className="w-full text-left text-[11px] px-2 py-1.5 rounded bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"
+                            >
+                                {row.external_course} <span className="text-gray-400">— {row.external_title}</span>
+                            </button>
+                        ))
+                    }
+                </div>
+            )}
         </div>
     );
 };
@@ -1406,6 +1589,8 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                             onSwapSection={swapSection}
                                             onSetCreditSource={setCreditSource}
                                             semester={semester}
+                                            apiBaseUrl={apiBaseUrl}
+                                            getAuthToken={getAuthToken}
                                         />
                                     )}
                                     {rightPanel === 'cart' && (
