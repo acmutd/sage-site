@@ -6,7 +6,7 @@ import {
     Star, BookOpen, MapPin, ExternalLink, Plus, Minus,
     CheckCircle, AlertCircle, ArrowRight, Trash2, SlidersHorizontal,
     FileText, Clock, Award, RefreshCw, Layers, Loader2,
-    ChevronUp
+    ChevronUp, Info
 } from 'lucide-react';
 import { getCoursePrerequisiteGroups, getMissingPrerequisiteGroups, normalizeCourseCode } from '@/utils/prerequisiteUtils';
 import { getCurrentCatalogYear } from '@/utils/studentInfo';
@@ -171,6 +171,42 @@ const PrereqDot = ({ met, text }: { met: boolean; text?: string }) => (
         {met ? 'Good to take' : `Missing: ${text ?? 'prerequisites'}`}
     </span>
 );
+
+const InfoTooltip: React.FC<{ text: string }> = ({ text }) => {
+    const [show, setShow] = useState(false);
+    const [style, setStyle] = useState<React.CSSProperties>({});
+    const iconRef = useRef<HTMLSpanElement>(null);
+
+    const handleEnter = () => {
+        if (iconRef.current) {
+            const rect = iconRef.current.getBoundingClientRect();
+            setStyle({
+                position: 'fixed',
+                left: rect.left + rect.width / 2,
+                top: rect.top - 6,
+                transform: 'translate(-50%, -100%)',
+                zIndex: 99999,
+            });
+        }
+        setShow(true);
+    };
+
+    return (
+        <span ref={iconRef} onMouseEnter={handleEnter} onMouseLeave={() => setShow(false)} className="inline-flex">
+            <Info className="w-2.5 h-2.5 text-gray-400 cursor-help" />
+            {show && ReactDOM.createPortal(
+                <div
+                    style={style}
+                    className="pointer-events-none whitespace-nowrap rounded bg-gray-800 text-white
+                        text-[10px] normal-case font-normal tracking-normal px-2 py-1"
+                >
+                    {text}
+                </div>,
+                document.body
+            )}
+        </span>
+    );
+};
 
 interface FilterDropdownProps {
     label: string;
@@ -387,6 +423,29 @@ interface DetailPanelProps {
     getAuthToken: () => Promise<string>;
 }
 
+const CREDIT_SOURCE_LABELS: Record<CreditSource, string> = {
+    university: 'University',
+    test: 'Test Credits',
+    transfer: 'Transfer Credits',
+};
+
+const CREDIT_SOURCE_ICON: Record<CreditSource, React.ElementType> = {
+    university: BookOpen,
+    test: Award,
+    transfer: RefreshCw,
+};
+
+const CreditSourceBadge = ({ source, detail }: { source?: CreditSource; detail?: CreditSourceDetail }) => {
+    if (!source || source === 'university') return null;
+    const Icon = CREDIT_SOURCE_ICON[source];
+    return (
+        <div className="text-[10px] text-indigo-600 mt-1.5 flex items-center gap-1">
+            <Icon className="w-3 h-3 flex-shrink-0" />
+            {CREDIT_SOURCE_LABELS[source]}{detail?.label ? ` · ${detail.label}` : ''}
+        </div>
+    );
+};
+
 const DetailPanel: React.FC<DetailPanelProps> = ({
     course, inCart, cartPinnedSection, cartCreditSource, cartCreditSourceDetail,
     onAdd, onRemove, onSwapSection, onSetCreditSource, semester,
@@ -575,23 +634,20 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
             </div>
 
             <div className="p-4 border-t border-gray-200 flex-shrink-0">
-                {inCart && (
+                {inCart && cartCreditSource && cartCreditSource !== 'university' && (
                     <>
-                        <CreditSourceSelector
-                            value={cartCreditSource ?? 'university'}
-                            onChange={(src) => onSetCreditSource(course.course_id, src)}
+                        <div className="mb-2 flex items-center gap-1 text-[10px] text-gray-500">
+                            <span className="font-semibold text-gray-700">{CREDIT_SOURCE_LABELS[cartCreditSource]}</span>
+                        </div>
+                        <CreditSourceEquivalencyPicker
+                            courseCode={course.course_code}
+                            source={cartCreditSource}
+                            detail={cartCreditSourceDetail}
+                            apiBaseUrl={apiBaseUrl}
+                            getAuthToken={getAuthToken}
+                            onSelect={(detail) => onSetCreditSource(course.course_id, cartCreditSource, detail)}
+                            onClear={() => onSetCreditSource(course.course_id, cartCreditSource, undefined)}
                         />
-                        {(cartCreditSource === 'test' || cartCreditSource === 'transfer') && (
-                            <CreditSourceEquivalencyPicker
-                                courseCode={course.course_code}
-                                source={cartCreditSource}
-                                detail={cartCreditSourceDetail}
-                                apiBaseUrl={apiBaseUrl}
-                                getAuthToken={getAuthToken}
-                                onSelect={(detail) => onSetCreditSource(course.course_id, cartCreditSource, detail)}
-                                onClear={() => onSetCreditSource(course.course_id, cartCreditSource, undefined)}
-                            />
-                        )}
                     </>
                 )}
                 {inCart ? (
@@ -749,54 +805,6 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, onBack, onConfirm }
     );
 };
 
-const CREDIT_SOURCE_LABELS: Record<CreditSource, string> = {
-    university: 'University',
-    test: 'Test Credits',
-    transfer: 'Transfer Credits',
-};
-
-const CREDIT_SOURCE_ICON: Record<CreditSource, React.ElementType> = {
-    university: BookOpen,
-    test: Award,
-    transfer: RefreshCw,
-};
-
-interface CreditSourceSelectorProps {
-    value: CreditSource;
-    onChange: (source: CreditSource) => void;
-}
-
-const CreditSourceSelector: React.FC<CreditSourceSelectorProps> = ({ value, onChange }) => (
-    <div className="mb-2.5">
-        <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-            Credit Source
-        </div>
-        <div className="flex items-center gap-1 p-0.5 bg-gray-100 rounded-md">
-            {(Object.keys(CREDIT_SOURCE_LABELS) as CreditSource[]).map(src => (
-                <button
-                    key={src}
-                    onClick={() => onChange(src)}
-                    className={`flex-1 text-[11px] font-medium py-1.5 rounded transition-colors
-                        ${value === src ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                    {CREDIT_SOURCE_LABELS[src]}
-                </button>
-            ))}
-        </div>
-    </div>
-);
-
-const CreditSourceBadge = ({ source, detail }: { source?: CreditSource; detail?: CreditSourceDetail }) => {
-    if (!source || source === 'university') return null;
-    const Icon = CREDIT_SOURCE_ICON[source];
-    return (
-        <div className="text-[10px] text-indigo-600 mt-1.5 flex items-center gap-1">
-            <Icon className="w-3 h-3 flex-shrink-0" />
-            {CREDIT_SOURCE_LABELS[source]}{detail?.label ? ` · ${detail.label}` : ''}
-        </div>
-    );
-};
-
 const EXAM_TYPES = ['A&AS', 'AP', 'CLEP', 'IB'] as const;
 
 const flattenCourseList = (v: any): string[] => (Array.isArray(v) ? v.flatMap(flattenCourseList) : [String(v)]);
@@ -830,7 +838,7 @@ const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps
         try {
             const token = await getAuthToken();
             const params = new URLSearchParams({ test_type: type, limit: '500' });
-            const res = await fetch(`${apiBaseUrl}/CRUD/tests?${params}`, {
+            const res = await fetch(`${apiBaseUrl}/tests?${params}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) throw new Error();
@@ -854,7 +862,7 @@ const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps
         try {
             const token = await getAuthToken();
             const params = new URLSearchParams({ school_name: schoolQuery.trim(), limit: '500' });
-            const res = await fetch(`${apiBaseUrl}/CRUD/transfer?${params}`, {
+            const res = await fetch(`${apiBaseUrl}/transfer?${params}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) throw new Error();
@@ -1458,7 +1466,10 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                 </div>
 
                                 <div className="flex flex-col gap-1.5">
-                                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Credit Source</span>
+                                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                                        Credit Source
+                                        <InfoTooltip text="Applied when you add a course to cart" />
+                                    </span>
                                     <FilterDropdown
                                         label="Credit Source"
                                         options={['university', 'test', 'transfer']}
@@ -1468,9 +1479,6 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                         single
                                         allLabel="University"
                                     />
-                                    <span className="text-[9px] text-gray-400 leading-tight max-w-[130px]">
-                                        Applied when you add a course to cart
-                                    </span>
                                 </div>
 
                                 <div className="flex flex-col gap-1.5">
