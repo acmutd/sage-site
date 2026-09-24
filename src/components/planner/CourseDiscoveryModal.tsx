@@ -6,7 +6,7 @@ import {
     Star, BookOpen, MapPin, ExternalLink, Plus, Minus,
     CheckCircle, AlertCircle, ArrowRight, Trash2, SlidersHorizontal,
     FileText, Clock, Award, RefreshCw, Layers, Loader2,
-    ChevronUp, Info
+    ChevronUp
 } from 'lucide-react';
 import { getCoursePrerequisiteGroups, getMissingPrerequisiteGroups, normalizeCourseCode } from '@/utils/prerequisiteUtils';
 import { getCurrentCatalogYear } from '@/utils/studentInfo';
@@ -171,42 +171,6 @@ const PrereqDot = ({ met, text }: { met: boolean; text?: string }) => (
         {met ? 'Good to take' : `Missing: ${text ?? 'prerequisites'}`}
     </span>
 );
-
-const InfoTooltip: React.FC<{ text: string }> = ({ text }) => {
-    const [show, setShow] = useState(false);
-    const [style, setStyle] = useState<React.CSSProperties>({});
-    const iconRef = useRef<HTMLSpanElement>(null);
-
-    const handleEnter = () => {
-        if (iconRef.current) {
-            const rect = iconRef.current.getBoundingClientRect();
-            setStyle({
-                position: 'fixed',
-                left: rect.left + rect.width / 2,
-                top: rect.top - 6,
-                transform: 'translate(-50%, -100%)',
-                zIndex: 99999,
-            });
-        }
-        setShow(true);
-    };
-
-    return (
-        <span ref={iconRef} onMouseEnter={handleEnter} onMouseLeave={() => setShow(false)} className="inline-flex">
-            <Info className="w-2.5 h-2.5 text-gray-400 cursor-help" />
-            {show && ReactDOM.createPortal(
-                <div
-                    style={style}
-                    className="pointer-events-none whitespace-nowrap rounded bg-gray-800 text-white
-                        text-[10px] normal-case font-normal tracking-normal px-2 py-1"
-                >
-                    {text}
-                </div>,
-                document.body
-            )}
-        </span>
-    );
-};
 
 interface FilterDropdownProps {
     label: string;
@@ -429,6 +393,12 @@ const CREDIT_SOURCE_LABELS: Record<CreditSource, string> = {
     transfer: 'Transfer Credits',
 };
 
+const CREDIT_SOURCE_SUBTEXT: Record<CreditSource, string> = {
+    university: 'Taking it at UTD',
+    test: 'AP · IB · CLEP · A&AS',
+    transfer: 'Another school',
+};
+
 const CREDIT_SOURCE_ICON: Record<CreditSource, React.ElementType> = {
     university: BookOpen,
     test: Award,
@@ -439,7 +409,7 @@ const CreditSourceBadge = ({ source, detail }: { source?: CreditSource; detail?:
     if (!source || source === 'university') return null;
     const Icon = CREDIT_SOURCE_ICON[source];
     return (
-        <div className="text-[10px] text-indigo-600 mt-1.5 flex items-center gap-1">
+        <div className="text-[10px] text-green-700 mt-1.5 flex items-center gap-1">
             <Icon className="w-3 h-3 flex-shrink-0" />
             {CREDIT_SOURCE_LABELS[source]}{detail?.label ? ` · ${detail.label}` : ''}
         </div>
@@ -472,6 +442,29 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                 </div>
                 <PrereqDot met={course.prereqs_met} text={course.prereqs_text} />
             </div>
+
+            {inCart && cartCreditSource && cartCreditSource !== 'university' && (
+                <div className="p-4 border-b border-gray-100">
+                    <div className="border-2 border-green-500 rounded-lg bg-green-50 p-3">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-green-700 uppercase tracking-wide mb-1">
+                            {(() => { const Icon = CREDIT_SOURCE_ICON[cartCreditSource]; return <Icon className="w-3.5 h-3.5" />; })()}
+                            Credit Source: {CREDIT_SOURCE_LABELS[cartCreditSource]}
+                        </div>
+                        <div className="text-[10px] text-green-600 mb-2.5">
+                            Set from the Credit Source bar above · match it below
+                        </div>
+                        <CreditSourceEquivalencyPicker
+                            courseCode={course.course_code}
+                            source={cartCreditSource}
+                            detail={cartCreditSourceDetail}
+                            apiBaseUrl={apiBaseUrl}
+                            getAuthToken={getAuthToken}
+                            onSelect={(detail) => onSetCreditSource(course.course_id, cartCreditSource, detail)}
+                            onClear={() => onSetCreditSource(course.course_id, cartCreditSource, undefined)}
+                        />
+                    </div>
+                </div>
+            )}
 
             <div className="p-4 border-b border-gray-100">
                 {course.description && (
@@ -634,22 +627,6 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
             </div>
 
             <div className="p-4 border-t border-gray-200 flex-shrink-0">
-                {inCart && cartCreditSource && cartCreditSource !== 'university' && (
-                    <>
-                        <div className="mb-2 flex items-center gap-1 text-[10px] text-gray-500">
-                            <span className="font-semibold text-gray-700">{CREDIT_SOURCE_LABELS[cartCreditSource]}</span>
-                        </div>
-                        <CreditSourceEquivalencyPicker
-                            courseCode={course.course_code}
-                            source={cartCreditSource}
-                            detail={cartCreditSourceDetail}
-                            apiBaseUrl={apiBaseUrl}
-                            getAuthToken={getAuthToken}
-                            onSelect={(detail) => onSetCreditSource(course.course_id, cartCreditSource, detail)}
-                            onClear={() => onSetCreditSource(course.course_id, cartCreditSource, undefined)}
-                        />
-                    </>
-                )}
                 {inCart ? (
                     <button
                         onClick={() => onRemove(course.course_id)}
@@ -880,9 +857,9 @@ const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps
 
     if (detail) {
         return (
-            <div className="mb-2.5 flex items-center justify-between gap-2 text-[11px] bg-indigo-50 text-indigo-700 rounded-md px-2.5 py-2">
+            <div className="mb-2.5 flex items-center justify-between gap-2 text-[11px] bg-green-50 text-green-700 rounded-md px-2.5 py-2">
                 <span className="truncate">{detail.label}</span>
-                <button onClick={onClear} className="text-indigo-400 hover:text-indigo-600 flex-shrink-0">
+                <button onClick={onClear} className="text-green-500 hover:text-green-700 flex-shrink-0">
                     <X className="w-3 h-3" />
                 </button>
             </div>
@@ -900,8 +877,7 @@ const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps
                                 key={type}
                                 onClick={() => runTestSearch(type)}
                                 className={`text-[10px] font-medium px-2 py-1 rounded-full border transition-colors
-                                    ${testType === type ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}
-                            >
+                                    ${testType === type ? 'bg-green-500 border-green-500 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}                            >
                                 {type}
                             </button>
                         ))}
@@ -916,11 +892,11 @@ const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps
                             onChange={(e) => setSchoolQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && runTransferSearch()}
                             placeholder="School name"
-                            className="flex-1 text-[11px] px-2 py-1 rounded border border-gray-200 focus:outline-none focus:border-indigo-400"
+                            className="flex-1 text-[11px] px-2 py-1 rounded border border-gray-200 focus:outline-none focus:border-green-400"
                         />
                         <button
                             onClick={runTransferSearch}
-                            className="text-[10px] font-medium px-2.5 py-1 rounded bg-indigo-500 text-white hover:bg-indigo-600"
+                            className="text-[10px] font-medium px-2.5 py-1 rounded bg-green-500 text-white hover:bg-green-600"
                         >
                             Search
                         </button>
@@ -947,7 +923,7 @@ const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps
                                     exam: row.exam,
                                     score: row.score,
                                 })}
-                                className="w-full text-left text-[11px] px-2 py-1.5 rounded bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"
+                                className="w-full text-left text-[11px] px-2 py-1.5 rounded bg-white border border-gray-200 hover:border-green-300 hover:bg-green-50"
                             >
                                 {row.exam} <span className="text-gray-400">— score {row.score}</span>
                             </button>
@@ -1466,22 +1442,6 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                 </div>
 
                                 <div className="flex flex-col gap-1.5">
-                                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1">
-                                        Credit Source
-                                        <InfoTooltip text="Applied when you add a course to cart" />
-                                    </span>
-                                    <FilterDropdown
-                                        label="Credit Source"
-                                        options={['university', 'test', 'transfer']}
-                                        optionLabels={CREDIT_SOURCE_LABELS}
-                                        selected={[defaultCreditSource]}
-                                        onChange={(vals) => setDefaultCreditSource((vals[0] as CreditSource) || 'university')}
-                                        single
-                                        allLabel="University"
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-1.5">
                                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Attributes</span>
                                     <div className="flex flex-wrap gap-1.5">
                                         <button onClick={() => setCoreOnly(p => !p)}
@@ -1513,6 +1473,39 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                             </div>
                         </div>
                     )}
+
+                    {/* Credit Source — always visible, sets the default applied when you add a course to cart */}
+                    <div className="px-5 py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50">
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">How will you get credit for these courses?</span>
+                            <div className="flex gap-2 flex-1 min-w-[420px]">
+                                {(Object.keys(CREDIT_SOURCE_LABELS) as CreditSource[]).map(src => {
+                                    const Icon = CREDIT_SOURCE_ICON[src];
+                                    const active = defaultCreditSource === src;
+                                    return (
+                                        <button
+                                            key={src}
+                                            onClick={() => setDefaultCreditSource(src)}
+                                            className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-md border-2 text-left transition-colors
+                                                ${active ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-100'}`}
+                                        >
+                                            <Icon className="w-4 h-4 flex-shrink-0" />
+                                            <span>
+                                                <span className="block text-xs font-semibold">{CREDIT_SOURCE_LABELS[src]}</span>
+                                                <span className="block text-[10px] opacity-75">{CREDIT_SOURCE_SUBTEXT[src]}</span>
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-gray-500">
+                            <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                            {defaultCreditSource === 'university'
+                                ? 'Every course you add below will be tagged as University enrollment.'
+                                : `Add any course below, then match it to ${defaultCreditSource === 'test' ? 'your exam' : 'the school you want to take it at'} right in its detail card.`}
+                        </div>
+                    </div>
 
                     {/* Main content */}
                     <div className="flex flex-1 overflow-hidden">
