@@ -376,14 +376,18 @@ interface DetailPanelProps {
     course: DiscoveryCourse;
     inCart: boolean;
     cartPinnedSection?: string;
+    cartCreditSource?: CreditSource;
+    cartCreditSourceDetail?: CreditSourceDetail;
     onAdd: (courseId: string, section?: string) => void;
     onRemove: (courseId: string) => void;
     onSwapSection: (courseId: string, section: string) => void;
+    onSetCreditSource: (courseId: string, source: CreditSource, detail?: CreditSourceDetail) => void;
     semester?: string;
 }
 
 const DetailPanel: React.FC<DetailPanelProps> = ({
-    course, inCart, cartPinnedSection, onAdd, onRemove, onSwapSection, semester,
+    course, inCart, cartPinnedSection, cartCreditSource, cartCreditSourceDetail,
+    onAdd, onRemove, onSwapSection, onSetCreditSource, semester,
 }) => {
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
@@ -568,6 +572,12 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
             </div>
 
             <div className="p-4 border-t border-gray-200 flex-shrink-0">
+                {inCart && (
+                    <CreditSourceSelector
+                        value={cartCreditSource ?? 'university'}
+                        onChange={(src) => onSetCreditSource(course.course_id, src)}
+                    />
+                )}
                 {inCart ? (
                     <button
                         onClick={() => onRemove(course.course_id)}
@@ -641,6 +651,7 @@ const CartPanel: React.FC<CartPanelProps> = ({ cart, onRemove, onCheckout }) => 
                                 <CheckCircle className="w-3 h-3" /> Pinned: Section {item.pinned_section}
                             </div>
                         )}
+                        <CreditSourceBadge source={item.credit_source} detail={item.credit_source_detail} />
                     </div>
                 ))}
             </div>
@@ -699,6 +710,7 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, onBack, onConfirm }
                         {item.pinned_section && (
                             <div className="text-[10px] text-purple-600 mt-1">Section {item.pinned_section} noted</div>
                         )}
+                        <CreditSourceBadge source={item.credit_source} detail={item.credit_source_detail} />
                     </div>
                 ))}
             </div>
@@ -717,6 +729,54 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, onBack, onConfirm }
                     Move to Sidebar →
                 </button>
             </div>
+        </div>
+    );
+};
+
+const CREDIT_SOURCE_LABELS: Record<CreditSource, string> = {
+    university: 'University',
+    test: 'Test Credits',
+    transfer: 'Transfer Credits',
+};
+
+const CREDIT_SOURCE_ICON: Record<CreditSource, React.ElementType> = {
+    university: BookOpen,
+    test: Award,
+    transfer: RefreshCw,
+};
+
+interface CreditSourceSelectorProps {
+    value: CreditSource;
+    onChange: (source: CreditSource) => void;
+}
+
+const CreditSourceSelector: React.FC<CreditSourceSelectorProps> = ({ value, onChange }) => (
+    <div className="mb-2.5">
+        <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            Credit Source
+        </div>
+        <div className="flex items-center gap-1 p-0.5 bg-gray-100 rounded-md">
+            {(Object.keys(CREDIT_SOURCE_LABELS) as CreditSource[]).map(src => (
+                <button
+                    key={src}
+                    onClick={() => onChange(src)}
+                    className={`flex-1 text-[11px] font-medium py-1.5 rounded transition-colors
+                        ${value === src ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                    {CREDIT_SOURCE_LABELS[src]}
+                </button>
+            ))}
+        </div>
+    </div>
+);
+
+const CreditSourceBadge = ({ source, detail }: { source?: CreditSource; detail?: CreditSourceDetail }) => {
+    if (!source || source === 'university') return null;
+    const Icon = CREDIT_SOURCE_ICON[source];
+    return (
+        <div className="text-[10px] text-indigo-600 mt-1.5 flex items-center gap-1">
+            <Icon className="w-3 h-3 flex-shrink-0" />
+            {CREDIT_SOURCE_LABELS[source]}{detail?.label ? ` · ${detail.label}` : ''}
         </div>
     );
 };
@@ -1339,9 +1399,12 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                             course={selectedCourse}
                                             inCart={!!cartItem}
                                             cartPinnedSection={cartItem?.pinned_section}
+                                            cartCreditSource={cartItem?.credit_source}
+                                            cartCreditSourceDetail={cartItem?.credit_source_detail}
                                             onAdd={addToCart}
                                             onRemove={removeFromCart}
                                             onSwapSection={swapSection}
+                                            onSetCreditSource={setCreditSource}
                                             semester={semester}
                                         />
                                     )}
