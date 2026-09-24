@@ -4,6 +4,7 @@ import { immer } from 'zustand/middleware/immer';
 import { toast } from 'sonner';
 import { getCreditsFromCourseCode } from "@/utils/plannerCredits";
 import { normalizeCourseCode } from '@/utils/prerequisiteUtils';
+import { CreditSourceDetail } from '@/components/planner/CourseDiscoveryModal';
 
 const isPlannedStatus = (course: any): boolean =>
     String(course?.status ?? "").toLowerCase() === "planned";
@@ -131,6 +132,24 @@ interface SavedPlannerState {
 interface PlannerData {
     plans: SavedPlannerState[];
     activePlanId: string;
+}
+export type CreditSource = 'university' | 'test' | 'transfer';
+
+export interface StagedCourse {
+    course_id: string;
+    course_code: string;
+    course_name: string;
+    credits: number;
+    prereqs_met: boolean;
+    prereqs_text?: string;
+    coreqs_text?: string;
+    satisfies_core: boolean;
+    prerequisites?: any;
+    'Pre-Requisite'?: any;
+    description?: string;
+    max_repeat_credits?: number;
+    credit_source?: CreditSource;
+    credit_source_detail?: CreditSourceDetail;
 }
 
 export interface StagedCourse {
