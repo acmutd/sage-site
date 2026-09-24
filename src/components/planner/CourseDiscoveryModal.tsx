@@ -445,7 +445,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
 
             {inCart && cartCreditSource && cartCreditSource !== 'university' && (
                 <div className="p-4 border-b border-gray-100">
-                    <div className="border-2 border-green-500 rounded-lg bg-green-50 p-3">
+                    <div className="border-2 border-green-500 rounded-md bg-green-50 p-3">
                         <div className="flex items-center gap-1.5 text-[11px] font-bold text-green-700 uppercase tracking-wide mb-1">
                             {(() => { const Icon = CREDIT_SOURCE_ICON[cartCreditSource]; return <Icon className="w-3.5 h-3.5" />; })()}
                             Credit Source: {CREDIT_SOURCE_LABELS[cartCreditSource]}
@@ -882,16 +882,11 @@ const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps
         setMatches(null);
         try {
             const token = await getAuthToken();
-            const params = new URLSearchParams({ test_type: type, limit: '500' });
-            const res = await fetch(`${apiBaseUrl}/tests?${params}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) throw new Error();
-            const json = await res.json();
-            const rows = (json.data ?? []).filter((row: any) =>
+            const rows = await fetchTestCredits(apiBaseUrl, token, type);
+            const matched = rows.filter((row: any) =>
                 flattenCourseList(row.utd_courses_list).some(c => normalizeCourseCode(c) === targetCode)
             );
-            setMatches(rows);
+            setMatches(matched);
         } catch {
             setError('Could not load test credits right now.');
         } finally {
@@ -907,7 +902,10 @@ const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps
         try {
             const token = await getAuthToken();
             const rows = await fetchTransferCredits(apiBaseUrl, token, schoolQuery);
-            setMatches(rows);
+            const matched = rows.filter((row: any) =>
+                normalizeCourseCode(row.utd_equivalent ?? '') === targetCode
+            );
+            setMatches(matched);
         } catch {
             setError('Could not find that school. Check the spelling and try again.');
         } finally {
