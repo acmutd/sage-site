@@ -986,6 +986,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const [selectedPrefixes, setSelectedPrefixes] = useState<string[]>([]);
     const [selectedCredits, setSelectedCredits] = useState<string[]>([]);
     const [selectedFrequency, setSelectedFrequency] = useState<string[]>([]);
+    const [defaultCreditSource, setDefaultCreditSource] = useState<CreditSource>('university');
     const [coreOnly, setCoreOnly] = useState(false);
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
     const [rightPanel, setRightPanel] = useState<RightPanel>(null);
@@ -1180,8 +1181,8 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         const course = courses.find(c => c.course_id === courseId);
         if (!course) return;
         if (cart.find(i => i.course.course_id === courseId)) return;
-        onCartChange([...cart, { course, pinned_section: section, credit_source: 'university' }]);
-    }, [courses, cart, onCartChange]);
+        onCartChange([...cart, { course, pinned_section: section, credit_source: defaultCreditSource }]);
+    }, [courses, cart, onCartChange, defaultCreditSource]);
 
     const removeFromCart = useCallback((courseId: string) => {
         onCartChange(cart.filter(i => i.course.course_id !== courseId));
@@ -1453,6 +1454,22 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                         onChange={setSelectedFrequency}
                                         allLabel="Any frequency"
                                     />
+                                </div>
+
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Credit Source</span>
+                                    <FilterDropdown
+                                        label="Credit Source"
+                                        options={['university', 'test', 'transfer']}
+                                        optionLabels={CREDIT_SOURCE_LABELS}
+                                        selected={[defaultCreditSource]}
+                                        onChange={(vals) => setDefaultCreditSource((vals[0] as CreditSource) || 'university')}
+                                        single
+                                        allLabel="University"
+                                    />
+                                    <span className="text-[9px] text-gray-400 leading-tight max-w-[130px]">
+                                        Applied when you add a course to cart
+                                    </span>
                                 </div>
 
                                 <div className="flex flex-col gap-1.5">
