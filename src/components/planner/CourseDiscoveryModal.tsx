@@ -1260,6 +1260,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         setNoPerm(false);
         setSelectedStanding([]);
         setSelectedFrequency([]);
+        setDefaultCreditSource('university');
     };
 
     const showingAll = !hideCompleted && !hideStaged;
