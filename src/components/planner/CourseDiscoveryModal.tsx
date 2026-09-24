@@ -906,15 +906,7 @@ const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps
         setMatches(null);
         try {
             const token = await getAuthToken();
-            const params = new URLSearchParams({ school_name: schoolQuery.trim(), limit: '500' });
-            const res = await fetch(`${apiBaseUrl}/transfer?${params}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) throw new Error();
-            const json = await res.json();
-            const rows = (json.data ?? []).filter((row: any) =>
-                normalizeCourseCode(row.utd_equivalent ?? '') === targetCode
-            );
+            const rows = await fetchTransferCredits(apiBaseUrl, token, schoolQuery);
             setMatches(rows);
         } catch {
             setError('Could not find that school. Check the spelling and try again.');
