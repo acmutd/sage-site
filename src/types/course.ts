@@ -28,4 +28,14 @@ export interface Course {
     class_number?: string;
     footnote?: string[] | null;
     rules?: string[] | null;
+
+    credit_source?: 'university' | 'test' | 'transfer';
+    credit_source_detail?: {
+        label: string;
+        test_type?: string;
+        exam?: string;
+        score?: string;
+        school_name?: string;
+        external_course?: string;
+    };
 }

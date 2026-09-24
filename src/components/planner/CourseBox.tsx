@@ -792,6 +792,14 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 Staged
                             </span>
                         )}
+                        {course.credit_source && course.credit_source !== 'university' && (
+                            <span
+                                className="text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md truncate max-w-[90px]"
+                                title={course.credit_source_detail?.label ?? (course.credit_source === 'test' ? 'Test Credits' : 'Transfer Credits')}
+                            >
+                                {course.credit_source === 'test' ? 'Test Credit' : 'Transfer'}
+                            </span>
+                        )}
                         {isSuggested && !isPlaced && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md truncate max-w-[70px]">
                                 Suggested

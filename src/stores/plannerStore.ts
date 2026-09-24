@@ -674,6 +674,8 @@ export const usePlannerStore = create<PlannerStore>()(
 
                             if (course.prerequisites) newCourse.prerequisites = course.prerequisites;
                             if (course['Pre-Requisite']) newCourse['Pre-Requisite'] = course['Pre-Requisite'];
+                            if (course.credit_source) newCourse.credit_source = course.credit_source;
+                            if (course.credit_source_detail) newCourse.credit_source_detail = course.credit_source_detail;
 
                             targetSemester.courses.push(newCourse);
                         }
