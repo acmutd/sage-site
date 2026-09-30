@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeMsgId, parseMsgId, stripMarkdown, toPlaintext } from "./plaintext";
+import { buildSnippet, encode, findMatchSpan, tokenize } from "./encoder";
 import {
   FULL_BODY_WINDOW,
   SOFT_CEILING_BYTES,
@@ -72,6 +73,76 @@ describe("toPlaintext", () => {
 
   it("treats a plain message that starts with a brace as markdown", () => {
     expect(toPlaintext({ content: "{not json after all" })).toBe("{not json after all");
+  });
+});
+
+describe("encoder", () => {
+  it("applies the same stemming at index time and query time", () => {
+    // If these diverge, queries silently stop matching.
+    expect(encode("applications")).toEqual(encode("application"));
+    expect(encode("Internships")).toEqual(encode("internship"));
+  });
+
+  it("leaves short words unstemmed to limit over-stemming", () => {
+    expect(encode("cs")).toEqual(["cs"]);
+  });
+
+  it("returns offsets into the unstemmed text, not the stemmed tokens", () => {
+    const text = "I need help with my internship applications this fall";
+    const span = findMatchSpan(text, "applications");
+    expect(span).not.toBeNull();
+    // The stem is "application" but the span must cover the full original word.
+    expect(text.slice(span!.start, span!.end)).toBe("applications");
+  });
+
+  it("matches a stemmed query against unstemmed source text", () => {
+    const text = "Tell me about the application deadline";
+    const span = findMatchSpan(text, "applications");
+    expect(span).not.toBeNull();
+    expect(text.slice(span!.start, span!.end)).toBe("application");
+  });
+
+  it("prefers a run covering every query term", () => {
+    const text = "the internship application is due before the application fee";
+    const span = findMatchSpan(text, "internship application");
+    expect(text.slice(span!.start, span!.end)).toBe("internship application");
+  });
+
+  it("preserves token spans across the whole string", () => {
+    const text = "alpha beta gamma";
+    expect(tokenize(text).map((t) => text.slice(t.start, t.end))).toEqual([
+      "alpha",
+      "beta",
+      "gamma",
+    ]);
+  });
+});
+
+describe("buildSnippet", () => {
+  it("returns offsets that select the match inside the snippet", () => {
+    const text = "I asked about the graduation requirements for accounting majors.";
+    const { snippet, startOffset, endOffset } = buildSnippet(text, "graduation");
+    expect(snippet.slice(startOffset, endOffset)).toBe("graduation");
+  });
+
+  it("keeps offsets correct when the snippet is clipped at the front", () => {
+    const prefix = "filler word ".repeat(30);
+    const text = `${prefix}the scholarship deadline is friday`;
+    const { snippet, startOffset, endOffset } = buildSnippet(text, "scholarship");
+    expect(snippet.startsWith("…")).toBe(true);
+    expect(snippet.slice(startOffset, endOffset)).toBe("scholarship");
+  });
+
+  it("keeps offsets correct for a match near the very start", () => {
+    const text = `scholarship deadline ${"tail word ".repeat(40)}`;
+    const { snippet, startOffset, endOffset } = buildSnippet(text, "scholarship");
+    expect(snippet.startsWith("…")).toBe(false);
+    expect(snippet.slice(startOffset, endOffset)).toBe("scholarship");
+  });
+
+  it("falls back to a leading excerpt with a zero-width span when nothing matches", () => {
+    const { startOffset, endOffset } = buildSnippet("nothing relevant here", "zzzz");
+    expect(endOffset).toBe(startOffset);
   });
 });
 
