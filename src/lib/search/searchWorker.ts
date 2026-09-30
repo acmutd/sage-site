@@ -16,6 +16,7 @@
 import { Document } from "flexsearch";
 import { getSearchDB } from "./db";
 import { buildSnippet, encode } from "./encoder";
+import { parseMsgId } from "./plaintext";
 import { startLeadership, type Leadership } from "./leader";
 import type { SearchHit, WorkerRequest, WorkerResponse } from "./protocol";
 import {
@@ -49,8 +50,13 @@ const FIELD_WEIGHT: Record<string, number> = {
   botText: 1,
 };
 
-/** Pull more candidates than we return, so weighting has room to reorder. */
-const CANDIDATE_LIMIT = 50;
+/**
+ * Pull more candidates than we return. Results collapse to one row per
+ * conversation, so the raw match list has to be several times the row limit to
+ * still fill it once duplicates are dropped.
+ */
+const CANDIDATE_MULTIPLIER = 4;
+const CANDIDATE_FLOOR = 50;
 
 /** Debounce for dirty drains, so a burst of rapid sends does not thrash. */
 const DRAIN_DEBOUNCE_MS = 300;
@@ -261,10 +267,16 @@ async function runQuery(text: string, limit: number): Promise<SearchHit[]> {
   const trimmed = text.trim();
   if (!trimmed) return [];
 
-  const results = await index.searchAsync(trimmed, {
-    limit: Math.max(limit, CANDIDATE_LIMIT),
-    suggest: true,
-  });
+  const candidates = Math.max(limit * CANDIDATE_MULTIPLIER, CANDIDATE_FLOOR);
+
+  // Strict first: every query term must match, so "12 of those 18" cannot be
+  // beaten by a conversation that only contains "of". `suggest` relaxes that to
+  // partial matches, which is the right fallback when nothing matches in full
+  // but the wrong default — it lets a one-word hit outrank the exact phrase.
+  let results = await index.searchAsync(trimmed, { limit: candidates, suggest: false });
+  if (results.length === 0) {
+    results = await index.searchAsync(trimmed, { limit: candidates, suggest: true });
+  }
 
   // Merge the per-field result lists, weighting by field and by rank.
   const scores = new Map<string, number>();
@@ -276,12 +288,26 @@ async function runQuery(text: string, limit: number): Promise<SearchHit[]> {
     });
   }
 
-  const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
+  const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1]);
+
+  // One row per conversation. A title match lifts every message in that
+  // conversation, so without this a single chat floods the list with near
+  // duplicates that all open the same place. Ranked order means the first
+  // sighting of a conversation is already its best-scoring message.
+  const top: Array<[string, number]> = [];
+  const seen = new Set<string>();
+  for (const entry of ranked) {
+    const { convoId } = parseMsgId(entry[0]);
+    if (seen.has(convoId)) continue;
+    seen.add(convoId);
+    top.push(entry);
+    if (top.length >= limit) break;
+  }
 
   const db = await getSearchDB();
   const hits: SearchHit[] = [];
 
-  for (const [msgId, score] of ranked) {
+  for (const [msgId, score] of top) {
     const record = await db.get("messages", msgId);
     if (!record) continue; // Deleted since the index last drained.
     const meta = await db.get("convoMeta", record.convoId);

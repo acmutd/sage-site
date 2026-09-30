@@ -1,13 +1,24 @@
 /**
  * Tokenizing and stemming for the search index.
  *
- * FlexSearch ships no English stemmer, so one is wired in as a custom `encode`.
- * The same function runs at index time and at query time — if the two ever
- * diverge, queries silently stop matching.
+ * One encoder serves index time, query time and the snippet highlighter. If
+ * they ever diverge, queries silently stop matching.
  *
- * Stemmed tokens are for *matching only*. Snippet offsets must point into the
- * unstemmed plaintext, so `tokenize` keeps each token's original span rather
- * than deriving positions from stemmed output.
+ * Deliberately precise: lowercase, split, Porter stem. Phonetic charsets were
+ * tried for typo tolerance and both were withdrawn. LatinExtra collapsed "fac",
+ * "week" and "which" onto one key. LatinBalance encoded "logi" as "loke" and
+ * "looking" as "lokemk", whose first four characters are also "loke", so every
+ * "looking" matched a search for "logi". Forward tokenizing indexes prefixes,
+ * so a lossy encoder does its worst damage on the short prefixes people
+ * actually type.
+ *
+ * They also disabled stemming without it being obvious: the charset runs before
+ * `finalize`, so Porter received phonetic keys rather than English words and
+ * could not recognise a suffix. Stemming "graduation" and "graduate" to the
+ * same key only works on real words.
+ *
+ * Stemmed keys are for matching only. `tokenize` records each token's span in
+ * the original string so match offsets point into unstemmed text.
  */
 
 import { stemmer } from "stemmer";
@@ -31,9 +42,9 @@ const MIN_STEM_LENGTH = 4;
 
 const TOKEN_PATTERN = /[a-z0-9]+/gi;
 
-function stemToken(lower: string): string {
-  if (lower.length < MIN_STEM_LENGTH) return lower;
-  return stemmer(lower) || lower;
+function stemTerm(term: string): string {
+  if (term.length < MIN_STEM_LENGTH) return term;
+  return stemmer(term) || term;
 }
 
 /** Splits text into tokens, each carrying its span in the original string. */
@@ -46,7 +57,7 @@ export function tokenize(text: string): Token[] {
     const raw = match[0];
     tokens.push({
       raw,
-      stem: stemToken(raw.toLowerCase()),
+      stem: stemTerm(raw.toLowerCase()),
       start: match.index,
       end: match.index + raw.length,
     });

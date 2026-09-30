@@ -77,14 +77,39 @@ describe("toPlaintext", () => {
 });
 
 describe("encoder", () => {
-  it("applies the same stemming at index time and query time", () => {
+  it("applies the same encoding at index time and query time", () => {
     // If these diverge, queries silently stop matching.
     expect(encode("applications")).toEqual(encode("application"));
     expect(encode("Internships")).toEqual(encode("internship"));
   });
 
-  it("leaves short words unstemmed to limit over-stemming", () => {
+  it("keeps a short prefix from leaking into unrelated words", () => {
+    // Phonetic charsets were tried here and withdrawn. One encoded "logi" as
+    // "loke" and "looking" as "lokemk" — the same first four characters — so
+    // every "looking" matched a search for "logi" and buried "logistics".
+    const logi = encode("logi")[0];
+    expect(encode("logistics")[0].startsWith(logi)).toBe(true);
+    expect(encode("looking")[0].startsWith(logi)).toBe(false);
+
+    // An earlier charset collapsed all three of these onto one key.
+    const fac = encode("fac")[0];
+    expect(encode("facebook")[0].startsWith(fac)).toBe(true);
+    expect(encode("focused")[0].startsWith(fac)).toBe(false);
+    expect(encode("week")).not.toEqual(encode("which"));
+  });
+
+  it("stems morphological variants onto one key", () => {
+    // Only works on real words. The charset experiment ran the stemmer over
+    // phonetic keys instead, which left these on separate keys.
+    expect(encode("graduation")).toEqual(encode("graduate"));
+    expect(encode("applications")).toEqual(encode("application"));
+  });
+
+  it("leaves short words and course numbers intact", () => {
+    expect(encode("CS")).toEqual(encode("cs"));
     expect(encode("cs")).toEqual(["cs"]);
+    expect(encode("2340")).toEqual(["2340"]);
+    expect(encode("2336")).toEqual(["2336"]);
   });
 
   it("returns offsets into the unstemmed text, not the stemmed tokens", () => {
