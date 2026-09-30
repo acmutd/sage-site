@@ -2,14 +2,16 @@
  * Schema constants and record shapes for the cross-conversational search corpus.
  *
  * SCHEMA_VERSION gates the persisted FlexSearch blob: if it does not match what
- * the worker reads back, the index is rebuilt from `messages` in full.
+ * the worker reads back, the index is rebuilt from `messages` in full. The
+ * stemmer is part of that identity — swapping or bumping it changes how tokens
+ * encode, so an index built by the old one can no longer be queried correctly.
  */
 
 export const DB_NAME = "sage_search";
 export const DB_VERSION = 1;
 
 /** Bumping this forces a full index rebuild on the next worker start. */
-export const SCHEMA_VERSION = "1";
+export const SCHEMA_VERSION = "1+stemmer@2.0.1";
 
 export type MessageRole = "user" | "assistant";
 
@@ -44,6 +46,13 @@ export interface DirtyRecord {
   convoId: string;
   reason: "upsert" | "delete";
   markedAt: number;
+  /**
+   * Documents to drop from the index. The worker normally finds a conversation's
+   * documents through the `by_convo` index, but rows removed by a delete — or by
+   * a conversation that shrank — are already gone by the time it drains, so their
+   * ids have to be carried here or stale documents linger in the index.
+   */
+  removedMsgIds?: string[];
 }
 
 /** Small key/value store for cross-cutting flags that do not belong on a conversation. */

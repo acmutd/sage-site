@@ -10,7 +10,7 @@ import type { Conversation } from "@/types/chat";
 import { conversationDisplayName, conversationUpdatedAt } from "@/utils/conversation";
 import { getSearchDB, isIndexedDBAvailable } from "./db";
 import { makeMsgId, normalizeRole, toPlaintext } from "./plaintext";
-import type { MessageRecord } from "./schema";
+import type { DirtyRecord, MessageRecord } from "./schema";
 
 /** Notifies the worker (and other tabs) that the dirty store has new entries. */
 type DirtyListener = (convoId: string) => void;
@@ -33,6 +33,36 @@ function announceDirty(convoId: string): void {
 
 function swallow(op: string): (err: unknown) => void {
   return (err: unknown) => console.warn(`[search] ${op} failed`, err);
+}
+
+type DirtyStore = {
+  get(key: string): Promise<DirtyRecord | undefined>;
+  put(value: DirtyRecord): Promise<unknown>;
+};
+
+/**
+ * Marks a conversation dirty, merging with any mark the worker has not drained.
+ *
+ * Dirty rows are keyed by conversation, so a plain put would lose `removedMsgIds`
+ * the worker still needs, and would let a late-completing upsert overwrite a
+ * delete — leaving the index holding documents whose rows are gone. The ingestion
+ * wrappers are fire-and-forget, so completion order is not guaranteed to match
+ * call order; a delete therefore wins regardless of arrival order.
+ */
+async function markDirty(
+  store: DirtyStore,
+  convoId: string,
+  reason: DirtyRecord["reason"],
+  removedMsgIds: string[]
+): Promise<void> {
+  const existing = await store.get(convoId);
+  const merged = new Set([...(existing?.removedMsgIds ?? []), ...removedMsgIds]);
+  await store.put({
+    convoId,
+    reason: existing?.reason === "delete" ? "delete" : reason,
+    markedAt: Date.now(),
+    removedMsgIds: merged.size > 0 ? [...merged] : undefined,
+  });
 }
 
 /**
@@ -65,11 +95,8 @@ export async function syncConversationToCorpus(conv: Conversation): Promise<void
   // msgId is positional, so a conversation that shrank would otherwise leave
   // orphaned rows past the new end.
   const existingKeys = await messageStore.index("by_convo").getAllKeys(convoId);
-  await Promise.all(
-    existingKeys
-      .filter((key) => !records.some((r) => r.msgId === key))
-      .map((key) => messageStore.delete(key))
-  );
+  const removed = existingKeys.filter((key) => !records.some((r) => r.msgId === key));
+  await Promise.all(removed.map((key) => messageStore.delete(key)));
 
   await Promise.all(records.map((record) => messageStore.put(record)));
   await tx.objectStore("convoMeta").put({
@@ -78,7 +105,7 @@ export async function syncConversationToCorpus(conv: Conversation): Promise<void
     updatedAt,
     messageCount: records.length,
   });
-  await tx.objectStore("dirty").put({ convoId, reason: "upsert", markedAt: Date.now() });
+  await markDirty(tx.objectStore("dirty"), convoId, "upsert", removed);
   await tx.done;
 
   announceDirty(convoId);
@@ -110,7 +137,7 @@ export async function removeConversationFromCorpus(convoId: string): Promise<voi
   const keys = await messageStore.index("by_convo").getAllKeys(convoId);
   await Promise.all(keys.map((key) => messageStore.delete(key)));
   await tx.objectStore("convoMeta").delete(convoId);
-  await tx.objectStore("dirty").put({ convoId, reason: "delete", markedAt: Date.now() });
+  await markDirty(tx.objectStore("dirty"), convoId, "delete", keys);
   await tx.done;
 
   announceDirty(convoId);
@@ -133,7 +160,7 @@ export async function renameConversationInCorpus(convoId: string, title: string)
   const existing = await metaStore.get(convoId);
   if (existing) {
     await metaStore.put({ ...existing, title });
-    await tx.objectStore("dirty").put({ convoId, reason: "upsert", markedAt: Date.now() });
+    await markDirty(tx.objectStore("dirty"), convoId, "upsert", []);
   }
   await tx.done;
 
