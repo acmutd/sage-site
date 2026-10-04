@@ -35,22 +35,22 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
   useEffect(() => {
     initialLoad();
   }, []);
-  
+
   useEffect(() => {
     // Sync conversations from ChatBot when they update
     const handleConversationUpdate = (updatedConversations: Conversation[]) => {
       setConversations(updatedConversations);
     };
-  
+
     // Sync active conversation ID from ChatBot
     const handleActiveConversationUpdate = (newId: string | null) => {
       setConversationId(newId);
     };
-  
+
     chatEventEmitter.on('conversationUpdate', handleConversationUpdate);
     chatEventEmitter.on('activeConversationUpdate', handleActiveConversationUpdate);
     chatEventEmitter.emit('requestConversations'); // Request current state from ChatBot on mount
-  
+
     return () => {
       chatEventEmitter.off('conversationUpdate', handleConversationUpdate);
       chatEventEmitter.off('activeConversationUpdate', handleActiveConversationUpdate);
@@ -80,21 +80,15 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
     return { todayChats, pastChats };
   };
 
-  const truncateText = (text: string, maxLength: number = 24) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + "...";
-  };
-
   const renderConversationItem = (conv: Conversation) => {
     const displayName = conv.title || conv.conversation_name || conv.messages?.[0]?.content || "No messages";
     const active = conversation_id === conv.conversation_id;
-    const displayText = truncateText(displayName, 20);
 
     return (
       <li key={conv.conversation_id}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <button
-            className={`flex-1 text-left rounded-sm px-3 py-2 ${active ? "bg-secondary" : "bg-bglight"} transition-colors`}
+            className={`flex-1 min-w-0 text-left rounded-sm px-3 py-2 ${active ? "bg-secondary" : "bg-bglight"} transition-colors`}
             onClick={() => {
               setConversationId(conv.conversation_id);
               chatEventEmitter.emit("loadConversation", {
@@ -105,11 +99,12 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
               onClose();
             }}
             title={displayName}
+            aria-current={active ? "true" : undefined}
           >
-            <small className="truncate block">{displayText}</small>
+            <small className="block truncate">{displayName}</small>
           </button>
 
-          <div className="flex gap-1">
+          <div className="flex shrink-0 gap-1">
             <button
               className="p-1 rounded text-textsecondary hover:text-textdark hover:bg-gray-100 transition-colors"
               onClick={(e) => {
@@ -118,9 +113,9 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
                 setNewName(displayName);
                 setShowRenameModal(true);
               }}
-              aria-label="Rename conversation"
+              aria-label={`Rename ${displayName}`}
             >
-              <Pencil />
+              <Pencil size={16} aria-hidden="true" />
             </button>
 
             <button
@@ -130,9 +125,9 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
                 setConversationToDelete(conv.conversation_id);
                 setShowDeleteModal(true);
               }}
-              aria-label="Delete conversation"
+              aria-label={`Delete ${displayName}`}
             >
-              <Trash2Icon className="stroke-destructive" />
+              <Trash2Icon size={16} className="stroke-destructive" aria-hidden="true" />
             </button>
           </div>
         </div>
