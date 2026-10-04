@@ -257,7 +257,73 @@ describe("bounded localStorage payload", () => {
   });
 });
 
+describe("buildBoundedPayload sizing", () => {
+  it("computes the payload size exactly, matching real serialization", () => {
+    // The window is now chosen arithmetically rather than by re-serializing at
+    // each step. If that arithmetic drifts, the ceiling silently stops being
+    // enforced, so the reported size is compared against the real thing.
+    for (const count of [0, 1, 5, FULL_BODY_WINDOW + 7]) {
+      const convs = Array.from({ length: count }, (_, i) => makeConversation(`c${i}`, 1_000 + i));
+      const { data, bytes } = buildBoundedPayload(convs);
+      expect(bytes).toBe(JSON.stringify(data).length);
+    }
+  });
+
+  it("keeps the largest window that fits", () => {
+    // Four entries' worth of ceiling across eight conversations, so some keep
+    // their bodies and some cannot.
+    const convs = Array.from({ length: 8 }, (_, i) => {
+      const conv = makeConversation(`c${i}`, 1_000 + i, 1);
+      conv.messages[0].content = "x".repeat(Math.floor(SOFT_CEILING_BYTES / 4));
+      return conv;
+    });
+    const { data, windowSize, bytes } = buildBoundedPayload(convs);
+
+    expect(bytes).toBeLessThanOrEqual(SOFT_CEILING_BYTES);
+    expect(bytes).toBe(JSON.stringify(data).length);
+    expect(windowSize).toBeGreaterThan(0);
+    expect(windowSize).toBeLessThan(convs.length);
+  });
+
+  it("shrinks the window one conversation at a time, never below zero", () => {
+    const fat = Array.from({ length: 6 }, (_, i) => {
+      const conv = makeConversation(`c${i}`, 1_000 + i, 1);
+      conv.messages[0].content = "x".repeat(SOFT_CEILING_BYTES);
+      return conv;
+    });
+    const { data, windowSize } = buildBoundedPayload(fat);
+
+    // Every entry is individually over the ceiling, so none can keep its body.
+    expect(windowSize).toBe(0);
+    expect(data.every((c) => c.messages.length === 0)).toBe(true);
+  });
+});
+
 describe("conversation ordering with pruned entries", () => {
+  it("takes the later of the stamped time and the newest message", () => {
+    // A stamped conversation that then receives a message must reflect the
+    // message, or it fails to rise to the top of the sidebar.
+    const conv: Conversation = {
+      conversation_id: "c1",
+      user_id: "u1",
+      title: "Stamped earlier",
+      updatedAt: 1_000,
+      messages: [{ role: "user", content: "newer", timestamp: 9_000 }],
+    };
+    expect(conversationUpdatedAt(conv)).toBe(9_000);
+  });
+
+  it("falls back to the stamped time when there are no messages", () => {
+    expect(
+      conversationUpdatedAt({
+        conversation_id: "c1",
+        user_id: "u1",
+        messages: [],
+        updatedAt: 5_000,
+      })
+    ).toBe(5_000);
+  });
+
   it("orders a pruned conversation by updatedAt, not by its missing messages", () => {
     const recentButPruned: Conversation = {
       conversation_id: "pruned",

@@ -44,19 +44,43 @@ function withUpdatedAt(conv: Conversation): Conversation {
 export function buildBoundedPayload(
   convs: Conversation[],
   windowSize: number = FULL_BODY_WINDOW
-): { data: Conversation[]; windowSize: number } {
+): { data: Conversation[]; windowSize: number; bytes: number } {
   const ordered = [...convs].sort((a, b) => conversationUpdatedAt(b) - conversationUpdatedAt(a));
 
-  let size = Math.min(windowSize, ordered.length);
-  for (;;) {
-    const data = ordered.map((conv, index) => (index < size ? withUpdatedAt(conv) : prune(conv)));
-    const serialized = JSON.stringify(data);
-    if (serialized.length <= SOFT_CEILING_BYTES || size === 0) {
-      return { data, windowSize: size };
-    }
-    // Trim the oldest body-carrying entry and measure again.
+  // Measure each conversation once in both forms. Shrinking the window used to
+  // re-serialize the entire payload per step, which on a payload near the
+  // ceiling meant tens of megabytes of string work on a single cache write.
+  const measured = ordered.map((conv) => {
+    const full = withUpdatedAt(conv);
+    const pruned = prune(conv);
+    return {
+      full,
+      pruned,
+      delta: JSON.stringify(full).length - JSON.stringify(pruned).length,
+      prunedSize: JSON.stringify(pruned).length,
+    };
+  });
+
+  // JSON.stringify of an array is "[" + items joined by "," + "]", so its
+  // length is exactly the item lengths plus brackets and separators.
+  const structural = measured.length > 0 ? measured.length + 1 : 2;
+  let total = measured.reduce((sum, item) => sum + item.prunedSize, structural);
+
+  let size = Math.min(windowSize, measured.length);
+  for (let i = 0; i < size; i += 1) total += measured[i].delta;
+
+  // Drop the oldest body-carrying entry until it fits; each step is one
+  // subtraction rather than another full serialization.
+  while (total > SOFT_CEILING_BYTES && size > 0) {
     size -= 1;
+    total -= measured[size].delta;
   }
+
+  return {
+    data: measured.map((item, index) => (index < size ? item.full : item.pruned)),
+    windowSize: size,
+    bytes: total,
+  };
 }
 
 function isQuotaError(err: unknown): boolean {

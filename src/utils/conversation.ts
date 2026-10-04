@@ -8,11 +8,20 @@
 
 import type { Conversation } from "@/types/chat";
 
-/** Last-activity timestamp, preferring the explicit field pruned entries carry. */
+/**
+ * Last-activity timestamp: the later of the stamped field and the newest
+ * message.
+ *
+ * Pruned entries carry only the field, and conversations fresh from the server
+ * carry only messages. Preferring the field outright meant that appending to an
+ * already-stamped conversation left it ordered by the older value, so it failed
+ * to rise to the top of the sidebar.
+ */
 export function conversationUpdatedAt(conv: Conversation): number {
-  if (typeof conv.updatedAt === "number" && conv.updatedAt > 0) return conv.updatedAt;
+  const stamped = typeof conv.updatedAt === "number" && conv.updatedAt > 0 ? conv.updatedAt : 0;
   const last = conv.messages?.[conv.messages.length - 1]?.timestamp;
-  return last ? new Date(last).getTime() : 0;
+  const newestMessage = last ? new Date(last).getTime() : 0;
+  return Math.max(stamped, newestMessage);
 }
 
 /** First-message text used as a fallback label, or the stored preview when pruned. */
