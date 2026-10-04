@@ -7,7 +7,7 @@
  */
 
 import { onCorpusDirty } from "./corpus";
-import { isIndexedDBAvailable } from "./db";
+import { configureSearchUser, isIndexedDBAvailable, purgeOtherSearchDatabases } from "./db";
 import type { SearchHit, WorkerRequest, WorkerResponse } from "./protocol";
 
 export interface QueryOutcome {
@@ -23,12 +23,18 @@ interface Pending {
 
 let worker: Worker | null = null;
 let unsubscribeDirty: (() => void) | null = null;
+let workerUid: string | null = null;
 let nextQueryId = 1;
 let latestQueryId = 0;
 const pending = new Map<number, Pending>();
 
 export function isSearchSupported(): boolean {
   return isIndexedDBAvailable() && typeof Worker !== "undefined";
+}
+
+/** True once a user is bound, so the UI can hide itself until then. */
+export function isSearchActive(): boolean {
+  return isSearchSupported() && workerUid !== null;
 }
 
 function handleMessage(event: MessageEvent<WorkerResponse>): void {
@@ -56,8 +62,29 @@ function handleMessage(event: MessageEvent<WorkerResponse>): void {
   }
 }
 
+/**
+ * Binds search to one user. Everything the corpus touches is per user — the
+ * database, the worker and the leader-election channel — so a change here tears
+ * the worker down rather than letting it keep serving the previous student.
+ *
+ * Call with null on sign-out. Safe to call repeatedly with the same uid.
+ */
+export function setSearchUser(uid: string | null): void {
+  if (uid === workerUid) return;
+
+  stopSearchWorker();
+  workerUid = uid;
+  configureSearchUser(uid);
+
+  if (uid) {
+    // Signing in on a shared machine should not leave the previous student's
+    // corpus on disk.
+    void purgeOtherSearchDatabases(uid);
+  }
+}
+
 function getWorker(): Worker | null {
-  if (!isSearchSupported()) return null;
+  if (!isSearchSupported() || !workerUid) return null;
   if (worker) return worker;
 
   try {
@@ -69,6 +96,10 @@ function getWorker(): Worker | null {
 
   worker.onmessage = handleMessage;
   worker.onerror = (event) => console.warn("[search] worker error", event.message);
+
+  // Must be the first message: the worker cannot see auth and will not open a
+  // database until it knows whose corpus to use.
+  worker.postMessage({ type: "init", uid: workerUid } satisfies WorkerRequest);
 
   // Ingestion runs on the main thread, so the worker has to be told that the
   // dirty store has new entries to drain.

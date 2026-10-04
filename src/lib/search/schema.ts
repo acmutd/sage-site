@@ -7,7 +7,16 @@
  * encode, so an index built by the old one can no longer be queried correctly.
  */
 
-export const DB_NAME = "sage_search";
+/**
+ * Databases are per user: `sage_search_<uid>`. A shared browser would otherwise
+ * serve one student's indexed messages to whoever logs in next, since the
+ * records carry no owner and the worker indexes whatever the store holds.
+ */
+export const DB_NAME_PREFIX = "sage_search";
+
+export function searchDbName(uid: string): string {
+  return `${DB_NAME_PREFIX}_${uid}`;
+}
 export const DB_VERSION = 1;
 
 /** Bumping this forces a full index rebuild on the next worker start. */

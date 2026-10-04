@@ -22,6 +22,8 @@ export interface SearchHit {
 }
 
 export type WorkerRequest =
+  /** Always sent first: binds the worker to one user's corpus and channel. */
+  | { type: "init"; uid: string }
   | { type: "query"; id: number; text: string; limit: number }
   | { type: "reindex" }
   | { type: "dirty"; convoId: string };
@@ -31,7 +33,12 @@ export type WorkerResponse =
   | { type: "indexReady"; count: number }
   | { type: "error"; id?: number; message: string };
 
-export const SEARCH_CHANNEL = "sage_search";
+const SEARCH_CHANNEL_PREFIX = "sage_search";
+
+/** Channels are per user, so two students' tabs never elect a leader together. */
+export function searchChannelName(uid: string): string {
+  return `${SEARCH_CHANNEL_PREFIX}_${uid}`;
+}
 
 /** Messages exchanged between tabs for leader election and dirty propagation. */
 export type ChannelMessage =

@@ -12,7 +12,7 @@
  * but never correctness.
  */
 
-import { SEARCH_CHANNEL, type ChannelMessage } from "./protocol";
+import { type ChannelMessage } from "./protocol";
 
 const HEARTBEAT_INTERVAL = 2000;
 /** A peer silent for longer than this is considered gone. */
@@ -33,12 +33,12 @@ export interface LeadershipHandlers {
   onBecameLeader(): void;
 }
 
-export function startLeadership(handlers: LeadershipHandlers): Leadership {
+export function startLeadership(channelName: string, handlers: LeadershipHandlers): Leadership {
   const tabId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   let channel: BroadcastChannel | null = null;
   try {
-    channel = new BroadcastChannel(SEARCH_CHANNEL);
+    channel = new BroadcastChannel(channelName);
   } catch {
     // No BroadcastChannel (older Safari): this tab simply always leads.
   }

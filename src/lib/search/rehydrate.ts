@@ -4,7 +4,7 @@
  */
 
 import type { Message } from "@/types/chat";
-import { getMessagesForConversation, isIndexedDBAvailable } from "./db";
+import { getMessagesForConversation, isSearchReady } from "./db";
 
 /**
  * Returns the conversation's messages from IndexedDB, or null when the corpus
@@ -15,7 +15,7 @@ import { getMessagesForConversation, isIndexedDBAvailable } from "./db";
  * nothing extra needs storing.
  */
 export async function rehydrateMessages(convoId: string): Promise<Message[] | null> {
-  if (!isIndexedDBAvailable() || !convoId) return null;
+  if (!isSearchReady() || !convoId) return null;
 
   try {
     const records = await getMessagesForConversation(convoId);

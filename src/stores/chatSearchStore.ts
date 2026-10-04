@@ -26,7 +26,10 @@ interface ChatSearchState {
   dispatched: boolean;
   /** Message the chat view should scroll to once its conversation opens. */
   pendingScrollMsgId: string | null;
-  /** False where IndexedDB or workers are unavailable; the UI hides itself. */
+  /**
+   * Browser capability only, evaluated once at module load. Whether a user is
+   * actually bound is a separate, changing condition the UI checks alongside it.
+   */
   supported: boolean;
   setQuery: (text: string) => void;
   clear: () => void;

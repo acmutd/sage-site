@@ -8,7 +8,7 @@
 
 import type { Conversation } from "@/types/chat";
 import { conversationDisplayName, conversationUpdatedAt } from "@/utils/conversation";
-import { getSearchDB, isIndexedDBAvailable } from "./db";
+import { getSearchDB, isSearchReady } from "./db";
 import { makeMsgId, normalizeRole, toPlaintext } from "./plaintext";
 import type { DirtyRecord, MessageRecord } from "./schema";
 
@@ -70,7 +70,7 @@ async function markDirty(
  * dirty so the worker reindexes it.
  */
 export async function syncConversationToCorpus(conv: Conversation): Promise<void> {
-  if (!isIndexedDBAvailable() || !conv?.conversation_id) return;
+  if (!isSearchReady() || !conv?.conversation_id) return;
 
   const convoId = conv.conversation_id;
   const messages = conv.messages ?? [];
@@ -129,7 +129,7 @@ export function queueConversationsSync(convs: Conversation[]): void {
  * conversations the student already deleted.
  */
 export async function removeConversationFromCorpus(convoId: string): Promise<void> {
-  if (!isIndexedDBAvailable() || !convoId) return;
+  if (!isSearchReady() || !convoId) return;
 
   const db = await getSearchDB();
   const tx = db.transaction(["messages", "convoMeta", "dirty"], "readwrite");
@@ -152,7 +152,7 @@ export function queueConversationRemoval(convoId: string): void {
  * message document, so this marks the whole conversation for reindex.
  */
 export async function renameConversationInCorpus(convoId: string, title: string): Promise<void> {
-  if (!isIndexedDBAvailable() || !convoId) return;
+  if (!isSearchReady() || !convoId) return;
 
   const db = await getSearchDB();
   const tx = db.transaction(["convoMeta", "dirty"], "readwrite");

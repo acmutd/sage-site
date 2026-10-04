@@ -14,7 +14,7 @@
 import type { User } from "firebase/auth";
 import type { Conversation } from "@/types/chat";
 import { conversationUpdatedAt } from "@/utils/conversation";
-import { getAllConvoMeta, getAppState, isIndexedDBAvailable, setAppState } from "./db";
+import { getAllConvoMeta, getAppState, isSearchReady, setAppState } from "./db";
 import { syncConversationToCorpus } from "./corpus";
 import { BACKFILL_STATE_KEY, type BackfillState } from "./schema";
 
@@ -34,7 +34,7 @@ function idle(): Promise<void> {
 }
 
 export async function isBackfillComplete(userId: string): Promise<boolean> {
-  if (!isIndexedDBAvailable()) return true;
+  if (!isSearchReady()) return true;
   try {
     const state = await getAppState<BackfillState>(BACKFILL_STATE_KEY);
     return state?.userId === userId;
@@ -44,7 +44,7 @@ export async function isBackfillComplete(userId: string): Promise<boolean> {
 }
 
 export async function markBackfillComplete(userId: string): Promise<void> {
-  if (!isIndexedDBAvailable()) return;
+  if (!isSearchReady()) return;
   try {
     await setAppState(BACKFILL_STATE_KEY, { userId, completedAt: Date.now() } satisfies BackfillState);
   } catch (err) {
@@ -72,7 +72,7 @@ async function fetchAllConversations(user: User): Promise<Conversation[]> {
  * mount — it no-ops once complete, and never throws into the caller.
  */
 export async function runBackfill(user: User): Promise<void> {
-  if (!isIndexedDBAvailable() || !user?.uid || running) return;
+  if (!isSearchReady() || !user?.uid || running) return;
   if (await isBackfillComplete(user.uid)) return;
 
   running = true;

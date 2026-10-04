@@ -7,8 +7,9 @@
 
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import {
-  DB_NAME,
+  DB_NAME_PREFIX,
   DB_VERSION,
+  searchDbName,
   type AppStateRecord,
   type ConvoMetaRecord,
   type DirtyRecord,
@@ -44,10 +45,74 @@ interface SageSearchDB extends DBSchema {
 export type SearchDB = IDBPDatabase<SageSearchDB>;
 
 let dbPromise: Promise<SearchDB> | null = null;
+let activeUserId: string | null = null;
+
+/**
+ * Points the corpus at one user's database. Both threads call this before any
+ * read or write — the worker on its `init` message, the main thread when auth
+ * resolves. Returns true when the user actually changed, so callers can tear
+ * down anything bound to the previous one.
+ */
+export function configureSearchUser(uid: string | null): boolean {
+  if (uid === activeUserId) return false;
+
+  const previous = dbPromise;
+  dbPromise = null;
+  activeUserId = uid;
+  // Close the old handle after dropping it, so nothing reuses it mid-switch.
+  void previous?.then((d) => d.close()).catch(() => undefined);
+  return true;
+}
+
+export function getActiveSearchUser(): string | null {
+  return activeUserId;
+}
+
+/**
+ * True when the corpus can be touched at all. Ingestion is fire-and-forget, so
+ * callers check this and no-op rather than throwing into the UI path.
+ */
+export function isSearchReady(): boolean {
+  return isIndexedDBAvailable() && activeUserId !== null;
+}
+
+/**
+ * Deletes every other user's corpus. Signing in on a shared machine should not
+ * leave the previous student's messages on disk. Best effort: `databases()` is
+ * unimplemented in Firefox, where this is a no-op.
+ */
+export async function purgeOtherSearchDatabases(currentUid: string): Promise<void> {
+  if (!isIndexedDBAvailable()) return;
+  try {
+    const list = (indexedDB as { databases?: () => Promise<{ name?: string }[]> }).databases;
+    if (typeof list !== "function") return;
+    const keep = searchDbName(currentUid);
+    const found = await list.call(indexedDB);
+    await Promise.all(
+      found
+        .map((entry) => entry.name)
+        .filter((name): name is string =>
+          Boolean(name) && name!.startsWith(`${DB_NAME_PREFIX}_`) && name !== keep
+        )
+        .map((name) => indexedDB.deleteDatabase(name))
+        .map((request) => new Promise<void>((resolve) => {
+          request.onsuccess = () => resolve();
+          request.onerror = () => resolve();
+          request.onblocked = () => resolve();
+        }))
+    );
+  } catch (err) {
+    console.warn("[search] could not purge other users' corpora", err);
+  }
+}
 
 export function getSearchDB(): Promise<SearchDB> {
+  const uid = activeUserId;
+  if (!uid) {
+    return Promise.reject(new Error("search user not configured"));
+  }
   if (!dbPromise) {
-    const opening: Promise<SearchDB> = openDB<SageSearchDB>(DB_NAME, DB_VERSION, {
+    const opening: Promise<SearchDB> = openDB<SageSearchDB>(searchDbName(uid), DB_VERSION, {
       upgrade(db) {
         if (!db.objectStoreNames.contains("messages")) {
           const messages = db.createObjectStore("messages", { keyPath: "msgId" });

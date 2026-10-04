@@ -14,11 +14,11 @@
  */
 
 import { Document } from "flexsearch";
-import { getSearchDB } from "./db";
+import { configureSearchUser, getSearchDB } from "./db";
 import { buildSnippet, encode } from "./encoder";
 import { parseMsgId } from "./plaintext";
 import { startLeadership, type Leadership } from "./leader";
-import type { SearchHit, WorkerRequest, WorkerResponse } from "./protocol";
+import { searchChannelName, type SearchHit, type WorkerRequest, type WorkerResponse } from "./protocol";
 import {
   INDEX_BLOB_KEY,
   SCHEMA_VERSION,
@@ -82,6 +82,17 @@ let docCount = 0;
 let leadership: Leadership | null = null;
 let ready: Promise<void> | null = null;
 let drainTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Resolves once the main thread has sent `init`. Nothing may touch the corpus
+ * before then — the worker has no access to auth and cannot know whose database
+ * to open, and guessing would mean indexing another student's messages.
+ */
+let signedIn: string | null = null;
+let resolveSignedIn: (() => void) | null = null;
+const awaitingInit = new Promise<void>((resolve) => {
+  resolveSignedIn = resolve;
+});
 
 function post(message: WorkerResponse): void {
   self.postMessage(message);
@@ -232,7 +243,10 @@ function scheduleDrain(): void {
 }
 
 async function initialize(): Promise<void> {
-  leadership = startLeadership({
+  await awaitingInit;
+  if (!signedIn) return;
+
+  leadership = startLeadership(searchChannelName(signedIn), {
     onDirty: () => scheduleDrain(),
     onIndexUpdated: () => {
       void reloadPublishedIndex().catch((err) =>
@@ -332,6 +346,21 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   const request = event.data;
   if (!request) return;
 
+  if (request.type === "init") {
+    // The client terminates and replaces this worker when the user changes, so
+    // a second init with a different uid should never arrive.
+    if (signedIn && signedIn !== request.uid) {
+      post({ type: "error", message: "worker already bound to another user" });
+      return;
+    }
+    if (!signedIn) {
+      signedIn = request.uid;
+      configureSearchUser(request.uid);
+      resolveSignedIn?.();
+    }
+    return;
+  }
+
   if (request.type === "query") {
     void ensureReady()
       .then(() => runQuery(request.text, request.limit))
@@ -355,4 +384,5 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   }
 };
 
-void ensureReady();
+// Deliberately not started here: ensureReady waits on `init`, and the first
+// request after it arrives kicks everything off.
