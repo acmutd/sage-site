@@ -156,6 +156,29 @@ export async function removeConversationFromCorpus(convoId: string): Promise<voi
   announceDirty(convoId);
 }
 
+/**
+ * Drops corpus entries for conversations the server no longer lists.
+ *
+ * A conversation deleted on another device otherwise stays indexed forever:
+ * search surfaces it, and clicking the row does nothing because the chat is not
+ * in the sidebar. Reuses the delete path, so the index drops it too.
+ *
+ * Only call with a list the server actually returned — an empty list from a
+ * failed parse would clear the whole corpus.
+ */
+export async function pruneCorpusTo(liveConvoIds: Iterable<string>): Promise<number> {
+  if (!isSearchReady()) return 0;
+
+  const keep = new Set(liveConvoIds);
+  const db = await getSearchDB();
+  const stale = (await db.getAll("convoMeta")).filter((meta) => !keep.has(meta.convoId));
+
+  for (const meta of stale) {
+    await removeConversationFromCorpus(meta.convoId);
+  }
+  return stale.length;
+}
+
 export function queueConversationRemoval(convoId: string): void {
   void removeConversationFromCorpus(convoId).catch(swallow("remove"));
 }

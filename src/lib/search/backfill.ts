@@ -15,7 +15,7 @@ import type { User } from "firebase/auth";
 import type { Conversation } from "@/types/chat";
 import { conversationUpdatedAt } from "@/utils/conversation";
 import { getAllConvoMeta, getAppState, isSearchReady, setAppState } from "./db";
-import { syncConversationToCorpus } from "./corpus";
+import { pruneCorpusTo, syncConversationToCorpus } from "./corpus";
 import { BACKFILL_STATE_KEY, type BackfillState } from "./schema";
 
 const CRUD_API = import.meta.env.VITE_CRUD_API as string | undefined;
@@ -80,6 +80,12 @@ export async function runBackfill(user: User): Promise<void> {
     await idle();
 
     const conversations = await fetchAllConversations(user);
+
+    // fetchAllConversations returns the full list, so anything in the corpus but
+    // not in it was deleted elsewhere. Safe here: a non-array response throws
+    // above rather than reaching this point as an empty list.
+    await pruneCorpusTo(conversations.map((conv) => conv.conversation_id));
+
     const existing = new Map(
       (await getAllConvoMeta()).map((meta) => [meta.convoId, meta] as const)
     );
