@@ -16,7 +16,7 @@
 import { Document } from "flexsearch";
 import { configureSearchUser, getSearchDB } from "./db";
 import { buildSnippet, encode, encodeRaw } from "./encoder";
-import { parseMsgId } from "./plaintext";
+import { accumulate, mergeCandidates, type FieldResult } from "./ranking";
 import { startLeadership, type Leadership } from "./leader";
 import { searchChannelName, type SearchHit, type WorkerRequest, type WorkerResponse } from "./protocol";
 import {
@@ -29,30 +29,41 @@ import {
 
 declare const self: DedicatedWorkerGlobalScope;
 
-interface IndexedDoc {
+interface BodyDoc {
   [key: string]: string;
   msgId: string;
   convoId: string;
   role: MessageRole;
-  title: string;
   userText: string;
   botText: string;
   /** Same message text, indexed unstemmed so partial words match as typed. */
   rawText: string;
 }
 
+/** One document per conversation, so a title is stored once however long it is. */
+interface TitleDoc {
+  [key: string]: string;
+  convoId: string;
+  title: string;
+  titleRaw: string;
+}
+
 /**
  * Assistant replies are long and generically phrased. Unweighted they flood
- * results and bury the real match, so field scores are multiplied on merge:
- * title highest, then the student's own messages, then assistant text.
+ * results and bury the real match, so the student's own messages outrank them.
  */
-const FIELD_WEIGHT: Record<string, number> = {
-  title: 3,
+const BODY_FIELD_WEIGHT: Record<string, number> = {
   userText: 2,
   botText: 1,
   // A recall field, not a ranking signal: it duplicates the message text, so it
   // nudges rather than competing with the role-weighted fields above.
   rawText: 0.5,
+};
+
+/** Added once per conversation on top of its best body score. */
+const TITLE_FIELD_WEIGHT: Record<string, number> = {
+  title: 3,
+  titleRaw: 0.5,
 };
 
 /**
@@ -66,14 +77,17 @@ const CANDIDATE_FLOOR = 50;
 /** Debounce for dirty drains, so a burst of rapid sends does not thrash. */
 const DRAIN_DEBOUNCE_MS = 300;
 
-function createIndex(): Document<IndexedDoc> {
-  return new Document<IndexedDoc>({
+/** Namespaces the two indexes inside the single persisted blob. */
+const BODY_BLOB_PREFIX = "body:";
+const TITLE_BLOB_PREFIX = "title:";
+
+function createBodyIndex(): Document<BodyDoc> {
+  return new Document<BodyDoc>({
     encode,
     tokenize: "forward",
     document: {
       id: "msgId",
       index: [
-        { field: "title", tokenize: "forward" },
         { field: "userText", tokenize: "forward" },
         { field: "botText", tokenize: "forward" },
         { field: "rawText", tokenize: "forward", encode: encodeRaw },
@@ -83,7 +97,22 @@ function createIndex(): Document<IndexedDoc> {
   });
 }
 
-let index: Document<IndexedDoc> = createIndex();
+function createTitleIndex(): Document<TitleDoc> {
+  return new Document<TitleDoc>({
+    encode,
+    tokenize: "forward",
+    document: {
+      id: "convoId",
+      index: [
+        { field: "title", tokenize: "forward" },
+        { field: "titleRaw", tokenize: "forward", encode: encodeRaw },
+      ],
+    },
+  });
+}
+
+let bodyIndex: Document<BodyDoc> = createBodyIndex();
+let titleIndex: Document<TitleDoc> = createTitleIndex();
 let docCount = 0;
 let leadership: Leadership | null = null;
 let ready: Promise<void> | null = null;
@@ -106,19 +135,23 @@ function post(message: WorkerResponse): void {
 
 /**
  * Routes the message text into `userText` or `botText` by role, so the two can
- * carry different weights. The title is denormalized onto every document, which
- * is why a rename marks the whole conversation dirty.
+ * carry different weights. Titles live in their own index — copying one onto
+ * every message meant an untitled chat, whose title is its whole first message,
+ * indexed that string once per message it contained.
  */
-function toDoc(record: MessageRecord, title: string): IndexedDoc {
+function toBodyDoc(record: MessageRecord): BodyDoc {
   return {
     msgId: record.msgId,
     convoId: record.convoId,
     role: record.role,
-    title,
     userText: record.role === "user" ? record.plaintext : "",
     botText: record.role === "assistant" ? record.plaintext : "",
     rawText: record.plaintext,
   };
+}
+
+function toTitleDoc(convoId: string, title: string): TitleDoc {
+  return { convoId, title, titleRaw: title };
 }
 
 async function metaMap(): Promise<Map<string, ConvoMetaRecord>> {
@@ -131,15 +164,19 @@ async function rebuildFromCorpus(): Promise<void> {
   const db = await getSearchDB();
   const metas = await metaMap();
 
-  index = createIndex();
+  bodyIndex = createBodyIndex();
+  titleIndex = createTitleIndex();
   docCount = 0;
 
   let cursor = await db.transaction("messages").store.openCursor();
   while (cursor) {
-    const record = cursor.value;
-    index.add(toDoc(record, metas.get(record.convoId)?.title ?? ""));
+    bodyIndex.add(toBodyDoc(cursor.value));
     docCount += 1;
     cursor = await cursor.continue();
+  }
+
+  for (const meta of metas.values()) {
+    if (meta.title) titleIndex.add(toTitleDoc(meta.convoId, meta.title));
   }
 }
 
@@ -149,9 +186,14 @@ async function loadPersistedIndex(): Promise<boolean> {
   if (!row || row.schemaVersion !== SCHEMA_VERSION) return false;
 
   try {
-    index = createIndex();
+    bodyIndex = createBodyIndex();
+    titleIndex = createTitleIndex();
     for (const [key, data] of Object.entries(row.blob)) {
-      index.import(key, data);
+      if (key.startsWith(BODY_BLOB_PREFIX)) {
+        bodyIndex.import(key.slice(BODY_BLOB_PREFIX.length), data);
+      } else if (key.startsWith(TITLE_BLOB_PREFIX)) {
+        titleIndex.import(key.slice(TITLE_BLOB_PREFIX.length), data);
+      }
     }
     docCount = await db.count("messages");
     return true;
@@ -164,10 +206,14 @@ async function loadPersistedIndex(): Promise<boolean> {
 async function persistIndex(): Promise<void> {
   if (!leadership?.isLeader()) return;
 
-  // FlexSearch hands export a series of keyed chunks, not one blob.
+  // FlexSearch hands export a series of keyed chunks, not one blob. Both
+  // indexes share one record, namespaced so import can tell them apart.
   const blob: Record<string, string> = {};
-  await index.export((key: string, data: string) => {
-    if (data !== undefined) blob[key] = data;
+  await bodyIndex.export((key: string, data: string) => {
+    if (data !== undefined) blob[`${BODY_BLOB_PREFIX}${key}`] = data;
+  });
+  await titleIndex.export((key: string, data: string) => {
+    if (data !== undefined) blob[`${TITLE_BLOB_PREFIX}${key}`] = data;
   });
 
   const db = await getSearchDB();
@@ -191,19 +237,21 @@ async function reindexConversation(convoId: string): Promise<void> {
   // Documents whose rows are already gone can only be found through the ids the
   // ingestion path recorded on the dirty entry.
   for (const msgId of entry?.removedMsgIds ?? []) {
-    index.remove(msgId);
+    bodyIndex.remove(msgId);
   }
 
   const records = await db.getAllFromIndex("messages", "by_convo", convoId);
   for (const record of records) {
-    index.remove(record.msgId);
+    bodyIndex.remove(record.msgId);
   }
+  titleIndex.remove(convoId);
 
   if (entry?.reason !== "delete") {
-    const title = (await db.get("convoMeta", convoId))?.title ?? "";
     for (const record of records) {
-      index.add(toDoc(record, title));
+      bodyIndex.add(toBodyDoc(record));
     }
+    const title = (await db.get("convoMeta", convoId))?.title ?? "";
+    if (title) titleIndex.add(toTitleDoc(convoId, title));
   }
 
   docCount = await db.count("messages");
@@ -284,62 +332,72 @@ function ensureReady(): Promise<void> {
   return ready;
 }
 
+/** Strict first, relaxing to partial matches only when nothing matches in full. */
+async function searchField<D extends Record<string, string>>(
+  index: Document<D>,
+  query: string,
+  limit: number
+): Promise<FieldResult[]> {
+  let results = await index.searchAsync(query, { limit, suggest: false });
+  if (results.length === 0) {
+    results = await index.searchAsync(query, { limit, suggest: true });
+  }
+  return results as FieldResult[];
+}
+
 async function runQuery(text: string, limit: number): Promise<SearchHit[]> {
   const trimmed = text.trim();
   if (!trimmed) return [];
 
   const candidates = Math.max(limit * CANDIDATE_MULTIPLIER, CANDIDATE_FLOOR);
 
-  // Strict first: every query term must match, so "12 of those 18" cannot be
-  // beaten by a conversation that only contains "of". `suggest` relaxes that to
-  // partial matches, which is the right fallback when nothing matches in full
-  // but the wrong default — it lets a one-word hit outrank the exact phrase.
-  let results = await index.searchAsync(trimmed, { limit: candidates, suggest: false });
-  if (results.length === 0) {
-    results = await index.searchAsync(trimmed, { limit: candidates, suggest: true });
-  }
+  const [bodyResults, titleResults] = await Promise.all([
+    searchField(bodyIndex, trimmed, candidates),
+    searchField(titleIndex, trimmed, candidates),
+  ]);
 
-  // Merge the per-field result lists, weighting by field and by rank.
-  const scores = new Map<string, number>();
-  for (const group of results) {
-    const weight = FIELD_WEIGHT[String(group.field)] ?? 1;
-    group.result.forEach((id, rank) => {
-      const msgId = String(id);
-      scores.set(msgId, (scores.get(msgId) ?? 0) + weight / (1 + rank));
-    });
-  }
-
-  const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1]);
-
-  // One row per conversation. A title match lifts every message in that
-  // conversation, so without this a single chat floods the list with near
-  // duplicates that all open the same place. Ranked order means the first
-  // sighting of a conversation is already its best-scoring message.
-  const top: Array<[string, number]> = [];
-  const seen = new Set<string>();
-  for (const entry of ranked) {
-    const { convoId } = parseMsgId(entry[0]);
-    if (seen.has(convoId)) continue;
-    seen.add(convoId);
-    top.push(entry);
-    if (top.length >= limit) break;
-  }
+  const ranked = mergeCandidates(
+    accumulate(bodyResults, BODY_FIELD_WEIGHT),
+    accumulate(titleResults, TITLE_FIELD_WEIGHT),
+    limit
+  );
 
   const db = await getSearchDB();
   const hits: SearchHit[] = [];
 
-  for (const [msgId, score] of top) {
-    const record = await db.get("messages", msgId);
-    if (!record) continue; // Deleted since the index last drained.
-    const meta = await db.get("convoMeta", record.convoId);
+  for (const [convoId, candidate] of ranked) {
+    const meta = await db.get("convoMeta", convoId);
+    const record = await db.get("messages", candidate.msgId);
+
+    // A title-only match on a conversation whose messages are gone still
+    // deserves its row; the title is all there is to show.
+    if (!record) {
+      if (!candidate.bodyMatched && meta) {
+        hits.push({
+          convoId,
+          msgId: candidate.msgId,
+          role: "user",
+          score: candidate.score,
+          startOffset: 0,
+          endOffset: 0,
+          snippet: meta.title,
+          title: meta.title,
+          updatedAt: meta.updatedAt,
+        });
+      }
+      continue;
+    }
+
+    // Only a body match has something to highlight. buildSnippet degrades to a
+    // leading excerpt with a zero-width span when the query is not in the text.
     const { snippet, startOffset, endOffset } = buildSnippet(record.plaintext, trimmed);
     hits.push({
-      convoId: record.convoId,
-      msgId,
+      convoId,
+      msgId: candidate.msgId,
       role: record.role,
-      score,
-      startOffset,
-      endOffset,
+      score: candidate.score,
+      startOffset: candidate.bodyMatched ? startOffset : 0,
+      endOffset: candidate.bodyMatched ? endOffset : 0,
       snippet,
       title: meta?.title ?? "Untitled Conversation",
       updatedAt: meta?.updatedAt ?? record.updatedAt,

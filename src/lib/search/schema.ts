@@ -20,7 +20,7 @@ export function searchDbName(uid: string): string {
 export const DB_VERSION = 1;
 
 /** Bumping this forces a full index rebuild on the next worker start. */
-export const SCHEMA_VERSION = "2+stemmer@2.0.1+raw";
+export const SCHEMA_VERSION = "3+stemmer@2.0.1+raw+split-title";
 
 export type MessageRole = "user" | "assistant";
 
