@@ -38,7 +38,7 @@ interface ChatSearchState {
 }
 
 export const useChatSearchStore = create<ChatSearchState>()(
-  immer((set) => ({
+  immer((set, get) => ({
     query: '',
     hits: [],
     searching: false,
@@ -64,12 +64,19 @@ export const useChatSearchStore = create<ChatSearchState>()(
 
       set(state => { state.searching = true; });
 
+      /** The box still holds the query this response belongs to. */
+      const isStillCurrent = (dispatched: string) => get().query.trim() === dispatched;
+
       debounceTimer = setTimeout(() => {
         debounceTimer = null;
         void searchMessages(trimmed, RESULT_LIMIT)
           .then(outcome => {
             // A slower earlier keystroke must not overwrite a newer result set.
             if (!outcome.current) return;
+            // Nor may a response land after the box was cleared. The client
+            // only tracks newer *queries*; clearing dispatches nothing, so it
+            // leaves this request in flight and still flagged current.
+            if (!isStillCurrent(trimmed)) return;
             set(state => {
               state.hits = outcome.hits;
               state.searching = false;
@@ -78,6 +85,7 @@ export const useChatSearchStore = create<ChatSearchState>()(
           })
           .catch(err => {
             console.warn('[search] query failed', err);
+            if (!isStillCurrent(trimmed)) return;
             set(state => {
               state.hits = [];
               state.searching = false;

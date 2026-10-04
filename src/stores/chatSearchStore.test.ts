@@ -96,6 +96,43 @@ describe("chatSearchStore", () => {
     expect(searchMessages).toHaveBeenCalledTimes(1);
   });
 
+  it("discards a response that lands after the box was cleared", async () => {
+    // Pressing Escape while a query is in flight. The client reports current:
+    // true because nothing newer was dispatched, so the store has to notice
+    // that the query it belongs to is gone.
+    let settle: ((value: unknown) => void) | undefined;
+    searchMessages.mockReturnValue(new Promise((resolve) => { settle = resolve; }));
+
+    const { setQuery, clear } = useChatSearchStore.getState();
+    setQuery("grad");
+    await vi.advanceTimersByTimeAsync(200);
+    expect(searchMessages).toHaveBeenCalledTimes(1);
+
+    clear();
+    settle!({ hits: [hit("c1", "c1#0")], current: true });
+    await vi.advanceTimersByTimeAsync(0);
+
+    const state = useChatSearchStore.getState();
+    expect(state.hits).toEqual([]);
+    expect(state.dispatched).toBe(false);
+    expect(state.searching).toBe(false);
+  });
+
+  it("discards a response whose query was replaced before it resolved", async () => {
+    let settle: ((value: unknown) => void) | undefined;
+    searchMessages.mockReturnValueOnce(new Promise((resolve) => { settle = resolve; }));
+
+    const { setQuery } = useChatSearchStore.getState();
+    setQuery("grad");
+    await vi.advanceTimersByTimeAsync(200);
+
+    setQuery("graduation");
+    settle!({ hits: [hit("c1", "c1#0")], current: true });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(useChatSearchStore.getState().hits).toEqual([]);
+  });
+
   it("clear cancels a pending dispatch", async () => {
     searchMessages.mockResolvedValue({ hits: [], current: true });
     const { setQuery, clear } = useChatSearchStore.getState();
