@@ -831,7 +831,7 @@ const ChatBot: React.FC = () => {
               {!sidebarCollapsed && (
                 <div className={`${sidebarCollapsedDelayed ? "opacity-0" : "opacity-100"} flex flex-col w-full overflow-visible gap-8 transition-all duration-150`}>
                   <div className="flex gap-3 justify-between items-center">
-                  <button data-tour="new-chat-expanded" aria-label="Start a new chat conversation" className="flex shrink-0 whitespace-nowrap transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
+                    <button data-tour="new-chat-expanded" aria-label="Start a new chat conversation" className="flex shrink-0 whitespace-nowrap transition-all duration-100 items-center space-x-2 py-2 px-6 rounded-3xl bg-accent text-textdark hover:text-gray-700" onClick={startNewChat}>
                       <MessageCirclePlusIcon size={24} aria-hidden="true" />
                       <span>Start new chat</span>
                     </button>
@@ -848,27 +848,30 @@ const ChatBot: React.FC = () => {
                       conversations.map((conv, index) => {
                         const displayName = conv.title || conv.messages?.[0]?.content || "No messages";
                         return (
-                          <li key={conv.conversation_id} ref={(el) => (contextButtonRefs.current[index] = el)} className={`group/conversation flex flex-row items-center w-full rounded-sm transition-colors overflow-visible ${conversation_id === conv.conversation_id ? "bg-secondary" : "hover:bg-secondary"
-                            }`}>
+                          <li
+                            key={conv.conversation_id}
+                            ref={(el) => (contextButtonRefs.current[index] = el)}
+                            className={`group/conversation flex flex-row items-center w-full min-w-0 rounded-sm transition-colors ${conversation_id === conv.conversation_id ? "bg-secondary" : "hover:bg-secondary"
+                              }`}
+                          >
                             <button
-                              className={`group/conversation flex flex-row gap-2 justify-between items-center w-full p-2 cursor-pointer rounded-sm hover:bg-secondary text-textdark transition-colors overflow-visible text-left bg-transparent border-none outline-none ${conversation_id === conv.conversation_id ? "bg-secondary" : "bg-bglight"
-                                }`}
+                              className="flex flex-1 min-w-0 items-center p-2 cursor-pointer rounded-sm text-textdark text-left bg-transparent border-none outline-none"
                               onClick={() => loadConversation(conv.conversation_id, conv.messages)}
                               aria-current={conversation_id === conv.conversation_id ? "true" : undefined}
                             >
-                              <div className="relative flex flex-[1] group-hover/conversation:max-w-[85%] max-w-full">
-                                <div className="opacity-0 group-hover/conversation:opacity-100 absolute left-[calc(100%-2rem)] w-[2rem] h-full bg-gradient-to-r from-secondary/0 to-secondary transition-all duration-150" />
-                                <small className="truncate" data-clarity-mask="True">{displayName}</small>
-                              </div>
+                              <small className="block min-w-0 truncate" data-clarity-mask="True">
+                                {displayName}
+                              </small>
                             </button>
-
-                            <div className="relative flex h-full">
+                            
+                            <div className="relative flex shrink-0 self-stretch">
                               <button
-                                ref={ellipsisButtonRef}
                                 aria-label={`More options for ${displayName}`}
                                 aria-expanded={moreOptionsOpenId === conv.conversation_id}
                                 aria-haspopup="menu"
-                                className="group/menu px-2 h-full group-hover/conversation:opacity-100 opacity-0"
+                                className={`group/menu px-2 h-full transition-opacity duration-150
+        opacity-0 group-hover/conversation:opacity-100 focus-visible:opacity-100
+        ${moreOptionsOpenId === conv.conversation_id ? "opacity-100" : ""}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setMoreOptionsOpenId((prev) => (prev === conv.conversation_id ? null : conv.conversation_id));
@@ -963,7 +966,7 @@ const ChatBot: React.FC = () => {
                   const step = 10;
                   if (e.key === 'ArrowRight') setChatSidebarWidth(Math.min(420, chatSidebarWidth + step));
                   if (e.key === 'ArrowLeft') setChatSidebarWidth(Math.max(320, chatSidebarWidth - step));
-              }}
+                }}
               >
                 <div className="w-1.5 h-10 rounded-full bg-gray-300 opacity-30 group-hover/grip:opacity-100 transition-opacity duration-150 flex flex-col items-center justify-center gap-[3px]">
                   <span className="w-[3px] h-[3px] rounded-full bg-gray-500" />
