@@ -23,6 +23,7 @@ interface Pending {
 
 let worker: Worker | null = null;
 let unsubscribeDirty: (() => void) | null = null;
+let detachLifecycle: (() => void) | null = null;
 let workerUid: string | null = null;
 let nextQueryId = 1;
 let latestQueryId = 0;
@@ -107,7 +108,32 @@ function getWorker(): Worker | null {
     send({ type: "dirty", convoId });
   });
 
+  attachLifecycle();
   return worker;
+}
+
+/**
+ * Index writes are debounced in the worker, which cannot see `document`. Tell it
+ * to flush as the page goes away, or a tab closed inside the debounce window
+ * loses that work and the next load pays to rebuild it.
+ */
+function attachLifecycle(): void {
+  if (detachLifecycle || typeof document === "undefined") return;
+
+  const onHidden = () => {
+    if (document.visibilityState === "hidden") worker?.postMessage({ type: "flush" });
+  };
+  // pagehide covers iOS Safari, where a backgrounded tab may never fire
+  // visibilitychange before it is frozen.
+  const onPageHide = () => worker?.postMessage({ type: "flush" });
+
+  document.addEventListener("visibilitychange", onHidden);
+  window.addEventListener("pagehide", onPageHide);
+
+  detachLifecycle = () => {
+    document.removeEventListener("visibilitychange", onHidden);
+    window.removeEventListener("pagehide", onPageHide);
+  };
 }
 
 function send(request: WorkerRequest): void {
@@ -141,6 +167,11 @@ export function requestReindex(): void {
 
 /** Tears the worker down. For tests and teardown, not used in the UI path. */
 export function stopSearchWorker(): void {
+  // No flush here: terminate would abort before the worker could handle it.
+  // Anything still debounced is recoverable — its dirty rows are only cleared
+  // once a write succeeds, so the next session replays them.
+  detachLifecycle?.();
+  detachLifecycle = null;
   unsubscribeDirty?.();
   unsubscribeDirty = null;
   worker?.terminate();

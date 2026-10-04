@@ -26,6 +26,8 @@ export type WorkerRequest =
   | { type: "init"; uid: string }
   | { type: "query"; id: number; text: string; limit: number }
   | { type: "reindex" }
+  /** Persist now rather than waiting out the debounce — sent as the page hides. */
+  | { type: "flush" }
   | { type: "dirty"; convoId: string };
 
 export type WorkerResponse =

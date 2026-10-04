@@ -77,6 +77,14 @@ const CANDIDATE_FLOOR = 50;
 /** Debounce for dirty drains, so a burst of rapid sends does not thrash. */
 const DRAIN_DEBOUNCE_MS = 300;
 
+/**
+ * Trailing debounce before the index is written back. Exporting is a whole-index
+ * operation and every write makes follower tabs re-import the blob, so it is
+ * batched well clear of the drain cadence. The page sends `flush` as it hides,
+ * which is what stops this losing work on close.
+ */
+const PERSIST_DEBOUNCE_MS = 12_000;
+
 /** Namespaces the two indexes inside the single persisted blob. */
 const BODY_BLOB_PREFIX = "body:";
 const TITLE_BLOB_PREFIX = "title:";
@@ -117,6 +125,15 @@ let docCount = 0;
 let leadership: Leadership | null = null;
 let ready: Promise<void> | null = null;
 let drainTimer: ReturnType<typeof setTimeout> | null = null;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Conversations applied to the in-memory index but not yet written to disk,
+ * with the mark they were applied for. Their dirty rows stay put until the
+ * write lands: deleting them at drain time meant a tab closing inside the
+ * persist debounce lost the work with nothing left to replay it from.
+ */
+const appliedPendingPersist = new Map<string, number>();
 
 /**
  * Resolves once the main thread has sent `init`. Nothing may touch the corpus
@@ -223,6 +240,18 @@ async function persistIndex(): Promise<void> {
     schemaVersion: SCHEMA_VERSION,
     builtAt: Date.now(),
   });
+
+  // Only now are the dirty rows safe to drop, and only those not re-marked
+  // while the write was in flight.
+  const applied = [...appliedPendingPersist];
+  appliedPendingPersist.clear();
+  const tx = db.transaction("dirty", "readwrite");
+  for (const [convoId, markedAt] of applied) {
+    const row = await tx.store.get(convoId);
+    if (row && row.markedAt === markedAt) await tx.store.delete(convoId);
+  }
+  await tx.done;
+
   leadership.broadcastIndexUpdated();
 }
 
@@ -267,15 +296,21 @@ async function drainDirty(): Promise<number> {
 
   const db = await getSearchDB();
   const entries = await db.getAll("dirty");
-  if (entries.length === 0) return 0;
+  // Skip anything already applied and awaiting a write, unless it has been
+  // marked again since.
+  const todo = entries.filter((e) => appliedPendingPersist.get(e.convoId) !== e.markedAt);
+  if (todo.length === 0) return 0;
 
-  for (const entry of entries) {
+  for (const entry of todo) {
     await reindexConversation(entry.convoId);
-    await db.delete("dirty", entry.convoId);
+    appliedPendingPersist.set(entry.convoId, entry.markedAt);
   }
 
-  await persistIndex();
-  return entries.length;
+  // Not persisted here: during backfill a drain fires on every idle gap, and
+  // writing the whole index each time also forces every follower tab to
+  // re-import it.
+  schedulePersist();
+  return todo.length;
 }
 
 /** Follower path: adopt the index the leader just published. */
@@ -284,6 +319,24 @@ async function reloadPublishedIndex(): Promise<void> {
   const imported = await loadPersistedIndex();
   if (!imported) await rebuildFromCorpus();
   post({ type: "indexReady", count: docCount });
+}
+
+/** Batches index writes, which are whole-index operations. */
+function schedulePersist(): void {
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    void persistIndex().catch((err) => post({ type: "error", message: String(err) }));
+  }, PERSIST_DEBOUNCE_MS);
+}
+
+/** Writes immediately, cancelling any pending debounce. */
+async function flushPersist(): Promise<void> {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  await persistIndex();
 }
 
 /** Batches bursts of marks into a single drain. */
@@ -314,11 +367,12 @@ async function initialize(): Promise<void> {
   const imported = await loadPersistedIndex();
   if (!imported) await rebuildFromCorpus();
 
-  const drained = await drainDirty();
+  await drainDirty();
 
-  // A rebuild has to be published even when nothing was dirty. Otherwise the
-  // rejected blob survives untouched and every later load rebuilds again.
-  if (!imported && drained === 0) await persistIndex();
+  // A rebuild is published straight away rather than debounced: it is the
+  // expensive path, and losing it to a closed tab means doing it all again.
+  // Otherwise the rejected blob survives and every later load rebuilds.
+  if (!imported) await flushPersist();
 
   post({ type: "indexReady", count: docCount });
 }
@@ -446,6 +500,13 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
 
   if (request.type === "reindex") {
     void ensureReady().then(() => scheduleDrain());
+    return;
+  }
+
+  if (request.type === "flush") {
+    void ensureReady()
+      .then(() => flushPersist())
+      .catch((err) => post({ type: "error", message: String(err) }));
   }
 };
 
