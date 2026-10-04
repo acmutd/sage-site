@@ -17,6 +17,13 @@
  * could not recognise a suffix. Stemming "graduation" and "graduate" to the
  * same key only works on real words.
  *
+ * Two encodings are exported because stemming is not monotonic. Typing
+ * "requirements" one letter at a time produces stems r, re, req, requ, requi,
+ * requir, requir, requirem, … — the key grows past the indexed stem "requir"
+ * and stops being a prefix of it, so results vanish mid-word and only return
+ * once the word is finished. `encodeRaw` indexes the unstemmed token alongside,
+ * where every prefix of a word is by definition a prefix of its key.
+ *
  * Stemmed keys are for matching only. `tokenize` records each token's span in
  * the original string so match offsets point into unstemmed text.
  */
@@ -66,11 +73,20 @@ export function tokenize(text: string): Token[] {
 }
 
 /**
- * The `encode` function handed to FlexSearch. Runs on already-stripped
- * plaintext at index time, and on the raw query at search time.
+ * Stemmed encoding, for the fields that carry morphology — a search for
+ * "graduate" finds "graduation".
  */
 export function encode(text: string): string[] {
   return tokenize(text).map((token) => token.stem);
+}
+
+/**
+ * Unstemmed encoding, for the companion field that makes as-you-type work.
+ * Every prefix of a word encodes to a prefix of that word's key, which is the
+ * property stemming breaks.
+ */
+export function encodeRaw(text: string): string[] {
+  return tokenize(text).map((token) => token.raw.toLowerCase());
 }
 
 /**
@@ -82,27 +98,34 @@ export function findMatchSpan(
   plaintext: string,
   query: string
 ): { start: number; end: number } | null {
-  const queryStems = encode(query);
-  if (queryStems.length === 0) return null;
+  const queryTokens = tokenize(query);
+  if (queryTokens.length === 0) return null;
 
   const tokens = tokenize(plaintext);
   if (tokens.length === 0) return null;
 
+  // Match on either encoding, mirroring the index: the stemmed fields carry
+  // morphology, the raw field carries partial words. Checking only stems left
+  // a half-typed query matching rows it could not highlight.
+  const hits = (token: Token, queryToken: Token): boolean =>
+    token.stem.startsWith(queryToken.stem) ||
+    token.raw.toLowerCase().startsWith(queryToken.raw.toLowerCase());
+
   // Prefer a run covering every query term, so a multi-word query highlights
   // the phrase rather than whichever term happens to appear first.
-  if (queryStems.length > 1) {
-    for (let i = 0; i + queryStems.length <= tokens.length; i += 1) {
-      const runMatches = queryStems.every((stem, offset) =>
-        tokens[i + offset].stem.startsWith(stem)
+  if (queryTokens.length > 1) {
+    for (let i = 0; i + queryTokens.length <= tokens.length; i += 1) {
+      const runMatches = queryTokens.every((queryToken, offset) =>
+        hits(tokens[i + offset], queryToken)
       );
       if (runMatches) {
-        return { start: tokens[i].start, end: tokens[i + queryStems.length - 1].end };
+        return { start: tokens[i].start, end: tokens[i + queryTokens.length - 1].end };
       }
     }
   }
 
   for (const token of tokens) {
-    if (queryStems.some((stem) => token.stem.startsWith(stem))) {
+    if (queryTokens.some((queryToken) => hits(token, queryToken))) {
       return { start: token.start, end: token.end };
     }
   }

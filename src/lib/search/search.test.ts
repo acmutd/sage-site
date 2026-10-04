@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeMsgId, parseMsgId, stripMarkdown, toPlaintext } from "./plaintext";
-import { buildSnippet, encode, findMatchSpan, tokenize } from "./encoder";
+import { buildSnippet, encode, encodeRaw, findMatchSpan, tokenize } from "./encoder";
 import {
   FULL_BODY_WINDOW,
   SOFT_CEILING_BYTES,
@@ -105,6 +105,25 @@ describe("encoder", () => {
     expect(encode("applications")).toEqual(encode("application"));
   });
 
+  it("raw-encodes every prefix of a word as a prefix of its key", () => {
+    // This is what makes as-you-type search work, and what the stemmed
+    // encoding cannot provide.
+    const word = "requirements";
+    const full = encodeRaw(word)[0];
+    for (let i = 1; i <= word.length; i += 1) {
+      expect(full.startsWith(encodeRaw(word.slice(0, i))[0])).toBe(true);
+    }
+  });
+
+  it("shows why the raw field is needed: stems are not monotonic", () => {
+    // Typing past the stem boundary produced a key longer than the indexed
+    // stem, so matches vanished mid-word and only returned on the full word.
+    const indexed = encode("requirements")[0];
+    expect(indexed.startsWith(encode("requi")[0])).toBe(true);
+    expect(indexed.startsWith(encode("requirem")[0])).toBe(false);
+    expect(encode("requirement")[0]).toBe(indexed);
+  });
+
   it("leaves short words and course numbers intact", () => {
     expect(encode("CS")).toEqual(encode("cs"));
     expect(encode("cs")).toEqual(["cs"]);
@@ -125,6 +144,15 @@ describe("encoder", () => {
     const span = findMatchSpan(text, "applications");
     expect(span).not.toBeNull();
     expect(text.slice(span!.start, span!.end)).toBe("application");
+  });
+
+  it("highlights a half-typed word", () => {
+    // The raw field makes "requirem" match, so the snippet has to be able to
+    // highlight it too or results come back with nothing marked.
+    const text = "what are the graduation requirements for accounting";
+    const span = findMatchSpan(text, "requirem");
+    expect(span).not.toBeNull();
+    expect(text.slice(span!.start, span!.end)).toBe("requirements");
   });
 
   it("prefers a run covering every query term", () => {

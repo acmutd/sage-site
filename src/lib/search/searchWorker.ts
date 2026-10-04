@@ -15,7 +15,7 @@
 
 import { Document } from "flexsearch";
 import { configureSearchUser, getSearchDB } from "./db";
-import { buildSnippet, encode } from "./encoder";
+import { buildSnippet, encode, encodeRaw } from "./encoder";
 import { parseMsgId } from "./plaintext";
 import { startLeadership, type Leadership } from "./leader";
 import { searchChannelName, type SearchHit, type WorkerRequest, type WorkerResponse } from "./protocol";
@@ -37,6 +37,8 @@ interface IndexedDoc {
   title: string;
   userText: string;
   botText: string;
+  /** Same message text, indexed unstemmed so partial words match as typed. */
+  rawText: string;
 }
 
 /**
@@ -48,6 +50,9 @@ const FIELD_WEIGHT: Record<string, number> = {
   title: 3,
   userText: 2,
   botText: 1,
+  // A recall field, not a ranking signal: it duplicates the message text, so it
+  // nudges rather than competing with the role-weighted fields above.
+  rawText: 0.5,
 };
 
 /**
@@ -71,6 +76,7 @@ function createIndex(): Document<IndexedDoc> {
         { field: "title", tokenize: "forward" },
         { field: "userText", tokenize: "forward" },
         { field: "botText", tokenize: "forward" },
+        { field: "rawText", tokenize: "forward", encode: encodeRaw },
       ],
       store: ["convoId", "role"],
     },
@@ -111,6 +117,7 @@ function toDoc(record: MessageRecord, title: string): IndexedDoc {
     title,
     userText: record.role === "user" ? record.plaintext : "",
     botText: record.role === "assistant" ? record.plaintext : "",
+    rawText: record.plaintext,
   };
 }
 
