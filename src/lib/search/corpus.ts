@@ -116,12 +116,25 @@ export function queueConversationSync(conv: Conversation): void {
   void syncConversationToCorpus(conv).catch(swallow("sync"));
 }
 
-export function queueConversationsSync(convs: Conversation[]): void {
-  void (async () => {
+/**
+ * Ingests a whole list, reporting whether every conversation landed.
+ *
+ * Callers use the result to decide whether the corpus is complete — marking it
+ * so while this is still running, or after it aborted partway, leaves
+ * conversations permanently unindexed because the backfill then skips them.
+ *
+ * Still never awaited from the UI path; the caller chains off the promise.
+ */
+export async function syncConversations(convs: Conversation[]): Promise<boolean> {
+  try {
     for (const conv of convs) {
       await syncConversationToCorpus(conv);
     }
-  })().catch(swallow("bulk sync"));
+    return true;
+  } catch (err) {
+    swallow("bulk sync")(err);
+    return false;
+  }
 }
 
 /**
