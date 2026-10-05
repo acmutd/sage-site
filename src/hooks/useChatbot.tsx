@@ -1,8 +1,50 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Conversation } from "@/types/chat"
+import {
+    conversationDisplayName,
+    conversationUpdatedAt,
+    sortConversationsByDate,
+} from "@/utils/conversation";
+import {
+    saveConversationsToCache as saveBoundedCache,
+    updateCachedConversations,
+} from "@/lib/search/localCache";
+import {
+    pruneCorpusTo,
+    queueConversationRemoval,
+    queueConversationRename,
+    syncConversations,
+} from "@/lib/search/corpus";
+import { markBackfillComplete } from "@/lib/search/backfill";
+import { setSearchUser } from "@/lib/search/client";
 
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
+
+/** Fills in the display title and last-activity time that pruned entries rely on. */
+const normalize = (convs: Conversation[]): Conversation[] =>
+    convs.map((conv) => ({
+        ...conv,
+        title: conversationDisplayName(conv),
+        updatedAt: conversationUpdatedAt(conv),
+    }));
+
+/**
+ * useChatbot is instantiated by ChatBot, ChatBotNavbar and the mobile drawer,
+ * and on a cold cache each one fetches. Ingest the list once, not three times.
+ */
+let ingesting = false;
+function ingestFullList(convs: Conversation[], uid: string): void {
+    if (ingesting) return;
+    ingesting = true;
+    void (async () => {
+        // The response is the whole list, so anything in the corpus but missing
+        // from it was deleted elsewhere.
+        await pruneCorpusTo(convs.map((c) => c.conversation_id));
+        // Only flag the backfill done once every conversation has landed.
+        if (await syncConversations(convs)) await markBackfillComplete(uid);
+    })().finally(() => { ingesting = false; });
+}
 
 export const useChatbot = () => {
     const { user } = useAuth();
@@ -43,11 +85,7 @@ export const useChatbot = () => {
                 )
               ) {
                 const cached = Array.isArray(cachedConversations.data) ? cachedConversations.data : [];
-                const processedConversations = cached.map((conv: Conversation) => ({
-                  ...conv,
-                  title: conv.title || conv.conversation_name || conv.messages?.[0]?.content || "Untitled Conversation",
-                }));
-                const sorted = sortConversationsByDate(processedConversations);
+                const sorted = sortConversationsByDate(normalize(cached));
                 setConversations(sorted);
                 return;
               }
@@ -61,17 +99,25 @@ export const useChatbot = () => {
         await fetchConversation();
     };
     
-    const fetchConversation = async () => {
+    /**
+     * `forceRefresh` skips the localStorage short-circuit. It is needed when a
+     * conversation was pruned out of the bounded cache and neither the cache nor
+     * the search corpus can supply its message bodies.
+     */
+    const fetchConversation = async (forceRefresh = false) => {
         if (!user?.uid) {
         console.warn("User ID is missing. Cannot fetch conversations.");
         return;
         }
 
+        // Bind the corpus to this user before anything can ingest into it.
+        setSearchUser(user.uid);
+
         setLoading(true);
         setError(null);
 
         try {
-        const cachedConversationsString = localStorage.getItem("chatbot_conversations");
+        const cachedConversationsString = forceRefresh ? null : localStorage.getItem("chatbot_conversations");
 
         if (cachedConversationsString) {
             const cachedConversations = JSON.parse(cachedConversationsString);
@@ -85,11 +131,7 @@ export const useChatbot = () => {
             )
             ) {
             const cached = Array.isArray(cachedConversations.data) ? cachedConversations.data : [];
-            const processedConversations = cached.map((conv: Conversation) => ({
-                ...conv,
-                title: conv.title || conv.conversation_name || conv.messages?.[0]?.content || "Untitled Conversation",
-            }));
-            const sorted = sortConversationsByDate(processedConversations);
+            const sorted = sortConversationsByDate(normalize(cached));
             setConversations(sorted);
             setLoading(false);
             return cached;
@@ -118,16 +160,16 @@ export const useChatbot = () => {
 
         const data = await response.json();
 
-        const convs: Conversation[] = Array.isArray(data)
-            ? data.map((conv: Conversation) => ({
-                ...conv,
-                title: conv.title || conv.conversation_name || conv.messages?.[0]?.content || "Untitled Conversation",
-            }))
-            : [];
+        const convs: Conversation[] = Array.isArray(data) ? normalize(data) : [];
 
             const sorted = sortConversationsByDate(convs);
             setConversations(sorted);
             saveConversationsToCache(sorted);
+
+            // Only ingest a real array. A non-array response normalizes to an empty
+            // list, and pruning the corpus to that would wipe it.
+            if (Array.isArray(data)) ingestFullList(sorted, user.uid);
+
             return sorted;
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Failed to fetch conversations";
@@ -139,23 +181,10 @@ export const useChatbot = () => {
     };
 
 
-    const saveConversationsToCache = (convs: any[]) => {
-        localStorage.setItem(
-        "chatbot_conversations",
-        JSON.stringify({
-            data: convs,
-            timestamp: Date.now(),
-            userId: user?.uid,
-        })
-        );
-    };
-
-    const sortConversationsByDate = (convs: Conversation[]) => {
-        return convs.sort((a: Conversation, b: Conversation) => {
-          const aTime = new Date(a.messages?.[a.messages.length - 1]?.timestamp || 0).getTime();
-          const bTime = new Date(b.messages?.[b.messages.length - 1]?.timestamp || 0).getTime();
-          return bTime - aTime;
-        });
+    // localStorage keeps full bodies for only the most recent conversations; the
+    // rest are stored as metadata and rehydrated from the search corpus on open.
+    const saveConversationsToCache = (convs: Conversation[]) => {
+        if (user?.uid) saveBoundedCache(convs, user.uid);
     };
 
     const deleteConversation = async (conversationId: string) => {
@@ -164,17 +193,8 @@ export const useChatbot = () => {
       
         // Optimistic cache update
         setConversations((prev) => prev.filter((item) => item.conversation_id !== conversationId));
-
-        const cachedString = localStorage.getItem("chatbot_conversations");
-        if (cachedString) {
-          const cached = JSON.parse(cachedString);
-          if (cached?.data) {
-            localStorage.setItem("chatbot_conversations", JSON.stringify({
-              ...cached,
-              data: cached.data.filter((item: Conversation) => item.conversation_id !== conversationId),
-            }));
-          }
-        }
+        updateCachedConversations((convs) => convs.filter((item) => item.conversation_id !== conversationId));
+        queueConversationRemoval(conversationId);
       
         if (!CRUD_API) throw new Error("CRUD_API environment variable is missing.");
         const token = await user.getIdToken();
@@ -214,19 +234,14 @@ export const useChatbot = () => {
         });
 
         // Update local storage - same as desktop
-        const cachedConversationsString = localStorage.getItem("chatbot_conversations");
-        if (cachedConversationsString) {
-            const cached = JSON.parse(cachedConversationsString);
-            if (cached?.data) {
-            const updatedCache = {
-                ...cached,
-                data: cached.data.map((item: Conversation) =>
-                item.conversation_id === conversationId ? { ...item, title: newTitle, conversation_name: newTitle } : item
-                ),
-            };
-            localStorage.setItem("chatbot_conversations", JSON.stringify(updatedCache));
-            }
-        }
+        updateCachedConversations((convs) =>
+            convs.map((item) =>
+                item.conversation_id === conversationId
+                    ? { ...item, title: newTitle, conversation_name: newTitle }
+                    : item
+            )
+        );
+        queueConversationRename(conversationId, newTitle);
 
         if (!CRUD_API) throw new Error("CRUD_API environment variable is missing.");
         const token = await user.getIdToken();
@@ -248,8 +263,11 @@ export const useChatbot = () => {
             const errorText = await response.text();
 
             if (response.status === 404) { // attempted rename of a deleted convo in backend
-              setConversations((prev) => prev.filter((item) => item.conversation_id !== conversation_id));
-              saveConversationsToCache(conversations.filter((item) => item.conversation_id !== conversation_id));
+              // This used to filter by `conversation_id` (the open chat) instead of
+              // the conversation being renamed, removing the wrong one.
+              setConversations((prev) => prev.filter((item) => item.conversation_id !== conversationId));
+              updateCachedConversations((convs) => convs.filter((item) => item.conversation_id !== conversationId));
+              queueConversationRemoval(conversationId);
             }
 
             throw new Error(`Failed to rename conversation: ${response.status} - ${errorText}`);
