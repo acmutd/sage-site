@@ -13,6 +13,13 @@ export interface Conversation {
     messages: Message[];
     title?: string;
     conversation_name?: string;
+    /**
+     * Last-activity time, carried explicitly so conversations pruned out of the
+     * localStorage window still sort correctly without their message bodies.
+     */
+    updatedAt?: number;
+    /** First-message excerpt, kept for pruned conversations that have no messages. */
+    preview?: string;
 }
 
 export interface CourseBlock {

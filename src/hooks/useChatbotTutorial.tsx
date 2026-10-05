@@ -44,6 +44,16 @@ export function useChatbotTutorial({ user, hasSeenTutorial }: UseChatbotTutorial
                     }
                 },
                 {
+                    element: () =>
+                        [...document.querySelectorAll('[data-tour="chat-search"]')]
+                          .find((el) => el.getClientRects().length > 0) as HTMLElement,
+                    popover: {
+                        title: 'Search Your Chats',
+                        description: 'Search every message across all your conversations, even ones you never renamed. Click a result to jump straight to that message.',
+                        side: 'right'
+                    }
+                },
+                {
                     element: '[data-tour="chat-input"]',
                     popover: {
                         title: 'Ask Questions',
@@ -105,7 +115,7 @@ export function useChatbotTutorial({ user, hasSeenTutorial }: UseChatbotTutorial
         if (hasSeenTutorial && !seenInStorage) {
             localStorage.setItem('hasSeenChatbotTutorial', 'true');
         }
-        
+
         if (!seenInStorage && !hasSeenTutorial) {
             const startIfReady = () => {
                 const conversationButton = document.querySelector('[data-tour="sidebar"] ul li button');

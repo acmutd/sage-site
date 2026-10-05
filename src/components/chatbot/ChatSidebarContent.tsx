@@ -4,6 +4,8 @@ import { useChatbot } from "@/hooks/useChatbot"
 import { useAuth } from "@/context/AuthContext";
 import { chatEventEmitter } from "@/utils/chatEventEmitter";
 import type { Conversation } from "@/types/chat";
+import { conversationDisplayName, conversationUpdatedAt } from "@/utils/conversation";
+import { ChatSearchInput, ChatSearchPanel, useChatSearchActive } from "@/components/chatbot/Chatsearch";
 
 interface ChatSidebarContentProps {
   onClose: () => void;
@@ -22,6 +24,8 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
     setConversationId,
     initialLoad
   } = useChatbot();
+
+  const searchActive = useChatSearchActive();
 
   // Modal states
   const [showRenameModal, setShowRenameModal] = useState(false);
@@ -64,14 +68,10 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
     const pastChats: Conversation[] = [];
 
     convs.forEach((conv) => {
-      const lastMessageTime = conv.messages?.[conv.messages.length - 1]?.timestamp;
-      if (lastMessageTime) {
-        const messageDate = new Date(lastMessageTime);
-        if (messageDate >= todayStart) {
-          todayChats.push(conv);
-        } else {
-          pastChats.push(conv);
-        }
+      // Pruned conversations carry no messages, so go through the shared accessor.
+      const updatedAt = conversationUpdatedAt(conv);
+      if (updatedAt && new Date(updatedAt) >= todayStart) {
+        todayChats.push(conv);
       } else {
         pastChats.push(conv);
       }
@@ -81,7 +81,7 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
   };
 
   const renderConversationItem = (conv: Conversation) => {
-    const displayName = conv.title || conv.conversation_name || conv.messages?.[0]?.content || "No messages";
+    const displayName = conversationDisplayName(conv);
     const active = conversation_id === conv.conversation_id;
 
     return (
@@ -163,10 +163,25 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
           <span>Start new chat</span>
         </button>
 
+        <ChatSearchInput />
+
         {loading && <p className="text-textsecondary text-sm">Loading conversations...</p>}
         {error && <p className="text-destructive text-sm">{error}</p>}
 
-        {Array.isArray(conversations) && conversations.length > 0 ? (
+        {searchActive ? (
+          <ChatSearchPanel
+            onSelect={(hit) => {
+              const conv = conversations.find((c) => c.conversation_id === hit.convoId);
+              setConversationId(hit.convoId);
+              chatEventEmitter.emit("loadConversation", {
+                conversationId: hit.convoId,
+                messages: conv?.messages ?? [],
+                userId: user?.uid,
+              });
+              onClose();
+            }}
+          />
+        ) : Array.isArray(conversations) && conversations.length > 0 ? (
           <div className="space-y-4">
             {todayChats.length > 0 && (
               <div>

@@ -8,14 +8,16 @@ interface MessageDisplayProps {
   message: Message;
   messageIndex: number;
   conversationId: string | null;
+  /** Anchor id, so a search result can scroll straight to this message. */
+  domId?: string;
 }
 
 type StringOrElement = string | ReactNode;
 
-const MessageDisplay = ({ message, messageIndex, conversationId }: MessageDisplayProps) => {
+const MessageDisplay = ({ message, messageIndex, conversationId, domId }: MessageDisplayProps) => {
   if (message.type === "email" && message.variants) {
     return (
-      <div className="w-full flex">
+      <div id={domId} className="w-full flex">
         <div className="self-start mr-auto w-fit">
           <EmailVariantCard variants={message.variants as EmailVariant[]} messageIndex={messageIndex} conversationId={conversationId} />
         </div>
@@ -24,7 +26,7 @@ const MessageDisplay = ({ message, messageIndex, conversationId }: MessageDispla
   }
   if (message.type === "schedule") {
     return (
-      <div className="w-full flex">
+      <div id={domId} className="w-full flex">
         <div className="self-start mr-auto w-fit">
           <ScheduleDraftWidget variants={message.variants as ScheduleVariant[]} messageIndex={messageIndex} conversationId={conversationId} />
         </div>
@@ -154,7 +156,7 @@ const MessageDisplay = ({ message, messageIndex, conversationId }: MessageDispla
   const content = typeof message.content === "string" ? message.content : "";
 
   return (
-    <div className="w-full flex">
+    <div id={domId} className="w-full flex">
       <div
         className={`flex flex-col p-4 gap-2 rounded-md border border-border max-w-fit ${
           message.role === "user"
