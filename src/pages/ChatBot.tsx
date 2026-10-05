@@ -21,8 +21,20 @@ import { useChatbot } from "@/hooks/useChatbot";
 import { Message, Conversation } from "@/types/chat";
 import { useChatbotTutorial } from "@/hooks/useChatbotTutorial";
 import { useUIStore } from "@/stores/uiStore";
+import { sortConversationsByDate, conversationDisplayName } from "@/utils/conversation";
+import { saveConversationsToCache as saveBoundedCache } from "@/lib/search/localCache";
+import { queueConversationSync } from "@/lib/search/corpus";
+import { rehydrateMessages } from "@/lib/search/rehydrate";
+import { scheduleBackfill } from "@/lib/search/backfill";
+import { primeSearch, setSearchUser } from "@/lib/search/client";
+import { makeMsgId, parseMsgId } from "@/lib/search/plaintext";
+import { useChatSearchStore } from "@/stores/chatSearchStore";
+import { ChatSearchInput, ChatSearchPanel, useChatSearchActive } from "@/components/chatbot/Chatsearch";
 
 const CONVERSATIONS_CACHE_EXPIRATION_TIME = 1000 * 60 * 60;
+
+/** DOM id for a message, so a search result can scroll straight to it. */
+const messageAnchorId = (msgId: string): string => `sage-msg-${msgId}`;
 
 const hydrateMessages = (msgs: Message[]): Message[] =>
   msgs.map((msg) => {
@@ -60,6 +72,13 @@ const ChatBot: React.FC = () => {
     setConversationId,
     initialLoad
   } = useChatbot();
+
+  // Which conversation `messages` currently holds, so a queued scroll knows
+  // whether its target has rendered yet.
+  const loadedConvoRef = useRef<string | null>(null);
+  const searchActive = useChatSearchActive();
+  const pendingScrollMsgId = useChatSearchStore((s) => s.pendingScrollMsgId);
+  const clearPendingScroll = useChatSearchStore((s) => s.clearPendingScroll);
 
   const { startTutorial } = useChatbotTutorial({ user, hasSeenTutorial: hasSeenChatbotTutorial });
 
@@ -205,20 +224,23 @@ const ChatBot: React.FC = () => {
     setShowContextMenu(false);
   };
 
+  // Bounded: only the most recent conversations keep their message bodies in
+  // localStorage. The rest are rehydrated from the search corpus on open.
   const saveConversationsToCache = (convs: Conversation[]) => {
-    localStorage.setItem(
-      "chatbot_conversations",
-      JSON.stringify({
-        data: convs,
-        timestamp: Date.now(),
-        userId: user?.uid ?? null,
-      })
-    );
+    if (user?.uid) saveBoundedCache(convs, user.uid);
   };
 
   const startNewChat = () => {
     setChatError(null);
     if (messages.length > 0 && conversation_id) {
+      const existing = conversations.find((c) => c.conversation_id === conversation_id);
+      queueConversationSync({
+        conversation_id,
+        user_id: user?.uid || "",
+        messages,
+        title: existing?.title || messages[0]?.content,
+      });
+
       updateConversations((prevConversations) => {
         if (!Array.isArray(prevConversations)) return [];
         const filteredConversations = prevConversations.filter((conv) => conv.conversation_id !== conversation_id);
@@ -256,16 +278,11 @@ const ChatBot: React.FC = () => {
     }, 0);
   };
 
-  const sortConversationsByDate = (convs: Conversation[]): Conversation[] => {
-    return [...convs].sort((a, b) => {
-      const aTime = new Date(a.messages?.[a.messages.length - 1]?.timestamp || 0).getTime();
-      const bTime = new Date(b.messages?.[b.messages.length - 1]?.timestamp || 0).getTime();
-      return bTime - aTime;
-    });
-  };
-
   const loadConversation = async (id: string, convMessages: Message[]) => {
     updateConversationId(id);
+    // An empty list means the conversation was pruned from the cache; leave the
+    // marker unset so a pending scroll waits for the bodies to arrive.
+    loadedConvoRef.current = convMessages.length ? id : null;
     setMessages(convMessages);
     localStorage.setItem(
       "chatbot_conversation",
@@ -335,6 +352,18 @@ const ChatBot: React.FC = () => {
 
     if (conversation_id) requestBody.conversation_id = conversation_id;
 
+    // Index the user's message as soon as it lands. A brand-new conversation has
+    // no id yet, so it gets indexed once the response assigns one.
+    if (conversation_id) {
+      const existing = conversations.find((c) => c.conversation_id === conversation_id);
+      queueConversationSync({
+        conversation_id,
+        user_id: user?.uid || "",
+        messages: updatedMessagesWithUser,
+        title: existing?.title || updatedMessagesWithUser[0]?.content,
+      });
+    }
+
     setQuery("");
 
     try {
@@ -402,6 +431,8 @@ const ChatBot: React.FC = () => {
         };
         const updated = sortConversationsByDate([newConv, ...filtered]);
         saveConversationsToCache(updated);
+        // Idempotent, so a double invoke of this updater is harmless.
+        queueConversationSync(newConv);
         return updated;
       });
 
@@ -518,6 +549,20 @@ const ChatBot: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Backfill runs after first paint, not during initialLoad, so a student with
+  // pre-existing history can search it without the page load paying for it.
+  useEffect(() => {
+    if (user) scheduleBackfill(user);
+  }, [user]);
+
+  // Bind the corpus to this user, then start the worker so it loads or rebuilds
+  // its index before the first query. Keyed on uid: signing in as someone else
+  // must not reuse the previous corpus.
+  useEffect(() => {
+    setSearchUser(user?.uid ?? null);
+    if (user?.uid) primeSearch();
+  }, [user?.uid]);
+
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'chatbot_conversations' && e.newValue) {
@@ -560,10 +605,45 @@ const ChatBot: React.FC = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    // Read the pending scroll from the store rather than depending on it: as a
+    // dependency, clearing it re-ran this effect and slammed the view to the
+    // bottom, cancelling the smooth scroll that had just started.
+    if (useChatSearchStore.getState().pendingScrollMsgId) return;
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Scroll to the matched message once its conversation has rendered. Scroll
+  // only — the match is highlighted in the search snippet, not in the message.
+  useEffect(() => {
+    if (!pendingScrollMsgId) return;
+
+    const { convoId, index } = parseMsgId(pendingScrollMsgId);
+
+    // Stale: the user opened something else before this resolved.
+    if (convoId !== conversation_id) {
+      clearPendingScroll();
+      return;
+    }
+
+    // `messages` still holds the previous conversation until this one loads.
+    // Wait; the effect re-runs when the new messages arrive.
+    if (loadedConvoRef.current !== convoId) return;
+
+    if (index >= messages.length) {
+      clearPendingScroll(); // Conversation shrank; nothing to scroll to.
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      document
+        .getElementById(messageAnchorId(pendingScrollMsgId))
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+      clearPendingScroll();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pendingScrollMsgId, conversation_id, messages, clearPendingScroll]);
 
   useEffect(() => {
     adjustTextareaHeight();
@@ -592,10 +672,31 @@ const ChatBot: React.FC = () => {
   }
 
   useEffect(() => {
+    let cancelled = false;
+
+    const apply = (msgs: Message[]) => {
+      if (cancelled) return;
+      // ---- Hydrate email/schedule messages ----
+      const hydratedMessages = hydrateMessages(msgs);
+      loadedConvoRef.current = conversation_id;
+      setMessages(hydratedMessages);
+      localStorage.setItem(
+        "chatbot_conversation",
+        JSON.stringify({
+          messages: hydratedMessages,
+          conversation_id,
+          timestamp: Date.now(),
+          cacheUserId: user?.uid ?? null,
+        })
+      );
+    };
+
     const reloadChatHistory = async () => {
       if (!conversation_id) return;
 
       try {
+        let pruned = false;
+
         const cachedConversationsString = localStorage.getItem("chatbot_conversations");
         if (cachedConversationsString) {
           const cachedConversations = JSON.parse(cachedConversationsString);
@@ -613,41 +714,33 @@ const ChatBot: React.FC = () => {
               (conv: Conversation) => conv.conversation_id === conversation_id
             );
 
-            if (selectedConversation) {
-              // ---- Hydrate email messages from localStorage cache ----
-              const hydratedMessages = hydrateMessages(selectedConversation.messages || []);
-              setMessages(hydratedMessages);
-              localStorage.setItem(
-                "chatbot_conversation",
-                JSON.stringify({
-                  messages: hydratedMessages,
-                  conversation_id,
-                  timestamp: Date.now(),
-                  cacheUserId: user?.uid ?? null,
-                })
-              );
+            if (selectedConversation?.messages?.length) {
+              apply(selectedConversation.messages);
               return;
+            }
+
+            if (selectedConversation) {
+              // Pruned out of the bounded cache: recover the bodies from the
+              // search corpus before going back to the server.
+              const fromCorpus = await rehydrateMessages(conversation_id);
+              if (cancelled) return;
+              if (fromCorpus) {
+                apply(fromCorpus);
+                return;
+              }
+              pruned = true;
             }
           }
         }
 
-        const data = await fetchConversation();
-        if (!Array.isArray(data)) return;
+        // Only bypass the list cache when the cache itself has no bodies for
+        // this conversation; otherwise it would just hand back the same list.
+        const data = await fetchConversation(pruned);
+        if (cancelled || !Array.isArray(data)) return;
 
         const selectedConversation = data.find((conv) => conv.conversation_id === conversation_id);
         if (selectedConversation) {
-          // ---- Hydrate email messages from S3 ----
-          const hydratedMessages = hydrateMessages(selectedConversation.messages || []);
-          setMessages(hydratedMessages);
-          localStorage.setItem(
-            "chatbot_conversation",
-            JSON.stringify({
-              messages: hydratedMessages,
-              conversation_id,
-              timestamp: Date.now(),
-              cacheUserId: user?.uid ?? null,
-            })
-          );
+          apply(selectedConversation.messages || []);
         } else {
           setConversationId(null);
           setMessages([]);
@@ -659,6 +752,9 @@ const ChatBot: React.FC = () => {
     };
 
     reloadChatHistory();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation_id]);
 
@@ -732,7 +828,13 @@ const ChatBot: React.FC = () => {
                       </div>
                     ) : (
                       messages.map((msg, index) => (
-                        <MessageDisplay key={index} message={msg} messageIndex={index} conversationId={conversation_id} />
+                        <MessageDisplay
+                          key={index}
+                          message={msg}
+                          messageIndex={index}
+                          conversationId={conversation_id}
+                          domId={conversation_id ? messageAnchorId(makeMsgId(conversation_id, index)) : undefined}
+                        />
                       ))
                     )}
 
@@ -794,7 +896,11 @@ const ChatBot: React.FC = () => {
       ) : (
         <>
           {/* Chat History Bar */}
-          <aside ref={sidebarRef} aria-label="Conversation history" data-tour="sidebar" className={`${sidebarCollapsed ? "w-[5.25rem]" : ""} relative h-full flex flex-col gap-4 ${isResizing ? "transition-none" : "transition-all duration-100"}`} style={!sidebarCollapsed ? { width: chatSidebarWidth } : undefined}>
+          {/* shrink-0 and min-w-0 make the explicit width authoritative. As a flex
+              item this defaulted to shrink-1 with min-width:auto, so the sibling's
+              w-full squeezed it to its own min-content, and swapping the
+              conversation list for search results resized the sidebar. */}
+          <aside ref={sidebarRef} aria-label="Conversation history" data-tour="sidebar" className={`${sidebarCollapsed ? "w-[5.25rem]" : ""} relative h-full flex flex-col shrink-0 min-w-0 gap-4 ${isResizing ? "transition-none" : "transition-all duration-100"}`} style={!sidebarCollapsed ? { width: chatSidebarWidth } : undefined}>
             <div
               className={`${sidebarCollapsed ? "rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]" : "rounded-lg px-6"
                 } transition-all duration-100 group/sidebar pt-8 pb-4 gap-8 overflow-hidden bg-bglight border border-border flex flex-col items-center w-full h-full`}
@@ -840,13 +946,25 @@ const ChatBot: React.FC = () => {
                     </button>
                   </div>
 
+                  <ChatSearchInput />
+
                   {loading && <p className="text-textsecondary">Loading conversations...</p>}
                   {error && <p className="text-destructive">{error}</p>}
 
+                  {searchActive ? (
+                    <div className="overflow-y-scroll w-full" style={{ scrollbarWidth: "none" }}>
+                      <ChatSearchPanel
+                        onSelect={(hit) => {
+                          const conv = conversations.find((c) => c.conversation_id === hit.convoId);
+                          loadConversation(hit.convoId, conv?.messages ?? []);
+                        }}
+                      />
+                    </div>
+                  ) : (
                   <ul aria-label="Past conversations" className="flex flex-col gap-2 overflow-y-scroll w-full" ref={conversationListRef} style={{ scrollbarWidth: "none" }} onScroll={updateScrollPosition}>
                     {Array.isArray(conversations) && conversations.length > 0 ? (
                       conversations.map((conv, index) => {
-                        const displayName = conv.title || conv.messages?.[0]?.content || "No messages";
+                        const displayName = conversationDisplayName(conv);
                         return (
                           <li
                             key={conv.conversation_id}
@@ -897,7 +1015,7 @@ const ChatBot: React.FC = () => {
                                         role="menuitem"
                                         onClick={() => {
                                           setConversationToRename(conv.conversation_id);
-                                          setNewName(conv.title || conv.messages?.[0]?.content || "");
+                                          setNewName(conversationDisplayName(conv));
                                           setShowRenameModal(true);
                                           setMoreOptionsOpenId(null);
                                         }}
@@ -934,6 +1052,7 @@ const ChatBot: React.FC = () => {
                       </li>
                     )}
                   </ul>
+                  )}
                 </div>
               )}
             </div>
@@ -1037,7 +1156,13 @@ const ChatBot: React.FC = () => {
                       </div>
                     ) : (
                       messages.map((msg, index) => (
-                        <MessageDisplay key={index} message={msg} messageIndex={index} conversationId={conversation_id} />
+                        <MessageDisplay
+                          key={index}
+                          message={msg}
+                          messageIndex={index}
+                          conversationId={conversation_id}
+                          domId={conversation_id ? messageAnchorId(makeMsgId(conversation_id, index)) : undefined}
+                        />
                       ))
                     )}
 
