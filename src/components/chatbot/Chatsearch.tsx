@@ -40,6 +40,7 @@ export function ChatSearchInput() {
                 }}
                 placeholder="Search your chats..."
                 aria-label="Search your chats"
+                data-tour="chat-search"
                 data-clarity-mask="True"
                 className="w-full pl-9 pr-9 py-2 text-sm rounded-sm border border-border bg-bglight text-textdark placeholder:text-textsecondary focus:outline-none focus:ring-2 focus:ring-accent"
             />

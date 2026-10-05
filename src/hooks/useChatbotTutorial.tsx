@@ -44,7 +44,9 @@ export function useChatbotTutorial({ user, hasSeenTutorial }: UseChatbotTutorial
                     }
                 },
                 {
-                    element: '[data-tour="chat-search"]',
+                    element: () =>
+                        [...document.querySelectorAll('[data-tour="chat-search"]')]
+                          .find((el) => el.getClientRects().length > 0) as HTMLElement,
                     popover: {
                         title: 'Search Your Chats',
                         description: 'Search every message across all your conversations, even ones you never renamed. Click a result to jump straight to that message.',
