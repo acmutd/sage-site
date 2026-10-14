@@ -70,7 +70,7 @@ export default function AccountSettings() {
     const hasPassword = providerIds.includes("password");
     const hasGoogle = providerIds.includes("google.com");
 
-    // --- Change password ---------------------------------------------------
+    // change password
     const [resetSending, setResetSending] = useState(false);
     const [resetCooling, setResetCooling] = useState(false);
     const [resetNotice, setResetNotice] = useState<Notice | null>(null);
@@ -106,7 +106,7 @@ export default function AccountSettings() {
         }
     }
 
-    // --- Delete account ----------------------------------------------------
+    // delete account
     const [confirming, setConfirming] = useState(false);
     const [confirmText, setConfirmText] = useState("");
     const [password, setPassword] = useState("");
@@ -151,8 +151,6 @@ export default function AccountSettings() {
         setDeleting(true);
         setDeleteError(null);
 
-        // 1. Fresh sign-in, so Firebase accepts it and the token's auth_time is recent
-        //    (the backend may require this for a destructive action).
         try {
             await reauthenticate();
         } catch (e) {
@@ -161,13 +159,9 @@ export default function AccountSettings() {
             return;
         }
 
-        // 2. Ask the backend to delete everything. It deletes the Firebase account last,
-        //    so on a partial failure the account still exists and the user can retry.
         let res: Response;
         try {
             const token = await user.getIdToken(true);
-            // Matches the crud lambda's DELETE route ("/CRUD/users"); same base-URL
-            // pattern as `${CRUD_API}/catalog` elsewhere in the app.
             const base = String(import.meta.env.VITE_CRUD_API ?? "").replace(/\/$/, "");
             res = await fetch(`${base}/users`, {
                 method: "DELETE",
@@ -180,9 +174,6 @@ export default function AccountSettings() {
         }
 
         if (!res.ok) {
-            // Backend contract: 401 missing token, 403 invalid token, and 500 with
-            // { error, deleted: [...], failed: [...] } when a step fails. Firebase is only
-            // deleted after every data step succeeds, so the account can always retry.
             let detail: { failed?: string[] } | null = null;
             try {
                 detail = await res.json();
@@ -201,8 +192,6 @@ export default function AccountSettings() {
             return;
         }
 
-        // 3. Done. Navigate first so ProtectedRoute doesn't bounce us to /login,
-        //    then clear the local session.
         setOpen(false);
         navigate("/", { replace: true });
         await logout();
@@ -250,6 +239,18 @@ export default function AccountSettings() {
                                     {resetNotice.text}
                                 </p>
                             )}
+                        </section>
+                    )}
+
+                    {!hasPassword && hasGoogle && (
+                        <section aria-labelledby="password-heading" className="space-y-1">
+                            <h3 id="password-heading" className="text-base font-semibold">
+                                Password
+                            </h3>
+                            <p className="text-sm text-textsecondary">
+                                You sign in with Google, so there's no SAGE password to change. Manage your
+                                password through your Google account.
+                            </p>
                         </section>
                     )}
 
