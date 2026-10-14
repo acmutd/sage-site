@@ -1253,7 +1253,7 @@ const ChatBot: React.FC = () => {
       )}
 
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={handleOutsideClick}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleOutsideClick}>
           <div
             ref={deleteModalRef}
             tabIndex={-1}
@@ -1312,7 +1312,7 @@ const ChatBot: React.FC = () => {
       )}
 
       {showRenameModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={handleOutsideClick}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleOutsideClick}>
           <div
             ref={renameModalRef}
             tabIndex={-1}

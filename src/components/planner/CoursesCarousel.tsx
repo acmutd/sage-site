@@ -536,7 +536,7 @@ const CoursesCarousel: React.FC<CoursesCarouselProps> = ({
                 </>
             )}
             {showSemesterModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={() => setShowSemesterModal(false)}>
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]" onClick={() => setShowSemesterModal(false)}>
                     <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-sm mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                         <h3 className="text-lg font-semibold mb-4">Select Semester</h3>
                         <p className="text-sm text-gray-600 mb-4">Choose where to add {selectedCourse?.code || selectedCourse?.course_code}</p>
