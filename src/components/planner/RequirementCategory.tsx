@@ -207,7 +207,7 @@ const RequirementCategory: React.FC<RequirementCategoryProps> = ({
                 !canHover ? (
                     <>
                         <div
-                            className="fixed inset-0 bg-black bg-opacity-30 z-[9998]"
+                            className="fixed inset-0 bg-black/30 z-[9998]"
                             onTouchEnd={(e) => {
                                 e.preventDefault();
                                 if (Date.now() - tooltipOpenTimeRef.current >= 400) {

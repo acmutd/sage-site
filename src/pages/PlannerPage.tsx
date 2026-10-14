@@ -460,7 +460,7 @@ const PlannerPage = () => {
         <>
           {/* Conflict resolution modal */}
           {planConflict && (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] px-4">
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] px-4">
               <div
                 ref={conflictModalRef}
                 tabIndex={-1}
@@ -563,7 +563,7 @@ const PlannerPage = () => {
               )}
 
               {showOnboarding && !isFirstTime && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80] px-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80] px-4">
                   <div
                     ref={onboardingOverlayRef}
                     tabIndex={-1}

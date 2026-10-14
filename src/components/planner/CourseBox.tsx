@@ -868,7 +868,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                     // Mobile: Bottom sheet with overlay
                     <>
                         <div
-                            className="fixed inset-0 bg-black bg-opacity-30 z-[9998]"
+                            className="fixed inset-0 bg-black/30 z-[9998]"
                             onClick={() => setShowTooltip(false)}
                         />
                         <div

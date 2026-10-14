@@ -206,7 +206,7 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
 
       {/* Rename Modal */}
       {showRenameModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowRenameModal(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowRenameModal(false)}>
           <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-4 text-textdark">Rename Conversation</h3>
             <input
@@ -256,7 +256,7 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
 
       {/* Delete Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowDeleteModal(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowDeleteModal(false)}>
           <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-4 text-textdark">Are you sure you want to delete this conversation?</h3>
             <div className="flex justify-end gap-4">

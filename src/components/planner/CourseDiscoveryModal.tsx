@@ -1388,7 +1388,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
     return ReactDOM.createPortal(
         <>
-            <div className="fixed inset-0 bg-black bg-opacity-40 z-[9998]" />
+            <div className="fixed inset-0 bg-black/40 z-[9998]" />
             <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
                 <div className={`
                     bg-white sm:rounded-xl rounded-t-2xl shadow-2xl w-full pointer-events-auto

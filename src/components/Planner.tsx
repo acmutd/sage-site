@@ -747,7 +747,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
         return courses;
     }, [allSemesters, semesterOrderByKey]);
-    
+
     const placedHoursByCode = useMemo(() => {
         const hours = new Map<string, number>();
 
@@ -1017,11 +1017,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     {/* Help */}
                     <button
                         data-tour="help-button"
-                        aria-label="tutorial"
+                        aria-label="Replay tutorial"
                         onClick={startTutorial}
-                        className="hidden sm:flex self-end translate-y-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 items-center justify-center"
+                        className="hidden sm:flex self-end relative top-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 items-center justify-center"
                     >
-                        <HelpCircle size={18} className="text-white" />
+                        <HelpCircle size={18} className="text-white" aria-hidden="true" />
                     </button>
                 </div>
                 <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex-col gap-4 hidden md:flex">
@@ -1036,7 +1036,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         isExpanded={!sidebarCollapsed}
                         onToggleExpanded={toggleSidebar}
                         placedSuggestedCourses={placedSuggestedCourses}
-                        placedHoursByCode={placedHoursByCode} 
+                        placedHoursByCode={placedHoursByCode}
                         allCompletedCourseCodes={allCompletedCourseCodes}
                         allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                         onRestartOnboarding={onRestartOnboarding}
@@ -1426,7 +1426,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                     {showDeleteModal && semesterToDelete && (
                         <div
-                            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80]"
+                            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80]"
                             onClick={() => {
                                 setShowDeleteModal(false);
                                 setSemesterToDelete(null);
