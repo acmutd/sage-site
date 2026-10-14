@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
     EmailAuthProvider,
     GoogleAuthProvider,
@@ -49,9 +48,9 @@ function reauthMessage(e: unknown): string {
 }
 
 /**
- * Global Account settings dialog. Mount it ONCE (in App.tsx, inside the Router and
- * AuthProvider) and open it from anywhere with
- * `useAccountSettingsStore.getState().setOpen(true)`, e.g. from the avatar dropdown.
+ * Account settings dialog. Mount it ONCE (in Profile.tsx for now, or in App.tsx if it's
+ * ever opened from the navbar) inside the AuthProvider, and open it with
+ * `useAccountSettingsStore.getState().setOpen(true)`.
  * It renders nothing when signed out. The dialog contains
  *  - Change password: sends Firebase's reset email (email/password accounts only)
  *  - Delete account: re-authenticates, then calls DELETE {VITE_CRUD_API}/users
@@ -61,7 +60,6 @@ function reauthMessage(e: unknown): string {
  */
 export default function AccountSettings() {
     const { user, logout } = useAuth();
-    const navigate = useNavigate();
 
     const open = useAccountSettingsStore((s) => s.open);
     const setOpen = useAccountSettingsStore((s) => s.setOpen);
@@ -193,8 +191,8 @@ export default function AccountSettings() {
         }
 
         setOpen(false);
-        navigate("/", { replace: true });
         await logout();
+        window.location.replace("/");
     }
 
     if (!user) return null;
