@@ -685,35 +685,37 @@ const Profile = () => {
                 {/* Name row + Customize button */}
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-center sm:text-left" data-clarity-mask="True">{name}</h2>
-                  <button
-                    type="button"
-                    onClick={() => useAccountSettingsStore.getState().setOpen(true)}
-                    className="px-4 py-1.5 rounded-full text-sm border-2 border-card-bord bg-white text-textdark hover:border-accent transition-all duration-200 whitespace-nowrap flex items-center gap-2"
-                  >
-                    <Settings className="w-4 h-4" aria-hidden="true" />
-                    Account settings
-                  </button>
-                  <button
-                    onClick={() => setIsEditing(!isEditing)}
-                    aria-pressed={isEditing}
-                    aria-label={isEditing ? "Done" : "Customize"}
-                    className={`px-4 py-1.5 rounded-full text-sm border-2 transition-all duration-200 whitespace-nowrap flex items-center gap-2 ${isEditing
-                      ? "border-accent bg-accent text-black"
-                      : "border-card-bord bg-white text-textdark hover:border-accent"
-                      }`}
-                  >
-                    {isEditing ? (
-                      <>
-                        <Check className="w-5 h-5" />
-                        Done
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-5 h-5" />
-                        Customize
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => useAccountSettingsStore.getState().setOpen(true)}
+                      className="px-4 py-1.5 rounded-full text-sm border-2 border-card-bord bg-white text-textdark hover:border-accent transition-all duration-200 whitespace-nowrap flex items-center gap-2"
+                    >
+                      <Settings className="w-4 h-4" aria-hidden="true" />
+                      Account settings
+                    </button>
+                    <button
+                      onClick={() => setIsEditing(!isEditing)}
+                      aria-pressed={isEditing}
+                      aria-label={isEditing ? "Done" : "Customize"}
+                      className={`px-4 py-1.5 rounded-full text-sm border-2 transition-all duration-200 whitespace-nowrap flex items-center gap-2 ${isEditing
+                        ? "border-accent bg-accent text-black"
+                        : "border-card-bord bg-white text-textdark hover:border-accent"
+                        }`}
+                    >
+                      {isEditing ? (
+                        <>
+                          <Check className="w-5 h-5" />
+                          Done
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-5 h-5" />
+                          Customize
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex-1">
