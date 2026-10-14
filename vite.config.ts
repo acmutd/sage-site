@@ -11,7 +11,7 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
-    setupFiles: "./src/test/setup.ts",
+    setupFiles: ["./src/test/setup.ts", "./src/test/env-fixes.ts"],
     globals: true,
     env: {
       VITE_CRUD_API: 'http://localhost:3000/CRUD',
