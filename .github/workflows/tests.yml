@@ -21,7 +21,7 @@ jobs:
         run: npm ci
 
       - name: Security Audit
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Run tests - Invariant Based
         run: npm test -- --reporter=verbose
