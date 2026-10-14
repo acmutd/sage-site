@@ -9,6 +9,7 @@ import {
 } from "firebase/auth";
 import { auth } from "@/firebase-config";
 import { useAuth } from "@/context/AuthContext";
+import { useAccountSettingsStore } from "@/stores/accountsettingStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,22 +49,28 @@ function reauthMessage(e: unknown): string {
 }
 
 /**
- * Account settings for Profile page:
+ * Global Account settings dialog. Mount it ONCE (in App.tsx, inside the Router and
+ * AuthProvider) and open it from anywhere with
+ * `useAccountSettingsStore.getState().setOpen(true)`, e.g. from the avatar dropdown.
+ * It renders nothing when signed out. The dialog contains
  *  - Change password: sends Firebase's reset email (email/password accounts only)
  *  - Delete account: re-authenticates, then calls DELETE {VITE_CRUD_API}/users
  *
- * Feedback is shown inline in the dialog as opposed to using a toast.
+ * Feedback is shown inline in the dialog (no toasts), so this component does not
+ * depend on a <Toaster /> being mounted on the page.
  */
 export default function AccountSettings() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
 
-    const [open, setOpen] = useState(false);
+    const open = useAccountSettingsStore((s) => s.open);
+    const setOpen = useAccountSettingsStore((s) => s.setOpen);
 
     const providerIds = user?.providerData?.map((p) => p.providerId) ?? [];
     const hasPassword = providerIds.includes("password");
     const hasGoogle = providerIds.includes("google.com");
 
+    // --- Change password ---------------------------------------------------
     const [resetSending, setResetSending] = useState(false);
     const [resetCooling, setResetCooling] = useState(false);
     const [resetNotice, setResetNotice] = useState<Notice | null>(null);
@@ -99,7 +106,7 @@ export default function AccountSettings() {
         }
     }
 
-    /* Delete Account */
+    // --- Delete account ----------------------------------------------------
     const [confirming, setConfirming] = useState(false);
     const [confirmText, setConfirmText] = useState("");
     const [password, setPassword] = useState("");
@@ -144,6 +151,8 @@ export default function AccountSettings() {
         setDeleting(true);
         setDeleteError(null);
 
+        // 1. Fresh sign-in, so Firebase accepts it and the token's auth_time is recent
+        //    (the backend may require this for a destructive action).
         try {
             await reauthenticate();
         } catch (e) {
@@ -152,9 +161,13 @@ export default function AccountSettings() {
             return;
         }
 
+        // 2. Ask the backend to delete everything. It deletes the Firebase account last,
+        //    so on a partial failure the account still exists and the user can retry.
         let res: Response;
         try {
             const token = await user.getIdToken(true);
+            // Matches the crud lambda's DELETE route ("/CRUD/users"); same base-URL
+            // pattern as `${CRUD_API}/catalog` elsewhere in the app.
             const base = String(import.meta.env.VITE_CRUD_API ?? "").replace(/\/$/, "");
             res = await fetch(`${base}/users`, {
                 method: "DELETE",
@@ -167,30 +180,38 @@ export default function AccountSettings() {
         }
 
         if (!res.ok) {
+            // Backend contract: 401 missing token, 403 invalid token, and 500 with
+            // { error, deleted: [...], failed: [...] } when a step fails. Firebase is only
+            // deleted after every data step succeeds, so the account can always retry.
+            let detail: { failed?: string[] } | null = null;
+            try {
+                detail = await res.json();
+            } catch {
+                // body is optional
+            }
+            if (detail?.failed?.length) {
+                console.error("Account deletion incomplete. Failed steps:", detail.failed);
+            }
             setDeleteError(
-                res.status === 401
-                    ? "We couldn't verify your sign-in. Please try again."
+                res.status === 401 || res.status === 403
+                    ? "We couldn't verify your sign-in, so nothing was deleted. Please try again."
                     : "We couldn't finish deleting your data. Your account is still active, so you can try again."
             );
             setDeleting(false);
             return;
         }
 
+        // 3. Done. Navigate first so ProtectedRoute doesn't bounce us to /login,
+        //    then clear the local session.
         setOpen(false);
         navigate("/", { replace: true });
         await logout();
     }
 
+    if (!user) return null;
+
     return (
         <>
-            <button
-                type="button"
-                onClick={() => setOpen(true)}
-                className="px-4 py-1.5 rounded-full text-sm border-2 border-card-bord bg-white text-textdark hover:border-accent transition-all duration-200 whitespace-nowrap"
-            >
-                Account settings
-            </button>
-
             <Dialog open={open} onOpenChange={handleOpenChange}>
                 <DialogContent className="bg-white rounded-2xl max-w-md w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
