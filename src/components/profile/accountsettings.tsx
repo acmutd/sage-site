@@ -197,155 +197,152 @@ export default function AccountSettings() {
 
     if (!user) return null;
 
+    const outlineBtn =
+        "h-9 shrink-0 rounded-[8px] border-border bg-white px-3 text-sm hover:bg-gray-50 hover:text-textdark";
+    const inputCls = "h-10 rounded-[8px] border border-border px-3 text-sm";
+
     return (
-        <>
-            <Dialog open={open} onOpenChange={handleOpenChange}>
-                <DialogContent className="bg-white rounded-2xl max-w-md w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl">Account settings</DialogTitle>
-                        <DialogDescription data-clarity-mask="True">
-                            {user?.email ? `Signed in as ${user.email}` : "Manage your SAGE account"}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    {hasPassword && (
-                        <section aria-labelledby="password-heading" className="space-y-3">
-                            <h3 id="password-heading" className="text-base font-semibold">
-                                Password
-                            </h3>
-                            <p className="text-sm text-textsecondary">
-                                We'll email you a link to choose a new password.
-                            </p>
-                            <Button
-                                type="button"
-                                onClick={handleSendReset}
-                                disabled={resetSending || resetCooling}
-                                className="rounded-full bg-accent hover:bg-buttonhover text-textdark"
-                            >
-                                {resetSending
-                                    ? "Sending..."
-                                    : resetCooling
-                                        ? "Check your email"
-                                        : "Send password reset link"}
-                            </Button>
-                            {resetNotice && (
-                                <p
-                                    role={resetNotice.kind === "error" ? "alert" : "status"}
-                                    data-clarity-mask="True"
-                                    className={`text-sm ${resetNotice.kind === "error" ? "text-destructive" : "text-textdark"}`}
-                                >
-                                    {resetNotice.text}
-                                </p>
-                            )}
-                        </section>
-                    )}
-
-                    {!hasPassword && hasGoogle && (
-                        <section aria-labelledby="password-heading" className="space-y-1">
-                            <h3 id="password-heading" className="text-base font-semibold">
-                                Password
-                            </h3>
-                            <p className="text-sm text-textsecondary">
-                                You sign in with Google, so there's no SAGE password to change. Manage your
-                                password through your Google account.
-                            </p>
-                        </section>
-                    )}
-
-                    <section
-                        aria-labelledby="delete-heading"
-                        className="space-y-3 rounded-xl border border-red-200 p-4"
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogContent className="w-[calc(100%-2rem)] max-w-md gap-0 overflow-y-auto rounded-[10px] bg-white p-0 sm:rounded-[10px] max-h-[90vh]">
+                <DialogHeader className="space-y-1 px-6 pb-4 pt-6">
+                    <DialogTitle className="text-lg">Account settings</DialogTitle>
+                    <DialogDescription
+                        data-clarity-mask="True"
+                        className={user.email ? "text-sm text-textsecondary" : "sr-only"}
                     >
-                        <h3 id="delete-heading" className="text-base font-semibold text-red-700">
+                        {user.email ?? "Manage your SAGE account"}
+                    </DialogDescription>
+                </DialogHeader>
+
+                {(hasPassword || hasGoogle) && (
+                    <section aria-labelledby="password-heading" className="border-t border-border px-6 py-4">
+                        <div className="flex items-center justify-between gap-4">
+                            <h3 id="password-heading" className="text-sm font-semibold">
+                                Password
+                            </h3>
+                            {hasPassword && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleSendReset}
+                                    disabled={resetSending || resetCooling}
+                                    className={outlineBtn}
+                                >
+                                    {resetSending ? "Sending..." : resetCooling ? "Check your email" : "Send reset link"}
+                                </Button>
+                            )}
+                        </div>
+                        <p className="mt-1 text-sm text-textsecondary">
+                            {hasPassword
+                                ? "We'll email you a link to set a new password."
+                                : "You sign in with Google, so your password is managed there."}
+                        </p>
+                        {resetNotice && (
+                            <p
+                                role={resetNotice.kind === "error" ? "alert" : "status"}
+                                data-clarity-mask="True"
+                                className={`mt-2 text-sm ${resetNotice.kind === "error" ? "text-destructive" : "text-textdark"}`}
+                            >
+                                {resetNotice.text}
+                            </p>
+                        )}
+                    </section>
+                )}
+
+                <section aria-labelledby="delete-heading" className="border-t border-border px-6 py-4">
+                    <div className="flex items-center justify-between gap-4">
+                        <h3 id="delete-heading" className="text-sm font-semibold text-red-700">
                             Delete account
                         </h3>
-                        <p className="text-sm text-textsecondary">
-                            Permanently deletes your account, profile, transcript, planner and chat history.
-                            This can't be undone.
-                        </p>
-
-                        {!confirming ? (
+                        {!confirming && (
                             <Button
                                 type="button"
                                 variant="outline"
+                                aria-label="Delete account"
                                 onClick={() => setConfirming(true)}
-                                className="rounded-full border-red-300 text-red-700 hover:bg-red-50 hover:text-red-700"
+                                className="h-9 shrink-0 rounded-[8px] border-red-300 bg-white px-3 text-sm text-red-700 hover:bg-red-50 hover:text-red-700"
                             >
-                                Delete account…
+                                Delete
                             </Button>
-                        ) : (
-                            <form
-                                className="space-y-3"
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                    if (canDelete) void handleDelete();
-                                }}
-                            >
-                                {hasPassword ? (
-                                    <div className="space-y-1">
-                                        <label htmlFor="delete-password" className="text-sm">
-                                            Current password
-                                        </label>
-                                        <Input
-                                            id="delete-password"
-                                            type="password"
-                                            autoComplete="current-password"
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            disabled={deleting}
-                                            className="h-[2.5rem] px-4 rounded-full border border-border text-[15px]"
-                                        />
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-textsecondary">
-                                        You'll be asked to sign in with Google again to confirm.
-                                    </p>
-                                )}
+                        )}
+                    </div>
+                    <p className="mt-1 text-sm text-textsecondary">
+                        Permanently deletes your profile, transcript, planner and chat history. This can't be
+                        undone.
+                    </p>
 
-                                <div className="space-y-1">
-                                    <label htmlFor="delete-confirm" className="text-sm">
-                                        Type {CONFIRM_WORD} to confirm
+                    {confirming && (
+                        <form
+                            className="mt-4 space-y-3"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                if (canDelete) void handleDelete();
+                            }}
+                        >
+                            {hasPassword ? (
+                                <div className="space-y-1.5">
+                                    <label htmlFor="delete-password" className="text-sm">
+                                        Current password
                                     </label>
                                     <Input
-                                        id="delete-confirm"
-                                        type="text"
-                                        autoComplete="off"
-                                        value={confirmText}
-                                        onChange={(e) => setConfirmText(e.target.value)}
+                                        id="delete-password"
+                                        type="password"
+                                        autoComplete="current-password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
                                         disabled={deleting}
-                                        className="h-[2.5rem] px-4 rounded-full border border-border text-[15px]"
+                                        className={inputCls}
                                     />
                                 </div>
+                            ) : (
+                                <p className="text-sm text-textsecondary">
+                                    You'll be asked to sign in with Google again to confirm.
+                                </p>
+                            )}
 
-                                {deleteError && (
-                                    <p role="alert" className="text-sm text-destructive">
-                                        {deleteError}
-                                    </p>
-                                )}
+                            <div className="space-y-1.5">
+                                <label htmlFor="delete-confirm" className="text-sm">
+                                    Type {CONFIRM_WORD} to confirm
+                                </label>
+                                <Input
+                                    id="delete-confirm"
+                                    type="text"
+                                    autoComplete="off"
+                                    value={confirmText}
+                                    onChange={(e) => setConfirmText(e.target.value)}
+                                    disabled={deleting}
+                                    className={inputCls}
+                                />
+                            </div>
 
-                                <div className="flex gap-2 justify-end">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={resetDeleteForm}
-                                        disabled={deleting}
-                                        className="rounded-full"
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        disabled={!canDelete}
-                                        className="rounded-full bg-red-600 hover:bg-red-700 text-white"
-                                    >
-                                        {deleting ? "Deleting..." : "Permanently delete"}
-                                    </Button>
-                                </div>
-                            </form>
-                        )}
-                    </section>
-                </DialogContent>
-            </Dialog>
-        </>
+                            {deleteError && (
+                                <p role="alert" className="text-sm text-destructive">
+                                    {deleteError}
+                                </p>
+                            )}
+
+                            <div className="flex justify-end gap-2 pt-1">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={resetDeleteForm}
+                                    disabled={deleting}
+                                    className={outlineBtn}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={!canDelete}
+                                    className="h-9 rounded-[8px] bg-red-600 px-4 text-sm text-white hover:bg-red-700"
+                                >
+                                    {deleting ? "Deleting..." : "Permanently delete"}
+                                </Button>
+                            </div>
+                        </form>
+                    )}
+                </section>
+            </DialogContent>
+        </Dialog>
     );
 }
