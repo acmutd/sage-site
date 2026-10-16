@@ -17,6 +17,7 @@ import Planner from "./pages/PlannerPage";
 import PublicRoute from "./components/PublicRoute";
 import ChatBot from "./pages/ChatBot";
 import Profile from "./pages/Profile";
+import KeyDateBanner from "@/components/KeyDateBanner";
 import { useEffect, useState } from "react";
 
 // Component to conditionally render navbar based on route
@@ -116,6 +117,7 @@ const App = () => {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
           </main>
+          <KeyDateBanner />
         </Router>
       </AuthProvider>
 
