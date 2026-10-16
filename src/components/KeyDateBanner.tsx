@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, X } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
   ActiveKeyDate,
@@ -20,6 +21,17 @@ const DESKTOP_QUERY = "(min-width: 768px)"; // Tailwind `md`
 
 const onboardingActive = () =>
   typeof document !== "undefined" && document.body?.hasAttribute("data-onboarding-active");
+
+function measureTopOffset(): number {
+  let bottom = 0;
+  document.querySelectorAll("nav").forEach((el) => {
+    const cs = getComputedStyle(el);
+    if (cs.display === "none" || cs.visibility === "hidden" || cs.position !== "fixed") return;
+    const r = el.getBoundingClientRect();
+    if (r.height > 0 && r.top <= 24) bottom = Math.max(bottom, r.bottom);
+  });
+  return Math.round(bottom);
+}
 
 function useIsDesktop(): boolean {
   const get = () => typeof window !== "undefined" && window.matchMedia?.(DESKTOP_QUERY).matches === true;
@@ -48,6 +60,8 @@ export default function KeyDateBanner() {
   const [tick, setTick] = useState(0); // bump to re-read dismissed state
   const [announcement, setAnnouncement] = useState<ActiveKeyDate | null>(null);
   const bannerRef = useRef<HTMLDivElement>(null);
+  const { pathname } = useLocation();
+  const [topOffset, setTopOffset] = useState(0);
 
   // Load (cached) once the user is signed in.
   useEffect(() => {
@@ -84,6 +98,19 @@ export default function KeyDateBanner() {
   // Mobile only: banner. `tick` forces re-evaluation after a dismiss.
   const banner = useMemo(() => (isDesktop ? undefined : pickBanner(active)), [isDesktop, active, tick]);
 
+  // Sit directly under whichever fixed navbar this page has (re-measured on route change / resize).
+  useLayoutEffect(() => {
+    if (!banner) return;
+    const update = () => setTopOffset(measureTopOffset());
+    update();
+    const raf = requestAnimationFrame(update); // navbars may mount a frame after us
+    window.addEventListener("resize", update);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", update);
+    };
+  }, [banner, pathname]);
+
   // The banner is fixed under the navbar, so push the page down by its height while it is shown.
   useLayoutEffect(() => {
     if (!banner || !bannerRef.current) return;
@@ -108,8 +135,8 @@ export default function KeyDateBanner() {
         <div
           ref={bannerRef}
           role="status"
-          className="fixed left-0 right-0 z-[60] flex items-center justify-center gap-2 border-b border-border bg-innercontainer px-3 py-2 text-xs text-textdark"
-          style={{ top: "var(--nav-height, 0px)" }}
+          className="fixed left-0 right-0 z-30 flex items-center justify-center gap-2 border-b border-border bg-innercontainer px-3 py-2 text-xs text-textdark"
+          style={{ top: topOffset }}
         >
           <CalendarDays className="h-4 w-4 shrink-0 text-accent" aria-hidden />
           <span className="text-center">{banner.shortMessage}</span>
