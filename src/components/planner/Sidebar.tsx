@@ -4,6 +4,7 @@ import { useDrop } from "react-dnd";
 import RequirementCategory from '@/components/planner/RequirementCategory';
 import CoursesCarousel from '@/components/planner/CoursesCarousel';
 import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/plannerCredits";
+import ProgramRecommendations from "@/components/planner/ProgramRecommendations";
 import type { SemestersForCredits } from "@/utils/plannerCredits";
 import { CartItem } from "./CourseDiscoveryModal";
 import { usePlannerStore } from '@/stores/plannerStore';
@@ -93,6 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     gradesData = {},
     coursebookSemester,
     onOpenDiscovery,
+    transcriptData,
 }) => {
     const sidebarRef = useRef<HTMLDivElement>(null);
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
@@ -639,6 +641,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </div>
 
                             <button
+                                data-tour="course-discovery"
                                 onClick={onOpenDiscovery}
                                 className="w-full flex items-center gap-2.5 p-3 rounded-xl border border-dashed
         border-green-300 bg-green-50 hover:bg-green-100 transition-colors text-left mb-4 group"
@@ -684,6 +687,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     />
                                 </div>
                             )}
+
+                            <ProgramRecommendations
+                                refreshKey={transcriptData}
+                                onSelect={() => onRestartOnboarding?.()}
+                            />
 
                             <div className="mb-4">
                                 <h2 className="text-xl font-bold text-gray-900 mb-2">

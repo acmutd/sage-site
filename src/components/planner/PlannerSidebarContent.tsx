@@ -5,6 +5,7 @@ import CoursesCarousel from "@/components/planner/CoursesCarousel";
 import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/plannerCredits";
 import type { SemestersForCredits } from "@/utils/plannerCredits";
 import { usePlannerStore } from "@/stores/plannerStore";
+import ProgramRecommendations from "./ProgramRecommendations";
 
 interface PlannerSidebarContentProps {
   onClose: () => void;
@@ -58,6 +59,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
   gradesData,
   coursebookSemester,
   onOpenDiscovery,
+  transcriptData,
 }) => {
   const [autoExpandedCategories, setAutoExpandedCategories] = React.useState<{ [key: number]: boolean }>({});
   const [expandedSubcategories, setExpandedSubcategories] = React.useState<Record<string, boolean>>({});
@@ -443,6 +445,12 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
           />
         </div>
       )}
+
+      <ProgramRecommendations
+          tourAnchors={false}
+          refreshKey={transcriptData}
+          onSelect={() => { onRestartOnboarding?.(); onClose(); }}
+      />
 
       <div className="mb-4">
         <h2 className="text-xl font-bold text-gray-900 mb-2">
