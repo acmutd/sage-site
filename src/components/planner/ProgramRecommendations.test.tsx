@@ -84,7 +84,7 @@ describe("rendering", () => {
         expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
-    test("renders ranked rows with percent and credits left", async () => {
+    test("shows one recommendation at a time, best first, and pages with next/prev", async () => {
         global.fetch = vi.fn().mockResolvedValue(
             okResponse([
                 rec({ name: "Statistics", completion_percentage: 70, remaining_credits: 6 }),
@@ -99,16 +99,72 @@ describe("rendering", () => {
 
         render(<ProgramRecommendations />);
 
-        const bars = await screen.findAllByRole("progressbar");
-        expect(bars).toHaveLength(2);
-        expect(bars[0]).toHaveAttribute("aria-valuenow", "70");
-        expect(bars[1]).toHaveAttribute("aria-valuenow", "40");
-
+        // first card only
+        expect(await screen.findByText("Statistics")).toBeInTheDocument();
+        expect(screen.queryByText("Cyber Defense")).not.toBeInTheDocument();
+        expect(screen.getAllByRole("progressbar")).toHaveLength(1);
+        expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "70");
         expect(screen.getByText("70%")).toBeInTheDocument();
         expect(screen.getByText(/6 credit hours left/i)).toBeInTheDocument();
-        expect(screen.getByText(/1 credit hour left/i)).toBeInTheDocument();
         expect(screen.getByText("Minor")).toBeInTheDocument();
+        expect(screen.getByText("1 / 2")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /previous recommendation/i })).toBeDisabled();
+
+        // next
+        fireEvent.click(screen.getByRole("button", { name: /next recommendation/i }));
+        expect(screen.getByText("Cyber Defense")).toBeInTheDocument();
+        expect(screen.queryByText("Statistics")).not.toBeInTheDocument();
+        expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "40");
+        expect(screen.getByText(/1 credit hour left/i)).toBeInTheDocument();
         expect(screen.getByText("Certificate")).toBeInTheDocument();
+        expect(screen.getByText("2 / 2")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /next recommendation/i })).toBeDisabled();
+
+        // prev
+        fireEvent.click(screen.getByRole("button", { name: /previous recommendation/i }));
+        expect(screen.getByText("Statistics")).toBeInTheDocument();
+    });
+
+    test("dots jump straight to a recommendation", async () => {
+        global.fetch = vi.fn().mockResolvedValue(
+            okResponse([rec({ name: "A" }), rec({ name: "B" }), rec({ name: "C" })])
+        ) as any;
+
+        render(<ProgramRecommendations />);
+        await screen.findByText("A");
+
+        fireEvent.click(screen.getByRole("button", { name: /show recommendation 3/i }));
+        expect(screen.getByText("C")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /show recommendation 3/i })).toHaveAttribute(
+            "aria-current",
+            "true"
+        );
+    });
+
+    test("hides the controls when there is only one recommendation", async () => {
+        global.fetch = vi.fn().mockResolvedValue(okResponse([rec()])) as any;
+
+        render(<ProgramRecommendations />);
+        await screen.findByText("Statistics");
+
+        expect(screen.queryByRole("button", { name: /next recommendation/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /previous recommendation/i })).not.toBeInTheDocument();
+        expect(screen.queryByText(/ \/ /)).not.toBeInTheDocument();
+    });
+
+    test("goes back to the first card when fresh results arrive", async () => {
+        global.fetch = vi.fn().mockResolvedValue(
+            okResponse([rec({ name: "A" }), rec({ name: "B" })])
+        ) as any;
+
+        const { rerender } = render(<ProgramRecommendations refreshKey={1} />);
+        await screen.findByText("A");
+        fireEvent.click(screen.getByRole("button", { name: /next recommendation/i }));
+        expect(screen.getByText("B")).toBeInTheDocument();
+
+        rerender(<ProgramRecommendations refreshKey={2} />);
+        await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(screen.getByText("A")).toBeInTheDocument());
     });
 
     test("only labels the level when undergrad and grad are mixed", async () => {
@@ -121,6 +177,7 @@ describe("rendering", () => {
 
         render(<ProgramRecommendations />);
         expect(await screen.findByText("Undergraduate minor")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: /next recommendation/i }));
         expect(screen.getByText("Graduate certificate")).toBeInTheDocument();
     });
 
