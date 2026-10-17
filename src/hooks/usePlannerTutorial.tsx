@@ -55,6 +55,14 @@ export function usePlannerTutorial({ scrollContainerRef, user, onForceExpandSide
                 }
             },
             {
+                element: '[data-tour="course-discovery"]',
+                popover: {
+                    title: 'Discover Courses',
+                    description: 'Browse courses and add them to your plan.',
+                    side: "right"
+                }
+            },
+            {
                 element: () => findVisible(PLAN_REC_SELECTOR) as HTMLElement,
                 popover: {
                     title: 'Suggested Minors & Certs',

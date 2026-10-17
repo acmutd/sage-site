@@ -641,6 +641,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </div>
 
                             <button
+                                data-tour="course-discovery"
                                 onClick={onOpenDiscovery}
                                 className="w-full flex items-center gap-2.5 p-3 rounded-xl border border-dashed
         border-green-300 bg-green-50 hover:bg-green-100 transition-colors text-left mb-4 group"
