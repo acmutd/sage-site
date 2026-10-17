@@ -1,3 +1,4 @@
+import { Toaster, toast } from "sonner";
 import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -386,7 +387,19 @@ const ChatBot: React.FC = () => {
         } else if (response.status === 404) {
           setChatError("This conversation no longer exists.");
           setConversationId(null);
-        } else {
+        } else if (response.status === 503) {
+          toast.error("SAGE is temporarily unavailable. Please try again later.", {
+            id: "sage-unavailable",   // repeated retries update this toast instead of stacking new ones
+            duration: 6000,
+          });
+          setMessages(messages);
+          setQuery(query);
+          localStorage.setItem("chatbot_conversation", JSON.stringify({
+            messages, conversation_id, timestamp: Date.now(), cacheUserId: user?.uid ?? null,
+          }));
+        }
+
+        else {
           throw new Error(`Failed to get chatbot response: ${response.status} - ${errorText}`);
         }
         return;
@@ -771,6 +784,7 @@ const ChatBot: React.FC = () => {
       className="flex bg-bglight overflow-hidden py-[4rem] px-6 gap-[2.25rem] mt-[4.2rem] h-[calc(100vh-4.2rem)]"
       onClick={handleOutsideClick}
     >
+      
       <button data-tour="help-button" aria-label="Chatbot Help" onClick={startTutorial} className="fixed bottom-4 right-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center z-50">
         <HelpCircle size={18} className="text-white" aria-hidden="true" />
       </button>
@@ -961,97 +975,97 @@ const ChatBot: React.FC = () => {
                       />
                     </div>
                   ) : (
-                  <ul aria-label="Past conversations" className="flex flex-col gap-2 overflow-y-scroll w-full" ref={conversationListRef} style={{ scrollbarWidth: "none" }} onScroll={updateScrollPosition}>
-                    {Array.isArray(conversations) && conversations.length > 0 ? (
-                      conversations.map((conv, index) => {
-                        const displayName = conversationDisplayName(conv);
-                        return (
-                          <li
-                            key={conv.conversation_id}
-                            ref={(el) => (contextButtonRefs.current[index] = el)}
-                            className={`group/conversation flex flex-row items-center w-full min-w-0 rounded-sm transition-colors ${conversation_id === conv.conversation_id ? "bg-secondary" : "hover:bg-secondary"
-                              }`}
-                          >
-                            <button
-                              className="flex flex-1 min-w-0 items-center p-2 cursor-pointer rounded-sm text-textdark text-left bg-transparent border-none outline-none"
-                              onClick={() => loadConversation(conv.conversation_id, conv.messages)}
-                              aria-current={conversation_id === conv.conversation_id ? "true" : undefined}
+                    <ul aria-label="Past conversations" className="flex flex-col gap-2 overflow-y-scroll w-full" ref={conversationListRef} style={{ scrollbarWidth: "none" }} onScroll={updateScrollPosition}>
+                      {Array.isArray(conversations) && conversations.length > 0 ? (
+                        conversations.map((conv, index) => {
+                          const displayName = conversationDisplayName(conv);
+                          return (
+                            <li
+                              key={conv.conversation_id}
+                              ref={(el) => (contextButtonRefs.current[index] = el)}
+                              className={`group/conversation flex flex-row items-center w-full min-w-0 rounded-sm transition-colors ${conversation_id === conv.conversation_id ? "bg-secondary" : "hover:bg-secondary"
+                                }`}
                             >
-                              <small className="block min-w-0 truncate" data-clarity-mask="True">
-                                {displayName}
-                              </small>
-                            </button>
-                            
-                            <div className="relative flex shrink-0 self-stretch">
                               <button
-                                aria-label={`More options for ${displayName}`}
-                                aria-expanded={moreOptionsOpenId === conv.conversation_id}
-                                aria-haspopup="menu"
-                                className={`group/menu px-2 h-full transition-opacity duration-150
-        opacity-0 group-hover/conversation:opacity-100 focus-visible:opacity-100
-        ${moreOptionsOpenId === conv.conversation_id ? "opacity-100" : ""}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setMoreOptionsOpenId((prev) => (prev === conv.conversation_id ? null : conv.conversation_id));
-                                }}
+                                className="flex flex-1 min-w-0 items-center p-2 cursor-pointer rounded-sm text-textdark text-left bg-transparent border-none outline-none"
+                                onClick={() => loadConversation(conv.conversation_id, conv.messages)}
+                                aria-current={conversation_id === conv.conversation_id ? "true" : undefined}
                               >
-                                <Ellipsis aria-hidden="true" className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary" />
+                                <small className="block min-w-0 truncate" data-clarity-mask="True">
+                                  {displayName}
+                                </small>
                               </button>
 
-                              {moreOptionsOpenId === conv.conversation_id && showContextMenu && (
-                                <div
-                                  ref={contextMenuRef}
-                                  role="menu"
-                                  aria-label={`Options for ${displayName}`}
-                                  onKeyDown={handleContextMenuKeyDown}
-                                  className="fixed translate-x-[160%] translate-y-[40%] z-[9999] w-50 bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden transition-opacity duration-150"
-                                  style={{ top: contextMenuPosition.top, left: contextMenuPosition.left }}
-                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                                  onMouseEnter={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                              <div className="relative flex shrink-0 self-stretch">
+                                <button
+                                  aria-label={`More options for ${displayName}`}
+                                  aria-expanded={moreOptionsOpenId === conv.conversation_id}
+                                  aria-haspopup="menu"
+                                  className={`group/menu px-2 h-full transition-opacity duration-150
+        opacity-0 group-hover/conversation:opacity-100 focus-visible:opacity-100
+        ${moreOptionsOpenId === conv.conversation_id ? "opacity-100" : ""}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMoreOptionsOpenId((prev) => (prev === conv.conversation_id ? null : conv.conversation_id));
+                                  }}
                                 >
-                                  <ul className="py-1" role="presentation">
-                                    <li role="presentation">
-                                      <button
-                                        role="menuitem"
-                                        onClick={() => {
-                                          setConversationToRename(conv.conversation_id);
-                                          setNewName(conversationDisplayName(conv));
-                                          setShowRenameModal(true);
-                                          setMoreOptionsOpenId(null);
-                                        }}
-                                        className="flex items-center justify-between gap-2 w-full px-4 py-2 text-left text-textdark hover:bg-gray-100"
-                                      >
-                                        Rename conversation
-                                        <Pencil aria-hidden="true" size={16} className="stroke-textdark" />
-                                      </button>
-                                    </li>
-                                    <li role="presentation">
-                                      <button
-                                        role="menuitem"
-                                        onClick={() => {
-                                          setConversationToDelete(conv.conversation_id);
-                                          setShowDeleteModal(true);
-                                          setMoreOptionsOpenId(null);
-                                        }}
-                                        className="flex items-center justify-between gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
-                                      >
-                                        Delete conversation
-                                        <Trash2 size={16} className="stroke-destructive" aria-hidden="true" />
-                                      </button>
-                                    </li>
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          </li>
-                        );
-                      })
-                    ) : (
-                      <li className="p-2">
-                        <small className="text-textsecondary">No conversations available</small>
-                      </li>
-                    )}
-                  </ul>
+                                  <Ellipsis aria-hidden="true" className="h-[1rem] stroke-textdark group-hover/menu:stroke-textsecondary" />
+                                </button>
+
+                                {moreOptionsOpenId === conv.conversation_id && showContextMenu && (
+                                  <div
+                                    ref={contextMenuRef}
+                                    role="menu"
+                                    aria-label={`Options for ${displayName}`}
+                                    onKeyDown={handleContextMenuKeyDown}
+                                    className="fixed translate-x-[160%] translate-y-[40%] z-[9999] w-50 bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden transition-opacity duration-150"
+                                    style={{ top: contextMenuPosition.top, left: contextMenuPosition.left }}
+                                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                                    onMouseEnter={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                                  >
+                                    <ul className="py-1" role="presentation">
+                                      <li role="presentation">
+                                        <button
+                                          role="menuitem"
+                                          onClick={() => {
+                                            setConversationToRename(conv.conversation_id);
+                                            setNewName(conversationDisplayName(conv));
+                                            setShowRenameModal(true);
+                                            setMoreOptionsOpenId(null);
+                                          }}
+                                          className="flex items-center justify-between gap-2 w-full px-4 py-2 text-left text-textdark hover:bg-gray-100"
+                                        >
+                                          Rename conversation
+                                          <Pencil aria-hidden="true" size={16} className="stroke-textdark" />
+                                        </button>
+                                      </li>
+                                      <li role="presentation">
+                                        <button
+                                          role="menuitem"
+                                          onClick={() => {
+                                            setConversationToDelete(conv.conversation_id);
+                                            setShowDeleteModal(true);
+                                            setMoreOptionsOpenId(null);
+                                          }}
+                                          className="flex items-center justify-between gap-2 w-full px-4 py-2 text-left text-destructive hover:bg-gray-100"
+                                        >
+                                          Delete conversation
+                                          <Trash2 size={16} className="stroke-destructive" aria-hidden="true" />
+                                        </button>
+                                      </li>
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })
+                      ) : (
+                        <li className="p-2">
+                          <small className="text-textsecondary">No conversations available</small>
+                        </li>
+                      )}
+                    </ul>
                   )}
                 </div>
               )}
@@ -1368,6 +1382,7 @@ const ChatBot: React.FC = () => {
           </div>
         </div>
       )}
+      <Toaster position="top-center" />
     </main>
   );
 };
