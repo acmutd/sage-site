@@ -15,7 +15,7 @@ import { usePlannerStore, StagedCourse } from "@/stores/plannerStore";
 export interface DiscoverySection {
     section: string;
     class_number: string;
-    instructors: string;
+    instructors: string | string[];
     days: string | string[];
     times_12h: string;
     location: string;
@@ -51,7 +51,7 @@ export interface DiscoveryCourse {
     major_restriction?: string;
     aleks_score?: string;
     placement_exam?: boolean;
-    equivalent?: string;
+    equivalent?: string | string[];
     max_repeat_credits?: number;
     footnote?: string;
     group_type?: string;
@@ -92,9 +92,27 @@ export interface CourseDiscoveryModalProps {
     getAuthToken: () => Promise<string>
     educationLevel?: 'undergraduate' | 'graduate';
     completedCourseCodes?: string[];
+    /** Courses already placed in the plan but not yet completed. Kept separate so they get the right badge. */
+    plannedCourseCodes?: string[];
 }
 
 const LIMIT = 20;
+const NO_CODES: string[] = [];
+
+export type CourseStatus = 'completed' | 'planned' | 'staged';
+
+const STATUS_STYLES: Record<CourseStatus, { label: string; blocked: string; cls: string }> = {
+    completed: { label: 'Completed', blocked: 'Already completed', cls: 'bg-green-100 text-green-700' },
+    planned: { label: 'In your plan', blocked: 'Already in your plan', cls: 'bg-blue-50 text-blue-600' },
+    staged: { label: 'Staged', blocked: 'Already staged', cls: 'bg-purple-100 text-purple-700' },
+};
+
+// The API sends `equivalent` as an array (e.g. ["CE 2305"]); older data may be a delimited string.
+const equivalentCodes = (c: { equivalent?: string | string[] }): string[] => {
+    const eq = c.equivalent;
+    const list = Array.isArray(eq) ? eq : typeof eq === 'string' && eq ? eq.split(/[,;]/) : [];
+    return list.map(x => normalizeCourseCode(x)).filter(Boolean) as string[];
+};
 
 const FREQUENCY_LABELS: Record<string, string> = {
     S: 'Every Semester',
@@ -163,6 +181,16 @@ const GradeBadge = ({ grade }: { grade?: string }) => {
     if (!grade) return null;
     const c = gradeColor(grade);
     return <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${c.bg} ${c.text}`}>{grade} avg</span>;
+};
+
+const StatusBadge = ({ status }: { status?: CourseStatus | null }) => {
+    if (!status) return null;
+    const s = STATUS_STYLES[status];
+    return (
+        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex items-center gap-1 ${s.cls}`}>
+            <CheckCircle className="w-2.5 h-2.5" /> {s.label}
+        </span>
+    );
 };
 
 const PrereqDot = ({ met, text }: { met: boolean; text?: string }) => (
@@ -331,14 +359,16 @@ interface CourseCardProps {
     course: DiscoveryCourse;
     inCart: boolean;
     isSelected: boolean;
+    status?: CourseStatus | null;
     onClick: () => void;
 }
 
-const CourseCard: React.FC<CourseCardProps> = ({ course, inCart, isSelected, onClick }) => (
+const CourseCard: React.FC<CourseCardProps> = ({ course, inCart, isSelected, status, onClick }) => (
     <div
         onClick={onClick}
         className={`
             relative p-3 rounded-md border cursor-pointer transition-all select-none
+            ${status && !isSelected ? 'opacity-80' : ''}
             ${isSelected
                 ? 'border-green-400 bg-green-50 shadow-sm'
                 : inCart
@@ -362,6 +392,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, inCart, isSelected, onC
             <StarRating rating={course.avg_rating} count={course.rating_count} />
         </div>
         <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+            <StatusBadge status={status} />
             <PrereqDot met={course.prereqs_met} text={course.prereqs_text} />
             {course.satisfies_core && (
                 <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
@@ -383,6 +414,7 @@ interface DetailPanelProps {
     onSwapSection: (courseId: string, section: string) => void;
     onSetCreditSource: (courseId: string, source: CreditSource, detail?: CreditSourceDetail) => void;
     semester?: string;
+    status?: CourseStatus | null;
     apiBaseUrl: string;
     getAuthToken: () => Promise<string>;
 }
@@ -418,14 +450,16 @@ const CreditSourceBadge = ({ source, detail }: { source?: CreditSource; detail?:
 
 const DetailPanel: React.FC<DetailPanelProps> = ({
     course, inCart, cartPinnedSection, cartCreditSource, cartCreditSourceDetail, defaultCreditSource,
-    onAdd, onRemove, onSwapSection, onSetCreditSource, semester,
+    onAdd, onRemove, onSwapSection, onSetCreditSource, semester, status,
     apiBaseUrl, getAuthToken,
 }) => {
     const [selectedSection, setSelectedSection] = useState<string | null>(cartPinnedSection ?? course.sections[0]?.section ?? null);
+    const [override, setOverride] = useState(false); // "Retaking it? Add anyway"
     const sectionsScrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setSelectedSection(cartPinnedSection ?? course.sections[0]?.section ?? null);
+        setOverride(false);
     }, [course.course_id]);
 
     const selectedSectionData = course.sections.find(s => s.section === selectedSection) ?? course.sections[0];
@@ -437,6 +471,8 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
 
     const effectiveSource: CreditSource | undefined = inCart ? cartCreditSource : defaultCreditSource;
     const previewMode = !inCart && effectiveSource !== 'university';
+    // Repeatable courses (special topics, research, etc.) are never blocked.
+    const blocked = !!status && !course.max_repeat_credits && !override && !inCart;
 
     return (
         <div className="flex flex-col h-full overflow-y-auto">
@@ -456,9 +492,17 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                     )}
                 </div>
                 <PrereqDot met={course.prereqs_met} text={course.prereqs_text} />
+                {status && (
+                    <div className={`mt-2 text-[11px] rounded-md px-2.5 py-1.5 ${STATUS_STYLES[status].cls}`}>
+                        {status === 'completed' && "You've already completed this course."}
+                        {status === 'planned' && 'This course is already in your degree plan.'}
+                        {status === 'staged' && 'This course is already staged in your sidebar.'}
+                        {course.max_repeat_credits ? ' It can be repeated for credit.' : ''}
+                    </div>
+                )}
             </div>
 
-            {effectiveSource && effectiveSource !== 'university' && (
+            {effectiveSource && effectiveSource !== 'university' && !blocked && (
                 <div className="p-4 border-b border-gray-100">
                     <div className={`border-2 rounded-md p-3 ${previewMode ? 'border-gray-300 bg-gray-50' : 'border-green-500 bg-green-50'}`}>
                         <div className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide mb-1 ${previewMode ? 'text-gray-600' : 'text-green-700'}`}>
@@ -495,9 +539,10 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                             <span className="font-semibold text-gray-600">Co-Requisite: </span>{course.coreqs_text}
                         </div>
                     )}
-                    {course.equivalent && (
+                    {(Array.isArray(course.equivalent) ? course.equivalent.length > 0 : !!course.equivalent) && (
                         <div className="text-[11px] text-gray-500">
-                            <span className="font-semibold text-gray-600">Equivalent: </span>{course.equivalent}
+                            <span className="font-semibold text-gray-600">Equivalent: </span>
+                            {Array.isArray(course.equivalent) ? course.equivalent.join(', ') : course.equivalent}
                         </div>
                     )}
                     {course.max_repeat_credits && (
@@ -614,7 +659,9 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                                 <span className={`inline-block mt-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full ${modalityBadge(modality)}`}>
                                     {modalityLabel(modality)}
                                 </span>
-                                <div className="text-[10px] text-gray-500 mt-1 truncate">{sec.instructors}</div>
+                                <div className="text-[10px] text-gray-500 mt-1 truncate">
+                                    {Array.isArray(sec.instructors) ? sec.instructors.join(', ') : sec.instructors}
+                                </div>
                                 <div className="text-[10px] text-gray-400 mt-0.5 truncate">{sec.times_12h}</div>
                             </button>
                         );
@@ -691,6 +738,23 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                     >
                         <Minus className="w-3.5 h-3.5" /> Remove from Cart
                     </button>
+                ) : blocked && status ? (
+                    <div className="space-y-1.5">
+                        <button
+                            disabled
+                            className="w-full flex items-center justify-center gap-2 py-2 rounded-md bg-gray-100 text-gray-400 text-xs font-medium cursor-not-allowed"
+                        >
+                            <CheckCircle className="w-3.5 h-3.5" /> {STATUS_STYLES[status].blocked}
+                        </button>
+                        {status !== 'staged' && (
+                            <button
+                                onClick={() => setOverride(true)}
+                                className="w-full text-[11px] text-gray-400 hover:text-gray-600 underline underline-offset-2"
+                            >
+                                Retaking it? Add anyway
+                            </button>
+                        )}
+                    </div>
                 ) : (
                     <button
                         onClick={() => onAdd(course.course_id)}
@@ -1097,7 +1161,8 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     apiBaseUrl,
     getAuthToken,
     educationLevel = 'undergraduate',
-    completedCourseCodes = [],
+    completedCourseCodes = NO_CODES,
+    plannedCourseCodes = NO_CODES,
 }) => {
     const [query, setQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -1170,7 +1235,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
             const data = await res.json();
 
             const satisfiedSet = new Set<string>(
-                completedCourseCodes.map((code: string) => normalizeCourseCode(code)).filter(Boolean) as string[]
+                [...completedCourseCodes, ...plannedCourseCodes].map((code: string) => normalizeCourseCode(code)).filter(Boolean) as string[]
             );
 
             const normalized: DiscoveryCourse[] = data.courses.map((c: any) => {
@@ -1199,7 +1264,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         } finally {
             setLoading(false);
         }
-    }, [selectedSchools, selectedPrefixes, selectedCredits, selectedFrequency, coreOnly, educationLevel, apiBaseUrl, completedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding]);
+    }, [selectedSchools, selectedPrefixes, selectedCredits, selectedFrequency, coreOnly, educationLevel, apiBaseUrl, completedCourseCodes, plannedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding]);
 
     useEffect(() => { searchRef.current?.focus(); }, []);
 
@@ -1260,16 +1325,43 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
     const stagedCourses = usePlannerStore(s => s.stagedCourses);
 
+    const completedSet = useMemo(
+        () => new Set(completedCourseCodes.map(c => normalizeCourseCode(c)).filter(Boolean) as string[]),
+        [completedCourseCodes]
+    );
+    const plannedSet = useMemo(
+        () => new Set(plannedCourseCodes.map(c => normalizeCourseCode(c)).filter(Boolean) as string[]),
+        [plannedCourseCodes]
+    );
+    const stagedSet = useMemo(() => new Set(stagedCourses.map(c => c.course_id)), [stagedCourses]);
+
+    // A course counts as completed if it, or anything it is listed as equivalent to, is on the transcript.
+    const statusOf = useCallback((c: DiscoveryCourse): CourseStatus | null => {
+        const codes = [normalizeCourseCode(c.course_code), ...equivalentCodes(c)].filter(Boolean) as string[];
+        if (codes.some(x => completedSet.has(x))) return 'completed';
+        if (codes.some(x => plannedSet.has(x))) return 'planned';
+        if (stagedSet.has(c.course_id)) return 'staged';
+        return null;
+    }, [completedSet, plannedSet, stagedSet]);
+
+    const searching = !!query.trim();
+
+    // How many loaded courses the "hide" toggles are currently removing (only while browsing).
+    const hiddenCount = useMemo(() => searching ? 0 : courses.filter(c => {
+        const s = statusOf(c);
+        return s === 'staged' ? hideStaged : s ? hideCompleted : false;
+    }).length, [courses, searching, statusOf, hideCompleted, hideStaged]);
+
     const filteredCourses = useMemo(() => {
-        const completedSet = new Set(completedCourseCodes.map(c => normalizeCourseCode(c)));
-        const stagedSet = new Set(stagedCourses.map(c => c.course_id));
-
-        let results = hideCompleted
-            ? courses.filter(c => !completedSet.has(normalizeCourseCode(c.course_code)))
-            : courses;
-
-        if (hideCompleted) results = results.filter(c => !completedSet.has(normalizeCourseCode(c.course_code)));
-        if (hideStaged) results = results.filter(c => !stagedSet.has(c.course_id));
+        // Browsing hides courses you've already dealt with. Searching never does: if you typed
+        // "CS 2305" you want to see it, with a badge that says why you can't add it.
+        let results = searching
+            ? courses
+            : courses.filter(c => {
+                const s = statusOf(c);
+                if (!s) return true;
+                return s === 'staged' ? !hideStaged : !hideCompleted;
+            });
 
         if (selectedCredits.length) {
             const mapped = selectedCredits.map(c => c === '4+' ? '4' : c.toLowerCase());
@@ -1291,11 +1383,11 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
         const resultIds = new Set(results.map(c => c.course_id));
         return fuse.search(query).map(r => r.item).filter(c => resultIds.has(c.course_id));
-    }, [query, fuse, courses, hideCompleted, hideStaged, completedCourseCodes, stagedCourses, selectedFrequency, selectedCredits]);
+    }, [query, searching, fuse, courses, statusOf, hideCompleted, hideStaged, selectedFrequency, selectedCredits]);
 
     const selectedCourse = courses.find(c => c.course_id === selectedCourseId) ?? null;
     const cartItem = selectedCourse ? cart.find(i => i.course.course_id === selectedCourse.course_id) : undefined;
-    const isClientFiltering = !hideCompleted || !hideStaged || selectedCredits.length > 0 || selectedFrequency.length > 0 || !!query.trim();
+    const isClientFiltering = hiddenCount > 0 || selectedCredits.length > 0 || selectedFrequency.length > 0 || !!query.trim();
 
     const addToCart = useCallback((courseId: string, section?: string, source?: CreditSource, detail?: CreditSourceDetail) => {
         const course = courses.find(c => c.course_id === courseId);
@@ -1385,6 +1477,28 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
     const showingAll = !hideCompleted && !hideStaged;
     const year = getCurrentCatalogYear();
+
+    // Rendered in the results header and in the empty state, so you can always un-hide courses.
+    const statusToggles = (
+        <div className="flex items-center gap-1">
+            <button
+                onClick={() => { setHideCompleted(showingAll); setHideStaged(showingAll); }}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
+                ${showingAll ? 'bg-gray-200 text-gray-700' : 'text-gray-400 hover:bg-gray-100'}`}
+            >All</button>
+            <button
+                onClick={() => setHideCompleted(p => !p)}
+                title="Show courses you've completed or already planned"
+                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
+                ${!hideCompleted ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`}
+            >Completed/planned</button>
+            <button
+                onClick={() => setHideStaged(p => !p)}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
+                ${!hideStaged ? 'bg-purple-100 text-purple-700' : 'text-gray-400 hover:bg-gray-100'}`}
+            >Staged</button>
+        </div>
+    );
 
     return ReactDOM.createPortal(
         <>
@@ -1661,6 +1775,12 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                 <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400 py-16">
                                     <AlertCircle className="w-6 h-6 opacity-30" />
                                     <p className="text-sm">No courses match your filters</p>
+                                    {hiddenCount > 0 && (
+                                        <p className="text-xs text-gray-400 text-center max-w-xs">
+                                            {hiddenCount} course{hiddenCount !== 1 ? 's are' : ' is'} hidden because you've already completed, planned or staged {hiddenCount !== 1 ? 'them' : 'it'}.
+                                        </p>
+                                    )}
+                                    {statusToggles}
                                     <button onClick={clearAllFilters} className="text-xs text-green-600 hover:underline">
                                         Clear filters
                                     </button>
@@ -1671,23 +1791,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                         <span>
                                             {isClientFiltering ? `${filteredCourses.length} of ${total}` : total} course{total !== 1 ? 's' : ''} found
                                         </span>
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                onClick={() => { setHideCompleted(showingAll); setHideStaged(showingAll); }}
-                                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
-                                                ${showingAll ? 'bg-gray-200 text-gray-700' : 'text-gray-400 hover:bg-gray-100'}`}
-                                            >All</button>
-                                            <button
-                                                onClick={() => setHideCompleted(p => !p)}
-                                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
-                                                ${!hideCompleted ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`}
-                                            >Completed</button>
-                                            <button
-                                                onClick={() => setHideStaged(p => !p)}
-                                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
-                                                ${!hideStaged ? 'bg-purple-100 text-purple-700' : 'text-gray-400 hover:bg-gray-100'}`}
-                                            >Staged</button>
-                                        </div>
+                                        {statusToggles}
                                         {loading && <Loader2 className="w-3 h-3 animate-spin opacity-40" />}
                                     </div>
 
@@ -1698,6 +1802,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                                 course={course}
                                                 inCart={!!cart.find(i => i.course.course_id === course.course_id)}
                                                 isSelected={selectedCourseId === course.course_id && rightPanel === 'detail'}
+                                                status={statusOf(course)}
                                                 onClick={() => openDetail(course.course_id)}
                                             />
                                         ))}
@@ -1745,6 +1850,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                             onSwapSection={swapSection}
                                             onSetCreditSource={setCreditSource}
                                             semester={semester}
+                                            status={statusOf(selectedCourse)}
                                             apiBaseUrl={apiBaseUrl}
                                             getAuthToken={getAuthToken}
                                         />
