@@ -6,7 +6,7 @@ import {
     Star, BookOpen, MapPin, ExternalLink, Plus, Minus,
     CheckCircle, AlertCircle, ArrowRight, Trash2, SlidersHorizontal,
     FileText, Clock, Award, RefreshCw, Layers, Loader2,
-    ChevronUp
+    ChevronUp, Sparkles
 } from 'lucide-react';
 import { getCoursePrerequisiteGroups, getMissingPrerequisiteGroups, normalizeCourseCode } from '@/utils/prerequisiteUtils';
 import { getCurrentCatalogYear } from '@/utils/studentInfo';
@@ -107,6 +107,43 @@ const SORT_LABELS: Record<Exclude<SortKey, 'code'>, string> = {
     rating: 'Top rated',
     best_prof: 'Best professor this term',
 };
+
+const CHAT_API = import.meta.env.VITE_CHAT_API as string | undefined;
+const SMART_MIN_CHARS = 3;
+const COURSE_CODE_QUERY = /^[a-z]{2,5}\s*\d{3,4}$/i;   // "cs 2305" is a lookup, not a description
+
+function uidFromToken(token: string): string | null {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        return payload.user_id ?? payload.sub ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/** Ranked course codes, or null if smart search is unavailable (caller falls back to keyword search). */
+async function semanticSearch(query: string, level: string, token: string): Promise<string[] | null> {
+    const uid = uidFromToken(token);
+    if (!CHAT_API || !uid) return null;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+        const res = await fetch(CHAT_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: uid, token, query, level, course_search: true }),
+            signal: ctrl.signal,
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const codes = Array.isArray(data.courses) ? data.courses.map((c: any) => c.course_code).filter(Boolean) : [];
+        return codes.length ? codes : null;
+    } catch {
+        return null;
+    } finally {
+        clearTimeout(timer);
+    }
+}
 
 export type CourseStatus = 'completed' | 'planned' | 'staged';
 
@@ -1209,6 +1246,11 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const [hideCompleted, setHideCompleted] = useState(true);
     const [hideStaged, setHideStaged] = useState(true);
     const [sort, setSort] = useState<SortKey>('code');
+    const [smart, setSmart] = useState(false);
+    const [semanticApplied, setSemanticApplied] = useState(false);   // did the last fetch use semantic ranking?
+    const [smartNote, setSmartNote] = useState<string | null>(null);
+    const fetchSeq = useRef(0);   // only the latest request may update the list (smart search adds a slow step)
+    const semanticCache = useRef(new Map<string, string[] | null>());   // filters change often; embedding a query shouldn't
 
     const addStagedCourses = usePlannerStore(s => s.addStagedCourses);
     const searchRef = useRef<HTMLInputElement>(null);
@@ -1216,6 +1258,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const fetchCourses = useCallback(async (newOffset: number = 0) => {
         const token = await getAuthToken();
         if (!token) return;
+        const seq = ++fetchSeq.current;
         setLoading(true);
         setError(null);
 
@@ -1224,7 +1267,22 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         const upperQuery = debouncedQuery.trim().toUpperCase();
         const isPrefix = allPrefixes.includes(upperQuery);
 
-        if (debouncedQuery) {
+        const wantsSmart = smart && debouncedQuery.trim().length >= SMART_MIN_CHARS
+            && !isPrefix && !COURSE_CODE_QUERY.test(debouncedQuery.trim());
+        let semanticCodes: string[] | null = null;
+        if (wantsSmart) {
+            const key = `${educationLevel}|${debouncedQuery.trim().toLowerCase()}`;
+            if (!semanticCache.current.has(key)) {
+                semanticCache.current.set(key, await semanticSearch(debouncedQuery.trim(), educationLevel, token));
+            }
+            semanticCodes = semanticCache.current.get(key) ?? null;
+            if (!semanticCodes) semanticCache.current.delete(key);   // don't remember failures
+        }
+        if (seq !== fetchSeq.current) return;
+        const usedSemantic = !!semanticCodes;
+        if (semanticCodes) params.set('codes', semanticCodes.join(','));
+
+        if (debouncedQuery && !usedSemantic) {
             if (isPrefix) {
                 params.set('subjects', upperQuery);
             } else {
@@ -1242,6 +1300,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         params.set('limit', String(newOffset === 0 ? 500 : LIMIT));
         params.set('offset', String(newOffset));
         if (sort !== 'code') params.set('sort', sort);
+        else if (usedSemantic) params.set('sort', 'relevance');
 
         try {
             const res = await fetch(`${apiBaseUrl}/discover?${params}`, {
@@ -1249,6 +1308,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
             });
             if (!res.ok) throw new Error('Failed to fetch');
             const data = await res.json();
+            if (seq !== fetchSeq.current) return;
 
             const satisfiedSet = new Set<string>(
                 [...completedCourseCodes, ...plannedCourseCodes].map((code: string) => normalizeCourseCode(code)).filter(Boolean) as string[]
@@ -1272,6 +1332,8 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                 return merged.filter((c, i, arr) => arr.findIndex(x => x.course_id === c.course_id) === i);
             });
 
+            setSemanticApplied(usedSemantic);
+            setSmartNote(wantsSmart && !usedSemantic ? 'Smart search unavailable, showing keyword matches' : null);
             setTotal(data.total);
             setHasMore(data.has_more);
             // Advance by what was actually returned (the first page is 500, not LIMIT),
@@ -1280,9 +1342,9 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         } catch {
             setError('Failed to load courses. Please try again.');
         } finally {
-            setLoading(false);
+            if (seq === fetchSeq.current) setLoading(false);
         }
-    }, [selectedSchools, selectedPrefixes, selectedCredits, selectedFrequency, coreOnly, educationLevel, apiBaseUrl, completedCourseCodes, plannedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding, sort]);
+    }, [selectedSchools, selectedPrefixes, selectedCredits, selectedFrequency, coreOnly, educationLevel, apiBaseUrl, completedCourseCodes, plannedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding, sort, smart]);
 
     useEffect(() => { searchRef.current?.focus(); }, []);
 
@@ -1295,7 +1357,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     // Fetch on filter change, reset to page 0
     useEffect(() => {
         fetchCourses(0);
-    }, [selectedSchools, selectedPrefixes, coreOnly, selectedDept, educationLevel, debouncedQuery, noAleks, noPerm, selectedStanding, sort]);
+    }, [selectedSchools, selectedPrefixes, coreOnly, selectedDept, educationLevel, debouncedQuery, noAleks, noPerm, selectedStanding, sort, smart]);
 
     const coursesWithInstructors = useMemo(() =>
         courses.map(c => ({
@@ -1398,6 +1460,8 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         }
 
         if (!query.trim()) return results;
+        // Semantic results were already matched and ordered by the server; Fuse would re-filter by words.
+        if (semanticApplied) return results;
 
         const resultIds = new Set(results.map(c => c.course_id));
         const matches = fuse.search(query).map(r => r.item).filter(c => resultIds.has(c.course_id));
@@ -1407,7 +1471,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
             return results.filter(c => matched.has(c.course_id));
         }
         return matches;
-    }, [query, searching, sort, fuse, courses, statusOf, hideCompleted, hideStaged, selectedFrequency, selectedCredits]);
+    }, [query, searching, sort, semanticApplied, fuse, courses, statusOf, hideCompleted, hideStaged, selectedFrequency, selectedCredits]);
 
     const selectedCourse = courses.find(c => c.course_id === selectedCourseId) ?? null;
     const cartItem = selectedCourse ? cart.find(i => i.course.course_id === selectedCourse.course_id) : undefined;
@@ -1588,7 +1652,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                 type="text"
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
-                                placeholder="Search courses, professors, keywords…"
+                                placeholder={smart ? 'Describe what you want, e.g. intro to machine learning…' : 'Search courses, professors, keywords…'}
                                 className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg
                                     focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent
                                     bg-gray-50 placeholder-gray-400"
@@ -1602,6 +1666,18 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                 </button>
                             )}
                         </div>
+                        <button
+                            onClick={() => setSmart(v => !v)}
+                            aria-pressed={smart}
+                            title="Describe what you want in your own words and results are ranked by meaning, not just matching words."
+                            className={`flex-shrink-0 flex items-center gap-1.5 text-xs px-2.5 py-2 rounded-lg border transition-colors
+                                ${smart
+                                    ? 'bg-green-50 border-green-300 text-green-700'
+                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                        >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Smart search</span>
+                        </button>
                         <div
                             className="flex-shrink-0"
                             title="Best professor ranks by the RateMyProfessors rating of whoever is teaching the course this term."
@@ -1613,7 +1689,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                 selected={sort === 'code' ? [] : [sort]}
                                 onChange={vals => setSort((vals[0] as SortKey) ?? 'code')}
                                 single
-                                allLabel="Sort: default"
+                                allLabel={semanticApplied ? 'Sort: best match' : 'Sort: default'}
                             />
                         </div>
                     </div>
@@ -1832,6 +1908,10 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                         {sort !== 'code' && (
                                             <span>· {SORT_LABELS[sort]}, courses without data last</span>
                                         )}
+                                        {semanticApplied && sort === 'code' && (
+                                            <span>· best matches for “{debouncedQuery.trim()}”</span>
+                                        )}
+                                        {smartNote && <span className="text-amber-600">· {smartNote}</span>}
                                         {statusToggles}
                                         {loading && <Loader2 className="w-3 h-3 animate-spin opacity-40" />}
                                     </div>
