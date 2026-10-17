@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import ProgramRecommendations from "./ProgramRecommendations";
+import ProgramRecommendations, { COLLAPSED_STORAGE_KEY } from "./ProgramRecommendations";
 
 let mockUser: any;
 
@@ -29,6 +29,7 @@ const okResponse = (candidates: unknown[]) => ({
 
 beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     vi.stubEnv("VITE_EVALUATOR_API", "http://localhost:3000/evaluator");
     mockUser = { uid: "test-user-123", getIdToken: vi.fn().mockResolvedValue("fresh-token") };
     global.fetch = vi.fn().mockResolvedValue(okResponse([])) as any;
@@ -248,5 +249,93 @@ describe("interaction", () => {
 
         expect(onSelect).toHaveBeenCalledTimes(1);
         expect(onSelect.mock.calls[0][0]).toMatchObject({ name: "Statistics" });
+    });
+});
+
+describe("collapsing", () => {
+    const two = () =>
+        okResponse([
+            rec({ name: "Statistics", completion_percentage: 70 }),
+            rec({ name: "Cyber Defense", program_type: "certificate", completion_percentage: 40 }),
+        ]);
+
+    test("is expanded on the first visit", async () => {
+        global.fetch = vi.fn().mockResolvedValue(two()) as any;
+        render(<ProgramRecommendations />);
+        await screen.findByRole("progressbar");
+        expect(screen.getByRole("button", { name: /close to/i })).toHaveAttribute("aria-expanded", "true");
+    });
+
+    test("collapsing hides the carousel and shows a teaser of the top pick", async () => {
+        global.fetch = vi.fn().mockResolvedValue(two()) as any;
+        render(<ProgramRecommendations />);
+        await screen.findByRole("progressbar");
+
+        fireEvent.click(screen.getByRole("button", { name: /close to/i }));
+
+        expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /next recommendation/i })).not.toBeInTheDocument();
+        const toggle = screen.getByRole("button", { expanded: false });
+        expect(toggle).toHaveTextContent("Statistics");
+        expect(toggle).toHaveTextContent("70%");
+        expect(toggle).toHaveTextContent("+1 more");
+    });
+
+    test("teaser omits '+N more' for a single recommendation", async () => {
+        global.fetch = vi.fn().mockResolvedValue(okResponse([rec()])) as any;
+        render(<ProgramRecommendations />);
+        await screen.findByRole("progressbar");
+        fireEvent.click(screen.getByRole("button", { name: /close to/i }));
+        expect(screen.getByRole("button", { expanded: false })).not.toHaveTextContent(/more/);
+    });
+
+    test("expanding again restores the carousel", async () => {
+        global.fetch = vi.fn().mockResolvedValue(two()) as any;
+        render(<ProgramRecommendations />);
+        await screen.findByRole("progressbar");
+        fireEvent.click(screen.getByRole("button", { name: /close to/i }));
+        fireEvent.click(screen.getByRole("button", { expanded: false }));
+        expect(await screen.findByRole("progressbar")).toBeInTheDocument();
+    });
+
+    test("remembers the choice across mounts", async () => {
+        global.fetch = vi.fn().mockResolvedValue(two()) as any;
+        const first = render(<ProgramRecommendations />);
+        await screen.findByRole("progressbar");
+        fireEvent.click(screen.getByRole("button", { name: /close to/i }));
+        expect(localStorage.getItem(COLLAPSED_STORAGE_KEY)).toBe("1");
+        first.unmount();
+
+        render(<ProgramRecommendations />);
+        const toggle = await screen.findByRole("button", { expanded: false });
+        expect(toggle).toHaveTextContent("Statistics");
+        expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    });
+
+    test("still works when localStorage throws", async () => {
+        global.fetch = vi.fn().mockResolvedValue(two()) as any;
+        const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+            throw new Error("blocked");
+        });
+        const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+            throw new Error("blocked");
+        });
+
+        render(<ProgramRecommendations />);
+        await screen.findByRole("progressbar");
+        fireEvent.click(screen.getByRole("button", { name: /close to/i }));
+        expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+
+        get.mockRestore();
+        set.mockRestore();
+    });
+
+    test("clicking the card while expanded still calls onSelect", async () => {
+        const onSelect = vi.fn();
+        global.fetch = vi.fn().mockResolvedValue(two()) as any;
+        render(<ProgramRecommendations onSelect={onSelect} />);
+        await screen.findByRole("progressbar");
+        fireEvent.click(screen.getByRole("button", { name: /statistics.*credit/i }));
+        expect(onSelect).toHaveBeenCalledTimes(1);
     });
 });
