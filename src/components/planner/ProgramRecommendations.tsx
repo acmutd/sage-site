@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, GraduationCap } from "lucide-react";
+import {
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    GalleryHorizontal,
+    GraduationCap,
+    List,
+} from "lucide-react";
 import {
     useProgramRecommendations,
     type ProgramRecommendation,
@@ -13,23 +20,47 @@ interface ProgramRecommendationsProps {
     className?: string;
 }
 
-export const COLLAPSED_STORAGE_KEY = "sage:program-recs-collapsed";
+export const VIEW_STORAGE_KEY = "sage:program-recs-view";
 
-// Per-browser convenience only; storage can be blocked or throw, so never depend on it.
-const readCollapsed = (): boolean => {
+type Density = "compact" | "expanded";
+interface ViewState {
+    /** false = just the header. */
+    open: boolean;
+    /** compact = one-line list, expanded = card carousel. Remembered while closed. */
+    density: Density;
+}
+
+// First visit: open, card view, so every student sees it once.
+const DEFAULT_VIEW: ViewState = { open: true, density: "expanded" };
+
+// Per-browser convenience only; storage can be blocked, throw, or hold junk, so never depend on it.
+const readView = (): ViewState => {
     try {
-        return localStorage.getItem(COLLAPSED_STORAGE_KEY) === "1";
+        const raw = localStorage.getItem(VIEW_STORAGE_KEY);
+        if (!raw) return DEFAULT_VIEW;
+        const v = JSON.parse(raw);
+        return {
+            open: typeof v?.open === "boolean" ? v.open : DEFAULT_VIEW.open,
+            density: v?.density === "compact" || v?.density === "expanded" ? v.density : DEFAULT_VIEW.density,
+        };
     } catch {
-        return false;
+        return DEFAULT_VIEW;
     }
 };
 
-const writeCollapsed = (value: boolean) => {
+const writeView = (view: ViewState) => {
     try {
-        localStorage.setItem(COLLAPSED_STORAGE_KEY, value ? "1" : "0");
+        localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(view));
     } catch {
         /* ignore */
     }
+};
+
+// Grad students only get certificates, so don't tell them about minors.
+const headerTitle = (recs: ProgramRecommendation[]) => {
+    const types = new Set(recs.map((r) => r.program_type));
+    if (types.size === 1) return types.has("minor") ? "Suggested minors" : "Suggested certificates";
+    return "Suggested minors & certs";
 };
 
 const formatCredits = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
@@ -41,11 +72,12 @@ const typeLabel = (r: ProgramRecommendation, showLevel: boolean) => {
 };
 
 /**
- * Collapsible: expanded on a student's first visit (so everyone sees it once), then it
- * remembers their choice. Collapsed, the header shows a one-line teaser of the top pick.
- *
- * Shows one recommendation at a time (same prev/next + dots pattern as CoursesCarousel)
- * so the card stays one row tall and the degree requirements below it stay on screen.
+ * Three states, like Gmail's density setting:
+ *   - collapsed: just the header (chevron toggles)
+ *   - compact:   one line per recommendation
+ *   - expanded:  one card at a time with prev/next + dots (same pattern as CoursesCarousel)
+ * The chevron opens/closes; the small icon next to it switches compact <-> expanded.
+ * The choice is remembered per browser.
  */
 const ProgramRecommendations: React.FC<ProgramRecommendationsProps> = ({
     refreshKey,
@@ -54,14 +86,17 @@ const ProgramRecommendations: React.FC<ProgramRecommendationsProps> = ({
 }) => {
     const { status, recommendations } = useProgramRecommendations(refreshKey);
     const [index, setIndex] = useState(0);
-    const [collapsed, setCollapsed] = useState<boolean>(readCollapsed);
+    const [view, setView] = useState<ViewState>(readView);
 
-    const toggle = () => {
-        setCollapsed((prev) => {
-            writeCollapsed(!prev);
-            return !prev;
+    const update = (patch: Partial<ViewState>) => {
+        setView((prev) => {
+            const next = { ...prev, ...patch };
+            writeView(next);
+            return next;
         });
     };
+    const toggleOpen = () => update({ open: !view.open });
+    const toggleDensity = () => update({ density: view.density === "compact" ? "expanded" : "compact" });
 
     // Fresh results start back at the first card.
     useEffect(() => {
@@ -90,10 +125,9 @@ const ProgramRecommendations: React.FC<ProgramRecommendationsProps> = ({
     const goTo = (i: number) => setIndex(Math.max(0, Math.min(i, total - 1)));
 
     // Only label the level when the list mixes undergrad and grad (e.g. fast-track students).
+    const title = headerTitle(recommendations);
     const showLevel = new Set(recommendations.map((x) => x.education_level)).size > 1;
     const pct = Math.max(0, Math.min(100, Math.round(r.completion_percentage)));
-    const top = recommendations[0];
-    const topPct = Math.max(0, Math.min(100, Math.round(top.completion_percentage)));
 
     const navButton = (disabled: boolean) =>
         `transition-colors ${disabled ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:text-gray-900"
@@ -103,42 +137,79 @@ const ProgramRecommendations: React.FC<ProgramRecommendationsProps> = ({
         <section
             aria-label="Program recommendations"
             aria-roledescription="carousel"
+            data-tour="program-recommendations"
             className={`mb-4 ${className}`}
         >
-            <button
-                type="button"
-                onClick={toggle}
-                aria-expanded={!collapsed}
-                aria-controls="program-recs-body"
-                className="w-full flex items-center gap-2 mb-2 text-left"
-            >
-                <GraduationCap className="w-4 h-4 text-green-600 flex-shrink-0" aria-hidden="true" />
-                {collapsed ? (
-                    <span className="flex-1 min-w-0 flex items-baseline gap-1 text-sm">
-                        <span className="font-semibold text-gray-900 truncate">{top.name}</span>
-                        <span className="text-green-700 font-semibold flex-shrink-0">· {topPct}%</span>
-                        {total > 1 && (
-                            <span className="text-xs text-gray-500 flex-shrink-0">+{total - 1} more</span>
-                        )}
-                    </span>
-                ) : (
-                    <h3 className="text-sm font-semibold text-gray-900 flex-1 min-w-0 truncate">
-                        Minors &amp; certificates you&apos;re close to
-                    </h3>
-                )}
-                {!collapsed && total > 1 && (
-                    <span className="text-xs text-gray-500 flex-shrink-0" aria-live="polite">
-                        {current + 1} / {total}
-                    </span>
-                )}
-                <ChevronDown
-                    aria-hidden="true"
-                    className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform ${collapsed ? "" : "rotate-180"
-                        }`}
-                />
-            </button>
+            <div className={`flex items-center gap-2 ${view.open ? "mb-2" : ""}`}>
+                <button
+                    type="button"
+                    onClick={toggleOpen}
+                    aria-expanded={view.open}
+                    aria-controls="program-recs-body"
+                    className="flex-1 min-w-0 flex items-center gap-2 text-left"
+                >
+                    <GraduationCap className="w-4 h-4 text-green-600 flex-shrink-0" aria-hidden="true" />
+                    <h3 className="text-sm font-semibold text-gray-900 flex-1 min-w-0 truncate">{title}</h3>
+                    {view.open && view.density === "expanded" && total > 1 && (
+                        <span className="text-xs text-gray-500 flex-shrink-0" aria-live="polite">
+                            {current + 1} / {total}
+                        </span>
+                    )}
+                </button>
 
-            {!collapsed && (
+                {view.open && (
+                    <button
+                        type="button"
+                        onClick={toggleDensity}
+                        data-tour="program-recommendations-view"
+                        aria-label={view.density === "compact" ? "Switch to card view" : "Switch to compact list"}
+                        title={view.density === "compact" ? "Card view" : "Compact list"}
+                        className="p-0.5 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0"
+                    >
+                        {view.density === "compact" ? (
+                            <GalleryHorizontal className="w-4 h-4" aria-hidden="true" />
+                        ) : (
+                            <List className="w-4 h-4" aria-hidden="true" />
+                        )}
+                    </button>
+                )}
+
+                {/* Decorative: the title button above is the accessible toggle. */}
+                <button
+                    type="button"
+                    onClick={toggleOpen}
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    className="p-0.5 flex-shrink-0"
+                >
+                    <ChevronDown
+                        className={`w-4 h-4 text-gray-500 transition-transform ${view.open ? "rotate-180" : ""}`}
+                    />
+                </button>
+            </div>
+
+            {!view.open ? null : view.density === "compact" ? (
+                <ul id="program-recs-body" className="space-y-0" aria-label="Recommendations">
+                    {recommendations.map((rec) => {
+                        const p = Math.max(0, Math.min(100, Math.round(rec.completion_percentage)));
+                        return (
+                            <li key={`${rec.education_level}-${rec.program_type}-${rec.name}`}>
+                                <button
+                                    type="button"
+                                    onClick={() => onSelect?.(rec)}
+                                    title={`${rec.name} (${typeLabel(rec, true).toLowerCase()})`}
+                                    className="w-full text-left rounded-lg px-2 py-0.5 hover:bg-gray-50 transition-colors"
+                                >
+                                    <div className="flex items-baseline justify-between gap-2">
+                                        <span className="text-sm font-semibold text-gray-900 truncate">{rec.name}</span>
+                                        <span className="text-sm font-semibold text-green-700 flex-shrink-0">{p}%</span>
+                                    </div>
+                                </button>
+                            </li>
+                        );
+                    })}
+                </ul>
+            ) : (
                 <div id="program-recs-body">
                     <div role="group" aria-roledescription="slide" aria-label={`${current + 1} of ${total}`}>
                         <button

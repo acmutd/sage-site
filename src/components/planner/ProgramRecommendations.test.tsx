@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import ProgramRecommendations, { COLLAPSED_STORAGE_KEY } from "./ProgramRecommendations";
+import ProgramRecommendations, { VIEW_STORAGE_KEY } from "./ProgramRecommendations";
 
 let mockUser: any;
 
@@ -30,6 +30,8 @@ const okResponse = (candidates: unknown[]) => ({
 beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    // Most tests exercise the card view, so start those open; "first visit" tests clear this.
+    localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify({ open: true, density: "expanded" }));
     vi.stubEnv("VITE_EVALUATOR_API", "http://localhost:3000/evaluator");
     mockUser = { uid: "test-user-123", getIdToken: vi.fn().mockResolvedValue("fresh-token") };
     global.fetch = vi.fn().mockResolvedValue(okResponse([])) as any;
@@ -252,64 +254,116 @@ describe("interaction", () => {
     });
 });
 
-describe("collapsing", () => {
+describe("view states", () => {
     const two = () =>
         okResponse([
             rec({ name: "Statistics", completion_percentage: 70 }),
             rec({ name: "Cyber Defense", program_type: "certificate", completion_percentage: 40 }),
         ]);
 
-    test("is expanded on the first visit", async () => {
+    const header = () => screen.getByRole("button", { name: /suggested/i });
+    const densityToggle = () => screen.getByRole("button", { name: /switch to/i });
+
+    test("first visit: open, card view", async () => {
+        localStorage.clear();
         global.fetch = vi.fn().mockResolvedValue(two()) as any;
         render(<ProgramRecommendations />);
         await screen.findByRole("progressbar");
-        expect(screen.getByRole("button", { name: /close to/i })).toHaveAttribute("aria-expanded", "true");
+        expect(header()).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("button", { name: /next recommendation/i })).toBeInTheDocument();
     });
 
-    test("collapsing hides the carousel and shows a teaser of the top pick", async () => {
+    test("collapsing leaves only the header", async () => {
         global.fetch = vi.fn().mockResolvedValue(two()) as any;
         render(<ProgramRecommendations />);
         await screen.findByRole("progressbar");
 
-        fireEvent.click(screen.getByRole("button", { name: /close to/i }));
+        fireEvent.click(header());
 
+        expect(header()).toHaveAttribute("aria-expanded", "false");
+        expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+        expect(screen.queryByRole("list")).not.toBeInTheDocument();
+        expect(screen.queryByText("Statistics")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /switch to/i })).not.toBeInTheDocument();
+    });
+
+    test("density toggle swaps card view for a one-line list of everything", async () => {
+        global.fetch = vi.fn().mockResolvedValue(two()) as any;
+        render(<ProgramRecommendations />);
+        await screen.findByRole("progressbar");
+        expect(screen.queryByText("Cyber Defense")).not.toBeInTheDocument();
+
+        fireEvent.click(densityToggle());
+
+        expect(screen.getAllByRole("listitem")).toHaveLength(2);
+        expect(screen.getByText("Statistics")).toBeInTheDocument();
+        expect(screen.getByText("Cyber Defense")).toBeInTheDocument();
+        expect(screen.getByText("70%")).toBeInTheDocument();
+        expect(screen.getByText("40%")).toBeInTheDocument();
         expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /next recommendation/i })).not.toBeInTheDocument();
-        const toggle = screen.getByRole("button", { expanded: false });
-        expect(toggle).toHaveTextContent("Statistics");
-        expect(toggle).toHaveTextContent("70%");
-        expect(toggle).toHaveTextContent("+1 more");
+        expect(screen.queryByText("1 / 2")).not.toBeInTheDocument();
+
+        // and back
+        fireEvent.click(densityToggle());
+        expect(screen.getAllByRole("progressbar")).toHaveLength(1);
     });
 
-    test("teaser omits '+N more' for a single recommendation", async () => {
-        global.fetch = vi.fn().mockResolvedValue(okResponse([rec()])) as any;
-        render(<ProgramRecommendations />);
+    test("clicking a compact row calls onSelect with that program", async () => {
+        const onSelect = vi.fn();
+        global.fetch = vi.fn().mockResolvedValue(two()) as any;
+        render(<ProgramRecommendations onSelect={onSelect} />);
         await screen.findByRole("progressbar");
-        fireEvent.click(screen.getByRole("button", { name: /close to/i }));
-        expect(screen.getByRole("button", { expanded: false })).not.toHaveTextContent(/more/);
+        fireEvent.click(densityToggle());
+
+        fireEvent.click(screen.getByRole("button", { name: /cyber defense/i }));
+        expect(onSelect).toHaveBeenCalledTimes(1);
+        expect(onSelect.mock.calls[0][0]).toMatchObject({ name: "Cyber Defense" });
     });
 
-    test("expanding again restores the carousel", async () => {
+    test("reopening returns to the density you had before closing", async () => {
         global.fetch = vi.fn().mockResolvedValue(two()) as any;
         render(<ProgramRecommendations />);
         await screen.findByRole("progressbar");
-        fireEvent.click(screen.getByRole("button", { name: /close to/i }));
-        fireEvent.click(screen.getByRole("button", { expanded: false }));
-        expect(await screen.findByRole("progressbar")).toBeInTheDocument();
+        fireEvent.click(densityToggle()); // compact
+        fireEvent.click(header()); // close
+        fireEvent.click(header()); // reopen
+        expect(screen.getAllByRole("listitem")).toHaveLength(2);
     });
 
-    test("remembers the choice across mounts", async () => {
+    test("the decorative chevron also toggles for mouse users", async () => {
+        global.fetch = vi.fn().mockResolvedValue(two()) as any;
+        const { container } = render(<ProgramRecommendations />);
+        await screen.findByRole("progressbar");
+        fireEvent.click(container.querySelector('button[aria-hidden="true"]')!);
+        expect(header()).toHaveAttribute("aria-expanded", "false");
+    });
+
+    test("remembers open state and density across mounts", async () => {
         global.fetch = vi.fn().mockResolvedValue(two()) as any;
         const first = render(<ProgramRecommendations />);
         await screen.findByRole("progressbar");
-        fireEvent.click(screen.getByRole("button", { name: /close to/i }));
-        expect(localStorage.getItem(COLLAPSED_STORAGE_KEY)).toBe("1");
+        fireEvent.click(densityToggle());
+        fireEvent.click(header());
+        expect(JSON.parse(localStorage.getItem(VIEW_STORAGE_KEY)!)).toEqual({
+            open: false,
+            density: "compact",
+        });
         first.unmount();
 
         render(<ProgramRecommendations />);
-        const toggle = await screen.findByRole("button", { expanded: false });
-        expect(toggle).toHaveTextContent("Statistics");
-        expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+        await waitFor(() => expect(screen.getByRole("button", { name: /suggested/i })).toBeInTheDocument());
+        expect(header()).toHaveAttribute("aria-expanded", "false");
+        fireEvent.click(header());
+        expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    });
+
+    test("ignores corrupt stored state", async () => {
+        localStorage.setItem(VIEW_STORAGE_KEY, "{not json");
+        global.fetch = vi.fn().mockResolvedValue(two()) as any;
+        render(<ProgramRecommendations />);
+        await screen.findByRole("progressbar");
+        expect(header()).toHaveAttribute("aria-expanded", "true");
     });
 
     test("still works when localStorage throws", async () => {
@@ -323,19 +377,47 @@ describe("collapsing", () => {
 
         render(<ProgramRecommendations />);
         await screen.findByRole("progressbar");
-        fireEvent.click(screen.getByRole("button", { name: /close to/i }));
-        expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+        fireEvent.click(densityToggle());
+        expect(screen.getAllByRole("listitem")).toHaveLength(2);
+        fireEvent.click(header());
+        expect(header()).toHaveAttribute("aria-expanded", "false");
 
         get.mockRestore();
         set.mockRestore();
     });
 
-    test("clicking the card while expanded still calls onSelect", async () => {
+    test("clicking the card while in card view still calls onSelect", async () => {
         const onSelect = vi.fn();
         global.fetch = vi.fn().mockResolvedValue(two()) as any;
         render(<ProgramRecommendations onSelect={onSelect} />);
         await screen.findByRole("progressbar");
         fireEvent.click(screen.getByRole("button", { name: /statistics.*credit/i }));
         expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("header title", () => {
+    const titleFor = async (recs: unknown[]) => {
+        global.fetch = vi.fn().mockResolvedValue(okResponse(recs)) as any;
+        render(<ProgramRecommendations />);
+        return (await screen.findByRole("button", { name: /suggested/i })).textContent;
+    };
+
+    test("mixed minors and certificates", async () => {
+        expect(
+            await titleFor([rec(), rec({ name: "Cyber", program_type: "certificate" })])
+        ).toContain("Suggested minors & certs");
+    });
+
+    test("grad students (certificates only) are not told about minors", async () => {
+        const t = await titleFor([
+            rec({ name: "Data Science", program_type: "certificate", education_level: "graduate" }),
+        ]);
+        expect(t).toContain("Suggested certificates");
+        expect(t).not.toMatch(/minor/i);
+    });
+
+    test("minors only", async () => {
+        expect(await titleFor([rec()])).toContain("Suggested minors");
     });
 });
