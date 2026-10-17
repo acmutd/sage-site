@@ -402,7 +402,6 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
 
       {/* Course Discovery banner */}
       <button
-        data-tour="course-discovery"
         onClick={onOpenDiscovery}
         className="w-full flex items-center gap-2.5 p-3 rounded-xl border border-dashed
           border-green-300 bg-green-50 hover:bg-green-100 transition-colors text-left mb-4 group"
@@ -448,6 +447,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
       )}
 
       <ProgramRecommendations
+          tourAnchors={false}
           refreshKey={transcriptData}
           onSelect={() => { onRestartOnboarding?.(); onClose(); }}
       />
