@@ -58,7 +58,7 @@ export interface DiscoveryCourse {
     catalog_year?: string;
     syllabus_url?: string;
     sections: DiscoverySection[];
-    top_professors?: { name: string; avg_gpa: number; rating: number }[];
+    top_professors?: { name: string; avg_gpa: number; rating: number | null; teaching?: boolean }[];
     prereqs_raw?: any;
 }
 
@@ -98,6 +98,15 @@ export interface CourseDiscoveryModalProps {
 
 const LIMIT = 20;
 const NO_CODES: string[] = [];
+
+export type SortKey = 'code' | 'grade' | 'rating' | 'best_prof';
+
+// Courses with no data for the chosen sort are listed last.
+const SORT_LABELS: Record<Exclude<SortKey, 'code'>, string> = {
+    grade: 'Best grades',
+    rating: 'Top rated',
+    best_prof: 'Best professor this term',
+};
 
 export type CourseStatus = 'completed' | 'planned' | 'staged';
 
@@ -601,12 +610,17 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                             const gc = gradeColor(gLabel);
                             return (
                                 <div key={p.name} className="flex items-center justify-between text-xs">
-                                    <span className="text-gray-700 font-medium truncate">{p.name}</span>
+                                    <span className="text-gray-700 font-medium truncate">
+                                        {p.name}
+                                        {p.teaching && (
+                                            <span className="ml-1.5 text-[9px] bg-green-50 text-green-600 px-1 py-0.5 rounded font-medium">This term</span>
+                                        )}
+                                    </span>
                                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                                         <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${gc.bg} ${gc.text}`}>
                                             {p.avg_gpa.toFixed(1)} GPA
                                         </span>
-                                        <StarRating rating={p.rating} count={0} />
+                                        <StarRating rating={p.rating ?? undefined} count={0} />
                                     </div>
                                 </div>
                             );
@@ -1194,6 +1208,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const [selectedStanding, setSelectedStanding] = useState<string[]>([]);
     const [hideCompleted, setHideCompleted] = useState(true);
     const [hideStaged, setHideStaged] = useState(true);
+    const [sort, setSort] = useState<SortKey>('code');
 
     const addStagedCourses = usePlannerStore(s => s.addStagedCourses);
     const searchRef = useRef<HTMLInputElement>(null);
@@ -1226,6 +1241,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         params.set('education_level', educationLevel);
         params.set('limit', String(newOffset === 0 ? 500 : LIMIT));
         params.set('offset', String(newOffset));
+        if (sort !== 'code') params.set('sort', sort);
 
         try {
             const res = await fetch(`${apiBaseUrl}/discover?${params}`, {
@@ -1258,13 +1274,15 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
             setTotal(data.total);
             setHasMore(data.has_more);
-            setOffset(newOffset + LIMIT);
+            // Advance by what was actually returned (the first page is 500, not LIMIT),
+            // otherwise "Load more" re-requests rows that are already loaded.
+            setOffset(newOffset + data.courses.length);
         } catch {
             setError('Failed to load courses. Please try again.');
         } finally {
             setLoading(false);
         }
-    }, [selectedSchools, selectedPrefixes, selectedCredits, selectedFrequency, coreOnly, educationLevel, apiBaseUrl, completedCourseCodes, plannedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding]);
+    }, [selectedSchools, selectedPrefixes, selectedCredits, selectedFrequency, coreOnly, educationLevel, apiBaseUrl, completedCourseCodes, plannedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding, sort]);
 
     useEffect(() => { searchRef.current?.focus(); }, []);
 
@@ -1277,7 +1295,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     // Fetch on filter change, reset to page 0
     useEffect(() => {
         fetchCourses(0);
-    }, [selectedSchools, selectedPrefixes, coreOnly, selectedDept, educationLevel, debouncedQuery, noAleks, noPerm, selectedStanding]);
+    }, [selectedSchools, selectedPrefixes, coreOnly, selectedDept, educationLevel, debouncedQuery, noAleks, noPerm, selectedStanding, sort]);
 
     const coursesWithInstructors = useMemo(() =>
         courses.map(c => ({
@@ -1382,8 +1400,14 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         if (!query.trim()) return results;
 
         const resultIds = new Set(results.map(c => c.course_id));
-        return fuse.search(query).map(r => r.item).filter(c => resultIds.has(c.course_id));
-    }, [query, searching, fuse, courses, statusOf, hideCompleted, hideStaged, selectedFrequency, selectedCredits]);
+        const matches = fuse.search(query).map(r => r.item).filter(c => resultIds.has(c.course_id));
+        // With an explicit sort, keep the server's order and use Fuse only to filter.
+        if (sort !== 'code') {
+            const matched = new Set(matches.map(c => c.course_id));
+            return results.filter(c => matched.has(c.course_id));
+        }
+        return matches;
+    }, [query, searching, sort, fuse, courses, statusOf, hideCompleted, hideStaged, selectedFrequency, selectedCredits]);
 
     const selectedCourse = courses.find(c => c.course_id === selectedCourseId) ?? null;
     const cartItem = selectedCourse ? cart.find(i => i.course.course_id === selectedCourse.course_id) : undefined;
@@ -1556,8 +1580,8 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                     </div>
 
                     {/* Search */}
-                    <div className="px-5 py-3 border-b border-gray-200 flex-shrink-0">
-                        <div className="relative">
+                    <div className="px-5 py-3 border-b border-gray-200 flex-shrink-0 flex items-center gap-2">
+                        <div className="relative flex-1">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
                                 ref={searchRef}
@@ -1577,6 +1601,20 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                     <X className="w-3.5 h-3.5" />
                                 </button>
                             )}
+                        </div>
+                        <div
+                            className="flex-shrink-0"
+                            title="Best professor ranks by the RateMyProfessors rating of whoever is teaching the course this term."
+                        >
+                            <FilterDropdown
+                                label="Sort"
+                                options={['grade', 'rating', 'best_prof']}
+                                optionLabels={SORT_LABELS}
+                                selected={sort === 'code' ? [] : [sort]}
+                                onChange={vals => setSort((vals[0] as SortKey) ?? 'code')}
+                                single
+                                allLabel="Sort: default"
+                            />
                         </div>
                     </div>
 
@@ -1791,6 +1829,9 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                         <span>
                                             {isClientFiltering ? `${filteredCourses.length} of ${total}` : total} course{total !== 1 ? 's' : ''} found
                                         </span>
+                                        {sort !== 'code' && (
+                                            <span>· {SORT_LABELS[sort]}, courses without data last</span>
+                                        )}
                                         {statusToggles}
                                         {loading && <Loader2 className="w-3 h-3 animate-spin opacity-40" />}
                                     </div>
