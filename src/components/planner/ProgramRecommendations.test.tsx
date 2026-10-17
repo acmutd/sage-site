@@ -421,3 +421,20 @@ describe("header title", () => {
         expect(await titleFor([rec()])).toContain("Suggested minors");
     });
 });
+
+describe("tutorial anchors", () => {
+    test("carries the tour anchors by default", async () => {
+        global.fetch = vi.fn().mockResolvedValue(okResponse([rec(), rec({ name: "B" })])) as any;
+        const { container } = render(<ProgramRecommendations />);
+        await screen.findByRole("progressbar");
+        expect(container.querySelector('[data-tour="program-recommendations"]')).not.toBeNull();
+        expect(container.querySelector('[data-tour="program-recommendations-view"]')).not.toBeNull();
+    });
+
+    test("tourAnchors={false} leaves no anchors for the tutorial to find", async () => {
+        global.fetch = vi.fn().mockResolvedValue(okResponse([rec(), rec({ name: "B" })])) as any;
+        const { container } = render(<ProgramRecommendations tourAnchors={false} />);
+        await screen.findByRole("progressbar");
+        expect(container.querySelector("[data-tour]")).toBeNull();
+    });
+});

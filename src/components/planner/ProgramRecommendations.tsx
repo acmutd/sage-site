@@ -18,6 +18,12 @@ interface ProgramRecommendationsProps {
     /** Called when the card is clicked, e.g. to open the Edit plans flow. */
     onSelect?: (program: ProgramRecommendation) => void;
     className?: string;
+    /**
+     * Put the tutorial's data-tour anchors on this copy. The card is mounted in both the desktop
+     * sidebar and the mobile drawer; pass false on the one that isn't the tour target so a plain
+     * selector can never land on the hidden copy.
+     */
+    tourAnchors?: boolean;
 }
 
 export const VIEW_STORAGE_KEY = "sage:program-recs-view";
@@ -83,6 +89,7 @@ const ProgramRecommendations: React.FC<ProgramRecommendationsProps> = ({
     refreshKey,
     onSelect,
     className = "",
+    tourAnchors = true,
 }) => {
     const { status, recommendations } = useProgramRecommendations(refreshKey);
     const [index, setIndex] = useState(0);
@@ -137,7 +144,7 @@ const ProgramRecommendations: React.FC<ProgramRecommendationsProps> = ({
         <section
             aria-label="Program recommendations"
             aria-roledescription="carousel"
-            data-tour="program-recommendations"
+            data-tour={tourAnchors ? "program-recommendations" : undefined}
             className={`mb-4 ${className}`}
         >
             <div className={`flex items-center gap-2 ${view.open ? "mb-2" : ""}`}>
@@ -161,7 +168,7 @@ const ProgramRecommendations: React.FC<ProgramRecommendationsProps> = ({
                     <button
                         type="button"
                         onClick={toggleDensity}
-                        data-tour="program-recommendations-view"
+                        data-tour={tourAnchors ? "program-recommendations-view" : undefined}
                         aria-label={view.density === "compact" ? "Switch to card view" : "Switch to compact list"}
                         title={view.density === "compact" ? "Card view" : "Compact list"}
                         className="p-0.5 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0"
