@@ -22,7 +22,8 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
     deleteConversation,
     renameConversation,
     setConversationId,
-    initialLoad
+    initialLoad,
+    hasLoaded
   } = useChatbot();
 
   const searchActive = useChatSearchActive();
@@ -197,11 +198,11 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
               </div>
             )}
           </div>
-        ) : (
+        ) : hasLoaded && !loading ? (
           <div>
             <small className="text-textsecondary">No conversations yet</small>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Rename Modal */}

@@ -71,7 +71,8 @@ const ChatBot: React.FC = () => {
     renameConversation,
     fetchConversation,
     setConversationId,
-    initialLoad
+    initialLoad,
+    hasLoaded
   } = useChatbot();
 
   // Which conversation `messages` currently holds, so a queued scroll knows
@@ -1060,12 +1061,12 @@ const ChatBot: React.FC = () => {
                             </li>
                           );
                         })
-                      ) : (
+                      ) : hasLoaded && !loading ? (
                         <li className="p-2">
                           <small className="text-textsecondary">No conversations available</small>
                         </li>
-                      )}
-                    </ul>
+                      ) : null}
+                      </ul>
                   )}
                 </div>
               )}

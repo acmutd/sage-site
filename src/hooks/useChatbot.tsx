@@ -52,7 +52,8 @@ export const useChatbot = () => {
     const [conversation_id, setConversationId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    
+    const [hasLoaded, setHasLoaded] = useState(false);
+
     const CRUD_API = import.meta.env.VITE_CRUD_API;
   
     const isCacheValid = (timestamp: number, cacheUserId: any, cacheValidFor: number): boolean => {
@@ -87,6 +88,7 @@ export const useChatbot = () => {
                 const cached = Array.isArray(cachedConversations.data) ? cachedConversations.data : [];
                 const sorted = sortConversationsByDate(normalize(cached));
                 setConversations(sorted);
+                setHasLoaded(true);
                 return;
               }
             }
@@ -134,6 +136,7 @@ export const useChatbot = () => {
             const sorted = sortConversationsByDate(normalize(cached));
             setConversations(sorted);
             setLoading(false);
+            setHasLoaded(true);
             return cached;
             }
         }
@@ -177,6 +180,7 @@ export const useChatbot = () => {
             console.error("Error fetching conversation:", err);
         } finally {
             setLoading(false);
+            setHasLoaded(true);
         }
     };
 
@@ -290,6 +294,7 @@ export const useChatbot = () => {
         deleteConversation,
         renameConversation,
         setConversationId,
-        initialLoad
+        initialLoad,
+        hasLoaded
     };
 };
