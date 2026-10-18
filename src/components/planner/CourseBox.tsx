@@ -623,7 +623,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                             {sec.days && <DayPips days={sec.days} />}
                                             <span className="text-[10px] text-gray-500">{firstTime(sec.times_12h)}</span>
                                         </div>
-                                        <RoomText value={sec.location} />
+                                        <RoomText value={sec.location} link />
                                     </div>
                                 );
                             })}
@@ -664,7 +664,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                             </div>
                                             <span className="text-[10px] text-gray-500">{firstTime(sec.times_12h)}</span>
                                         </div>
-                                        <RoomText value={sec.location} />
+                                        <RoomText value={sec.location} link />
                                         <div className="flex flex-col gap-1 items-end">
                                             {avg && (
                                                 <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${getGpaBadgeStyle(avg)}`}>
