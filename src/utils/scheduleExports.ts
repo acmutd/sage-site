@@ -1,4 +1,6 @@
 import jsPDF from 'jspdf';
+import { formatRoom } from './rooms';
+import { firstOf, firstTime } from './sections';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -23,7 +25,7 @@ const parseDays = (days: string): Set<string> =>
     new Set(days.split(',').map(d => d.trim()).filter(Boolean));
 
 const guessModality = (sec: any): string => {
-    const loc = (sec.location || '').toLowerCase();
+    const loc = firstOf(sec.location).toLowerCase();
     const type = (sec.activity_type || '').toLowerCase();
     if (loc === 'online' || type.includes('online') || type.includes('distance')) return 'online';
     if (type.includes('hybrid')) return 'hybrid';
@@ -125,7 +127,7 @@ const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Rec
             if (h > 20) {
                 ctx.font = '8px system-ui';
                 ctx.globalAlpha = 0.75;
-                ctx.fillText(sec.location?.replace('_', ' ') ?? '', x + 4, y + 21, w - 6);
+                ctx.fillText(formatRoom(sec.location, { empty: '' }), x + 4, y + 21, w - 6);
                 ctx.globalAlpha = 1;
             }
         });
@@ -203,7 +205,8 @@ export const exportAsICS = (selectedSectionObjects: any[], title: string, dateRa
         ics += `DTSTART:${toICSTime(t.start, mondayStr)}\r\n`;
         ics += `DTEND:${toICSTime(t.end, mondayStr)}\r\n`;
         ics += `RRULE:FREQ=WEEKLY;BYDAY=${rruleDays};UNTIL=${untilStr}\r\n`;
-        if (sec.location) ics += `LOCATION:${sec.location.replace('_', ' ')}\r\n`;
+        const locationText = formatRoom(sec.location, { empty: '' });
+        if (locationText) ics += `LOCATION:${locationText}\r\n`;
         if (sec.instructors) ics += `DESCRIPTION:Instructor: ${sec.instructors}\r\n`;
         ics += `END:VEVENT\r\n`;
     });
@@ -241,7 +244,7 @@ export const exportToGoogleCalendar = (selectedSectionObjects: any[], dateRange?
         const rrule = `RRULE:FREQ=WEEKLY;BYDAY=${rruleDays};UNTIL=${untilStr}`;
         const titleStr = `${sec.course_prefix?.toUpperCase()} ${sec.course_number} ${sec.section}`;
         const details = sec.instructors ? `Instructor: ${sec.instructors}` : '';
-        const location = sec.location?.replace('_', ' ') || '';
+        const location = formatRoom(sec.location, { empty: '' });
 
         const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(titleStr)}&dates=${encodeURIComponent(dates)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}&recur=${encodeURIComponent(rrule)}`;
         window.open(url, '_blank');
@@ -257,8 +260,8 @@ export const exportAsCSV = (selectedSectionObjects: any[], title: string) => {
             sec.class_number ?? '',
             sec.instructors ?? '',
             sec.days ?? '',
-            sec.times_12h?.split(';')[0].trim() ?? '',
-            sec.location?.replace('_', ' ') ?? '',
+            firstTime(sec.times_12h),
+            formatRoom(sec.location, { empty: '' }),
             guessModality(sec),
         ]);
     });

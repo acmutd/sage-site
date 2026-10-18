@@ -5,6 +5,8 @@ import { Course } from '@/types/course';
 import ReactDOM from 'react-dom';
 import SemesterDatePickerPopover from './SemesterDatePickPopover';
 import { determineStudentType, getGPAState } from '@/utils/studentInfo';
+import { formatRoom } from '@/utils/rooms';
+import { firstOf } from '@/utils/sections';
 
 interface Break {
     id: string;
@@ -232,7 +234,7 @@ const SORT_OPTIONS = [
 ];
 
 const guessModality = (sec: any): 'online' | 'hybrid' | 'inperson' => {
-    const loc = (sec.location || '').toLowerCase();
+    const loc = firstOf(sec.location).toLowerCase();
     const type = (sec.activity_type || '').toLowerCase();
     if (loc === 'online' || type.includes('online') || type.includes('distance')) return 'online';
     if (type.includes('hybrid')) return 'hybrid';
@@ -883,7 +885,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                             <span className="text-gray-500">{getTime(sec.times_12h)}</span>
                                                                             <span className="text-gray-300">·</span>
                                                                             <span className={`font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
-                                                                                {sec.location?.replace('_', ' ')}
+                                                                                {formatRoom(sec.location, { empty: '' })}
                                                                             </span>
                                                                             <span className={`text-[10px] font-medium
                                                                                 ${modality === 'online' ? 'text-green-500' : modality === 'hybrid' ? 'text-blue-500' : 'text-gray-400'}`}>
@@ -932,7 +934,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                         </div>
                                                                         <div>
                                                                             <div className={`truncate font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
-                                                                                {sec.location?.replace('_', ' ')}
+                                                                                {formatRoom(sec.location, { empty: '' })}
                                                                             </div>
                                                                             <div className={`text-[10px] mt-0.5 font-medium
                                                                                 ${modality === 'online' ? 'text-green-500' : modality === 'hybrid' ? 'text-blue-500' : 'text-gray-400'}`}>
@@ -1063,7 +1065,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                             {height > 18 && (
                                                                 <div style={{ color: hasConflict ? '#991b1b' : color.text }}
                                                                     className="text-[10px] opacity-75 truncate">
-                                                                    {sec.location?.replace('_', ' ')}
+                                                                    {formatRoom(sec.location, { empty: '' })}
                                                                 </div>
                                                             )}
                                                         </div>
