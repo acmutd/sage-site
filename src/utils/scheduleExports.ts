@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import { formatRoom } from './rooms';
 import { firstOf, firstTime } from './sections';
+import { scheduleTransitions } from './walkTime';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -58,7 +59,7 @@ const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Rec
     ctx.fillRect(0, 0, realW, realH);
 
     const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const DAY_SHORT: Record<string, string> = { Monday:'Mon', Tuesday:'Tue', Wednesday:'Wed', Thursday:'Thu', Friday:'Fri', Saturday:'Sat' };
+    const DAY_SHORT: Record<string, string> = { Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat' };
 
     const timeToY = (mins: number) => HEADER_H + (mins - GRID_START) * PX_PER_MIN;
     const dayToX = (i: number) => GUTTER + i * (DAY_W / SCALE);
@@ -94,6 +95,41 @@ const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Rec
         ctx.strokeStyle = '#d1d5db';
         ctx.lineWidth = 0.75;
         ctx.beginPath(); ctx.moveTo(dayToX(i), HEADER_H); ctx.lineTo(dayToX(i), realH); ctx.stroke();
+    });
+
+
+    scheduleTransitions(selectedSectionObjects).forEach(tr => {
+        const di = DAYS.indexOf(tr.day);
+        if (di === -1 || tr.fromEnd >= GRID_END || tr.toStart <= GRID_START) return;
+        const x = dayToX(di) + 1;
+        const y = timeToY(Math.max(tr.fromEnd, GRID_START));
+        const w = DAY_W / SCALE - 2;
+        const h = Math.min(tr.walkMinutes, tr.gapMinutes) * PX_PER_MIN;
+        const stripe = tr.tight ? '#fde68a' : '#e5e7eb';
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, w, h);
+        ctx.clip();
+        ctx.strokeStyle = stripe;
+        ctx.lineWidth = 2;
+        for (let k = -h; k < w + h; k += 6) {
+            ctx.beginPath(); ctx.moveTo(x + k, y + h); ctx.lineTo(x + k + h, y); ctx.stroke();
+        }
+        ctx.restore();
+
+        ctx.strokeStyle = tr.tight ? '#d97706' : '#9ca3af';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 2]);
+        ctx.beginPath(); ctx.moveTo(x + 1, y); ctx.lineTo(x + 1, y + h); ctx.stroke();
+        ctx.setLineDash([]);
+
+        if (h >= 10) {
+            ctx.fillStyle = tr.tight ? '#92400e' : '#6b7280';
+            ctx.font = '7px system-ui';
+            ctx.textAlign = 'left';
+            ctx.fillText(`~${tr.walkMinutes} min walk`, x + 4, y + 7.5, w - 6);
+        }
     });
 
     selectedSectionObjects.forEach((sec: any) => {
