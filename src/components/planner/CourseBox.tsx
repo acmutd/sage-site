@@ -713,33 +713,44 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 </ProfessorGroup>
                             ))}
                         </div>
+
+                        {/* Full breakdown system */}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setShowModal(true); }}
+                            className="flex items-center gap-1 mt-2 text-[11px] font-medium text-green-500 hover:text-green-600 transition-colors"
+                        >
+                            <Maximize2 className="w-3 h-3" />
+                            {sections.length === 1
+                                ? "View full grade breakdown"
+                                : `View all ${sections.length} sections + full grade history`}
+                        </button>
                     </div>
                 )}
             </div>
         </div>
     );
 
-    {
-        showNameTooltip && course.course_name && ReactDOM.createPortal(
-            <div
-                style={{
-                    position: "fixed",
-                    left: nameTooltipPos.x,
-                    top: nameTooltipPos.y,
-                    transform: "translateY(-100%)",
-                    zIndex: 99999,
-                    pointerEvents: "none",
-                }}
-                className="px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-md whitespace-nowrap"
-            >
-                {course.course_name}
-            </div>,
-            document.body
-        )
-    }
-
     return (
         <>
+            {
+                showNameTooltip && course.course_name && ReactDOM.createPortal(
+                    <div
+                        style={{
+                            position: "fixed",
+                            left: nameTooltipPos.x,
+                            top: nameTooltipPos.y,
+                            transform: "translateY(-100%)",
+                            zIndex: 99999,
+                            pointerEvents: "none",
+                        }}
+                        className="px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-md whitespace-nowrap"
+                    >
+                        {course.course_name}
+                    </div>,
+                    document.body
+                )
+            }
+
             <div ref={boxRef} className={`${inSidebar ? "relative" : "group relative"} ${flipLeft ? "near-right-edge" : ""}`}>
                 <div
                     ref={dragRef}
@@ -781,7 +792,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                             className="text-sm font-medium text-gray-700 ml-1"
                             onMouseEnter={(e) => {
                                 e.stopPropagation();
-                                handleCodeMouseEnter
+                                handleCodeMouseEnter();
                             }
                             }
                             onMouseLeave={handleCodeMouseLeave}

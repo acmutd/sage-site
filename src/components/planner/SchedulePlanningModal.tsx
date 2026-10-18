@@ -385,7 +385,6 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
     const filterAndSort = (sections: any[], courseCode: string) => {
         const profFilter = professorFilters[courseCode] ?? 'all';
-
         const gradeToPoints = (grade: string | null): number => {
             if (!grade) return -1;
             return GRADE_POINTS[grade] ?? -1;

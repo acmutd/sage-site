@@ -1435,8 +1435,6 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     }).length, [courses, searching, statusOf, hideCompleted, hideStaged]);
 
     const filteredCourses = useMemo(() => {
-        // Browsing hides courses you've already dealt with. Searching never does: if you typed
-        // "CS 2305" you want to see it, with a badge that says why you can't add it.
         let results = searching
             ? courses
             : courses.filter(c => {
@@ -1447,14 +1445,11 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
         if (selectedCredits.length) {
             const mapped = selectedCredits.map(c => c === '4+' ? '4' : c.toLowerCase());
-            console.log('filtering credits, mapped:', mapped);
-            console.log('sample credits values:', results.slice(0, 5).map(c => ({ code: c.course_code, credits: c.credits, type: typeof c.credits })));
             results = results.filter(c => {
                 const credit = String(c.credits);
                 if (mapped.includes('4')) return typeof c.credits === 'number' && c.credits >= 4;
                 return mapped.includes(credit);
             });
-            console.log('after filter:', results.length);
         }
 
         if (selectedFrequency.length) {
@@ -1545,7 +1540,6 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     };
 
     const handleSchoolChange = (schools: string[]) => {
-        console.log('school changed', schools);
         setSelectedSchools(schools);
         setSelectedDept('All');
         setSelectedPrefixes([]);

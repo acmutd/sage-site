@@ -922,10 +922,6 @@ const ChatBot: React.FC = () => {
       ) : (
         <>
           {/* Chat History Bar */}
-          {/* shrink-0 and min-w-0 make the explicit width authoritative. As a flex
-              item this defaulted to shrink-1 with min-width:auto, so the sibling's
-              w-full squeezed it to its own min-content, and swapping the
-              conversation list for search results resized the sidebar. */}
           <aside ref={sidebarRef} aria-label="Conversation history" data-tour="sidebar" className={`${sidebarCollapsed ? "w-[5.25rem]" : ""} relative h-full flex flex-col shrink-0 min-w-0 gap-4 ${isResizing ? "transition-none" : "transition-all duration-100"}`} style={!sidebarCollapsed ? { width: chatSidebarWidth } : undefined}>
             <div
               className={`${sidebarCollapsed ? "rounded-md px-4 cursor-pointer hover:bg-[#F5F7F5]" : "rounded-lg px-6"

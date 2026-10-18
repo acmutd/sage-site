@@ -27,9 +27,6 @@ const waitForVisible = async (selector: string, timeoutMs: number) => {
 };
 
 export function usePlannerTutorial({ scrollContainerRef, user, onForceExpandSidebar, hasSeenTutorial }: UsePlannerTutorialOptions) {
-    onHighlightStarted: () => {
-        onForceExpandSidebar?.();
-    }
     const [driverObj, setDriverObj] = useState<any>(null);
     const dropdownWasOpenedRef = useRef(false);
     const allStepsRef = useRef<DriveStep[]>([]);
@@ -246,7 +243,7 @@ export function usePlannerTutorial({ scrollContainerRef, user, onForceExpandSide
                 element: '[data-tour="save-plan"]',
                 popover: {
                     title: 'Save Plan',
-                    description: 'Once you\'r happy with your plan, you can save it. You\'ll also be reminded to save by a small yellow dot or if you close the tab without saving',
+                    description: 'Once you\'re happy with your plan, you can save it. You\'ll also be reminded to save by a small yellow dot or if you close the tab without saving',
                     side: "top"
                 },
                 onDeselected: () => {
@@ -272,6 +269,9 @@ export function usePlannerTutorial({ scrollContainerRef, user, onForceExpandSide
             showProgress: true,
             showButtons: ['next', 'previous', 'close'],
             steps: allSteps,
+            onHighlightStarted: (element) => {
+                if (element?.closest('[data-tour="sidebar"]')) onForceExpandSidebar?.();
+            },
             onDestroyed: async () => {
                 localStorage.setItem('hasSeenPlannerTutorial', 'true');
                 dropdownWasOpenedRef.current = false;
