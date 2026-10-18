@@ -564,8 +564,9 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             return {
                 key,
                 fullName: key,
-                label: key.includes(",") ? `${first} +` : (key === "TBA" ? "Staff / TBA" : first),
-                sections: secs,
+                label: key.includes(",")
+                    ? `${first} +${key.split(",").filter(s => s.trim()).length - 1}`
+                    : (key === "TBA" ? "Staff / TBA" : first), sections: secs,
                 instData,
                 avg: instData ? getAvgLetter(instData.aggregate?.grades) : null,
                 rmp: instData?.instructor?.rmp?.quality_rating ?? null,
