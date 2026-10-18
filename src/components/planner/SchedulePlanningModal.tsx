@@ -6,6 +6,7 @@ import ReactDOM from 'react-dom';
 import SemesterDatePickerPopover from './SemesterDatePickPopover';
 import { determineStudentType, getGPAState } from '@/utils/studentInfo';
 import { formatRoom } from '@/utils/rooms';
+import { scheduleTransitions, sectionLabel } from '@/utils/walkTime';
 import { firstOf } from '@/utils/sections';
 
 interface Break {
@@ -457,6 +458,12 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
         return pairs;
     }, [selectedSectionObjects, classPaddingMinutes]);
 
+    // Back-to-back classes where the estimated walk is longer than the gap between them.
+    const tightTransitions = useMemo(
+        () => scheduleTransitions(selectedSectionObjects as any[]).filter(t => t.tight),
+        [selectedSectionObjects]
+    );
+
     const conflictingKeys = useMemo(() => {
         const keys = new Set<string>();
         conflictPairs.forEach(([a, b]) => {
@@ -664,6 +671,24 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                             ) : (
                                 <><CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />All sections selected — no conflicts!</>
                             )}
+                        </div>
+                    )}
+
+                    {/* Walking time between back-to-back classes (an estimate from building locations) */}
+                    {tightTransitions.length > 0 && (
+                        <div className="px-5 py-2 text-xs border-b flex-shrink-0 bg-amber-50 border-amber-200 text-amber-800">
+                            <div className="flex items-center gap-2 font-medium">
+                                <TriangleAlert className="w-3.5 h-3.5 flex-shrink-0" />
+                                {tightTransitions.length} tight transition{tightTransitions.length > 1 ? 's' : ''} between classes (estimated walk is longer than the break)
+                            </div>
+                            <ul className="mt-1 ml-5 list-disc space-y-0.5">
+                                {tightTransitions.map((t, i) => (
+                                    <li key={i}>
+                                        {t.day.slice(0, 3)}: {sectionLabel(t.from)} ({t.fromRoom.label}) → {sectionLabel(t.to)} ({t.toRoom.label}):
+                                        {' '}~{t.walkMinutes} min walk, {t.gapMinutes} min between classes
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
 
