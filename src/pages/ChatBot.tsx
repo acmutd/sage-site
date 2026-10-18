@@ -668,6 +668,10 @@ const ChatBot: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moreOptionsOpenId]);
 
+  const MENU_WIDTH = 224;
+  const MENU_HEIGHT = 100;
+  const GAP = 8;
+
   function updateScrollPosition() {
     if (!conversations?.length) return;
     const idx = conversations.findIndex((c) => c.conversation_id === moreOptionsOpenId);
@@ -678,7 +682,14 @@ const ChatBot: React.FC = () => {
     const activeContextRef = contextButtonRefs.current[idx];
     if (activeContextRef) {
       const rect = activeContextRef.getBoundingClientRect();
-      setContextMenuPosition({ top: rect.top, left: rect.left });
+
+      const fitsRight = rect.right + GAP + MENU_WIDTH <= window.innerWidth - GAP;
+      const left = fitsRight
+        ? rect.right + GAP
+        : Math.max(GAP, rect.left - GAP - MENU_WIDTH);
+      const top = Math.max(GAP, Math.min(rect.top, window.innerHeight - MENU_HEIGHT - GAP));
+
+      setContextMenuPosition({ top, left });
       setShowContextMenu(true);
     } else {
       setShowContextMenu(false);
@@ -1019,8 +1030,7 @@ const ChatBot: React.FC = () => {
                                     role="menu"
                                     aria-label={`Options for ${displayName}`}
                                     onKeyDown={handleContextMenuKeyDown}
-                                    className="fixed translate-x-[160%] translate-y-[40%] z-[9999] w-50 bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden transition-opacity duration-150"
-                                    style={{ top: contextMenuPosition.top, left: contextMenuPosition.left }}
+                                    className="fixed z-[9999] w-56 whitespace-nowrap bg-bglight border border-border shadow-lg rounded-md text-sm overflow-hidden transition-opacity duration-150"                                    style={{ top: contextMenuPosition.top, left: contextMenuPosition.left }}
                                     onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
                                     onMouseEnter={(e) => { e.stopPropagation(); e.preventDefault(); }}
                                   >
