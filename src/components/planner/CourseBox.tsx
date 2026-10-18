@@ -1,13 +1,11 @@
-import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2, CirclePlus, TriangleAlert, Maximize2, X } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle, GripVertical, Trash2, CirclePlus, TriangleAlert, Maximize2, X, ChevronDown } from 'lucide-react';
 import { useDrag } from "react-dnd";
 import { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { Course } from '@/types/course';
 import { Warning } from '@/types/warning';
 import SectionCard from './utdgrades/sectioncard';
-import { RoomText } from './RoomLabel';
 import { getRMPColor } from '@/utils/grades';
-import { firstTime } from '@/utils/sections';
 
 interface CourseBoxProps {
     course: Course;
@@ -146,6 +144,78 @@ const WarningSection: React.FC<{ warnings: Warning[] }> = ({ warnings }) => {
     );
 };
 
+
+const isLightHex = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return (r * 0.299 + g * 0.587 + b * 0.114) > 180;
+};
+
+const RmpBadge: React.FC<{ rmp: number | string }> = ({ rmp }) => {
+    const color = getRMPColor(rmp as any);
+    const textColor = isLightHex(color) ? '#854d0e' : color;
+    return (
+        <span
+            className="text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap"
+            style={{
+                color: textColor,
+                backgroundColor: `${color}18`,
+                border: `1px solid ${color}30`,
+            }}
+        >
+            {rmp} ★
+        </span>
+    );
+};
+
+interface ProfessorGroupProps {
+    name: string;
+    fullName?: string;
+    sectionCount: number;
+    avg: string | null;
+    avgClass: string;
+    rmp: number | string | null;
+    defaultOpen?: boolean;
+    children: React.ReactNode;
+}
+
+// Collapsible header for one professor. The grade average and RMP rating live on the
+// header so the grade data is visible even while the sections underneath are collapsed.
+const ProfessorGroup: React.FC<ProfessorGroupProps> = ({
+    name, fullName, sectionCount, avg, avgClass, rmp, defaultOpen = false, children,
+}) => {
+    const [open, setOpen] = useState(defaultOpen);
+    return (
+        <div className="border border-gray-100 rounded-md overflow-hidden">
+            <button
+                type="button"
+                aria-expanded={open}
+                onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+                className="w-full flex items-center justify-between gap-2 px-2.5 py-2 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+            >
+                <div className="min-w-0">
+                    <div className="text-xs font-semibold text-gray-800 truncate" title={fullName ?? name}>
+                        {name}
+                    </div>
+                    <div className="text-[10px] text-gray-400">
+                        {sectionCount} section{sectionCount !== 1 ? "s" : ""}
+                    </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {avg && (
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${avgClass}`}>
+                            {avg} avg
+                        </span>
+                    )}
+                    {rmp != null && <RmpBadge rmp={rmp} />}
+                    <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+                </div>
+            </button>
+            {open && <div className="px-2.5 pb-1">{children}</div>}
+        </div>
+    );
+};
 
 const CourseBox: React.FC<CourseBoxProps> = ({
     course,
@@ -481,6 +551,30 @@ const CourseBox: React.FC<CourseBoxProps> = ({
         }) ?? null;
     };
 
+    // Group sections by instructor (co-taught sections group under the full instructor string).
+    // Map preserves first-seen order, so the existing section ordering is kept.
+    const professorGroups = (() => {
+        const map = new Map<string, any[]>();
+        for (const sec of sections) {
+            const key = getInstructorString(sec.instructors).trim() || "TBA";
+            if (!map.has(key)) map.set(key, []);
+            map.get(key)!.push(sec);
+        }
+        return [...map.entries()].map(([key, secs]) => {
+            const instData = key === "TBA" ? null : getInstructorGrades(key);
+            const first = key.split(",")[0].trim();
+            return {
+                key,
+                fullName: key,
+                label: key.includes(",") ? `${first} +` : (key === "TBA" ? "Staff / TBA" : first),
+                sections: secs,
+                instData,
+                avg: instData ? getAvgLetter(instData.aggregate?.grades) : null,
+                rmp: instData?.instructor?.rmp?.quality_rating ?? null,
+            };
+        });
+    })();
+
     const tooltipContent = (
         <div className={`
             ${(!canHover || isNarrowSidebar)
@@ -546,7 +640,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         </span>
                     </div>
                 )}
-                
+
                 {warnings && warnings.length > 0 && (
                     <WarningSection warnings={warnings} />
                 )}
@@ -570,145 +664,55 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
                 {sections.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-gray-300">
-                        {/* Mobile: stacked cards */}
-                        <div className="sm:hidden space-y-2">
-                            {sections.map((sec: any, i: number) => {
-                                const instData = getInstructorGrades(getInstructorString(sec.instructors));
-                                const avg = instData ? getAvgLetter(instData.aggregate?.grades) : null;
-                                const rmp = instData?.instructor?.rmp?.quality_rating ?? null;
-                                return (
-                                    <div key={i} className="border-t border-gray-100 pt-2 space-y-1">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <div className="text-xs font-bold tracking-wide">
-                                                    {sec.course_prefix?.toUpperCase() ?? ""} {sec.course_number ?? ""}.{sec.section?.trim() ?? ""}
-                                                </div>
-                                                <div className="text-[10px] text-gray-400">#{sec.class_number}</div>
-                                            </div>
-                                            <div className="flex flex-col gap-1 items-end">
-                                                {avg && (
-                                                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${getGpaBadgeStyle(avg)}`}>
-                                                        {avg} avg
-                                                    </span>
-                                                )}
-                                                {rmp && (() => {
-                                                    const color = getRMPColor(rmp);
-                                                    const isLight = (hex: string) => {
-                                                        const r = parseInt(hex.slice(1, 3), 16);
-                                                        const g = parseInt(hex.slice(3, 5), 16);
-                                                        const b = parseInt(hex.slice(5, 7), 16);
-                                                        return (r * 0.299 + g * 0.587 + b * 0.114) > 180;
-                                                    };
-                                                    const textColor = isLight(color) ? '#854d0e' : color;
-                                                    return (
-                                                        <span
-                                                            className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                                                            style={{
-                                                                color: textColor,
-                                                                backgroundColor: `${color}18`,
-                                                                border: `1px solid ${color}30`,
-                                                            }}
-                                                        >
-                                                            {rmp} ★
-                                                        </span>
-                                                    );
-                                                })()}
-                                            </div>
-                                        </div>
-                                        <div className="text-xs font-semibold text-gray-800">
-                                            {(() => { const s = getInstructorString(sec.instructors); const first = s.split(",")[0].trim(); return s.includes(",") ? `${first} +` : first; })()}
-                                        </div>
-                                        <div className="text-[10px] text-gray-400">{sec.activity_type}</div>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            {sec.days && <DayPips days={sec.days} />}
-                                            <span className="text-[10px] text-gray-500">{firstTime(sec.times_12h)}</span>
-                                        </div>
-                                        <RoomText value={sec.location} link />
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Desktop: scrollable grid */}
-                        <div className="hidden sm:block overflow-x-auto scrollbar-hide">
-                            <div className="grid py-1 min-w-[480px]" style={{ gridTemplateColumns: "1fr 1.2fr 1.4fr 0.8fr 0.6fr" }}>
-                                {["Section", "Instructor", "Schedule", "Room", "Grades"].map((h, i) => (
-                                    <span key={h} className="text-[9px] font-bold tracking-widest uppercase text-gray-400"
-                                        style={{ textAlign: i === 4 ? "right" : "left" }}>
-                                        {h}
-                                    </span>
-                                ))}
-                            </div>
-                            {sections.map((sec: any, i: number) => {
-                                const instData = getInstructorGrades(sec.instructors);
-                                const avg = instData ? getAvgLetter(instData.aggregate?.grades) : null;
-                                const rmp = instData?.instructor?.rmp?.quality_rating ?? null;
-                                return (
-                                    <div key={i} className="grid py-2 items-center border-t border-gray-100 min-w-[480px]"
-                                        style={{ gridTemplateColumns: "1fr 1.2fr 1.4fr 0.8fr 0.6fr" }}>
-                                        <div>
-                                            <div className="text-xs font-bold tracking-wide">
-                                                {sec.course_prefix?.toUpperCase() ?? ""} {sec.course_number ?? ""}.{sec.section?.trim() ?? ""}
-                                            </div>
-                                            <div className="text-[10px] text-gray-400">#{sec.class_number}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs font-semibold text-gray-800 truncate max-w-[90px]" title={sec.instructors}>
-                                                {(() => { const s = getInstructorString(sec.instructors); const first = s.split(",")[0].trim(); return s.includes(",") ? `${first} +` : first; })()}
-                                            </div>
-                                            <div className="text-[10px] text-gray-400">{sec.activity_type}</div>
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <div className="flex gap-1">
-                                                {sec.days && <DayPips days={sec.days} />}
-                                            </div>
-                                            <span className="text-[10px] text-gray-500">{firstTime(sec.times_12h)}</span>
-                                        </div>
-                                        <RoomText value={sec.location} link />
-                                        <div className="flex flex-col gap-1 items-end">
-                                            {avg && (
-                                                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${getGpaBadgeStyle(avg)}`}>
-                                                    {avg} avg
-                                                </span>
-                                            )}
-                                            {rmp && (() => {
-                                                const color = getRMPColor(rmp);
-                                                const isLight = (hex: string) => {
-                                                    const r = parseInt(hex.slice(1, 3), 16);
-                                                    const g = parseInt(hex.slice(3, 5), 16);
-                                                    const b = parseInt(hex.slice(5, 7), 16);
-                                                    return (r * 0.299 + g * 0.587 + b * 0.114) > 180;
-                                                };
-                                                const textColor = isLight(color) ? '#854d0e' : color;
-                                                return (
-                                                    <span
-                                                        className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                                                        style={{
-                                                            color: textColor,
-                                                            backgroundColor: `${color}18`,
-                                                            border: `1px solid ${color}30`,
-                                                        }}
-                                                    >
-                                                        {rmp} ★
-                                                    </span>
-                                                );
-                                            })()}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Full breakdown system */}
+                        {/* Full breakdown entry point: intentionally first so the grade history is impossible to miss */}
                         <button
                             onClick={(e) => { e.stopPropagation(); setShowModal(true); }}
-                            className="flex items-center gap-1 mt-2 text-[11px] font-medium text-green-500 hover:text-green-600 transition-colors"
+                            className="w-full flex items-center justify-center gap-1.5 mb-2 px-3 py-1.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-semibold shadow-sm transition-colors"
                         >
-                            <Maximize2 className="w-3 h-3" />
+                            <Maximize2 className="w-3.5 h-3.5" />
                             {sections.length === 1
                                 ? "View full grade breakdown"
                                 : `View all ${sections.length} sections + full grade history`}
                         </button>
+
+                        <div className="space-y-1.5">
+                            {professorGroups.map((group) => (
+                                <ProfessorGroup
+                                    key={group.key}
+                                    name={group.label}
+                                    fullName={group.fullName}
+                                    sectionCount={group.sections.length}
+                                    avg={group.avg}
+                                    avgClass={group.avg ? getGpaBadgeStyle(group.avg) : ""}
+                                    rmp={group.rmp}
+                                    defaultOpen={professorGroups.length === 1 || sections.length <= 4}
+                                >
+                                    {group.sections.map((sec: any, i: number) => (
+                                        <div
+                                            key={i}
+                                            className="grid items-center gap-2 py-2 border-t border-gray-100"
+                                            style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.4fr) minmax(0,0.8fr)" }}
+                                        >
+                                            <div className="min-w-0">
+                                                <div className="text-xs font-bold tracking-wide">
+                                                    {sec.course_prefix?.toUpperCase() ?? ""} {sec.course_number ?? ""}.{sec.section?.trim() ?? ""}
+                                                </div>
+                                                <div className="text-[10px] text-gray-400">
+                                                    #{sec.class_number} · {sec.activity_type}
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1 min-w-0">
+                                                {sec.days && <DayPips days={sec.days} />}
+                                                <span className="text-[10px] text-gray-500">{sec.times_12h?.split(";")[0].trim()}</span>
+                                            </div>
+                                            <div className={`text-xs text-right ${sec.location === "Online" ? "text-[#5AED86] font-semibold" : "text-gray-600"}`}>
+                                                {sec.location?.replace("_", " ") ?? "TBA"}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </ProfessorGroup>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
@@ -918,17 +922,29 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                         </div>
 
                         <div className="flex-1 overflow-y-auto overflow-x-auto p-6 space-y-3">
-                            <div className="overflow-x-auto">
-                                {sections.map((sec: any, i: number) => {
-                                    const instData = getInstructorGrades(getInstructorString(sec.instructors));
-                                    return (
-                                        <SectionCard
-                                            key={i}
-                                            sec={sec}
-                                            instData={instData ?? null}
-                                        />
-                                    );
-                                })}
+                            <div className="space-y-2">
+                                {professorGroups.map((group) => (
+                                    <ProfessorGroup
+                                        key={group.key}
+                                        name={group.label}
+                                        fullName={group.fullName}
+                                        sectionCount={group.sections.length}
+                                        avg={group.avg}
+                                        avgClass={group.avg ? getGpaBadgeStyle(group.avg) : ""}
+                                        rmp={group.rmp}
+                                        defaultOpen={professorGroups.length === 1}
+                                    >
+                                        <div className="overflow-x-auto">
+                                            {group.sections.map((sec: any, i: number) => (
+                                                <SectionCard
+                                                    key={i}
+                                                    sec={sec}
+                                                    instData={group.instData ?? null}
+                                                />
+                                            ))}
+                                        </div>
+                                    </ProfessorGroup>
+                                ))}
                             </div>
                         </div>
                     </div>
