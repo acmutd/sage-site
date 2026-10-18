@@ -663,7 +663,6 @@ const CourseBox: React.FC<CourseBoxProps> = ({
 
                 {sections.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-gray-300">
-                        {/* Full breakdown entry point: intentionally first so the grade history is impossible to miss */}
                         <button
                             onClick={(e) => { e.stopPropagation(); setShowModal(true); }}
                             className="w-full flex items-center justify-center gap-1.5 mb-2 px-3 py-1.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-semibold shadow-sm transition-colors"
@@ -713,17 +712,6 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 </ProfessorGroup>
                             ))}
                         </div>
-
-                        {/* Full breakdown system */}
-                        <button
-                            onClick={(e) => { e.stopPropagation(); setShowModal(true); }}
-                            className="flex items-center gap-1 mt-2 text-[11px] font-medium text-green-500 hover:text-green-600 transition-colors"
-                        >
-                            <Maximize2 className="w-3 h-3" />
-                            {sections.length === 1
-                                ? "View full grade breakdown"
-                                : `View all ${sections.length} sections + full grade history`}
-                        </button>
                     </div>
                 )}
             </div>
