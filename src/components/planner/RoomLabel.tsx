@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { MapPin } from "lucide-react";
-import { campusPoint, concept3dDirectionsUrl, PARKING_STRUCTURE_4 } from "@/utils/campusMap";
+import { campusPoint, concept3dDestinationUrl } from "@/utils/campusMap";
 import { directionsUrl, floorLabel, mapsUrl, parseRooms, type ParsedRoom } from "@/utils/rooms";
 import { RoomMapDialog } from "./RoomMapDialog";
 
@@ -39,7 +39,7 @@ export function RoomText({
             <div className="truncate">
                 {target ? (
                     <a
-                        href={concept3dDirectionsUrl(PARKING_STRUCTURE_4, target)}
+                        href={concept3dDestinationUrl(target)}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
@@ -90,19 +90,19 @@ export function RoomDetails({ value }: { value: unknown }) {
                                 {where && <span className="font-normal text-muted-foreground"> · {where}</span>}
                             </p>
                             {(campusPoint(room) || (map && directions)) && (
-                                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs">
-                                    <WalkButton room={room} />
-                                    {map && directions && (
-                                        <>
-                                            <a href={map} target="_blank" rel="noopener noreferrer" className={LINK}>
-                                                Open in Maps
-                                            </a>
-                                            <a href={directions} target="_blank" rel="noopener noreferrer" className={LINK}>
-                                                Get directions
-                                            </a>
-                                        </>
-                                    )}
-                                </div>
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs">
+                                <WalkButton room={room} />
+                                {map && directions && (
+                                    <>
+                                        <a href={map} target="_blank" rel="noopener noreferrer" className={LINK}>
+                                            Open in Maps
+                                        </a>
+                                        <a href={directions} target="_blank" rel="noopener noreferrer" className={LINK}>
+                                            Get directions
+                                        </a>
+                                    </>
+                                )}
+                            </div>
                             )}
                         </div>
                     </div>

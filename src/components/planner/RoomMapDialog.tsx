@@ -1,16 +1,25 @@
 import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { campusPoint, concept3dDirectionsUrl, PARKING_STRUCTURE_4, pointFromText, type CampusPoint } from "@/utils/campusMap";
+import {
+    campusPoint,
+    concept3dDestinationUrl,
+    concept3dDirectionsUrl,
+    PARKING_STRUCTURE_4,
+    pointFromText,
+    type CampusPoint,
+} from "@/utils/campusMap";
 import type { ParsedRoom } from "@/utils/rooms";
 
-type StartMode = "default" | "typed";
+/** pick: the map asks where you are; preset: previous class (or Parking Structure 4); typed: a room the person types */
+type StartMode = "pick" | "preset" | "typed";
 
 /**
- * The UT Dallas campus map (Concept3D, embedded) showing the walking route to a
- * room. The start defaults to `from` (e.g. the room of the previous class) or,
- * without one, to Parking Structure 4; the person can also type a room code.
- * The map has its own "use my location" button for everything else.
+ * The UT Dallas campus map (Concept3D, embedded) with directions to a room.
+ * By default the destination is filled in and the person picks where they are
+ * on the map (it has its own "use my location" button). Starting points that can
+ * be chosen instead: `from` (e.g. the room of the previous class) or Parking
+ * Structure 4, or a room code they type. Nothing is assumed about where they are.
  */
 export function RoomMapDialog({
     open,
@@ -24,17 +33,19 @@ export function RoomMapDialog({
     /** Optional starting room, such as the room of the class before this one. */
     from?: ParsedRoom;
 }) {
-    const [mode, setMode] = useState<StartMode>("default");
+    const [mode, setMode] = useState<StartMode>("pick");
     const [typed, setTyped] = useState("");
 
     const destination = campusPoint(to);
-    const defaultStart: CampusPoint = (from && campusPoint(from)) || PARKING_STRUCTURE_4;
+    const fromPoint = from ? campusPoint(from) : null;
+    const preset: CampusPoint = fromPoint ?? PARKING_STRUCTURE_4;
     const typedPoint = mode === "typed" && typed.trim() ? pointFromText(typed) : null;
-    const start = typedPoint ?? defaultStart;
     const typedInvalid = mode === "typed" && typed.trim() !== "" && !typedPoint;
+    // A start we do not have (nothing typed yet, or an unknown room) leaves it to the map.
+    const start: CampusPoint | null = mode === "preset" ? preset : typedPoint;
 
     if (!destination) return null;
-    const url = concept3dDirectionsUrl(start, destination);
+    const url = start ? concept3dDirectionsUrl(start, destination) : concept3dDestinationUrl(destination);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -57,7 +68,8 @@ export function RoomMapDialog({
                         value={mode}
                         onChange={e => setMode(e.target.value as StartMode)}
                     >
-                        <option value="default">{from && campusPoint(from) ? `Previous class (${from.label})` : PARKING_STRUCTURE_4.name}</option>
+                        <option value="pick">Choose on the map</option>
+                        <option value="preset">{fromPoint && from ? `Previous class (${from.label})` : PARKING_STRUCTURE_4.name}</option>
                         <option value="typed">A room I type…</option>
                     </select>
                     {mode === "typed" && (

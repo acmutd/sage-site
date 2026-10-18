@@ -7,29 +7,42 @@ import { parseRooms } from "@/utils/rooms";
 const iframeSrc = () => document.querySelector("iframe")?.getAttribute("src") ?? "";
 
 describe("RoomMapDialog", () => {
-    it("embeds the route to the room, starting at PS4 by default", () => {
-        render(<RoomMapDialog open onOpenChange={() => {}} to={parseRooms("ECSS_2.306")[0]} />);
-        expect(iframeSrc()).toContain("to:32.98624,-96.75042,2");
-        expect(iframeSrc()).toContain("from:32.986202,-96.752838,0");
+    const ecss = () => parseRooms("ECSS_2.306")[0];
+    const chooseStart = (value: string) =>
+        fireEvent.change(screen.getByLabelText("Start from"), { target: { value } });
+
+    it("fills in only the destination by default, so nobody is assumed to start anywhere", () => {
+        render(<RoomMapDialog open onOpenChange={() => {}} to={ecss()} />);
+        expect(iframeSrc()).toContain("#!s/?d/to:32.98624,-96.75042,2");
+        expect(iframeSrc()).not.toContain("from:");
         expect(document.querySelector("iframe")?.getAttribute("allow")).toContain("geolocation");
     });
 
-    it("starts from the previous class when given one", () => {
-        render(
-            <RoomMapDialog open onOpenChange={() => {}} to={parseRooms("ECSS_2.306")[0]} from={parseRooms("ECSS_3.100")[0]} />,
-        );
+    it("can start from Parking Structure 4 when chosen", () => {
+        render(<RoomMapDialog open onOpenChange={() => {}} to={ecss()} />);
+        chooseStart("preset");
+        expect(iframeSrc()).toContain("from:32.986202,-96.752838,0");
+        expect(iframeSrc()).toContain("to:32.98624,-96.75042,2");
+    });
+
+    it("offers the previous class as a start when given one", () => {
+        render(<RoomMapDialog open onOpenChange={() => {}} to={ecss()} from={parseRooms("ECSS_3.100")[0]} />);
+        expect(screen.getByText("Previous class (ECSS 3.100)")).toBeTruthy();
+        expect(iframeSrc()).not.toContain("from:"); // still the map's choice until picked
+        chooseStart("preset");
         expect(iframeSrc()).toContain("from:32.98624,-96.75042,3");
     });
 
     it("re-routes from a typed room and flags an unknown one", () => {
-        render(<RoomMapDialog open onOpenChange={() => {}} to={parseRooms("ECSS_2.306")[0]} />);
-        fireEvent.change(screen.getByLabelText("Start from"), { target: { value: "typed" } });
+        render(<RoomMapDialog open onOpenChange={() => {}} to={ecss()} />);
+        chooseStart("typed");
+        expect(iframeSrc()).not.toContain("from:"); // nothing typed yet
         fireEvent.change(screen.getByLabelText("Starting room"), { target: { value: "ECSS 1.001" } });
         expect(iframeSrc()).toContain("from:32.98624,-96.75042,1");
 
         fireEvent.change(screen.getByLabelText("Starting room"), { target: { value: "nope" } });
         expect(screen.getByText(/Not found/)).toBeTruthy();
-        expect(iframeSrc()).toContain("from:32.986202,-96.752838,0"); // keeps the default
+        expect(iframeSrc()).not.toContain("from:"); // falls back to the map asking
     });
 
     it("renders nothing for a building we have no coordinates for", () => {
@@ -48,6 +61,8 @@ describe("clickable room code", () => {
         const a = linked.container.querySelector("a")!;
         expect(a.textContent).toBe("ECSS 2.306");
         expect(a.getAttribute("href")).toContain("map.concept3d.com");
+        expect(a.getAttribute("href")).toContain("#!s/?d/to:32.98624,-96.75042,2");
+        expect(a.getAttribute("href")).not.toContain("from:"); // we never guess where the student is
         expect(a.getAttribute("target")).toBe("_blank");
         linked.unmount();
 

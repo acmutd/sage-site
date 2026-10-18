@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILDING_COORDS, campusPoint, concept3dDirectionsUrl, PARKING_STRUCTURE_4, pointFromText } from "./campusMap";
+import { BUILDING_COORDS, campusPoint, concept3dDestinationUrl, concept3dDirectionsUrl, PARKING_STRUCTURE_4, pointFromText } from "./campusMap";
 import { BUILDINGS, parseRooms } from "./rooms";
 
 describe("campusPoint", () => {
@@ -51,6 +51,16 @@ describe("concept3dDirectionsUrl", () => {
     it("can ask for accessible routes", () => {
         const to = campusPoint(parseRooms("ECSS_2.306")[0])!;
         expect(concept3dDirectionsUrl(PARKING_STRUCTURE_4, to, { accessible: true })).toContain("ada:true");
+    });
+});
+
+describe("concept3dDestinationUrl", () => {
+    it("fills in only the destination, in the form from Concept3D's wayfinding guide", () => {
+        const to = { lat: 32.98624, lng: -96.75042, floor: 2, name: "ECSS 2.306" };
+        expect(concept3dDestinationUrl(to)).toBe(
+            "https://map.concept3d.com/?id=1772#!s/?d/to:32.98624,-96.75042,2;endName:ECSS%202.306",
+        );
+        expect(concept3dDestinationUrl(to)).not.toContain("from:");
     });
 });
 
