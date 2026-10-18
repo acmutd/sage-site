@@ -180,8 +180,6 @@ interface ProfessorGroupProps {
     children: React.ReactNode;
 }
 
-// Collapsible header for one professor. The grade average and RMP rating live on the
-// header so the grade data is visible even while the sections underneath are collapsed.
 const ProfessorGroup: React.FC<ProfessorGroupProps> = ({
     name, fullName, sectionCount, avg, avgClass, rmp, defaultOpen = false, children,
 }) => {
@@ -561,8 +559,8 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             map.get(key)!.push(sec);
         }
         return [...map.entries()].map(([key, secs]) => {
-            const instData = key === "TBA" ? null : getInstructorGrades(key);
             const first = key.split(",")[0].trim();
+            const instData = key === "TBA" ? null : getInstructorGrades(first);
             return {
                 key,
                 fullName: key,
@@ -675,6 +673,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                 : `View all ${sections.length} sections + full grade history`}
                         </button>
 
+                        {/* Sections grouped by professor; grade/RMP badges stay visible when collapsed */}
                         <div className="space-y-1.5">
                             {professorGroups.map((group) => (
                                 <ProfessorGroup
@@ -932,7 +931,7 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                         avg={group.avg}
                                         avgClass={group.avg ? getGpaBadgeStyle(group.avg) : ""}
                                         rmp={group.rmp}
-                                        defaultOpen={professorGroups.length === 1}
+                                        defaultOpen
                                     >
                                         <div className="overflow-x-auto">
                                             {group.sections.map((sec: any, i: number) => (
