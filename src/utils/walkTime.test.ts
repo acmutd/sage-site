@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scheduleTransitions, walkMinutes, walkMeters } from "./walkTime";
+import { scheduleTransitions, verticalMinutes, walkMinutes, walkMeters } from "./walkTime";
 
 describe("walkMinutes", () => {
     it("matches the walks we measured, within a minute or two", () => {
@@ -12,9 +12,19 @@ describe("walkMinutes", () => {
         expect(walkMinutes("ECSS_2.306", "ECSW_1.315")!).toBeLessThan(walkMinutes("ECSS_2.306", "SP2_1.100")!);
     });
 
-    it("uses only the buffer inside one building, plus a minute across floors", () => {
+    it("inside one building: the buffer plus stairs or elevator, whichever is faster", () => {
         expect(walkMinutes("ECSS_2.306", "ECSS_2.401")).toBe(2);
+        expect(walkMinutes("ECSS_2.306", "ECSS_3.401")).toBe(3);
+        expect(walkMinutes("SOM_2.106", "SOM_12.218")).toBe(4);
         expect(walkMinutes("ECSS_2.306", "ECSS_4.401")).toBe(3);
+        expect(walkMinutes("ECSS_2.306", "ECSS_B.401")).toBe(2);
+    });
+
+    it("vertical time is capped by the elevator, so it grows slowly", () => {
+        expect(verticalMinutes(0)).toBe(0);
+        expect(verticalMinutes(1)).toBeCloseTo(0.3);
+        expect(verticalMinutes(10)).toBeCloseTo(2);
+        expect(verticalMinutes(10)).toBeLessThan(verticalMinutes(1) * 10);
     });
 
     it("gives nothing when a room is unknown, online, TBA or in an unmapped building", () => {

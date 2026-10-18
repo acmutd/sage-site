@@ -15,7 +15,9 @@ export const WALK_CONFIG = {
     alpha: 0.25,
     metersPerMinute: 80,
     bufferMinutes: 2,
-    sameBuildingFloorMinutes: 1,
+    stairsMinutesPerFloor: 0.3,
+    elevatorWaitMinutes: 1,
+    elevatorMinutesPerFloor: 0.1,
 };
 
 const METERS_PER_DEG_LAT = 111_320;
@@ -28,7 +30,6 @@ const asRoom = (value: RoomInput): ParsedRoom | null => {
     return parseRooms(value)[0] ?? null;
 };
 
-/** Outdoor distance in metres between two buildings */
 export const walkMeters = (a: [number, number], b: [number, number]): number => {
     const meanLat = ((a[0] + b[0]) / 2) * (Math.PI / 180);
     const dy = (b[0] - a[0]) * METERS_PER_DEG_LAT;
@@ -38,10 +39,18 @@ export const walkMeters = (a: [number, number], b: [number, number]): number => 
     return WALK_CONFIG.alpha * straight + (1 - WALK_CONFIG.alpha) * grid;
 };
 
-/**
- * Estimated minutes to walk between two rooms, rounded up. Null when either room
- * is not a real room, or its building has no coordinates.
- */
+const floorOf = (room: ParsedRoom): number | undefined => {
+    if (room.floor !== undefined) return room.floor;
+    const m = room.raw.match(/^[A-Za-z0-9]+[_ ](\d{1,2})\./);
+    return m ? parseInt(m[1], 10) : undefined;
+};
+
+export const verticalMinutes = (floors: number): number => {
+    const { stairsMinutesPerFloor, elevatorWaitMinutes, elevatorMinutesPerFloor } = WALK_CONFIG;
+    if (floors <= 0) return 0;
+    return Math.min(stairsMinutesPerFloor * floors, elevatorWaitMinutes + elevatorMinutesPerFloor * floors);
+};
+
 export const walkMinutes = (from: RoomInput, to: RoomInput): number | null => {
     const a = asRoom(from);
     const b = asRoom(to);
@@ -50,16 +59,17 @@ export const walkMinutes = (from: RoomInput, to: RoomInput): number | null => {
     const pb = campusPoint(b);
     if (!pa || !pb) return null;
 
-    const { bufferMinutes, metersPerMinute, sameBuildingFloorMinutes } = WALK_CONFIG;
+    const { bufferMinutes, metersPerMinute } = WALK_CONFIG;
     if (a.building === b.building) {
-        const floorsDiffer = a.floor !== undefined && b.floor !== undefined && a.floor !== b.floor;
-        return bufferMinutes + (floorsDiffer ? sameBuildingFloorMinutes : 0);
+        const fa = floorOf(a);
+        const fb = floorOf(b);
+        const floors = fa !== undefined && fb !== undefined ? Math.abs(fa - fb) : 0;
+        return Math.ceil(bufferMinutes + verticalMinutes(floors));
     }
     const meters = walkMeters([pa.lat, pa.lng], [pb.lat, pb.lng]);
     return Math.ceil(meters / metersPerMinute + bufferMinutes);
 };
 
-/** The parts of a coursebook section this needs. Fields may be strings or arrays. */
 export interface TimedSection {
     course_prefix?: string;
     course_number?: string;
