@@ -384,7 +384,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
     const filterAndSort = (sections: any[], courseCode: string) => {
         const profFilter = professorFilters[courseCode] ?? 'all';
-        
+
         const gradeToPoints = (grade: string | null): number => {
             if (!grade) return -1;
             return GRADE_POINTS[grade] ?? -1;
@@ -459,10 +459,11 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     }, [selectedSectionObjects, classPaddingMinutes]);
 
     // Back-to-back classes where the estimated walk is longer than the gap between them.
-    const tightTransitions = useMemo(
-        () => scheduleTransitions(selectedSectionObjects as any[]).filter(t => t.tight),
+    const transitions = useMemo(
+        () => scheduleTransitions(selectedSectionObjects as any[]),
         [selectedSectionObjects]
     );
+    const tightTransitions = useMemo(() => transitions.filter(t => t.tight), [transitions]);
 
     const conflictingKeys = useMemo(() => {
         const keys = new Set<string>();
@@ -943,8 +944,8 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                                 <div className="flex items-center gap-1.5 mt-0.5">
                                                                                     {sec.grade_avg && (
                                                                                         <span className={`text-[9px] font-medium ${sec.grade_avg.startsWith('A') ? 'text-green-600' :
-                                                                                                sec.grade_avg.startsWith('B') ? 'text-yellow-700' :
-                                                                                                    'text-orange-600'
+                                                                                            sec.grade_avg.startsWith('B') ? 'text-yellow-700' :
+                                                                                                'text-orange-600'
                                                                                             }`}>{sec.grade_avg} avg</span>
                                                                                     )}
                                                                                     {sec.rmp && (
@@ -1058,6 +1059,30 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                     );
                                                 })}
 
+                                                {/* Walking time between back-to-back classes (estimate) */}
+                                                {transitions.filter(tr => tr.day === day).map(tr => {
+                                                    if (tr.fromEnd >= GRID_END || tr.toStart <= GRID_START) return null;
+                                                    const shown = Math.min(tr.walkMinutes, tr.gapMinutes);
+                                                    const top = (Math.max(tr.fromEnd, GRID_START) - GRID_START) * PX_PER_MIN;
+                                                    const height = shown * PX_PER_MIN;
+                                                    return (
+                                                        <div key={`walk-${tr.fromEnd}-${tr.toStart}`}
+                                                            title={`~${tr.walkMinutes} min walk, ${tr.gapMinutes} min between classes`}
+                                                            style={{
+                                                                position: 'absolute', top, height, left: 1, right: 1,
+                                                                backgroundImage: `repeating-linear-gradient(135deg, ${tr.tight ? '#fde68a' : '#e5e7eb'} 0 3px, transparent 3px 6px)`,
+                                                                borderLeft: `2px dashed ${tr.tight ? '#d97706' : '#9ca3af'}`,
+                                                            }}
+                                                            className="rounded-sm">
+                                                            {height >= 10 && (
+                                                                <div className={`text-[8px] font-medium px-1 leading-[10px] truncate ${tr.tight ? 'text-amber-800' : 'text-gray-500'}`}>
+                                                                    ~{tr.walkMinutes} min walk
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                                
                                                 {/* Section blocks */}
                                                 {selectedSectionObjects.map((sec: any) => {
                                                     const secDays = parseDays(sec.days || '');

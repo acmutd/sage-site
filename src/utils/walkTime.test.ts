@@ -55,7 +55,7 @@ describe("scheduleTransitions", () => {
             sec("3345", "Tuesday", "10:20 AM - 11:35 AM", "SP2_1.100"),
         ]);
         expect(t).toHaveLength(1);
-        expect(t[0]).toMatchObject({ day: "Monday", gapMinutes: 5, walkMinutes: 9, tight: true });
+        expect(t[0]).toMatchObject({ day: "Monday", gapMinutes: 5, walkMinutes: 9, tight: true, fromEnd: 615, toStart: 620 })
     });
 
     it("does not flag a comfortable gap, and accepts arrays and several rooms", () => {

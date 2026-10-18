@@ -85,6 +85,8 @@ export interface Transition {
     to: TimedSection;
     fromRoom: ParsedRoom;
     toRoom: ParsedRoom;
+    fromEnd: number;
+    toStart: number;
     gapMinutes: number;
     walkMinutes: number;
     tight: boolean;
@@ -142,6 +144,7 @@ export const scheduleTransitions = (sections: TimedSection[]): Transition[] => {
             out.push({
                 day, from: a.sec, to: b.sec, fromRoom, toRoom,
                 gapMinutes: gap, walkMinutes: walk, tight: walk > gap,
+                fromEnd: a.end, toStart: b.start,
             });
         }
     }
