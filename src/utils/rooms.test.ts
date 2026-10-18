@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILDINGS, floorLabel, formatRoom, mapsUrl, parseRooms } from "./rooms";
+import { floorLabel, formatRoom, parseRooms } from "./rooms";
 import { firstOf, firstTime } from "./sections";
 
 describe("parseRooms", () => {
@@ -8,7 +8,6 @@ describe("parseRooms", () => {
         expect(r).toMatchObject({
             kind: "room",
             building: "GR",
-            buildingName: "Cecil H. Green Hall",
             floor: 2,
             room: "530",
             label: "GR 2.530",
@@ -38,12 +37,6 @@ describe("parseRooms", () => {
         const [r] = parseRooms("CD1_B.108");
         expect(r).toMatchObject({ kind: "room", building: "CD1", label: "CD1 B.108" });
         expect(r.floor).toBeUndefined();
-    });
-
-    it("leaves unverified buildings without a name", () => {
-        const [r] = parseRooms("CD1_B.108");
-        expect(r.buildingName).toBeUndefined();
-        expect(mapsUrl(r)).toBeNull();
     });
 
     it("splits multiple rooms, including across buildings", () => {
@@ -83,30 +76,6 @@ describe("formatRoom", () => {
     });
     it("honours a custom empty value", () => expect(formatRoom("", { empty: "" })).toBe(""));
     it("never throws on arrays", () => expect(formatRoom(["GR_2.530"])).toBe("GR 2.530"));
-});
-
-describe("map links", () => {
-    it("builds a Google Maps search from the verified building name", () => {
-        const url = mapsUrl(parseRooms("GR_2.530")[0])!;
-        expect(url.startsWith("https://www.google.com/maps/search/?api=1&query=")).toBe(true);
-        expect(decodeURIComponent(url)).toContain("Cecil H. Green Hall, The University of Texas at Dallas");
-    });
-
-    it("encodes the apostrophe in ATC's name", () => {
-        const url = mapsUrl(parseRooms("ATC_2.705E")[0])!;
-        expect(decodeURIComponent(url)).toContain("Edith O'Donnell");
-    });
-
-    it("has no map link for online or TBA", () => {
-        expect(mapsUrl(parseRooms("ONLINE")[0])).toBeNull();
-        expect(mapsUrl(parseRooms("")[0])).toBeNull();
-    });
-});
-
-describe("BUILDINGS", () => {
-    it("has upper-case keys only", () => {
-        for (const key of Object.keys(BUILDINGS)) expect(key).toBe(key.toUpperCase());
-    });
 });
 
 describe("sections helpers", () => {

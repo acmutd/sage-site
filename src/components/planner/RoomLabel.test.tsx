@@ -3,13 +3,11 @@ import { render } from "@testing-library/react";
 import { RoomDetails, RoomText } from "./RoomLabel";
 
 describe("RoomText", () => {
-    it("shows the room and floor, with the building name in the tooltip", () => {
+    it("shows the room and floor", () => {
         const { container } = render(<RoomText value="GR_2.530" />);
         expect(container.textContent).toContain("GR 2.530");
         expect(container.textContent).toContain("Floor 2");
-        // the long name is deliberately not in the row text: it stretched the grid column
-        expect(container.textContent).not.toContain("Cecil H. Green Hall");
-        expect((container.firstChild as HTMLElement).getAttribute("title")).toContain("Cecil H. Green Hall");
+        expect((container.firstChild as HTMLElement).getAttribute("title")).toContain("GR 2.530");
     });
 
     it("can shrink inside a grid (min-w-0) so it never stretches its column", () => {
@@ -53,18 +51,7 @@ describe("RoomText", () => {
 });
 
 describe("RoomDetails", () => {
-    it("links to Google Maps for a known building", () => {
-        const { container } = render(<RoomDetails value="GR_2.530" />);
-        const links = Array.from(container.querySelectorAll("a"));
-        expect(links.map(a => a.textContent)).toEqual(["Open in Maps"]);
-        expect(links[0].getAttribute("href")).toContain("google.com/maps/search");
-        for (const a of links) {
-            expect(a.getAttribute("target")).toBe("_blank");
-            expect(a.getAttribute("rel")).toContain("noopener");
-        }
-    });
-
-    it("shows a room but no links for an unverified building", () => {
+    it("shows the room but no links until the server answers", () => {
         const { container } = render(<RoomDetails value="CD1_B.108" />);
         expect(container.textContent).toContain("CD1 B.108");
         expect(container.querySelectorAll("a")).toHaveLength(0);
@@ -74,7 +61,7 @@ describe("RoomDetails", () => {
         const { container } = render(<RoomDetails value="ECSW_1.315; HH_2.402" />);
         expect(container.textContent).toContain("ECSW 1.315");
         expect(container.textContent).toContain("HH 2.402");
-        expect(container.querySelectorAll("a")).toHaveLength(2);
+        expect(container.querySelectorAll("a")).toHaveLength(0);
     });
 
     it("says nothing for online sections beyond a short note", () => {

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { MapPin } from "lucide-react";
-import { campusPoint, concept3dDestinationUrl } from "@/utils/campusMap";
-import { floorLabel, mapsUrl, parseRooms, type ParsedRoom } from "@/utils/rooms";
+import { floorLabel, parseRooms, type ParsedRoom } from "@/utils/rooms";
+import { useCampusLinks } from "@/hooks/useCampusLinks";
+import type { CampusLinks } from "@/utils/campusLinks";
 import { RoomMapDialog } from "./RoomMapDialog";
 
 export function RoomText({
@@ -18,9 +19,11 @@ export function RoomText({
     const extra = rooms.length - 1;
     const floor = floorLabel(primary);
     const colour = primary.kind === "online" ? "text-[#5AED86] font-semibold" : "text-gray-600";
-    const target = link ? campusPoint(primary) : null;
+    const served = useCampusLinks(link && primary.kind === "room" ? [primary.raw] : []);
+    // the room itself on the campus map; the route link is only a fallback for rooms with no marker
+    const target = link ? (served[primary.raw]?.roomUrl ?? served[primary.raw]?.wayfinderUrl) : undefined;
     const tooltip = rooms
-        .map(r => [r.label, floorLabel(r), r.buildingName].filter(Boolean).join(" · "))
+        .map(r => [r.label, floorLabel(r)].filter(Boolean).join(" · "))
         .join("\n");
 
     return (
@@ -28,12 +31,12 @@ export function RoomText({
             <div className="truncate">
                 {target ? (
                     <a
-                        href={concept3dDestinationUrl(target)}
+                        href={target}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
                         className="underline decoration-dotted underline-offset-2 hover:text-green-700"
-                        title={`Walking route to ${primary.label} on the campus map`}
+                        title={`Show ${primary.label} on the campus map`}
                     >
                         {primary.label}
                     </a>
@@ -49,13 +52,15 @@ export function RoomText({
 
 export function RoomDetails({ value }: { value: unknown }) {
     const rooms = parseRooms(value).filter(r => r.kind !== "tba");
+    const served = useCampusLinks(rooms.filter(r => r.kind === "room").map(r => r.raw));
     if (rooms.length === 0) return null;
 
     return (
         <div className="px-4 py-3 border-t border-border space-y-2">
             {rooms.map((room, i) => {
-                const map = mapsUrl(room);
-                const where = [floorLabel(room), room.buildingName].filter(Boolean).join(" · ");
+                const links: CampusLinks = served[room.raw] ?? {};
+                const map = links.mapsUrl;
+                const where = floorLabel(room);
 
                 if (room.kind !== "room") {
                     return (
@@ -73,15 +78,20 @@ export function RoomDetails({ value }: { value: unknown }) {
                                 {room.label}
                                 {where && <span className="font-normal text-muted-foreground"> · {where}</span>}
                             </p>
-                            {(campusPoint(room) || map) && (
-                            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs">
-                                <WalkButton room={room} />
-                                {map && (
-                                    <a href={map} target="_blank" rel="noopener noreferrer" className={LINK}>
-                                        Open in Maps
-                                    </a>
-                                )}
-                            </div>
+                            {(links.wayfinderUrl || links.roomUrl || map) && (
+                                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs">
+                                    <WalkButton room={room} url={links.wayfinderUrl} />
+                                    {links.roomUrl && (
+                                        <a href={links.roomUrl} target="_blank" rel="noopener noreferrer" className={LINK}>
+                                            View room
+                                        </a>
+                                    )}
+                                    {map && (
+                                        <a href={map} target="_blank" rel="noopener noreferrer" className={LINK}>
+                                            Open in Maps
+                                        </a>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>
@@ -93,15 +103,16 @@ export function RoomDetails({ value }: { value: unknown }) {
 
 const LINK = "text-green-600 hover:text-green-700 font-medium";
 
-function WalkButton({ room }: { room: ParsedRoom }) {
+/** "Walking route" button + dialog. Renders nothing until the server has a route for the room. */
+function WalkButton({ room, url }: { room: ParsedRoom; url?: string }) {
     const [open, setOpen] = useState(false);
-    if (!campusPoint(room)) return null;
+    if (!url) return null;
     return (
         <>
             <button type="button" onClick={() => setOpen(true)} className={LINK}>
                 Walking route
             </button>
-            <RoomMapDialog open={open} onOpenChange={setOpen} to={room} />
+            <RoomMapDialog open={open} onOpenChange={setOpen} to={room} url={url} />
         </>
     );
 }

@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import { formatRoom } from './rooms';
 import { firstOf, firstTime } from './sections';
-import { scheduleTransitions, walkBlockLayout } from './walkTime';
+import { walkBlockLayout, type Transition } from './walkTime';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -34,7 +34,7 @@ const guessModality = (sec: any): string => {
 };
 
 // i got fed up with trying to capture the DOM, so let's just draw out the canvas and capture it that way!
-const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Record<string, any>): HTMLCanvasElement => {
+const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Record<string, any>, transitions: Transition[] = []): HTMLCanvasElement => {
     const SCALE = 2;
     const PX_PER_MIN = 1.4;
     const GRID_START = 7 * 60;
@@ -97,8 +97,8 @@ const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Rec
         ctx.beginPath(); ctx.moveTo(dayToX(i), HEADER_H); ctx.lineTo(dayToX(i), realH); ctx.stroke();
     });
 
-
-    scheduleTransitions(selectedSectionObjects).forEach(tr => {
+    // Estimated walking time between back-to-back classes: a hatched block right after the first class.
+    transitions.forEach(tr => {
         const di = DAYS.indexOf(tr.day);
         if (di === -1 || tr.fromEnd >= GRID_END || tr.toStart <= GRID_START) return;
         const x = dayToX(di) + 1;
@@ -171,24 +171,24 @@ const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Rec
     return canvas;
 };
 
-export const exportAsPNG = (selectedSectionObjects: any[], courseColorMap: any, title: string) => {
-    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap);
+export const exportAsPNG = (selectedSectionObjects: any[], courseColorMap: any, title: string, transitions: Transition[] = []) => {
+    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap, transitions);
     const link = document.createElement('a');
     link.download = `${title.replace(/\s+/g, '_')}_schedule.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
 };
 
-export const exportAsJPG = (selectedSectionObjects: any[], courseColorMap: any, title: string) => {
-    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap);
+export const exportAsJPG = (selectedSectionObjects: any[], courseColorMap: any, title: string, transitions: Transition[] = []) => {
+    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap, transitions);
     const link = document.createElement('a');
     link.download = `${title.replace(/\s+/g, '_')}_schedule.jpg`;
     link.href = canvas.toDataURL('image/jpeg', 0.92);
     link.click();
 };
 
-export const exportAsPDF = (selectedSectionObjects: any[], courseColorMap: any, title: string) => {
-    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap);
+export const exportAsPDF = (selectedSectionObjects: any[], courseColorMap: any, title: string, transitions: Transition[] = []) => {
+    const canvas = drawScheduleToCanvas(selectedSectionObjects, courseColorMap, transitions);
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width / 2, canvas.height / 2] });
     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
     pdf.save(`${title.replace(/\s+/g, '_')}_schedule.pdf`);

@@ -6,7 +6,8 @@ import ReactDOM from 'react-dom';
 import SemesterDatePickerPopover from './SemesterDatePickPopover';
 import { determineStudentType, getGPAState } from '@/utils/studentInfo';
 import { formatRoom } from '@/utils/rooms';
-import { scheduleTransitions, sectionLabel, walkBlockLayout } from '@/utils/walkTime';
+import { sectionLabel, walkBlockLayout } from '@/utils/walkTime';
+import { useWalkTimes } from '@/hooks/useWalkTimes';
 import { firstOf } from '@/utils/sections';
 
 interface Break {
@@ -459,10 +460,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     }, [selectedSectionObjects, classPaddingMinutes]);
 
     // Back-to-back classes where the estimated walk is longer than the gap between them.
-    const transitions = useMemo(
-        () => scheduleTransitions(selectedSectionObjects as any[]),
-        [selectedSectionObjects]
-    );
+    const { transitions } = useWalkTimes(selectedSectionObjects as any[]);
     const tightTransitions = useMemo(() => transitions.filter(t => t.tight), [transitions]);
 
     const conflictingKeys = useMemo(() => {

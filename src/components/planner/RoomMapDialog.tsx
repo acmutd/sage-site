@@ -1,23 +1,30 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ExternalLink, X } from "lucide-react";
-import { campusPoint, concept3dDestinationUrl } from "@/utils/campusMap";
 import type { ParsedRoom } from "@/utils/rooms";
 
+// This opens from section cards that live inside the course modal (z-[10001]), so it has to sit above
+// that. The shared ui/dialog is fixed at z-50 and would open underneath, hence Radix directly here.
 const OVERLAY_Z = "z-[10100]";
 const CONTENT_Z = "z-[10101]";
 
+/**
+ * The UT Dallas campus map (Concept3D, embedded) with the destination filled in by the server (`url`).
+ * The map's own directions panel lets the person pick where they are (a place,
+ * a room, or their location), so nothing about the start is assumed here.
+ */
 export function RoomMapDialog({
     open,
     onOpenChange,
     to,
+    url,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     to: ParsedRoom;
+    /** The server's walking-route link (`wayfinder_url`) for this room. Nothing renders without it. */
+    url?: string;
 }) {
-    const destination = campusPoint(to);
-    if (!destination) return null;
-    const url = concept3dDestinationUrl(destination);
+    if (!url) return null;
 
     return (
         <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -32,7 +39,7 @@ export function RoomMapDialog({
                                 Walk to {to.label}
                             </DialogPrimitive.Title>
                             <DialogPrimitive.Description className="text-xs text-muted-foreground">
-                                {to.buildingName ?? to.building}
+                                {to.building}
                                 {to.floor !== undefined ? ` · Floor ${to.floor}` : ""}
                             </DialogPrimitive.Description>
                         </div>
