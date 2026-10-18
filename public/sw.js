@@ -62,7 +62,7 @@ self.addEventListener('fetch', (event) => {
                 }
             }
 
-            const response = await fetch(event.request);
+            const response = await fetch(event.request, { cache: 'reload' });
             if (response.ok) {
                 const body = await response.arrayBuffer();
                 const newHeaders = new Headers(response.headers);
