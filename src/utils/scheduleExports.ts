@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import { formatRoom } from './rooms';
 import { firstOf, firstTime } from './sections';
-import { scheduleTransitions } from './walkTime';
+import { scheduleTransitions, walkBlockLayout } from './walkTime';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -104,31 +104,30 @@ const drawScheduleToCanvas = (selectedSectionObjects: any[], courseColorMap: Rec
         const x = dayToX(di) + 1;
         const y = timeToY(Math.max(tr.fromEnd, GRID_START));
         const w = DAY_W / SCALE - 2;
-        const h = Math.min(tr.walkMinutes, tr.gapMinutes) * PX_PER_MIN;
-        const stripe = tr.tight ? '#fde68a' : '#e5e7eb';
+        const { barPx: h, label } = walkBlockLayout(tr, PX_PER_MIN);
 
         ctx.save();
         ctx.beginPath();
         ctx.rect(x, y, w, h);
         ctx.clip();
-        ctx.strokeStyle = stripe;
+        ctx.strokeStyle = tr.tight ? '#fcd34d' : '#cbd5e1';
         ctx.lineWidth = 2;
         for (let k = -h; k < w + h; k += 6) {
             ctx.beginPath(); ctx.moveTo(x + k, y + h); ctx.lineTo(x + k + h, y); ctx.stroke();
         }
         ctx.restore();
 
-        ctx.strokeStyle = tr.tight ? '#d97706' : '#9ca3af';
+        ctx.strokeStyle = tr.tight ? '#d97706' : '#6b7280';
         ctx.lineWidth = 2;
         ctx.setLineDash([3, 2]);
         ctx.beginPath(); ctx.moveTo(x + 1, y); ctx.lineTo(x + 1, y + h); ctx.stroke();
         ctx.setLineDash([]);
 
-        if (h >= 10) {
-            ctx.fillStyle = tr.tight ? '#92400e' : '#6b7280';
-            ctx.font = '7px system-ui';
+        if (label !== 'none') {
+            ctx.fillStyle = tr.tight ? '#92400e' : '#4b5563';
+            ctx.font = 'bold 8px system-ui';
             ctx.textAlign = 'left';
-            ctx.fillText(`~${tr.walkMinutes} min walk`, x + 4, y + 7.5, w - 6);
+            ctx.fillText(`~${tr.walkMinutes} min walk`, x + 4, label === 'inside' ? y + 8 : y + h + 8, w - 6);
         }
     });
 

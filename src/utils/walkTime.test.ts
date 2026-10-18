@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scheduleTransitions, verticalMinutes, walkMinutes, walkMeters } from "./walkTime";
+import { scheduleTransitions, verticalMinutes, walkMinutes, walkMeters, walkBlockLayout } from "./walkTime";
 
 describe("walkMinutes", () => {
     it("matches the walks we measured, within a minute or two", () => {
@@ -75,5 +75,23 @@ describe("scheduleTransitions", () => {
             sec("3", "Monday", "1:00 PM - 2:00 PM", "TBA"),
             sec("4", "Monday", "TBA", "AD_3.200"),
         ])).toEqual([]);
+    });
+});
+
+describe("walkBlockLayout", () => {
+    const ppm = 1.4;
+    it("keeps a short walk visible and puts the label in the free part of a long break", () => {
+        const l = walkBlockLayout({ walkMinutes: 2, gapMinutes: 15 }, ppm);
+        expect(l.barPx).toBeGreaterThanOrEqual(5);
+        expect(l.label).toBe("below");
+    });
+    it("puts the label inside a block tall enough for text", () => {
+        expect(walkBlockLayout({ walkMinutes: 9, gapMinutes: 15 }, ppm).label).toBe("inside");
+    });
+    it("never draws past the break, and drops the label when there is no room", () => {
+        const tight = walkBlockLayout({ walkMinutes: 9, gapMinutes: 5 }, ppm);
+        expect(tight.barPx).toBeCloseTo(5 * ppm);
+        expect(tight.label).toBe("none");
+        expect(walkBlockLayout({ walkMinutes: 2, gapMinutes: 4 }, ppm).label).toBe("none");
     });
 });

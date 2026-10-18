@@ -150,3 +150,20 @@ export const scheduleTransitions = (sections: TimedSection[]): Transition[] => {
     }
     return out;
 };
+
+
+export interface WalkBlockLayout {
+    barPx: number;
+    label: "inside" | "below" | "none";
+}
+
+const MIN_BAR_PX = 5;
+const LABEL_PX = 10;
+
+export const walkBlockLayout = (t: Pick<Transition, "walkMinutes" | "gapMinutes">, pxPerMin: number): WalkBlockLayout => {
+    const gapPx = t.gapMinutes * pxPerMin;
+    const barPx = Math.min(gapPx, Math.max(t.walkMinutes * pxPerMin, MIN_BAR_PX));
+    if (barPx >= LABEL_PX) return { barPx, label: "inside" };
+    if (gapPx - barPx >= LABEL_PX) return { barPx, label: "below" };
+    return { barPx, label: "none" };
+};

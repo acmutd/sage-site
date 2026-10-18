@@ -6,7 +6,7 @@ import ReactDOM from 'react-dom';
 import SemesterDatePickerPopover from './SemesterDatePickPopover';
 import { determineStudentType, getGPAState } from '@/utils/studentInfo';
 import { formatRoom } from '@/utils/rooms';
-import { scheduleTransitions, sectionLabel } from '@/utils/walkTime';
+import { scheduleTransitions, sectionLabel, walkBlockLayout } from '@/utils/walkTime';
 import { firstOf } from '@/utils/sections';
 
 interface Break {
@@ -1062,27 +1062,35 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                 {/* Walking time between back-to-back classes (estimate) */}
                                                 {transitions.filter(tr => tr.day === day).map(tr => {
                                                     if (tr.fromEnd >= GRID_END || tr.toStart <= GRID_START) return null;
-                                                    const shown = Math.min(tr.walkMinutes, tr.gapMinutes);
                                                     const top = (Math.max(tr.fromEnd, GRID_START) - GRID_START) * PX_PER_MIN;
-                                                    const height = shown * PX_PER_MIN;
+                                                    const { barPx, label } = walkBlockLayout(tr, PX_PER_MIN);
+                                                    const text = `~${tr.walkMinutes} min walk`;
                                                     return (
                                                         <div key={`walk-${tr.fromEnd}-${tr.toStart}`}
                                                             title={`~${tr.walkMinutes} min walk, ${tr.gapMinutes} min between classes`}
-                                                            style={{
-                                                                position: 'absolute', top, height, left: 1, right: 1,
-                                                                backgroundImage: `repeating-linear-gradient(135deg, ${tr.tight ? '#fde68a' : '#e5e7eb'} 0 3px, transparent 3px 6px)`,
-                                                                borderLeft: `2px dashed ${tr.tight ? '#d97706' : '#9ca3af'}`,
-                                                            }}
-                                                            className="rounded-sm">
-                                                            {height >= 10 && (
-                                                                <div className={`text-[8px] font-medium px-1 leading-[10px] truncate ${tr.tight ? 'text-amber-800' : 'text-gray-500'}`}>
-                                                                    ~{tr.walkMinutes} min walk
+                                                            style={{ position: 'absolute', top, left: 1, right: 1, height: tr.gapMinutes * PX_PER_MIN }}>
+                                                            <div
+                                                                style={{
+                                                                    height: barPx,
+                                                                    backgroundImage: `repeating-linear-gradient(135deg, ${tr.tight ? '#fcd34d' : '#cbd5e1'} 0 3px, transparent 3px 6px)`,
+                                                                    borderLeft: `2px dashed ${tr.tight ? '#d97706' : '#6b7280'}`,
+                                                                }}
+                                                                className="rounded-sm">
+                                                                {label === 'inside' && (
+                                                                    <div className={`text-[9px] font-semibold px-1 leading-[12px] truncate ${tr.tight ? 'text-amber-800' : 'text-gray-600'}`}>
+                                                                        {text}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {label === 'below' && (
+                                                                <div className={`text-[9px] font-semibold px-1 leading-[11px] truncate ${tr.tight ? 'text-amber-800' : 'text-gray-600'}`}>
+                                                                    {text}
                                                                 </div>
                                                             )}
                                                         </div>
                                                     );
                                                 })}
-                                                
+
                                                 {/* Section blocks */}
                                                 {selectedSectionObjects.map((sec: any) => {
                                                     const secDays = parseDays(sec.days || '');

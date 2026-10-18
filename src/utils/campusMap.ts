@@ -61,10 +61,4 @@ export const pointFromText = (text: string): CampusPoint | null => {
 };
 
 const enc = (s: string) => encodeURIComponent(s);
-
-export const concept3dDirectionsUrl = (from: CampusPoint, to: CampusPoint, options: { accessible?: boolean } = {}): string =>
-    `${CONCEPT3D_MAP}#!ct/type:walking;ada:${options.accessible ? "true" : "false"}` +
-    `;from:${from.lat},${from.lng},${from.floor};to:${to.lat},${to.lng},${to.floor}` +
-    `;startName:${enc(from.name)};endName:${enc(to.name)}`;
-
 export const concept3dDestinationUrl = (to: CampusPoint): string => `${CONCEPT3D_MAP}#!s/?d/to:${to.lat},${to.lng},${to.floor};endName:${enc(to.name)}`;
