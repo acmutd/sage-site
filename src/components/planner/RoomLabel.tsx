@@ -6,32 +6,26 @@ import { directionsUrl, floorLabel, mapsUrl, parseRooms } from "@/utils/rooms";
  * so it is safe inside buttons and hover cards.
  *
  *   GR 2.530
- *   Floor 2 · Cecil H. Green Hall
+ *   Floor 2          (hover for the full building name)
+ *
  */
-export function RoomText({
-    value,
-    className = "text-xs text-gray-600",
-}: {
-    value: unknown;
-    className?: string;
-}) {
+export function RoomText({ value, className = "text-xs" }: { value: unknown; className?: string }) {
     const rooms = parseRooms(value);
     const primary = rooms[0];
     const extra = rooms.length - 1;
-    const detail = [floorLabel(primary), primary.buildingName].filter(Boolean).join(" · ");
-    const colour = primary.kind === "online" ? "text-[#5AED86] font-semibold" : "";
+    const floor = floorLabel(primary);
+    const colour = primary.kind === "online" ? "text-[#5AED86] font-semibold" : "text-gray-600";
+    const tooltip = rooms
+        .map(r => [r.label, floorLabel(r), r.buildingName].filter(Boolean).join(" · "))
+        .join("\n");
 
     return (
-        <div className={`${className} ${colour}`.trim()}>
-            <div title={rooms.map(r => r.label).join(" / ")}>
+        <div className={`min-w-0 ${className} ${colour}`} title={tooltip}>
+            <div className="truncate">
                 {primary.label}
                 {extra > 0 && <span className="text-gray-400 font-normal"> +{extra}</span>}
             </div>
-            {detail && (
-                <div className="text-[10px] text-gray-400 font-normal truncate" title={detail}>
-                    {detail}
-                </div>
-            )}
+            {floor && <div className="text-[10px] text-gray-400 font-normal truncate">{floor}</div>}
         </div>
     );
 }

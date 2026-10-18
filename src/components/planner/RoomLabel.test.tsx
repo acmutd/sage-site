@@ -3,10 +3,23 @@ import { render } from "@testing-library/react";
 import { RoomDetails, RoomText } from "./RoomLabel";
 
 describe("RoomText", () => {
-    it("shows the room, floor and building name", () => {
+    it("shows the room and floor, with the building name in the tooltip", () => {
         const { container } = render(<RoomText value="GR_2.530" />);
         expect(container.textContent).toContain("GR 2.530");
-        expect(container.textContent).toContain("Floor 2 · Cecil H. Green Hall");
+        expect(container.textContent).toContain("Floor 2");
+        // the long name is deliberately not in the row text: it stretched the grid column
+        expect(container.textContent).not.toContain("Cecil H. Green Hall");
+        expect((container.firstChild as HTMLElement).getAttribute("title")).toContain("Cecil H. Green Hall");
+    });
+
+    it("can shrink inside a grid (min-w-0) so it never stretches its column", () => {
+        const { container } = render(<RoomText value="ATC_2.602" />);
+        expect((container.firstChild as HTMLElement).className).toContain("min-w-0");
+    });
+
+    it("shows no floor line when the floor is unknown", () => {
+        const { container } = render(<RoomText value="SOM_12.218" />);
+        expect(container.textContent).toBe("SOM 12.218");
     });
 
     it("shows +N when a section has several rooms", () => {
@@ -18,7 +31,9 @@ describe("RoomText", () => {
     it("styles ONLINE (upper-case, as in the data) as online", () => {
         const { container } = render(<RoomText value="ONLINE" />);
         expect(container.textContent).toContain("Online");
-        expect((container.firstChild as HTMLElement).className).toContain("text-[#5AED86]");
+        const cls = (container.firstChild as HTMLElement).className;
+        expect(cls).toContain("text-[#5AED86]");
+        expect(cls).not.toContain("text-gray-600"); // conflicting colour classes: gray used to win
     });
 
     it("shows TBA when the location is missing", () => {
