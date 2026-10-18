@@ -5,6 +5,10 @@ import { Course } from '@/types/course';
 import ReactDOM from 'react-dom';
 import SemesterDatePickerPopover from './SemesterDatePickPopover';
 import { determineStudentType, getGPAState } from '@/utils/studentInfo';
+import { formatRoom } from '@/utils/rooms';
+import { sectionLabel, walkBlockLayout } from '@/utils/walkTime';
+import { useWalkTimes } from '@/hooks/useWalkTimes';
+import { firstOf } from '@/utils/sections';
 
 interface Break {
     id: string;
@@ -232,7 +236,7 @@ const SORT_OPTIONS = [
 ];
 
 const guessModality = (sec: any): 'online' | 'hybrid' | 'inperson' => {
-    const loc = (sec.location || '').toLowerCase();
+    const loc = firstOf(sec.location).toLowerCase();
     const type = (sec.activity_type || '').toLowerCase();
     if (loc === 'online' || type.includes('online') || type.includes('distance')) return 'online';
     if (type.includes('hybrid')) return 'hybrid';
@@ -381,7 +385,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
     const filterAndSort = (sections: any[], courseCode: string) => {
         const profFilter = professorFilters[courseCode] ?? 'all';
-        
+
         const gradeToPoints = (grade: string | null): number => {
             if (!grade) return -1;
             return GRADE_POINTS[grade] ?? -1;
@@ -454,6 +458,10 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                     pairs.push([selectedSectionObjects[i], selectedSectionObjects[j]]);
         return pairs;
     }, [selectedSectionObjects, classPaddingMinutes]);
+
+    // Back-to-back classes where the estimated walk is longer than the gap between them.
+    const { transitions } = useWalkTimes(selectedSectionObjects as any[]);
+    const tightTransitions = useMemo(() => transitions.filter(t => t.tight), [transitions]);
 
     const conflictingKeys = useMemo(() => {
         const keys = new Set<string>();
@@ -662,6 +670,24 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                             ) : (
                                 <><CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />All sections selected — no conflicts!</>
                             )}
+                        </div>
+                    )}
+
+                    {/* Walking time between back-to-back classes (an estimate from building locations) */}
+                    {tightTransitions.length > 0 && (
+                        <div className="px-5 py-2 text-xs border-b flex-shrink-0 bg-amber-50 border-amber-200 text-amber-800">
+                            <div className="flex items-center gap-2 font-medium">
+                                <TriangleAlert className="w-3.5 h-3.5 flex-shrink-0" />
+                                {tightTransitions.length} tight transition{tightTransitions.length > 1 ? 's' : ''} between classes (estimated walk is longer than the break)
+                            </div>
+                            <ul className="mt-1 ml-5 list-disc space-y-0.5">
+                                {tightTransitions.map((t, i) => (
+                                    <li key={i}>
+                                        {t.day.slice(0, 3)}: {sectionLabel(t.from)} ({t.fromRoom.label}) → {sectionLabel(t.to)} ({t.toRoom.label}):
+                                        {' '}~{t.walkMinutes} min walk, {t.gapMinutes} min between classes
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
 
@@ -883,7 +909,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                             <span className="text-gray-500">{getTime(sec.times_12h)}</span>
                                                                             <span className="text-gray-300">·</span>
                                                                             <span className={`font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
-                                                                                {sec.location?.replace('_', ' ')}
+                                                                                {formatRoom(sec.location, { empty: '' })}
                                                                             </span>
                                                                             <span className={`text-[10px] font-medium
                                                                                 ${modality === 'online' ? 'text-green-500' : modality === 'hybrid' ? 'text-blue-500' : 'text-gray-400'}`}>
@@ -916,8 +942,8 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                                 <div className="flex items-center gap-1.5 mt-0.5">
                                                                                     {sec.grade_avg && (
                                                                                         <span className={`text-[9px] font-medium ${sec.grade_avg.startsWith('A') ? 'text-green-600' :
-                                                                                                sec.grade_avg.startsWith('B') ? 'text-yellow-700' :
-                                                                                                    'text-orange-600'
+                                                                                            sec.grade_avg.startsWith('B') ? 'text-yellow-700' :
+                                                                                                'text-orange-600'
                                                                                             }`}>{sec.grade_avg} avg</span>
                                                                                     )}
                                                                                     {sec.rmp && (
@@ -932,7 +958,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                         </div>
                                                                         <div>
                                                                             <div className={`truncate font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
-                                                                                {sec.location?.replace('_', ' ')}
+                                                                                {formatRoom(sec.location, { empty: '' })}
                                                                             </div>
                                                                             <div className={`text-[10px] mt-0.5 font-medium
                                                                                 ${modality === 'online' ? 'text-green-500' : modality === 'hybrid' ? 'text-blue-500' : 'text-gray-400'}`}>
@@ -1031,6 +1057,38 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                     );
                                                 })}
 
+                                                {/* Walking time between back-to-back classes (estimate) */}
+                                                {transitions.filter(tr => tr.day === day).map(tr => {
+                                                    if (tr.fromEnd >= GRID_END || tr.toStart <= GRID_START) return null;
+                                                    const top = (Math.max(tr.fromEnd, GRID_START) - GRID_START) * PX_PER_MIN;
+                                                    const { barPx, label } = walkBlockLayout(tr, PX_PER_MIN);
+                                                    const text = `~${tr.walkMinutes} min walk`;
+                                                    return (
+                                                        <div key={`walk-${tr.fromEnd}-${tr.toStart}`}
+                                                            title={`~${tr.walkMinutes} min walk, ${tr.gapMinutes} min between classes`}
+                                                            style={{ position: 'absolute', top, left: 1, right: 1, height: tr.gapMinutes * PX_PER_MIN }}>
+                                                            <div
+                                                                style={{
+                                                                    height: barPx,
+                                                                    backgroundImage: `repeating-linear-gradient(135deg, ${tr.tight ? '#fcd34d' : '#cbd5e1'} 0 3px, transparent 3px 6px)`,
+                                                                    borderLeft: `2px dashed ${tr.tight ? '#d97706' : '#6b7280'}`,
+                                                                }}
+                                                                className="rounded-sm">
+                                                                {label === 'inside' && (
+                                                                    <div className={`text-[9px] font-semibold px-1 leading-[12px] truncate ${tr.tight ? 'text-amber-800' : 'text-gray-600'}`}>
+                                                                        {text}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {label === 'below' && (
+                                                                <div className={`text-[9px] font-semibold px-1 leading-[11px] truncate ${tr.tight ? 'text-amber-800' : 'text-gray-600'}`}>
+                                                                    {text}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+
                                                 {/* Section blocks */}
                                                 {selectedSectionObjects.map((sec: any) => {
                                                     const secDays = parseDays(sec.days || '');
@@ -1063,7 +1121,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                             {height > 18 && (
                                                                 <div style={{ color: hasConflict ? '#991b1b' : color.text }}
                                                                     className="text-[10px] opacity-75 truncate">
-                                                                    {sec.location?.replace('_', ' ')}
+                                                                    {formatRoom(sec.location, { empty: '' })}
                                                                 </div>
                                                             )}
                                                         </div>

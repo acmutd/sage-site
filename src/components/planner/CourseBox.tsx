@@ -5,7 +5,9 @@ import ReactDOM from "react-dom";
 import { Course } from '@/types/course';
 import { Warning } from '@/types/warning';
 import SectionCard from './utdgrades/sectioncard';
+import { RoomText } from './RoomLabel';
 import { getRMPColor } from '@/utils/grades';
+import { firstTime } from '@/utils/sections';
 
 interface CourseBoxProps {
     course: Course;
@@ -619,11 +621,9 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                         <div className="text-[10px] text-gray-400">{sec.activity_type}</div>
                                         <div className="flex items-center gap-2 flex-wrap">
                                             {sec.days && <DayPips days={sec.days} />}
-                                            <span className="text-[10px] text-gray-500">{sec.times_12h?.split(";")[0].trim()}</span>
+                                            <span className="text-[10px] text-gray-500">{firstTime(sec.times_12h)}</span>
                                         </div>
-                                        <div className={`text-xs ${sec.location === "Online" ? "text-[#5AED86] font-semibold" : "text-gray-600"}`}>
-                                            {sec.location?.replace("_", " ") ?? "TBA"}
-                                        </div>
+                                        <RoomText value={sec.location} link />
                                     </div>
                                 );
                             })}
@@ -662,11 +662,9 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                             <div className="flex gap-1">
                                                 {sec.days && <DayPips days={sec.days} />}
                                             </div>
-                                            <span className="text-[10px] text-gray-500">{sec.times_12h?.split(";")[0].trim()}</span>
+                                            <span className="text-[10px] text-gray-500">{firstTime(sec.times_12h)}</span>
                                         </div>
-                                        <div className={`text-xs ${sec.location === "Online" ? "text-[#5AED86] font-semibold" : "text-gray-600"}`}>
-                                            {sec.location?.replace("_", " ") ?? "TBA"}
-                                        </div>
+                                        <RoomText value={sec.location} link />
                                         <div className="flex flex-col gap-1 items-end">
                                             {avg && (
                                                 <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${getGpaBadgeStyle(avg)}`}>

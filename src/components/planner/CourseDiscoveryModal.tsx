@@ -11,6 +11,8 @@ import {
 import { getCoursePrerequisiteGroups, getMissingPrerequisiteGroups, normalizeCourseCode } from '@/utils/prerequisiteUtils';
 import { getCurrentCatalogYear } from '@/utils/studentInfo';
 import { usePlannerStore, StagedCourse } from "@/stores/plannerStore";
+import { formatRoom } from '@/utils/rooms';
+import { firstOf } from '@/utils/sections';
 
 export interface DiscoverySection {
     section: string;
@@ -184,7 +186,7 @@ const gradeColor = (g: string | undefined) => {
 };
 
 const modalityFromSection = (sec: DiscoverySection): 'online' | 'hybrid' | 'inperson' => {
-    const loc = (sec.location || '').toLowerCase();
+    const loc = firstOf(sec.location).toLowerCase();
     if (loc === 'online' || loc === 'internet') return 'online';
     if (loc.includes('hybrid')) return 'hybrid';
     return 'inperson';
@@ -736,7 +738,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                         {selectedSectionData.location && (
                             <div className="flex items-center gap-1.5 text-gray-500 text-xs">
                                 <MapPin className="w-3 h-3 flex-shrink-0" />
-                                <span>{selectedSectionData.location}</span>
+                                <span>{formatRoom(selectedSectionData.location)}</span>
                             </div>
                         )}
 

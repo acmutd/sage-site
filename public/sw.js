@@ -1,12 +1,13 @@
-const CACHE_NAME = 'sage-cacher-v1.2';
-const CACHED_URLS = ['CRUD/coursebook', 'CRUD/utdgrades', 'CRUD/catalog', 'CRUD/discover'];
+const CACHE_NAME = 'sage-cacher-v1.3';
+const CACHED_URLS = ['CRUD/coursebook', 'CRUD/utdgrades', 'CRUD/catalog', 'CRUD/discover', 'CRUD/campus'];
 
 function normalizeCacheKey(url) {
     const u = new URL(url);
-    const courses = u.searchParams.get('courses');
-    if (courses) {
-        u.searchParams.set('courses', courses.split(',').sort().join(','));
-    }
+
+    ['courses', 'rooms'].forEach(param => {
+        const val = u.searchParams.get(param);
+        if (val) u.searchParams.set(param, val.split(',').sort().join(','));
+    });
 
     if (url.includes('discover')) {
         ['schools', 'subjects', 'credits'].forEach(param => {
@@ -47,6 +48,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    if (event.request.method !== 'GET') return;
     if (!CACHED_URLS.some(url => event.request.url.includes(url))) return;
 
     event.respondWith(
