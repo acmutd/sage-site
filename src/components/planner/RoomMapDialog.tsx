@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ExternalLink } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { ExternalLink, X } from "lucide-react";
 import {
     campusPoint,
     concept3dDestinationUrl,
@@ -11,16 +11,10 @@ import {
 } from "@/utils/campusMap";
 import type { ParsedRoom } from "@/utils/rooms";
 
-/** pick: the map asks where you are; preset: previous class (or Parking Structure 4); typed: a room the person types */
+const OVERLAY_Z = "z-[10100]";
+const CONTENT_Z = "z-[10101]";
 type StartMode = "pick" | "preset" | "typed";
 
-/**
- * The UT Dallas campus map (Concept3D, embedded) with directions to a room.
- * By default the destination is filled in and the person picks where they are
- * on the map (it has its own "use my location" button). Starting points that can
- * be chosen instead: `from` (e.g. the room of the previous class) or Parking
- * Structure 4, or a room code they type. Nothing is assumed about where they are.
- */
 export function RoomMapDialog({
     open,
     onOpenChange,
@@ -30,7 +24,6 @@ export function RoomMapDialog({
     open: boolean;
     onOpenChange: (open: boolean) => void;
     to: ParsedRoom;
-    /** Optional starting room, such as the room of the class before this one. */
     from?: ParsedRoom;
 }) {
     const [mode, setMode] = useState<StartMode>("pick");
@@ -48,15 +41,27 @@ export function RoomMapDialog({
     const url = start ? concept3dDirectionsUrl(start, destination) : concept3dDestinationUrl(destination);
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[calc(100%-2rem)] max-w-4xl gap-0 overflow-hidden rounded-[10px] bg-white p-0 sm:rounded-[10px]">
-                <DialogHeader className="space-y-1 px-5 pb-3 pt-5 pr-12">
-                    <DialogTitle className="text-base">Walk to {to.label}</DialogTitle>
-                    <DialogDescription className="text-xs">
-                        {to.buildingName ?? to.building}
-                        {to.floor !== undefined ? ` · Floor ${to.floor}` : ""}
-                    </DialogDescription>
-                </DialogHeader>
+        <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+            <DialogPrimitive.Portal>
+                <DialogPrimitive.Overlay className={`fixed inset-0 ${OVERLAY_Z} bg-black/60`} />
+                <DialogPrimitive.Content
+                    className={`fixed left-1/2 top-1/2 ${CONTENT_Z} w-[calc(100%-2rem)] max-w-4xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[10px] bg-white shadow-2xl focus:outline-none`}
+                >
+                    <div className="space-y-1 px-5 pb-3 pt-5 pr-12">
+                        <DialogPrimitive.Title className="text-base font-semibold leading-none tracking-tight">
+                            Walk to {to.label}
+                        </DialogPrimitive.Title>
+                        <DialogPrimitive.Description className="text-xs text-muted-foreground">
+                            {to.buildingName ?? to.building}
+                            {to.floor !== undefined ? ` · Floor ${to.floor}` : ""}
+                        </DialogPrimitive.Description>
+                    </div>
+                    <DialogPrimitive.Close
+                        className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring"
+                        aria-label="Close"
+                    >
+                        <X className="h-4 w-4" />
+                    </DialogPrimitive.Close>
 
                 <div className="flex flex-wrap items-center gap-2 border-y border-border px-5 py-2 text-xs">
                     <label className="text-muted-foreground" htmlFor="room-map-start">
@@ -102,7 +107,8 @@ export function RoomMapDialog({
                     className="h-[60vh] w-full border-0"
                     allow="geolocation; gyroscope; accelerometer"
                 />
-            </DialogContent>
-        </Dialog>
+                </DialogPrimitive.Content>
+            </DialogPrimitive.Portal>
+        </DialogPrimitive.Root>
     );
 }

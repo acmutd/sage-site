@@ -53,12 +53,11 @@ describe("RoomText", () => {
 });
 
 describe("RoomDetails", () => {
-    it("links to maps and walking directions for a known building", () => {
+    it("links to Google Maps for a known building", () => {
         const { container } = render(<RoomDetails value="GR_2.530" />);
         const links = Array.from(container.querySelectorAll("a"));
-        expect(links.map(a => a.textContent)).toEqual(["Open in Maps", "Get directions"]);
+        expect(links.map(a => a.textContent)).toEqual(["Open in Maps"]);
         expect(links[0].getAttribute("href")).toContain("google.com/maps/search");
-        expect(links[1].getAttribute("href")).toContain("travelmode=walking");
         for (const a of links) {
             expect(a.getAttribute("target")).toBe("_blank");
             expect(a.getAttribute("rel")).toContain("noopener");
@@ -75,7 +74,7 @@ describe("RoomDetails", () => {
         const { container } = render(<RoomDetails value="ECSW_1.315; HH_2.402" />);
         expect(container.textContent).toContain("ECSW 1.315");
         expect(container.textContent).toContain("HH 2.402");
-        expect(container.querySelectorAll("a")).toHaveLength(4);
+        expect(container.querySelectorAll("a")).toHaveLength(2);
     });
 
     it("says nothing for online sections beyond a short note", () => {

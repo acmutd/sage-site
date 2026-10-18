@@ -1,19 +1,9 @@
 import { useState } from "react";
 import { MapPin } from "lucide-react";
 import { campusPoint, concept3dDestinationUrl } from "@/utils/campusMap";
-import { directionsUrl, floorLabel, mapsUrl, parseRooms, type ParsedRoom } from "@/utils/rooms";
+import { floorLabel, mapsUrl, parseRooms, type ParsedRoom } from "@/utils/rooms";
 import { RoomMapDialog } from "./RoomMapDialog";
 
-/**
- * Compact room text for dense lists (section rows, tooltips). Not interactive,
- * so it is safe inside buttons and hover cards.
- *
- *   GR 2.530
- *   Floor 2          (hover for the full building name)
- *
- * The root has `min-w-0` because it is usually a grid cell: without it a long
- * value would stretch its column and push the neighbouring columns around.
- */
 export function RoomText({
     value,
     className = "text-xs",
@@ -21,7 +11,6 @@ export function RoomText({
 }: {
     value: unknown;
     className?: string;
-    /** Make the room code a link to the campus map (new tab). Off by default so it is safe inside buttons. */
     link?: boolean;
 }) {
     const rooms = parseRooms(value);
@@ -58,10 +47,6 @@ export function RoomText({
     );
 }
 
-/**
- * Room details with map links, for expanded views. Contains links, so do not
- * render it inside a <button>.
- */
 export function RoomDetails({ value }: { value: unknown }) {
     const rooms = parseRooms(value).filter(r => r.kind !== "tba");
     if (rooms.length === 0) return null;
@@ -70,7 +55,6 @@ export function RoomDetails({ value }: { value: unknown }) {
         <div className="px-4 py-3 border-t border-border space-y-2">
             {rooms.map((room, i) => {
                 const map = mapsUrl(room);
-                const directions = directionsUrl(room);
                 const where = [floorLabel(room), room.buildingName].filter(Boolean).join(" · ");
 
                 if (room.kind !== "room") {
@@ -89,18 +73,13 @@ export function RoomDetails({ value }: { value: unknown }) {
                                 {room.label}
                                 {where && <span className="font-normal text-muted-foreground"> · {where}</span>}
                             </p>
-                            {(campusPoint(room) || (map && directions)) && (
+                            {(campusPoint(room) || map) && (
                             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs">
                                 <WalkButton room={room} />
-                                {map && directions && (
-                                    <>
-                                        <a href={map} target="_blank" rel="noopener noreferrer" className={LINK}>
-                                            Open in Maps
-                                        </a>
-                                        <a href={directions} target="_blank" rel="noopener noreferrer" className={LINK}>
-                                            Get directions
-                                        </a>
-                                    </>
+                                {map && (
+                                    <a href={map} target="_blank" rel="noopener noreferrer" className={LINK}>
+                                        Open in Maps
+                                    </a>
                                 )}
                             </div>
                             )}
@@ -114,7 +93,6 @@ export function RoomDetails({ value }: { value: unknown }) {
 
 const LINK = "text-green-600 hover:text-green-700 font-medium";
 
-/** "Walking route" button + dialog. Renders nothing when the building has no coordinates yet. */
 function WalkButton({ room }: { room: ParsedRoom }) {
     const [open, setOpen] = useState(false);
     if (!campusPoint(room)) return null;

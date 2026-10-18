@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILDINGS, directionsUrl, floorLabel, formatRoom, mapsUrl, parseRooms } from "./rooms";
+import { BUILDINGS, floorLabel, formatRoom, mapsUrl, parseRooms } from "./rooms";
 import { firstOf, firstTime } from "./sections";
 
 describe("parseRooms", () => {
@@ -44,7 +44,6 @@ describe("parseRooms", () => {
         const [r] = parseRooms("CD1_B.108");
         expect(r.buildingName).toBeUndefined();
         expect(mapsUrl(r)).toBeNull();
-        expect(directionsUrl(r)).toBeNull();
     });
 
     it("splits multiple rooms, including across buildings", () => {
@@ -91,12 +90,6 @@ describe("map links", () => {
         const url = mapsUrl(parseRooms("GR_2.530")[0])!;
         expect(url.startsWith("https://www.google.com/maps/search/?api=1&query=")).toBe(true);
         expect(decodeURIComponent(url)).toContain("Cecil H. Green Hall, The University of Texas at Dallas");
-    });
-
-    it("builds walking directions", () => {
-        const url = directionsUrl(parseRooms("ECSW_1.315")[0])!;
-        expect(url).toContain("destination=");
-        expect(url).toContain("travelmode=walking");
     });
 
     it("encodes the apostrophe in ATC's name", () => {
