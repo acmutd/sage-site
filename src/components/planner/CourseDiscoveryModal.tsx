@@ -374,13 +374,13 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                         ref={scrollRef}
                         onScroll={checkScroll}
                         style={{ maxHeight: '200px', overflowY: 'auto', scrollbarWidth: 'none' }}
-                        className="[&::-webkit-scrollbar]:hidden"
+                        className="px-1 [&::-webkit-scrollbar]:hidden"
                     >
                         {options.map(opt => (
                             <button
                                 key={opt}
                                 onClick={() => toggle(opt)}
-                                className="w-full flex items-center justify-between gap-3 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                                className="w-full flex items-center justify-between gap-3 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded-lg"
                             >
                                 <span className="font-medium">{optionLabels?.[opt] ?? opt}</span>
                                 {selected.includes(opt) && <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}

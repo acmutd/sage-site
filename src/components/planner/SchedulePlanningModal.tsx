@@ -542,17 +542,17 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                     <span className="hidden sm:inline">Export</span>
                                 </button>
                                 {showExportMenu && (
-                                    <div className="absolute right-0 top-9 z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 w-48"
+                                    <div className="absolute right-0 top-9 z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 px-1 w-48"
                                         onClick={e => e.stopPropagation()}>
                                         <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Image</div>
-                                        <button onClick={handleExportPNG} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">PNG</button>
-                                        <button onClick={handleExportJPG} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">JPG</button>
-                                        <button onClick={handleExportPDF} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">PDF</button>
+                                        <button onClick={handleExportPNG} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded">PNG</button>
+                                        <button onClick={handleExportJPG} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded">JPG</button>
+                                        <button onClick={handleExportPDF} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded">PDF</button>
                                         <div className="border-t border-gray-100 my-1" />
                                         <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Calendar</div>
                                         <div className="relative">
-                                            <button onClick={() => setShowDatePicker('ics')} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">iCal / ICS</button>
-                                            <button onClick={() => setShowDatePicker('gcal')} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">Google Calendar</button>
+                                            <button onClick={() => setShowDatePicker('ics')} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded">iCal / ICS</button>
+                                            <button onClick={() => setShowDatePicker('gcal')} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded">Google Calendar</button>
                                             {showDatePicker && (
                                                 <SemesterDatePickerPopover
                                                     onCancel={() => setShowDatePicker(null)}
@@ -568,7 +568,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                         </div>
                                         <div className="border-t border-gray-100 my-1" />
                                         <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Data</div>
-                                        <button onClick={handleExportCSV} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">CSV</button>
+                                        <button onClick={handleExportCSV} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded">CSV</button>
                                     </div>
                                 )}
                             </div>
@@ -836,7 +836,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                         <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                                     </div>
                                                 )}
-                                                {selectedKey && (
+                                                {selectedKey && collapsedCourses.has(code) && (
                                                     <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-medium whitespace-nowrap hidden sm:block">
                                                         {code}.{selectedKey} selected
                                                     </span>
@@ -844,7 +844,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                             </div>
                                         </div>
 
-                                        {selectedKey && (
+                                        {selectedKey && collapsedCourses.has(code) && (
                                             <div className="sm:hidden mb-2">
                                                 <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-medium">
                                                     {code}.{selectedKey} selected
