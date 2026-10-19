@@ -62,7 +62,7 @@ function EditableCardContent({ card, onSave }: { card: Card; onSave: (val: strin
             if (e.key === "Escape") { setDraft(card.label); setEditing(false); }
           }}
           onBlur={commit}
-          className="font-semibold text-sm text-textdark bg-transparent border-0 border-b-2 border-accent outline-none w-full text-center"
+          className="font-semibold text-sm text-textdark bg-transparent border-0 border-b-2 border-accent outline-hidden w-full text-center"
         />
         <span className="text-[10px] font-semibold">Enter to Save or esc to cancel</span>
       </div>

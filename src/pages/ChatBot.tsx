@@ -881,7 +881,7 @@ const ChatBot: React.FC = () => {
                       rows={1}
                       placeholder="Ask a question..."
                       aria-label="Chat input field"
-                      className={`w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-y-auto focus:outline-none h-fit max-h-28 ${query.trim().length >= 400 ? "pb-6" : ""
+                      className={`w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-y-auto focus:outline-hidden h-fit max-h-28 ${query.trim().length >= 400 ? "pb-6" : ""
                         }`}
                       style={{ scrollbarWidth: "none" }}
                       onChange={(e) => {
@@ -995,7 +995,7 @@ const ChatBot: React.FC = () => {
                                 }`}
                             >
                               <button
-                                className="flex flex-1 min-w-0 items-center p-2 cursor-pointer rounded-sm text-textdark text-left bg-transparent border-none outline-none"
+                                className="flex flex-1 min-w-0 items-center p-2 cursor-pointer rounded-sm text-textdark text-left bg-transparent border-none outline-hidden"
                                 onClick={() => loadConversation(conv.conversation_id, conv.messages)}
                                 aria-current={conversation_id === conv.conversation_id ? "true" : undefined}
                               >
@@ -1238,7 +1238,7 @@ const ChatBot: React.FC = () => {
                       rows={1}
                       placeholder="Ask a question..."
                       aria-label="Chat input field"
-                      className="w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-y-auto focus:outline-none h-fit max-h-28"
+                      className="w-full py-4 px-8 mr-2 border rounded-lg resize-none overflow-y-auto focus:outline-hidden h-fit max-h-28"
                       style={{ scrollbarWidth: "none" }}
                       onChange={(e) => setQuery(e.target.value)}
                       onKeyDown={handleEnter}
@@ -1350,7 +1350,7 @@ const ChatBot: React.FC = () => {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Enter new name"
-              className="w-full px-3 py-2 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded mb-4 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
             <div className="flex justify-end gap-4">

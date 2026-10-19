@@ -702,7 +702,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         role="switch"
                                         aria-checked={showAvailableOnly}
                                         onClick={() => setShowAvailableOnly(prev => !prev)}
-                                        className={`relative w-9 h-5 rounded-full transition-colors duration-200 flex-shrink-0 focus:outline-none ${showAvailableOnly ? 'bg-green-500' : 'bg-gray-300'
+                                        className={`relative w-9 h-5 rounded-full transition-colors duration-200 flex-shrink-0 focus:outline-hidden ${showAvailableOnly ? 'bg-green-500' : 'bg-gray-300'
                                             }`}
                                     >
                                         <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${showAvailableOnly ? 'left-[18px]' : 'left-0.5'

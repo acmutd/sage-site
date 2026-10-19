@@ -608,11 +608,11 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                             type="number" min="0" placeholder="Custom"
                                             value={customPadding}
                                             onChange={e => { setCustomPadding(e.target.value); setClassPadding(-1); }}
-                                            className="text-xs w-14 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" />
+                                            className="text-xs w-14 px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-green-400" />
                                         <select
                                             value={paddingUnit}
                                             onChange={e => setPaddingUnit(e.target.value as 'min' | 'hr')}
-                                            className="text-xs border-l border-gray-200 px-1.5 py-1 bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-400">
+                                            className="text-xs border-l border-gray-200 px-1.5 py-1 bg-white appearance-none focus:outline-hidden focus:ring-1 focus:ring-green-400">
                                             <option value="min">min</option>
                                             <option value="hr">hr</option>
                                         </select>
@@ -624,7 +624,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                     <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Session</label>
                                     <div className="relative">
                                         <select value={sessionFilter} onChange={e => setSessionFilter(e.target.value)}
-                                            className="text-xs border border-gray-200 rounded-md px-2.5 py-1.5 pr-7 bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-400">
+                                            className="text-xs border border-gray-200 rounded-md px-2.5 py-1.5 pr-7 bg-white appearance-none focus:outline-hidden focus:ring-1 focus:ring-green-400">
                                             <option value="all">All Sessions</option>
                                             {allSessions.map(s => <option key={s} value={s}>{s}</option>)}
                                         </select>
@@ -751,7 +751,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                         <input type="text" placeholder="Label (e.g. Lunch)"
                                             value={newBreak.label}
                                             onChange={e => setNewBreak(p => ({ ...p, label: e.target.value }))}
-                                            className="w-full text-xs border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-400" />
+                                            className="w-full text-xs border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-green-400" />
                                         <DayToggle selected={newBreak.days}
                                             onChange={days => setNewBreak(p => ({ ...p, days }))} />
                                         <div className="flex items-center gap-3">
@@ -759,13 +759,13 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                 <label className="text-[10px] text-gray-400">Start</label>
                                                 <input type="time" value={newBreak.startTime}
                                                     onChange={e => setNewBreak(p => ({ ...p, startTime: e.target.value }))}
-                                                    className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" />
+                                                    className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-green-400" />
                                             </div>
                                             <div className="flex flex-col gap-0.5">
                                                 <label className="text-[10px] text-gray-400">End</label>
                                                 <input type="time" value={newBreak.endTime}
                                                     onChange={e => setNewBreak(p => ({ ...p, endTime: e.target.value }))}
-                                                    className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" />
+                                                    className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-green-400" />
                                             </div>
                                             <div className="flex gap-1.5 self-end">
                                                 <button onClick={addBreak}
@@ -829,7 +829,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                             value={professorFilters[code] ?? 'all'}
                                                             onChange={e => setProfessorFilters(prev => ({ ...prev, [code]: e.target.value }))}
                                                             style={{ width: window.innerWidth >= 640 ? `${professorDropdownWidth}px` : undefined }}
-                                                            className="text-xs border border-gray-200 rounded-md px-2.5 py-1 pr-7 bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-400 max-w-[120px] sm:max-w-none">
+                                                            className="text-xs border border-gray-200 rounded-md px-2.5 py-1 pr-7 bg-white appearance-none focus:outline-hidden focus:ring-1 focus:ring-green-400 max-w-[120px] sm:max-w-none">
                                                             <option value="all">All Professors</option>
                                                             {courseProfessors.map(p => <option key={p} value={p}>{p}</option>)}
                                                         </select>

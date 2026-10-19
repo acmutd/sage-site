@@ -496,7 +496,7 @@ const PlannerPage = () => {
                       id="plan-select"
                       value={selectedPlanId}
                       onChange={(e) => setSelectedPlanId(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-purple-400"
                     >
                       {planListRef.current.map((plan) => (
                         <option key={plan.id} value={plan.id}>

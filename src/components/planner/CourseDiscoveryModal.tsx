@@ -1145,7 +1145,7 @@ const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps
                             onChange={(e) => setSchoolQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && runTransferSearch()}
                             placeholder="School name"
-                            className="flex-1 text-[11px] px-2 py-1 rounded border border-gray-200 focus:outline-none focus:border-green-400"
+                            className="flex-1 text-[11px] px-2 py-1 rounded border border-gray-200 focus:outline-hidden focus:border-green-400"
                         />
                         <button
                             onClick={runTransferSearch}
@@ -1650,7 +1650,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                 onChange={e => setQuery(e.target.value)}
                                 placeholder={smart ? 'Describe what you want, e.g. intro to machine learning…' : 'Search courses, professors, keywords…'}
                                 className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg
-                                    focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent
+                                    focus:outline-hidden focus:ring-2 focus:ring-green-400 focus:border-transparent
                                     bg-gray-50 placeholder-gray-400"
                             />
                             {query && (

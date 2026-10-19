@@ -214,7 +214,7 @@ const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({ onClose }) => {
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent mb-4"
+              className="w-full p-3 border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-accent mb-4"
               placeholder="Enter new conversation name..."
               autoFocus
             />

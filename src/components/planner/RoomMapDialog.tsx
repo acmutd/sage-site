@@ -31,7 +31,7 @@ export function RoomMapDialog({
             <DialogPrimitive.Portal>
                 <DialogPrimitive.Overlay className={`fixed inset-0 ${OVERLAY_Z} bg-black/60`} />
                 <DialogPrimitive.Content
-                    className={`fixed left-1/2 top-1/2 ${CONTENT_Z} w-[calc(100%-2rem)] max-w-4xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[10px] bg-white shadow-2xl focus:outline-none`}
+                    className={`fixed left-1/2 top-1/2 ${CONTENT_Z} w-[calc(100%-2rem)] max-w-4xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[10px] bg-white shadow-2xl focus:outline-hidden`}
                 >
                     <div className="flex items-start gap-3 border-b border-border px-5 pb-3 pt-5 pr-12">
                         <div className="min-w-0 flex-1 space-y-1">
@@ -53,7 +53,7 @@ export function RoomMapDialog({
                         </a>
                     </div>
                     <DialogPrimitive.Close
-                        className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring"
                         aria-label="Close"
                     >
                         <X className="h-4 w-4" />

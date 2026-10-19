@@ -123,7 +123,7 @@ export function Searchbox<T>({
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full py-2 text-sm bg-transparent outline-none"
+                  className="w-full py-2 text-sm bg-transparent outline-hidden"
                 />
                 {!query && (
                   <span className="slot-in absolute inset-y-0 left-0 flex items-center text-sm text-muted-foreground pointer-events-none whitespace-nowrap">
