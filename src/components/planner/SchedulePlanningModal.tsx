@@ -9,6 +9,7 @@ import { formatRoom } from '@/utils/rooms';
 import { sectionLabel, walkBlockLayout } from '@/utils/walkTime';
 import { useWalkTimes } from '@/hooks/useWalkTimes';
 import { firstOf } from '@/utils/sections';
+import { FilterDropdown } from '../ui/FilterDropdown';
 
 interface Break {
     id: string;
@@ -91,11 +92,9 @@ const ColorDotPicker = ({ color, onChange }: { color: string; onChange: (hex: st
 
     useEffect(() => {
         if (!open) return;
-        const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
+        const close = () => setOpen(false);
+        window.addEventListener('scroll', close, true);
+        return () => window.removeEventListener('scroll', close, true);
     }, [open]);
 
     return (
@@ -424,21 +423,6 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
         return result;
     };
-
-    const professorDropdownWidth = useMemo(() => {
-        let maxLen = 'All Professors'.length;
-        plannableCourses.forEach(({ sections }) =>
-            sections.forEach((sec: any) => {
-                const profs: string[] = Array.isArray(sec.instructors)
-                    ? sec.instructors
-                    : (sec.instructors || '').split(',');
-                profs.forEach((p: string) => {
-                    maxLen = Math.max(maxLen, p.trim().length);
-                });
-            })
-        );
-        return maxLen * 7 + 48;
-    }, [plannableCourses]);
 
     const selectedSectionObjects = useMemo(() => {
         return plannableCourses
@@ -824,17 +808,14 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                             </div>
                                             <div className="flex items-center gap-2 flex-shrink-0">
                                                 {courseProfessors.length > 1 && (
-                                                    <div className="relative">
-                                                        <select
-                                                            value={professorFilters[code] ?? 'all'}
-                                                            onChange={e => setProfessorFilters(prev => ({ ...prev, [code]: e.target.value }))}
-                                                            style={{ width: window.innerWidth >= 640 ? `${professorDropdownWidth}px` : undefined }}
-                                                            className="text-xs border border-gray-200 rounded-md px-2.5 py-1 pr-7 bg-white appearance-none focus:outline-hidden focus:ring-1 focus:ring-green-400 max-w-[120px] sm:max-w-none">
-                                                            <option value="all">All Professors</option>
-                                                            {courseProfessors.map(p => <option key={p} value={p}>{p}</option>)}
-                                                        </select>
-                                                        <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                                    </div>
+                                                    <FilterDropdown
+                                                        label="Professor"
+                                                        options={courseProfessors as string[]}
+                                                        selected={professorFilters[code] && professorFilters[code] !== 'all' ? [professorFilters[code]] : []}
+                                                        onChange={vals => setProfessorFilters(prev => ({ ...prev, [code]: vals[0] ?? 'all' }))}
+                                                        single
+                                                        allLabel="All Professors"
+                                                    />
                                                 )}
                                                 {selectedKey && collapsedCourses.has(code) && (
                                                     <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-medium whitespace-nowrap hidden sm:block">
