@@ -6,6 +6,7 @@ import { Course } from '@/types/course';
 import { Warning } from '@/types/warning';
 import SectionCard from './utdgrades/sectioncard';
 import { getRMPColor } from '@/utils/grades';
+import { RoomText } from './RoomLabel';
 
 interface CourseBoxProps {
     course: Course;
@@ -471,6 +472,10 @@ const CourseBox: React.FC<CourseBoxProps> = ({
             ? []
             : (course as any).sections || [];
 
+    useEffect(() => {
+        if (sections.length > 0) console.log(Object.keys(sections[0]));
+    }, []);
+
     const courseKey = course.course_code?.toUpperCase().replace(/\s+/g, "");
     const courseGrades = gradesData?.[courseKey];
 
@@ -704,8 +709,8 @@ const CourseBox: React.FC<CourseBoxProps> = ({
                                                 {sec.days && <DayPips days={sec.days} />}
                                                 <span className="text-[10px] text-gray-500">{sec.times_12h?.split(";")[0].trim()}</span>
                                             </div>
-                                            <div className={`text-xs text-right ${sec.location === "Online" ? "text-[#5AED86] font-semibold" : "text-gray-600"}`}>
-                                                {sec.location?.replace("_", " ") ?? "TBA"}
+                                            <div className="text-right">
+                                                <RoomText value={sec.location} link />
                                             </div>
                                         </div>
                                     ))}
