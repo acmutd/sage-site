@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, GripVertical, MoveLeft, MoveRight, Pencil, Plus, SaveIcon, Sparkles, X } from "lucide-react";
+import { Check, GripVertical, MoveLeft, MoveRight, Pencil, Plus, SaveIcon, Sparkles, X, Settings } from "lucide-react";
 import DegreeProgressCard from "@/components/profile/degreeprogresscard";
 import { useAuth } from "../context/AuthContext";
 import SectionSwitcher, { ProfileSection } from "@/components/profile/sectionswitcher";
 import ChatConversationCard from "@/components/profile/chatconversationcard"
+import AccountSettings from "@/components/profile/accountsettings";
 import { chatEventEmitter } from "../utils/chatEventEmitter";
 import { Conversation } from "@/types/chat"
 import { useProfileStore } from "@/stores/profileStore";
+import { useAccountSettingsStore } from "@/stores/accountsettingStore";
 import { z } from "zod";
 
 interface Card {
@@ -60,7 +62,7 @@ function EditableCardContent({ card, onSave }: { card: Card; onSave: (val: strin
             if (e.key === "Escape") { setDraft(card.label); setEditing(false); }
           }}
           onBlur={commit}
-          className="font-semibold text-sm text-textdark bg-transparent border-0 border-b-2 border-accent outline-none w-full text-center"
+          className="font-semibold text-sm text-textdark bg-transparent border-0 border-b-2 border-accent outline-hidden w-full text-center"
         />
         <span className="text-[10px] font-semibold">Enter to Save or esc to cancel</span>
       </div>
@@ -600,6 +602,14 @@ const Profile = () => {
               </button>
               <div className="flex flex-col gap-2 flex-1 min-w-0">
                 <p className="font-semibold text-lg" data-clarity-mask="True">{name}</p>
+                <button
+                  type="button"
+                  aria-label="Account settings"
+                  onClick={() => useAccountSettingsStore.getState().setOpen(true)}
+                  className="p-2 rounded-full border-2 border-card-bord bg-white hover:border-accent"
+                >
+                  <Settings className="w-4 h-4" aria-hidden="true" />
+                </button>
                 {enabledCards.map((card) => (
                   <div key={card.id} data-clarity-mask="True" data-testid={`profile-card-${card.id}`} className="border border-card-bord bg-white rounded-xl px-3 py-2 flex flex-col">
                     <span className="font-semibold text-sm">{card.label}</span>
@@ -675,27 +685,37 @@ const Profile = () => {
                 {/* Name row + Customize button */}
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-center sm:text-left" data-clarity-mask="True">{name}</h2>
-                  <button
-                    onClick={() => setIsEditing(!isEditing)}
-                    aria-pressed={isEditing}
-                    aria-label={isEditing ? "Done" : "Customize"}
-                    className={`px-4 py-1.5 rounded-full text-sm border-2 transition-all duration-200 whitespace-nowrap flex items-center gap-2 ${isEditing
-                      ? "border-accent bg-accent text-black"
-                      : "border-card-bord bg-white text-textdark hover:border-accent"
-                      }`}
-                  >
-                    {isEditing ? (
-                      <>
-                        <Check className="w-5 h-5" />
-                        Done
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-5 h-5" />
-                        Customize
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => useAccountSettingsStore.getState().setOpen(true)}
+                      className="px-4 py-1.5 rounded-full text-sm border-2 border-card-bord bg-white text-textdark hover:border-accent transition-all duration-200 whitespace-nowrap flex items-center gap-2"
+                    >
+                      <Settings className="w-4 h-4" aria-hidden="true" />
+                      Account settings
+                    </button>
+                    <button
+                      onClick={() => setIsEditing(!isEditing)}
+                      aria-pressed={isEditing}
+                      aria-label={isEditing ? "Done" : "Customize"}
+                      className={`px-4 py-1.5 rounded-full text-sm border-2 transition-all duration-200 whitespace-nowrap flex items-center gap-2 ${isEditing
+                        ? "border-accent bg-accent text-black"
+                        : "border-card-bord bg-white text-textdark hover:border-accent"
+                        }`}
+                    >
+                      {isEditing ? (
+                        <>
+                          <Check className="w-5 h-5" />
+                          Done
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-5 h-5" />
+                          Customize
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex-1">
@@ -1008,6 +1028,7 @@ const Profile = () => {
           </div>
         </div>
       )}
+      <AccountSettings />
     </>
   );
 };

@@ -181,7 +181,7 @@ export default function SignupForm(props: {
                         <Input
                           placeholder="Enter email"
                           type="email"
-                          className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-[#10B981]"
+                          className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] text-textsecondary focus:outline-hidden focus:border-accent focus:ring-1 focus:ring-[#10B981]"
                           {...field}
                           disabled={ENVIRONMENT === 'development'}
                         />
@@ -202,7 +202,7 @@ export default function SignupForm(props: {
                         <Input
                           placeholder="Enter password"
                           type="password"
-                          className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-[#10B981]"
+                          className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] text-textsecondary focus:outline-hidden focus:border-accent focus:ring-1 focus:ring-[#10B981]"
                           {...field}
                           disabled={ENVIRONMENT === 'development'}
                         />
@@ -223,7 +223,7 @@ export default function SignupForm(props: {
                         <Input
                           placeholder="Confirm password"
                           type="password"
-                          className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-[#10B981]"
+                          className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] text-textsecondary focus:outline-hidden focus:border-accent focus:ring-1 focus:ring-[#10B981]"
                           {...field}
                           disabled={ENVIRONMENT === 'development'}
                         />

@@ -126,7 +126,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onNext, showManualOption = 
   return (
     <div className="px-4 sm:px-0">
       {isDragging && (
-        <div className="fixed inset-0 z-50 bg-blue-100 bg-opacity-60 flex items-center justify-center pointer-events-none">
+        <div className="fixed inset-0 z-50 bg-blue-100/60 flex items-center justify-center pointer-events-none">
           <div className="text-blue-600 font-bold text-xl sm:text-2xl">
             Drop your file anywhere!
           </div>

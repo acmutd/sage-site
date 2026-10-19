@@ -187,6 +187,13 @@ describe("Unit — profile info rendering", () => {
     fireEvent.click(screen.getByRole("button", { name: /customize/i }));
     expect(screen.getByTestId("tray-btn-grad")).toBeInTheDocument();
   });
+
+  test("Account settings button opens the dialog", async () => {
+    render(<Profile />);
+    await screen.findByText("Jane Smith");
+    fireEvent.click(screen.getByRole("button", { name: /account settings/i }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
 });
 
 describe("Unit — degree progress card data", () => {
@@ -583,7 +590,6 @@ describe("Boundary — empty and missing data", () => {
     expect(screen.queryByTestId("degree-card")).not.toBeInTheDocument();
   });
 });
-
 
 describe("UI — profile picture picker", () => {
   test("profile pic popup is hidden by default", async () => {

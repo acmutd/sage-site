@@ -83,7 +83,7 @@ export default function ForgotPasswordForm(props: {
                                     <Input
                                         placeholder="Enter email"
                                         type="email"
-                                        className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                                        className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-hidden focus:border-accent focus:ring-1 focus:ring-accent"
                                         {...field}
                                         onChange={(e) => {
                                             setError(null);

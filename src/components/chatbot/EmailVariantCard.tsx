@@ -135,7 +135,7 @@ const EmailVariantCard: React.FC<EmailVariantCardProps> = ({ variants, messageIn
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
               placeholder="recipient@utdallas.edu"
-              className="text-sm text-textdark bg-secondary border border-border px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-accent w-full placeholder:text-textsecondary"
+              className="text-sm text-textdark bg-secondary border border-border px-3 py-2 rounded-md focus:outline-hidden focus:ring-1 focus:ring-accent w-full placeholder:text-textsecondary"
             />
           </div>
 
@@ -149,7 +149,7 @@ const EmailVariantCard: React.FC<EmailVariantCardProps> = ({ variants, messageIn
                 type="text"
                 value={selected.subject}
                 onChange={(e) => handleSubjectChange(e.target.value)}
-                className="text-sm text-textdark bg-secondary border border-border px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-accent w-full"
+                className="text-sm text-textdark bg-secondary border border-border px-3 py-2 rounded-md focus:outline-hidden focus:ring-1 focus:ring-accent w-full"
               />
             ) : (
               <span className="text-sm text-textdark font-medium bg-secondary px-3 py-2 rounded-md">
@@ -168,7 +168,7 @@ const EmailVariantCard: React.FC<EmailVariantCardProps> = ({ variants, messageIn
                 value={selected.body}
                 onChange={(e) => handleBodyChange(e.target.value)}
                 rows={10}
-                className="text-sm text-textdark bg-secondary border border-border px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-accent w-full resize-none leading-relaxed"
+                className="text-sm text-textdark bg-secondary border border-border px-3 py-2 rounded-md focus:outline-hidden focus:ring-1 focus:ring-accent w-full resize-none leading-relaxed"
                 style={{ scrollbarWidth: "none" }}
               />
             ) : (

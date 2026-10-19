@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SectionContent from "@/components/planner/utdgrades/sectioncontent";
+import { RoomDetails, RoomText } from "@/components/planner/RoomLabel";
 import { getAvgLetterGrade, getRMPColor, getGpaBadgeStyle } from "@/utils/grades";
 import type { InstructorGrades } from "@/types/grades";
 
@@ -76,8 +77,9 @@ export default function SectionCard({ sec, instData }: SectionCardProps) {
               </span>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {firstTime} · {sec.location?.replace("_", " ")}
+          <p className="text-xs text-muted-foreground mt-1 flex items-start gap-1">
+            <span>{firstTime} ·</span>
+            <RoomText value={sec.location} link className="text-xs" />
           </p>
         </div>
 
@@ -103,6 +105,7 @@ export default function SectionCard({ sec, instData }: SectionCardProps) {
         </div>
       </button>
 
+      {expanded && <RoomDetails value={sec.location} />}
       {expanded && instData && <SectionContent instData={instData} />}
       {expanded && !instData && (
         <div className="px-4 pb-4 border-t border-border pt-3">

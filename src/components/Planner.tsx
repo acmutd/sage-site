@@ -27,6 +27,7 @@ import { exportPlanAsCSV, exportPlanAsJPG, exportPlanAsPDF, exportPlanAsPNG } fr
 import CourseDiscoveryModal, { CartItem } from "@/components/planner/CourseDiscoveryModal";
 import z from "zod";
 import { getToken } from "@/utils/auth";
+import { getCreditsFromCourseCode } from "@/utils/plannerCredits";
 
 interface PlannerProps {
     semesters: {
@@ -390,7 +391,6 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     // when we want "educational" worthy students to use SAGE
     const [showExtendYearsModal, setShowExtendYearsModal] = useState(false);
     const [requestedYears, setRequestedYears] = useState(12);
-    const [extendRequestSent, setExtendRequestSent] = useState(false);
 
     const [semesterToDelete, setSemesterToDelete] = useState<{
         yearKey: string;
@@ -409,6 +409,32 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
     const coursebookFetchedRef = useRef<Set<string>>(new Set());
     const errorRef = useRef<HTMLDivElement>(null);
     const [discoveryCart, setDiscoveryCart] = useState<CartItem[]>([]);
+
+    const EXTEND_YEARS_FORM = "https://docs.google.com/forms/d/e/1FAIpQLScTFla_lL3iOeQhEezmrMWMvatm7EyX6Sl1yauAGAQ50UVkPg/viewform?usp=pp_url&entry.1636002590="
+
+    const PROVIDER_LABELS: Record<string, string> = {
+        "google.com": "Google",
+        password: "Email/password",
+    };
+
+    const accountEmail =
+        user?.email ||
+        user?.providerData?.find((p) => p.email)?.email ||
+        "";
+
+    const signInInfo =
+        user?.providerData
+            ?.map(
+                (p) =>
+                    `${PROVIDER_LABELS[p.providerId] ?? p.providerId}${p.email ? ` (${p.email})` : ""}`
+            )
+            .join(", ") || "unknown";
+
+    const extendUrl =
+        EXTEND_YEARS_FORM +
+        encodeURIComponent(
+            `I would like ${requestedYears} total years in my degree plan with this user email: ${accountEmail}. Signed in via: ${signInInfo}`
+        );
 
     useEffect(() => {
         if (error && scrollContainerRef.current) {
@@ -747,6 +773,27 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
         return courses;
     }, [allSemesters, semesterOrderByKey]);
 
+    const placedHoursByCode = useMemo(() => {
+        const hours = new Map<string, number>();
+
+        Object.keys(allSemesters).forEach((yearKey) => {
+            allSemesters[yearKey].forEach((semester) => {
+                semester.courses?.forEach((course: any) => {
+                    const status = String(course.status || "").toLowerCase();
+                    if (status === "failed") return; // no failed attempts counts toward the cap
+
+                    const code = normalizeCourseCode(course.course_code || course.code);
+                    if (!code) return;
+
+                    const credits = course.credits_planned ?? getCreditsFromCourseCode(code);
+                    hours.set(code, (hours.get(code) ?? 0) + credits);
+                });
+            });
+        });
+
+        return hours;
+    }, [allSemesters]);
+
     const allPlannedCourseCodes = useMemo(() => {
         return allPlannedCoursesWithOrder.map((course) => course.code);
     }, [allPlannedCoursesWithOrder]);
@@ -935,6 +982,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     handleDropCourse('', -1, null, sourceYear, sourceSemesterIndex, courseId, false)
                 }
                 placedSuggestedCourses={placedSuggestedCourses}
+                placedHoursByCode={placedHoursByCode}
                 allCompletedCourseCodes={allCompletedCourseCodes}
                 allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                 onRestartOnboarding={onRestartOnboarding}
@@ -994,11 +1042,11 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     {/* Help */}
                     <button
                         data-tour="help-button"
-                        aria-label="tutorial"
+                        aria-label="Replay tutorial"
                         onClick={startTutorial}
-                        className="hidden sm:flex self-end translate-y-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 items-center justify-center"
+                        className="hidden sm:flex self-end relative top-4 w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 items-center justify-center"
                     >
-                        <HelpCircle size={18} className="text-white" />
+                        <HelpCircle size={18} className="text-white" aria-hidden="true" />
                     </button>
                 </div>
                 <div className="h-[calc(100%-2rem)] pl-1 pr-6 py-6 pb-12 flex-col gap-4 hidden md:flex">
@@ -1013,6 +1061,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                         isExpanded={!sidebarCollapsed}
                         onToggleExpanded={toggleSidebar}
                         placedSuggestedCourses={placedSuggestedCourses}
+                        placedHoursByCode={placedHoursByCode}
                         allCompletedCourseCodes={allCompletedCourseCodes}
                         allPlannedCoursesWithOrder={allPlannedCoursesWithOrder}
                         onRestartOnboarding={onRestartOnboarding}
@@ -1402,7 +1451,7 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
 
                     {showDeleteModal && semesterToDelete && (
                         <div
-                            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80]"
+                            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80]"
                             onClick={() => {
                                 setShowDeleteModal(false);
                                 setSemesterToDelete(null);
@@ -1490,69 +1539,42 @@ const Planner: React.FC<PlannerProps> = ({ semesters, requirements, transcriptDa
                     {showExtendYearsModal && (
                         <div
                             className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
-                            onClick={() => { setShowExtendYearsModal(false); setExtendRequestSent(false); }}
+                            onClick={() => setShowExtendYearsModal(false)}
                         >
                             <div
                                 className="bg-white p-6 rounded-2xl shadow-lg max-w-md w-full mx-4"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                {extendRequestSent ? (
-                                    <>
-                                        <h3 className="font-semibold text-lg mb-2">Request sent!</h3>
-                                        <p className="text-sm text-gray-500 mb-4">We'll review your request and update your account shortly.</p>
-                                        <button
-                                            onClick={() => { setShowExtendYearsModal(false); setExtendRequestSent(false); }}
-                                            className="w-full px-4 py-2 text-sm bg-green-500 text-white rounded-full hover:bg-green-600"
-                                        >
-                                            Got it
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <h3 className="font-semibold text-lg mb-1">Need more years?</h3>
-                                        <p className="text-sm text-gray-500 mb-4">You've hit the {allowedYears}-year limit. Let us know how many you need and we'll get you sorted.</p>
-                                        <label className="text-sm font-medium text-gray-700">How many years do you need in total?</label>
-                                        <input
-                                            type="number"
-                                            min={allowedYears + 1}
-                                            max={20}
-                                            value={requestedYears}
-                                            onChange={(e) => setRequestedYears(Number(e.target.value))}
-                                            className="border rounded-lg px-3 py-2 w-full mt-1 mb-4"
-                                        />
-                                        <div className="flex gap-2 justify-end">
-                                            <button
-                                                onClick={() => setShowExtendYearsModal(false)}
-                                                className="px-4 py-2 text-sm bg-gray-200 rounded-full hover:bg-gray-300"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                onClick={async () => {
-                                                    try {
-                                                        const token = await getToken(user!);
-                                                        await fetch(import.meta.env.VITE_CRUD_API, {
-                                                            method: 'POST',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({
-                                                                action: 'requestExtendedYears',
-                                                                userId: user?.uid,
-                                                                token,
-                                                                requestedYears
-                                                            })
-                                                        });
-                                                        setExtendRequestSent(true);
-                                                    } catch {
-                                                        toast.error('Failed to send request. Try again.');
-                                                    }
-                                                }}
-                                                className="px-4 py-2 text-sm bg-green-500 text-white rounded-full hover:bg-green-600"
-                                            >
-                                                Send Request
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
+                                <h3 className="font-semibold text-lg mb-1">Need more years?</h3>
+                                <p className="text-sm text-gray-500 mb-4">
+                                    You've hit the {allowedYears}-year limit. Fill out a quick form and we'll raise it for you.
+                                </p>
+                                <label className="text-sm font-medium text-gray-700">How many years do you need in total?</label>
+                                <input
+                                    type="number"
+                                    min={allowedYears + 1}
+                                    max={20}
+                                    value={requestedYears}
+                                    onChange={(e) => setRequestedYears(Number(e.target.value))}
+                                    className="border rounded-lg px-3 py-2 w-full mt-1 mb-4"
+                                />
+                                <div className="flex gap-2 justify-end">
+                                    <button
+                                        onClick={() => setShowExtendYearsModal(false)}
+                                        className="px-4 py-2 text-sm bg-gray-200 rounded-full hover:bg-gray-300"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <a
+                                        href={extendUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => setShowExtendYearsModal(false)}
+                                        className="px-4 py-2 text-sm bg-green-500 text-white rounded-full hover:bg-green-600"
+                                    >
+                                        Open Request Form
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     )}

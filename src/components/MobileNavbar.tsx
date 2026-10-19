@@ -57,7 +57,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
               onClick={() => setSidebarOpen(true)}
               aria-label="Open sidebar"
               aria-expanded={sidebarOpen}
-              className="p-2 rounded-md outline-none"
+              className="p-2 rounded-md outline-hidden"
             >
               {sidebarIcon}
             </button>
@@ -129,7 +129,7 @@ const MobileNavbar: React.FC<MobileNavbarProps> = ({
             <Link to="/" onClick={() => setSidebarOpen(false)}>
               <img src={isInWebapp ? "/Sage_Logo_Dark.svg" : "/Sage_Logo_Light.svg"} alt="SAGE" className="h-8 w-auto" />
             </Link>
-            <button ref={closeButtonRef} onClick={() => setSidebarOpen(false)} aria-label="Close sidebar" className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent">
+            <button ref={closeButtonRef} onClick={() => setSidebarOpen(false)} aria-label="Close sidebar" className="p-2 rounded-md focus:outline-hidden focus:ring-2 focus:ring-accent">
               <ArrowLeftFromLine />
             </button>
           </div>

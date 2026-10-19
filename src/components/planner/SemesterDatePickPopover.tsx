@@ -50,7 +50,7 @@ const SemesterDatePickerPopover: React.FC<SemesterDatePickerPopoverProps> = ({ o
                         type="date"
                         value={startVal}
                         onChange={e => setStartVal(e.target.value)}
-                        className="text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-400 w-full"
+                        className="text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-green-400 w-full"
                     />
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -60,7 +60,7 @@ const SemesterDatePickerPopover: React.FC<SemesterDatePickerPopoverProps> = ({ o
                         value={endVal}
                         onChange={e => setEndVal(e.target.value)}
                         min={startVal}
-                        className="text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-400 w-full"
+                        className="text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-green-400 w-full"
                     />
                 </div>
             </div>

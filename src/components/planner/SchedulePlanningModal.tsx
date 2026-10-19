@@ -5,6 +5,11 @@ import { Course } from '@/types/course';
 import ReactDOM from 'react-dom';
 import SemesterDatePickerPopover from './SemesterDatePickPopover';
 import { determineStudentType, getGPAState } from '@/utils/studentInfo';
+import { formatRoom } from '@/utils/rooms';
+import { sectionLabel, walkBlockLayout } from '@/utils/walkTime';
+import { useWalkTimes } from '@/hooks/useWalkTimes';
+import { firstOf } from '@/utils/sections';
+import { FilterDropdown } from '../ui/FilterDropdown';
 
 interface Break {
     id: string;
@@ -87,11 +92,9 @@ const ColorDotPicker = ({ color, onChange }: { color: string; onChange: (hex: st
 
     useEffect(() => {
         if (!open) return;
-        const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
+        const close = () => setOpen(false);
+        window.addEventListener('scroll', close, true);
+        return () => window.removeEventListener('scroll', close, true);
     }, [open]);
 
     return (
@@ -232,7 +235,7 @@ const SORT_OPTIONS = [
 ];
 
 const guessModality = (sec: any): 'online' | 'hybrid' | 'inperson' => {
-    const loc = (sec.location || '').toLowerCase();
+    const loc = firstOf(sec.location).toLowerCase();
     const type = (sec.activity_type || '').toLowerCase();
     if (loc === 'online' || type.includes('online') || type.includes('distance')) return 'online';
     if (type.includes('hybrid')) return 'hybrid';
@@ -308,6 +311,10 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
     const plannableCourses = useMemo(() => {
         return courses
             .filter(c => String(c.status || '').toLowerCase() !== 'completed')
+            .filter(c => {
+                const source = (c as any).credit_source;
+                return !source || source === 'university';
+            })
             .map(c => ({
                 course: c,
                 sections: (c as any).sections as any[] || [],
@@ -377,7 +384,6 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
     const filterAndSort = (sections: any[], courseCode: string) => {
         const profFilter = professorFilters[courseCode] ?? 'all';
-        
         const gradeToPoints = (grade: string | null): number => {
             if (!grade) return -1;
             return GRADE_POINTS[grade] ?? -1;
@@ -418,21 +424,6 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
         return result;
     };
 
-    const professorDropdownWidth = useMemo(() => {
-        let maxLen = 'All Professors'.length;
-        plannableCourses.forEach(({ sections }) =>
-            sections.forEach((sec: any) => {
-                const profs: string[] = Array.isArray(sec.instructors)
-                    ? sec.instructors
-                    : (sec.instructors || '').split(',');
-                profs.forEach((p: string) => {
-                    maxLen = Math.max(maxLen, p.trim().length);
-                });
-            })
-        );
-        return maxLen * 7 + 48;
-    }, [plannableCourses]);
-
     const selectedSectionObjects = useMemo(() => {
         return plannableCourses
             .map(({ course, sections }) => {
@@ -450,6 +441,10 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                     pairs.push([selectedSectionObjects[i], selectedSectionObjects[j]]);
         return pairs;
     }, [selectedSectionObjects, classPaddingMinutes]);
+
+    // Back-to-back classes where the estimated walk is longer than the gap between them.
+    const { transitions } = useWalkTimes(selectedSectionObjects as any[]);
+    const tightTransitions = useMemo(() => transitions.filter(t => t.tight), [transitions]);
 
     const conflictingKeys = useMemo(() => {
         const keys = new Set<string>();
@@ -505,7 +500,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
 
     return ReactDOM.createPortal(
         <>
-            <div className="fixed inset-0 bg-black bg-opacity-40 z-[9998]" />
+            <div className="fixed inset-0 bg-black/40 z-[9998]" />
             <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
                 <div style={{ WebkitOverflowScrolling: 'touch' }} className={`bg-white sm:rounded-xl rounded-t-2xl shadow-2xl w-full h-[95dvh] sm:h-auto sm:max-h-[90vh] flex flex-col pointer-events-auto transition-all duration-300 ${showPreview ? 'sm:max-w-5xl' : 'sm:max-w-2xl'}`}>
 
@@ -531,17 +526,17 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                     <span className="hidden sm:inline">Export</span>
                                 </button>
                                 {showExportMenu && (
-                                    <div className="absolute right-0 top-9 z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 w-48"
+                                    <div className="absolute right-0 top-9 z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 px-1 w-48"
                                         onClick={e => e.stopPropagation()}>
                                         <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Image</div>
-                                        <button onClick={handleExportPNG} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">PNG</button>
-                                        <button onClick={handleExportJPG} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">JPG</button>
-                                        <button onClick={handleExportPDF} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">PDF</button>
+                                        <button onClick={handleExportPNG} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded">PNG</button>
+                                        <button onClick={handleExportJPG} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded">JPG</button>
+                                        <button onClick={handleExportPDF} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded">PDF</button>
                                         <div className="border-t border-gray-100 my-1" />
                                         <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Calendar</div>
                                         <div className="relative">
-                                            <button onClick={() => setShowDatePicker('ics')} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">iCal / ICS</button>
-                                            <button onClick={() => setShowDatePicker('gcal')} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">Google Calendar</button>
+                                            <button onClick={() => setShowDatePicker('ics')} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded">iCal / ICS</button>
+                                            <button onClick={() => setShowDatePicker('gcal')} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded">Google Calendar</button>
                                             {showDatePicker && (
                                                 <SemesterDatePickerPopover
                                                     onCancel={() => setShowDatePicker(null)}
@@ -557,7 +552,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                         </div>
                                         <div className="border-t border-gray-100 my-1" />
                                         <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Data</div>
-                                        <button onClick={handleExportCSV} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">CSV</button>
+                                        <button onClick={handleExportCSV} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 rounded">CSV</button>
                                     </div>
                                 )}
                             </div>
@@ -597,11 +592,11 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                             type="number" min="0" placeholder="Custom"
                                             value={customPadding}
                                             onChange={e => { setCustomPadding(e.target.value); setClassPadding(-1); }}
-                                            className="text-xs w-14 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" />
+                                            className="text-xs w-14 px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-green-400" />
                                         <select
                                             value={paddingUnit}
                                             onChange={e => setPaddingUnit(e.target.value as 'min' | 'hr')}
-                                            className="text-xs border-l border-gray-200 px-1.5 py-1 bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-400">
+                                            className="text-xs border-l border-gray-200 px-1.5 py-1 bg-white appearance-none focus:outline-hidden focus:ring-1 focus:ring-green-400">
                                             <option value="min">min</option>
                                             <option value="hr">hr</option>
                                         </select>
@@ -613,7 +608,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                     <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Session</label>
                                     <div className="relative">
                                         <select value={sessionFilter} onChange={e => setSessionFilter(e.target.value)}
-                                            className="text-xs border border-gray-200 rounded-md px-2.5 py-1.5 pr-7 bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-400">
+                                            className="text-xs border border-gray-200 rounded-md px-2.5 py-1.5 pr-7 bg-white appearance-none focus:outline-hidden focus:ring-1 focus:ring-green-400">
                                             <option value="all">All Sessions</option>
                                             {allSessions.map(s => <option key={s} value={s}>{s}</option>)}
                                         </select>
@@ -658,6 +653,24 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                             ) : (
                                 <><CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />All sections selected — no conflicts!</>
                             )}
+                        </div>
+                    )}
+
+                    {/* Walking time between back-to-back classes (an estimate from building locations) */}
+                    {tightTransitions.length > 0 && (
+                        <div className="px-5 py-2 text-xs border-b flex-shrink-0 bg-amber-50 border-amber-200 text-amber-800">
+                            <div className="flex items-center gap-2 font-medium">
+                                <TriangleAlert className="w-3.5 h-3.5 flex-shrink-0" />
+                                {tightTransitions.length} tight transition{tightTransitions.length > 1 ? 's' : ''} between classes (estimated walk is longer than the break)
+                            </div>
+                            <ul className="mt-1 ml-5 list-disc space-y-0.5">
+                                {tightTransitions.map((t, i) => (
+                                    <li key={i}>
+                                        {t.day.slice(0, 3)}: {sectionLabel(t.from)} ({t.fromRoom.label}) → {sectionLabel(t.to)} ({t.toRoom.label}):
+                                        {' '}~{t.walkMinutes} min walk, {t.gapMinutes} min between classes
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
 
@@ -722,7 +735,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                         <input type="text" placeholder="Label (e.g. Lunch)"
                                             value={newBreak.label}
                                             onChange={e => setNewBreak(p => ({ ...p, label: e.target.value }))}
-                                            className="w-full text-xs border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-400" />
+                                            className="w-full text-xs border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-green-400" />
                                         <DayToggle selected={newBreak.days}
                                             onChange={days => setNewBreak(p => ({ ...p, days }))} />
                                         <div className="flex items-center gap-3">
@@ -730,13 +743,13 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                 <label className="text-[10px] text-gray-400">Start</label>
                                                 <input type="time" value={newBreak.startTime}
                                                     onChange={e => setNewBreak(p => ({ ...p, startTime: e.target.value }))}
-                                                    className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" />
+                                                    className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-green-400" />
                                             </div>
                                             <div className="flex flex-col gap-0.5">
                                                 <label className="text-[10px] text-gray-400">End</label>
                                                 <input type="time" value={newBreak.endTime}
                                                     onChange={e => setNewBreak(p => ({ ...p, endTime: e.target.value }))}
-                                                    className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" />
+                                                    className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-green-400" />
                                             </div>
                                             <div className="flex gap-1.5 self-end">
                                                 <button onClick={addBreak}
@@ -795,19 +808,16 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                             </div>
                                             <div className="flex items-center gap-2 flex-shrink-0">
                                                 {courseProfessors.length > 1 && (
-                                                    <div className="relative">
-                                                        <select
-                                                            value={professorFilters[code] ?? 'all'}
-                                                            onChange={e => setProfessorFilters(prev => ({ ...prev, [code]: e.target.value }))}
-                                                            style={{ width: window.innerWidth >= 640 ? `${professorDropdownWidth}px` : undefined }}
-                                                            className="text-xs border border-gray-200 rounded-md px-2.5 py-1 pr-7 bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-400 max-w-[120px] sm:max-w-none">
-                                                            <option value="all">All Professors</option>
-                                                            {courseProfessors.map(p => <option key={p} value={p}>{p}</option>)}
-                                                        </select>
-                                                        <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                                    </div>
+                                                    <FilterDropdown
+                                                        label="Professor"
+                                                        options={courseProfessors as string[]}
+                                                        selected={professorFilters[code] && professorFilters[code] !== 'all' ? [professorFilters[code]] : []}
+                                                        onChange={vals => setProfessorFilters(prev => ({ ...prev, [code]: vals[0] ?? 'all' }))}
+                                                        single
+                                                        allLabel="All Professors"
+                                                    />
                                                 )}
-                                                {selectedKey && (
+                                                {selectedKey && collapsedCourses.has(code) && (
                                                     <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-medium whitespace-nowrap hidden sm:block">
                                                         {code}.{selectedKey} selected
                                                     </span>
@@ -815,7 +825,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                             </div>
                                         </div>
 
-                                        {selectedKey && (
+                                        {selectedKey && collapsedCourses.has(code) && (
                                             <div className="sm:hidden mb-2">
                                                 <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-medium">
                                                     {code}.{selectedKey} selected
@@ -879,7 +889,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                             <span className="text-gray-500">{getTime(sec.times_12h)}</span>
                                                                             <span className="text-gray-300">·</span>
                                                                             <span className={`font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
-                                                                                {sec.location?.replace('_', ' ')}
+                                                                                {formatRoom(sec.location, { empty: '' })}
                                                                             </span>
                                                                             <span className={`text-[10px] font-medium
                                                                                 ${modality === 'online' ? 'text-green-500' : modality === 'hybrid' ? 'text-blue-500' : 'text-gray-400'}`}>
@@ -912,8 +922,8 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                                 <div className="flex items-center gap-1.5 mt-0.5">
                                                                                     {sec.grade_avg && (
                                                                                         <span className={`text-[9px] font-medium ${sec.grade_avg.startsWith('A') ? 'text-green-600' :
-                                                                                                sec.grade_avg.startsWith('B') ? 'text-yellow-700' :
-                                                                                                    'text-orange-600'
+                                                                                            sec.grade_avg.startsWith('B') ? 'text-yellow-700' :
+                                                                                                'text-orange-600'
                                                                                             }`}>{sec.grade_avg} avg</span>
                                                                                     )}
                                                                                     {sec.rmp && (
@@ -928,7 +938,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                                         </div>
                                                                         <div>
                                                                             <div className={`truncate font-medium ${modality === 'online' ? 'text-green-600' : 'text-gray-600'}`}>
-                                                                                {sec.location?.replace('_', ' ')}
+                                                                                {formatRoom(sec.location, { empty: '' })}
                                                                             </div>
                                                                             <div className={`text-[10px] mt-0.5 font-medium
                                                                                 ${modality === 'online' ? 'text-green-500' : modality === 'hybrid' ? 'text-blue-500' : 'text-gray-400'}`}>
@@ -1027,6 +1037,38 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                     );
                                                 })}
 
+                                                {/* Walking time between back-to-back classes (estimate) */}
+                                                {transitions.filter(tr => tr.day === day).map(tr => {
+                                                    if (tr.fromEnd >= GRID_END || tr.toStart <= GRID_START) return null;
+                                                    const top = (Math.max(tr.fromEnd, GRID_START) - GRID_START) * PX_PER_MIN;
+                                                    const { barPx, label } = walkBlockLayout(tr, PX_PER_MIN);
+                                                    const text = `~${tr.walkMinutes} min walk`;
+                                                    return (
+                                                        <div key={`walk-${tr.fromEnd}-${tr.toStart}`}
+                                                            title={`~${tr.walkMinutes} min walk, ${tr.gapMinutes} min between classes`}
+                                                            style={{ position: 'absolute', top, left: 1, right: 1, height: tr.gapMinutes * PX_PER_MIN }}>
+                                                            <div
+                                                                style={{
+                                                                    height: barPx,
+                                                                    backgroundImage: `repeating-linear-gradient(135deg, ${tr.tight ? '#fcd34d' : '#cbd5e1'} 0 3px, transparent 3px 6px)`,
+                                                                    borderLeft: `2px dashed ${tr.tight ? '#d97706' : '#6b7280'}`,
+                                                                }}
+                                                                className="rounded-sm">
+                                                                {label === 'inside' && (
+                                                                    <div className={`text-[9px] font-semibold px-1 leading-[12px] truncate ${tr.tight ? 'text-amber-800' : 'text-gray-600'}`}>
+                                                                        {text}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {label === 'below' && (
+                                                                <div className={`text-[9px] font-semibold px-1 leading-[11px] truncate ${tr.tight ? 'text-amber-800' : 'text-gray-600'}`}>
+                                                                    {text}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+
                                                 {/* Section blocks */}
                                                 {selectedSectionObjects.map((sec: any) => {
                                                     const secDays = parseDays(sec.days || '');
@@ -1059,7 +1101,7 @@ const SchedulePlanningModal: React.FC<SchedulePlanningModalProps> = ({ title, co
                                                             {height > 18 && (
                                                                 <div style={{ color: hasConflict ? '#991b1b' : color.text }}
                                                                     className="text-[10px] opacity-75 truncate">
-                                                                    {sec.location?.replace('_', ' ')}
+                                                                    {formatRoom(sec.location, { empty: '' })}
                                                                 </div>
                                                             )}
                                                         </div>

@@ -4,6 +4,7 @@ import { useDrop } from "react-dnd";
 import RequirementCategory from '@/components/planner/RequirementCategory';
 import CoursesCarousel from '@/components/planner/CoursesCarousel';
 import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/plannerCredits";
+import ProgramRecommendations from "@/components/planner/ProgramRecommendations";
 import type { SemestersForCredits } from "@/utils/plannerCredits";
 import { CartItem } from "./CourseDiscoveryModal";
 import { usePlannerStore } from '@/stores/plannerStore';
@@ -49,6 +50,7 @@ interface SidebarProps {
     isExpanded?: boolean;
     onToggleExpanded?: () => void;
     placedSuggestedCourses?: Set<string>;
+    placedHoursByCode?: Map<string, number>;
     allCompletedCourseCodes?: string[];
     allPlannedCoursesWithOrder?: Array<{
         code: string;
@@ -83,6 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     isExpanded: externalIsExpanded,
     onToggleExpanded,
     placedSuggestedCourses = new Set(),
+    placedHoursByCode = new Map(),
     allCompletedCourseCodes = [],
     allPlannedCoursesWithOrder = [],
     onRestartOnboarding,
@@ -91,6 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     gradesData = {},
     coursebookSemester,
     onOpenDiscovery,
+    transcriptData,
 }) => {
     const sidebarRef = useRef<HTMLDivElement>(null);
     const [internalIsExpanded, setInternalIsExpanded] = useState(true);
@@ -483,6 +487,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             type="suggested"
                             showAvailableOnly={showAvailableOnly}
                             placedSuggestedCourses={placedSuggestedCourses}
+                            placedHoursByCode={placedHoursByCode}
                             categoryName={category.name}
                             allSuggestedCourses={allSuggestedCourses}
                             allCompletedCourseCodes={allCompletedCourseCodes}
@@ -636,6 +641,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </div>
 
                             <button
+                                data-tour="course-discovery"
                                 onClick={onOpenDiscovery}
                                 className="w-full flex items-center gap-2.5 p-3 rounded-xl border border-dashed
         border-green-300 bg-green-50 hover:bg-green-100 transition-colors text-left mb-4 group"
@@ -682,6 +688,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 </div>
                             )}
 
+                            <ProgramRecommendations
+                                refreshKey={transcriptData}
+                                onSelect={() => onRestartOnboarding?.()}
+                            />
+
                             <div className="mb-4">
                                 <h2 className="text-xl font-bold text-gray-900 mb-2">
                                     Degree Requirements
@@ -691,7 +702,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         role="switch"
                                         aria-checked={showAvailableOnly}
                                         onClick={() => setShowAvailableOnly(prev => !prev)}
-                                        className={`relative w-9 h-5 rounded-full transition-colors duration-200 flex-shrink-0 focus:outline-none ${showAvailableOnly ? 'bg-green-500' : 'bg-gray-300'
+                                        className={`relative w-9 h-5 rounded-full transition-colors duration-200 flex-shrink-0 focus:outline-hidden ${showAvailableOnly ? 'bg-green-500' : 'bg-gray-300'
                                             }`}
                                     >
                                         <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${showAvailableOnly ? 'left-[18px]' : 'left-0.5'

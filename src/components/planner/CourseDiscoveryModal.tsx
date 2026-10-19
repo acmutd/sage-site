@@ -2,20 +2,22 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import ReactDOM from 'react-dom';
 import Fuse from 'fuse.js';
 import {
-    X, Search, Compass, ShoppingCart, ChevronRight, ChevronDown,
-    Star, BookOpen, MapPin, ExternalLink, Plus, Minus,
+    X, Search, Compass, ShoppingCart, ChevronRight, Star, 
+    BookOpen, MapPin, ExternalLink, Plus, Minus,
     CheckCircle, AlertCircle, ArrowRight, Trash2, SlidersHorizontal,
-    FileText, Clock, Award, RefreshCw, Layers, Loader2,
-    ChevronUp
+    FileText, Clock, Award, RefreshCw, Layers, Loader2, Sparkles
 } from 'lucide-react';
 import { getCoursePrerequisiteGroups, getMissingPrerequisiteGroups, normalizeCourseCode } from '@/utils/prerequisiteUtils';
 import { getCurrentCatalogYear } from '@/utils/studentInfo';
 import { usePlannerStore, StagedCourse } from "@/stores/plannerStore";
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
+import { formatRoom } from '@/utils/rooms';
+import { firstOf } from '@/utils/sections';
 
 export interface DiscoverySection {
     section: string;
     class_number: string;
-    instructors: string;
+    instructors: string | string[];
     days: string | string[];
     times_12h: string;
     location: string;
@@ -51,20 +53,33 @@ export interface DiscoveryCourse {
     major_restriction?: string;
     aleks_score?: string;
     placement_exam?: boolean;
-    equivalent?: string;
+    equivalent?: string | string[];
     max_repeat_credits?: number;
     footnote?: string;
     group_type?: string;
     catalog_year?: string;
     syllabus_url?: string;
     sections: DiscoverySection[];
-    top_professors?: { name: string; avg_gpa: number; rating: number }[];
+    top_professors?: { name: string; avg_gpa: number; rating: number | null; teaching?: boolean }[];
     prereqs_raw?: any;
+}
+
+export type CreditSource = 'university' | 'test' | 'transfer';
+
+export interface CreditSourceDetail {
+    label: string; // display string, e.g. "AP · Calculus BC (5)" or "Dallas College · MATH 2414"
+    test_type?: string; // 'AP' | 'IB' | 'CLEP' | 'A&AS'
+    exam?: string;
+    score?: string;
+    school_name?: string;
+    external_course?: string;
 }
 
 export interface CartItem {
     course: DiscoveryCourse;
     pinned_section?: string;
+    credit_source: CreditSource;
+    credit_source_detail?: CreditSourceDetail;
 }
 
 export interface CourseDiscoveryModalProps {
@@ -79,9 +94,73 @@ export interface CourseDiscoveryModalProps {
     getAuthToken: () => Promise<string>
     educationLevel?: 'undergraduate' | 'graduate';
     completedCourseCodes?: string[];
+    /** Courses already placed in the plan but not yet completed. Kept separate so they get the right badge. */
+    plannedCourseCodes?: string[];
 }
 
 const LIMIT = 20;
+const NO_CODES: string[] = [];
+
+export type SortKey = 'code' | 'grade' | 'rating' | 'best_prof';
+
+// Courses with no data for the chosen sort are listed last.
+const SORT_LABELS: Record<Exclude<SortKey, 'code'>, string> = {
+    grade: 'Best grades',
+    rating: 'Top rated',
+    best_prof: 'Best professor this term',
+};
+
+const CHAT_API = import.meta.env.VITE_CHAT_API as string | undefined;
+const SMART_MIN_CHARS = 3;
+const COURSE_CODE_QUERY = /^[a-z]{2,5}\s*\d{3,4}$/i;   // "cs 2305" is a lookup, not a description
+
+function uidFromToken(token: string): string | null {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        return payload.user_id ?? payload.sub ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/** Ranked course codes, or null if smart search is unavailable (caller falls back to keyword search). */
+async function semanticSearch(query: string, level: string, token: string): Promise<string[] | null> {
+    const uid = uidFromToken(token);
+    if (!CHAT_API || !uid) return null;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+        const res = await fetch(CHAT_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: uid, token, query, level, course_search: true }),
+            signal: ctrl.signal,
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const codes = Array.isArray(data.courses) ? data.courses.map((c: any) => c.course_code).filter(Boolean) : [];
+        return codes.length ? codes : null;
+    } catch {
+        return null;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+export type CourseStatus = 'completed' | 'planned' | 'staged';
+
+const STATUS_STYLES: Record<CourseStatus, { label: string; blocked: string; cls: string }> = {
+    completed: { label: 'Completed', blocked: 'Already completed', cls: 'bg-green-100 text-green-700' },
+    planned: { label: 'In your plan', blocked: 'Already in your plan', cls: 'bg-blue-50 text-blue-600' },
+    staged: { label: 'Staged', blocked: 'Already staged', cls: 'bg-purple-100 text-purple-700' },
+};
+
+// The API sends `equivalent` as an array (e.g. ["CE 2305"]); older data may be a delimited string.
+const equivalentCodes = (c: { equivalent?: string | string[] }): string[] => {
+    const eq = c.equivalent;
+    const list = Array.isArray(eq) ? eq : typeof eq === 'string' && eq ? eq.split(/[,;]/) : [];
+    return list.map(x => normalizeCourseCode(x)).filter(Boolean) as string[];
+};
 
 const FREQUENCY_LABELS: Record<string, string> = {
     S: 'Every Semester',
@@ -107,7 +186,7 @@ const gradeColor = (g: string | undefined) => {
 };
 
 const modalityFromSection = (sec: DiscoverySection): 'online' | 'hybrid' | 'inperson' => {
-    const loc = (sec.location || '').toLowerCase();
+    const loc = firstOf(sec.location).toLowerCase();
     if (loc === 'online' || loc === 'internet') return 'online';
     if (loc.includes('hybrid')) return 'hybrid';
     return 'inperson';
@@ -152,6 +231,16 @@ const GradeBadge = ({ grade }: { grade?: string }) => {
     return <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${c.bg} ${c.text}`}>{grade} avg</span>;
 };
 
+const StatusBadge = ({ status }: { status?: CourseStatus | null }) => {
+    if (!status) return null;
+    const s = STATUS_STYLES[status];
+    return (
+        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex items-center gap-1 ${s.cls}`}>
+            <CheckCircle className="w-2.5 h-2.5" /> {s.label}
+        </span>
+    );
+};
+
 const PrereqDot = ({ met, text }: { met: boolean; text?: string }) => (
     <span className={`flex items-center gap-1 text-[10px] ${met ? 'text-green-600' : 'text-yellow-600'}`}>
         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${met ? 'bg-green-500' : 'bg-yellow-500'}`} />
@@ -159,173 +248,20 @@ const PrereqDot = ({ met, text }: { met: boolean; text?: string }) => (
     </span>
 );
 
-interface FilterDropdownProps {
-    label: string;
-    options: string[];
-    optionLabels?: Record<string, string>;
-    selected: string[];
-    onChange: (vals: string[]) => void;
-    single?: boolean;
-    allLabel?: string;
-}
-
-const FilterDropdown: React.FC<FilterDropdownProps> = ({
-    label, options, optionLabels, selected, onChange, single = false, allLabel,
-}) => {
-    const [open, setOpen] = useState(false);
-    const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
-    const buttonRef = useRef<HTMLButtonElement>(null);
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const [canScrollUp, setCanScrollUp] = useState(false);
-    const [canScrollDown, setCanScrollDown] = useState(false);
-
-    const checkScroll = () => {
-        const el = scrollRef.current;
-        if (!el) return;
-        setCanScrollUp(el.scrollTop > 0);
-        setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
-    };
-
-    useEffect(() => {
-        if (open) setTimeout(checkScroll, 50);
-    }, [open, options]);
-
-    const scroll = (dir: 'up' | 'down') => {
-        const el = scrollRef.current;
-        if (!el) return;
-        el.scrollBy({ top: dir === 'up' ? -80 : 80, behavior: 'smooth' });
-    };
-
-    useEffect(() => {
-        if (!open) return;
-        const handler = (e: MouseEvent) => {
-            const target = e.target as Node;
-            const buttonWrapper = buttonRef.current?.closest('[data-filter-dropdown]');
-            const portalMenu = document.querySelector('[data-filter-menu]');
-            if (!buttonWrapper?.contains(target) && !portalMenu?.contains(target)) {
-                setOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, [open]);
-
-    const handleOpen = () => {
-        if (!open && buttonRef.current) {
-            const rect = buttonRef.current.getBoundingClientRect();
-            setMenuStyle({
-                position: 'fixed',
-                top: rect.bottom + 4,
-                left: rect.left,
-                zIndex: 99999,
-            });
-        }
-        setOpen(p => !p);
-    };
-
-    const toggle = (val: string) => {
-        if (single) {
-            onChange(selected[0] === val ? [] : [val]);
-            setOpen(false);
-        } else {
-            onChange(selected.includes(val) ? selected.filter(x => x !== val) : [...selected, val]);
-        }
-    };
-
-    const displayLabel = selected.length === 0
-        ? (allLabel ?? label)
-        : selected.length === 1
-            ? (optionLabels?.[selected[0]] ?? selected[0])
-            : `${optionLabels?.[selected[0]] ?? selected[0]} +${selected.length - 1}`;
-
-    const isActive = selected.length > 0;
-
-    return (
-        <div data-filter-dropdown>
-            <button
-                ref={buttonRef}
-                onClick={handleOpen}
-                className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-colors whitespace-nowrap
-                    ${isActive
-                        ? 'bg-green-500 border-green-500 text-white font-medium'
-                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}
-            >
-                {displayLabel}
-                <ChevronDown className="w-3 h-3 flex-shrink-0" />
-            </button>
-
-            {open && ReactDOM.createPortal(
-                <div
-                    style={menuStyle}
-                    data-filter-menu
-                    className="bg-white border border-gray-200 rounded-2xl shadow-lg py-1 min-w-[140px]"
-                >
-                    {canScrollUp && (
-                        <button
-                            onClick={() => scroll('up')}
-                            className="w-full flex items-center justify-center py-1 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-                        >
-                            <ChevronUp className="w-3.5 h-3.5" />
-                        </button>
-                    )}
-
-                    {isActive && (
-                        <>
-                            <button
-                                onClick={() => { onChange([]); setOpen(false); }}
-                                className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-gray-50"
-                            >
-                                Clear
-                            </button>
-                            <div className="border-t border-gray-100 my-1" />
-                        </>
-                    )}
-
-                    <div
-                        ref={scrollRef}
-                        onScroll={checkScroll}
-                        style={{ maxHeight: '200px', overflowY: 'auto', scrollbarWidth: 'none' }}
-                        className="[&::-webkit-scrollbar]:hidden"
-                    >
-                        {options.map(opt => (
-                            <button
-                                key={opt}
-                                onClick={() => toggle(opt)}
-                                className="w-full flex items-center justify-between gap-3 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
-                            >
-                                <span className="font-medium">{optionLabels?.[opt] ?? opt}</span>
-                                {selected.includes(opt) && <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
-                            </button>
-                        ))}
-                    </div>
-
-                    {canScrollDown && (
-                        <button
-                            onClick={() => scroll('down')}
-                            className="w-full flex items-center justify-center py-1 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-                        >
-                            <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
-                    )}
-                </div>,
-                document.body
-            )}
-        </div>
-    );
-};
-
 interface CourseCardProps {
     course: DiscoveryCourse;
     inCart: boolean;
     isSelected: boolean;
+    status?: CourseStatus | null;
     onClick: () => void;
 }
 
-const CourseCard: React.FC<CourseCardProps> = ({ course, inCart, isSelected, onClick }) => (
+const CourseCard: React.FC<CourseCardProps> = ({ course, inCart, isSelected, status, onClick }) => (
     <div
         onClick={onClick}
         className={`
             relative p-3 rounded-md border cursor-pointer transition-all select-none
+            ${status && !isSelected ? 'opacity-80' : ''}
             ${isSelected
                 ? 'border-green-400 bg-green-50 shadow-sm'
                 : inCart
@@ -349,6 +285,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, inCart, isSelected, onC
             <StarRating rating={course.avg_rating} count={course.rating_count} />
         </div>
         <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+            <StatusBadge status={status} />
             <PrereqDot met={course.prereqs_met} text={course.prereqs_text} />
             {course.satisfies_core && (
                 <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
@@ -363,16 +300,72 @@ interface DetailPanelProps {
     course: DiscoveryCourse;
     inCart: boolean;
     cartPinnedSection?: string;
-    onAdd: (courseId: string, section?: string) => void;
-    onRemove: (courseId: string) => void;
+    cartCreditSource?: CreditSource;
+    cartCreditSourceDetail?: CreditSourceDetail;
+    defaultCreditSource: CreditSource;
+    onAdd: (courseId: string, section?: string, source?: CreditSource, detail?: CreditSourceDetail) => void; onRemove: (courseId: string) => void;
     onSwapSection: (courseId: string, section: string) => void;
+    onSetCreditSource: (courseId: string, source: CreditSource, detail?: CreditSourceDetail) => void;
     semester?: string;
+    status?: CourseStatus | null;
+    apiBaseUrl: string;
+    getAuthToken: () => Promise<string>;
 }
 
+const CREDIT_SOURCE_LABELS: Record<CreditSource, string> = {
+    university: 'University',
+    test: 'Test Credits',
+    transfer: 'Transfer Credits',
+};
+
+const CREDIT_SOURCE_SUBTEXT: Record<CreditSource, string> = {
+    university: 'Taking it at UTD',
+    test: 'AP · IB · CLEP · A&AS',
+    transfer: 'Another school',
+};
+
+const CREDIT_SOURCE_ICON: Record<CreditSource, React.ElementType> = {
+    university: BookOpen,
+    test: Award,
+    transfer: RefreshCw,
+};
+
+const CreditSourceBadge = ({ source, detail }: { source?: CreditSource; detail?: CreditSourceDetail }) => {
+    if (!source || source === 'university') return null;
+    const Icon = CREDIT_SOURCE_ICON[source];
+    return (
+        <div className="text-[10px] text-green-700 mt-1.5 flex items-center gap-1">
+            <Icon className="w-3 h-3 flex-shrink-0" />
+            {CREDIT_SOURCE_LABELS[source]}{detail?.label ? ` · ${detail.label}` : ''}
+        </div>
+    );
+};
+
 const DetailPanel: React.FC<DetailPanelProps> = ({
-    course, inCart, cartPinnedSection, onAdd, onRemove, onSwapSection, semester,
+    course, inCart, cartPinnedSection, cartCreditSource, cartCreditSourceDetail, defaultCreditSource,
+    onAdd, onRemove, onSwapSection, onSetCreditSource, semester, status,
+    apiBaseUrl, getAuthToken,
 }) => {
-    const [expandedSection, setExpandedSection] = useState<string | null>(null);
+    const [selectedSection, setSelectedSection] = useState<string | null>(cartPinnedSection ?? course.sections[0]?.section ?? null);
+    const [override, setOverride] = useState(false); // "Retaking it? Add anyway"
+    const sectionsScrollRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        setSelectedSection(cartPinnedSection ?? course.sections[0]?.section ?? null);
+        setOverride(false);
+    }, [course.course_id]);
+
+    const selectedSectionData = course.sections.find(s => s.section === selectedSection) ?? course.sections[0];
+    const selectedDaysStr = selectedSectionData ? normalizeDays(selectedSectionData.days) : '';
+
+    const scrollSections = (dir: 'left' | 'right') => {
+        sectionsScrollRef.current?.scrollBy({ left: dir === 'left' ? -140 : 140, behavior: 'smooth' });
+    };
+
+    const effectiveSource: CreditSource | undefined = inCart ? cartCreditSource : defaultCreditSource;
+    const previewMode = !inCart && effectiveSource !== 'university';
+    // Repeatable courses (special topics, research, etc.) are never blocked.
+    const blocked = !!status && !course.max_repeat_credits && !override && !inCart;
 
     return (
         <div className="flex flex-col h-full overflow-y-auto">
@@ -392,7 +385,42 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                     )}
                 </div>
                 <PrereqDot met={course.prereqs_met} text={course.prereqs_text} />
+                {status && (
+                    <div className={`mt-2 text-[11px] rounded-md px-2.5 py-1.5 ${STATUS_STYLES[status].cls}`}>
+                        {status === 'completed' && "You've already completed this course."}
+                        {status === 'planned' && 'This course is already in your degree plan.'}
+                        {status === 'staged' && 'This course is already staged in your sidebar.'}
+                        {course.max_repeat_credits ? ' It can be repeated for credit.' : ''}
+                    </div>
+                )}
             </div>
+
+            {effectiveSource && effectiveSource !== 'university' && !blocked && (
+                <div className="p-4 border-b border-gray-100">
+                    <div className={`border-2 rounded-md p-3 ${previewMode ? 'border-gray-300 bg-gray-50' : 'border-green-500 bg-green-50'}`}>
+                        <div className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide mb-1 ${previewMode ? 'text-gray-600' : 'text-green-700'}`}>
+                            {(() => { const Icon = CREDIT_SOURCE_ICON[effectiveSource]; return <Icon className="w-3.5 h-3.5" />; })()}
+                            Credit Source: {CREDIT_SOURCE_LABELS[effectiveSource]}
+                        </div>
+                        <div className={`text-[10px] mb-2.5 ${previewMode ? 'text-gray-500' : 'text-green-600'}`}>
+                            {previewMode
+                                ? 'Not added yet! Check for a match, and picking one adds it to your cart'
+                                : 'Set from the Credit Source bar above · match it below'}
+                        </div>
+                        <CreditSourceEquivalencyPicker
+                            courseCode={course.course_code}
+                            source={effectiveSource}
+                            detail={previewMode ? undefined : cartCreditSourceDetail}
+                            apiBaseUrl={apiBaseUrl}
+                            getAuthToken={getAuthToken}
+                            onSelect={(detail) => previewMode
+                                ? onAdd(course.course_id, undefined, effectiveSource, detail)
+                                : onSetCreditSource(course.course_id, effectiveSource, detail)}
+                            onClear={() => !previewMode && onSetCreditSource(course.course_id, effectiveSource, undefined)}
+                        />
+                    </div>
+                </div>
+            )}
 
             <div className="p-4 border-b border-gray-100">
                 {course.description && (
@@ -404,9 +432,10 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                             <span className="font-semibold text-gray-600">Co-Requisite: </span>{course.coreqs_text}
                         </div>
                     )}
-                    {course.equivalent && (
+                    {(Array.isArray(course.equivalent) ? course.equivalent.length > 0 : !!course.equivalent) && (
                         <div className="text-[11px] text-gray-500">
-                            <span className="font-semibold text-gray-600">Equivalent: </span>{course.equivalent}
+                            <span className="font-semibold text-gray-600">Equivalent: </span>
+                            {Array.isArray(course.equivalent) ? course.equivalent.join(', ') : course.equivalent}
                         </div>
                     )}
                     {course.max_repeat_credits && (
@@ -465,12 +494,17 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                             const gc = gradeColor(gLabel);
                             return (
                                 <div key={p.name} className="flex items-center justify-between text-xs">
-                                    <span className="text-gray-700 font-medium truncate">{p.name}</span>
+                                    <span className="text-gray-700 font-medium truncate">
+                                        {p.name}
+                                        {p.teaching && (
+                                            <span className="ml-1.5 text-[9px] bg-green-50 text-green-600 px-1 py-0.5 rounded font-medium">This term</span>
+                                        )}
+                                    </span>
                                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                                         <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${gc.bg} ${gc.text}`}>
                                             {p.avg_gpa.toFixed(1)} GPA
                                         </span>
-                                        <StarRating rating={p.rating} count={0} />
+                                        <StarRating rating={p.rating ?? undefined} count={0} />
                                     </div>
                                 </div>
                             );
@@ -480,78 +514,118 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
             )}
 
             <div className="p-4 flex-1">
-                <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1">
-                    <Layers className="w-3 h-3" /> Sections{semester ? ` · ${semester}` : ''}
+                <div className="flex items-center justify-between mb-2">
+                    <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                        <Layers className="w-3 h-3" /> Sections{semester ? ` · ${semester}` : ''}
+                    </div>
+                    {course.sections.length > 1 && (
+                        <div className="flex items-center gap-1">
+                            <button onClick={() => scrollSections('left')} className="p-0.5 rounded hover:bg-gray-100 text-gray-400">
+                                <ChevronRight className="w-3.5 h-3.5 rotate-180" />
+                            </button>
+                            <button onClick={() => scrollSections('right')} className="p-0.5 rounded hover:bg-gray-100 text-gray-400">
+                                <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    )}
                 </div>
-                <div className="space-y-2">
+
+                <div
+                    ref={sectionsScrollRef}
+                    className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
+                    style={{ scrollbarWidth: 'none' }}
+                >
                     {course.sections.map(sec => {
                         const isPinned = inCart && cartPinnedSection === sec.section;
-                        const isOpen = expandedSection === sec.section;
+                        const isSelected = selectedSection === sec.section;
                         const modality = modalityFromSection(sec);
-                        const daysStr = normalizeDays(sec.days);
-
                         return (
-                            <div
+                            <button
                                 key={sec.section}
-                                className={`rounded-md border text-xs transition-all ${isPinned ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white'}`}
+                                onClick={() => setSelectedSection(sec.section)}
+                                className={`flex-shrink-0 w-[128px] snap-start text-left rounded-md border p-2.5 transition-all
+                                    ${isSelected
+                                        ? 'border-green-400 bg-green-50 ring-1 ring-green-300'
+                                        : isPinned
+                                            ? 'border-green-300 bg-green-50/50'
+                                            : 'border-gray-200 bg-white hover:border-gray-300'}`}
                             >
-                                <div
-                                    className="flex items-center gap-2 p-2.5 cursor-pointer"
-                                    onClick={() => setExpandedSection(isOpen ? null : sec.section)}
-                                >
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="font-semibold text-gray-800">{sec.section}</span>
-                                            <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${modalityBadge(modality)}`}>
-                                                {modalityLabel(modality)}
-                                            </span>
-                                            {isPinned && (
-                                                <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">Pinned</span>
-                                            )}
-                                        </div>
-                                        <div className="text-gray-500 mt-0.5 truncate">{sec.instructors}</div>
-                                        <div className="text-gray-400 mt-0.5">{sec.times_12h}</div>
-                                    </div>
-                                    {isOpen
-                                        ? <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                        : <ChevronRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                    }
+                                <div className="flex items-center gap-1">
+                                    <span className="font-semibold text-gray-800 text-xs truncate">{sec.section}</span>
+                                    {isPinned && <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />}
                                 </div>
-
-                                {isOpen && (
-                                    <div className="px-2.5 pb-2.5 pt-0 border-t border-gray-100 space-y-1.5">
-                                        {daysStr && (
-                                            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
-                                                <Clock className="w-3 h-3 flex-shrink-0" />
-                                                <span>{daysStr.split(',').map(d => d.trim().slice(0, 3)).join(' / ')} · {sec.times_12h}</span>
-                                            </div>
-                                        )}
-                                        {sec.location && (
-                                            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
-                                                <MapPin className="w-3 h-3 flex-shrink-0" />
-                                                <span>{sec.location}</span>
-                                            </div>
-                                        )}
-                                        {sec.syllabus && (
-                                            <a href={sec.syllabus} target="_blank" rel="noreferrer"
-                                                className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium">
-                                                <FileText className="w-3 h-3" /> Section Syllabus
-                                            </a>
-                                        )}
-                                        {inCart && cartPinnedSection !== sec.section && (
-                                            <button
-                                                onClick={() => onSwapSection(course.course_id, sec.section)}
-                                                className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium mt-1"
-                                            >
-                                                <RefreshCw className="w-3 h-3" /> Pin this section
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                                <span className={`inline-block mt-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full ${modalityBadge(modality)}`}>
+                                    {modalityLabel(modality)}
+                                </span>
+                                <div className="text-[10px] text-gray-500 mt-1 truncate">
+                                    {Array.isArray(sec.instructors) ? sec.instructors.join(', ') : sec.instructors}
+                                </div>
+                                <div className="text-[10px] text-gray-400 mt-0.5 truncate">{sec.times_12h}</div>
+                            </button>
                         );
                     })}
                 </div>
+
+                {selectedSectionData && (
+                    <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 p-3 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-800">Section {selectedSectionData.section}</span>
+                            {inCart && cartPinnedSection === selectedSectionData.section && (
+                                <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">Pinned</span>
+                            )}
+                        </div>
+                        {selectedDaysStr && (
+                            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+                                <Clock className="w-3 h-3 flex-shrink-0" />
+                                <span>{selectedDaysStr.split(',').map(d => d.trim().slice(0, 3)).join(' / ')} · {selectedSectionData.times_12h}</span>
+                            </div>
+                        )}
+                        {selectedSectionData.location && (
+                            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+                                <MapPin className="w-3 h-3 flex-shrink-0" />
+                                <span>{formatRoom(selectedSectionData.location)}</span>
+                            </div>
+                        )}
+
+                        {(() => {
+                            const syllabus = selectedSectionData.syllabus?.trim();
+
+                            if (!syllabus) return null;
+
+                            const syllabusUrl =
+                                syllabus.startsWith("http://") || syllabus.startsWith("https://")
+                                    ? syllabus
+                                    : `https://dox.utdallas.edu${syllabus.startsWith("/") ? "" : "/"
+                                    }${syllabus}`;
+
+                            try {
+                                new URL(syllabusUrl);
+
+                                return (
+                                    <a
+                                        href={syllabusUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium"
+                                    >
+                                        <FileText className="w-3 h-3" />
+                                        Section Syllabus
+                                    </a>
+                                );
+                            } catch {
+                                return null;
+                            }
+                        })()}
+                        {inCart && cartPinnedSection !== selectedSectionData.section && (
+                            <button
+                                onClick={() => onSwapSection(course.course_id, selectedSectionData.section)}
+                                className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium mt-1"
+                            >
+                                <RefreshCw className="w-3 h-3" /> Pin this section
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="p-4 border-t border-gray-200 flex-shrink-0">
@@ -562,6 +636,23 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                     >
                         <Minus className="w-3.5 h-3.5" /> Remove from Cart
                     </button>
+                ) : blocked && status ? (
+                    <div className="space-y-1.5">
+                        <button
+                            disabled
+                            className="w-full flex items-center justify-center gap-2 py-2 rounded-md bg-gray-100 text-gray-400 text-xs font-medium cursor-not-allowed"
+                        >
+                            <CheckCircle className="w-3.5 h-3.5" /> {STATUS_STYLES[status].blocked}
+                        </button>
+                        {status !== 'staged' && (
+                            <button
+                                onClick={() => setOverride(true)}
+                                className="w-full text-[11px] text-gray-400 hover:text-gray-600 underline underline-offset-2"
+                            >
+                                Retaking it? Add anyway
+                            </button>
+                        )}
+                    </div>
                 ) : (
                     <button
                         onClick={() => onAdd(course.course_id)}
@@ -586,10 +677,10 @@ const CartPanel: React.FC<CartPanelProps> = ({ cart, onRemove, onCheckout }) => 
     const totalCredits = cart.reduce((s, item) => s + item.course.credits, 0);
     const creditStatus =
         totalCredits > 18
-            ? { text: `${totalCredits} hrs — may need advisor approval`, color: 'text-red-600 bg-red-50' }
+            ? { text: `${totalCredits} hrs (may need advisor approval)`, color: 'text-red-600 bg-red-50' }
             : totalCredits >= 12
-                ? { text: `${totalCredits} hrs — full-time load`, color: 'text-green-600 bg-green-50' }
-                : { text: `${totalCredits} hrs — part-time load`, color: 'text-yellow-600 bg-yellow-50' };
+                ? { text: `${totalCredits} hrs (full-time load)`, color: 'text-green-600 bg-green-50' }
+                : { text: `${totalCredits} hrs (part-time load)`, color: 'text-yellow-600 bg-yellow-50' };
 
     if (cart.length === 0) return (
         <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400 p-6">
@@ -628,6 +719,7 @@ const CartPanel: React.FC<CartPanelProps> = ({ cart, onRemove, onCheckout }) => 
                                 <CheckCircle className="w-3 h-3" /> Pinned: Section {item.pinned_section}
                             </div>
                         )}
+                        <CreditSourceBadge source={item.credit_source} detail={item.credit_source_detail} />
                     </div>
                 ))}
             </div>
@@ -657,9 +749,9 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, onBack, onConfirm }
 
     const creditStatus =
         totalCredits > 18
-            ? { text: `${totalCredits} hrs — may need advisor approval`, color: 'text-red-600 bg-red-50' }
+            ? { text: `${totalCredits} hrs (may need advisor approval)`, color: 'text-red-600 bg-red-50' }
             : totalCredits >= 12
-                ? { text: `${totalCredits} hrs — full-time load`, color: 'text-green-600 bg-green-50' }
+                ? { text: `${totalCredits} hrs (full-time load)`, color: 'text-green-600 bg-green-50' }
                 : { text: `${totalCredits} hrs`, color: 'text-yellow-600 bg-yellow-50' };
 
     return (
@@ -686,6 +778,7 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, onBack, onConfirm }
                         {item.pinned_section && (
                             <div className="text-[10px] text-purple-600 mt-1">Section {item.pinned_section} noted</div>
                         )}
+                        <CreditSourceBadge source={item.credit_source} detail={item.credit_source_detail} />
                     </div>
                 ))}
             </div>
@@ -708,6 +801,251 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ cart, onBack, onConfirm }
     );
 };
 
+const EXAM_TYPES = ['A&AS', 'AP', 'CLEP', 'IB'] as const;
+
+const flattenCourseList = (v: any): string[] => (Array.isArray(v) ? v.flatMap(flattenCourseList) : [String(v)]);
+
+const testCreditsCache = new Map<string, Promise<any[]>>();
+const transferCreditsCache = new Map<string, Promise<any[]>>();
+
+async function fetchTestCredits(apiBaseUrl: string, token: string, testType: string): Promise<any[]> {
+    const cached = testCreditsCache.get(testType);
+    if (cached) return cached;
+
+    const promise = (async () => {
+        const params = new URLSearchParams({ test_type: testType, limit: '500' });
+        const res = await fetch(`${apiBaseUrl}/tests?${params}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error();
+        const json = await res.json();
+        return json.data ?? [];
+    })();
+
+    testCreditsCache.set(testType, promise);
+    promise.catch(() => testCreditsCache.delete(testType)); // don't cache a failed request
+    return promise;
+}
+
+async function fetchTransferCredits(apiBaseUrl: string, token: string, schoolName: string): Promise<any[]> {
+    const key = schoolName.trim().toLowerCase();
+    const cached = transferCreditsCache.get(key);
+    if (cached) return cached;
+
+    const promise = (async () => {
+        const params = new URLSearchParams({ school_name: schoolName.trim(), limit: '500' });
+        const res = await fetch(`${apiBaseUrl}/transfer?${params}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error();
+        const json = await res.json();
+        return json.data ?? [];
+    })();
+
+    transferCreditsCache.set(key, promise);
+    promise.catch(() => transferCreditsCache.delete(key));
+    return promise;
+}
+
+interface CreditSourceEquivalencyPickerProps {
+    courseCode: string;
+    source: Exclude<CreditSource, 'university'>;
+    detail?: CreditSourceDetail;
+    apiBaseUrl: string;
+    getAuthToken: () => Promise<string>;
+    onSelect: (detail: CreditSourceDetail) => void;
+    onClear: () => void;
+}
+
+const CreditSourceEquivalencyPicker: React.FC<CreditSourceEquivalencyPickerProps> = ({
+    courseCode, source, detail, apiBaseUrl, getAuthToken, onSelect, onClear,
+}) => {
+    const [testType, setTestType] = useState<string | null>(null);
+    const [schoolQuery, setSchoolQuery] = useState('');
+    const [searching, setSearching] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [matches, setMatches] = useState<any[] | null>(null);
+    const [availability, setAvailability] = useState<Record<string, boolean> | null>(null);
+
+    const targetCode = normalizeCourseCode(courseCode);
+
+    useEffect(() => {
+        if (source !== 'test' || detail) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const token = await getAuthToken();
+                const entries = await Promise.all(
+                    EXAM_TYPES.map(async (type) => {
+                        const rows = await fetchTestCredits(apiBaseUrl, token, type);
+                        const has = rows.some((row: any) =>
+                            flattenCourseList(row.utd_courses_list).some(c => normalizeCourseCode(c) === targetCode)
+                        );
+                        return [type, has] as const;
+                    })
+                );
+                if (!cancelled) setAvailability(Object.fromEntries(entries));
+            } catch {
+                // Availability check didn't happen so render all chips
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [source, detail, courseCode, apiBaseUrl]);
+
+    const noExamsApply = availability !== null && EXAM_TYPES.every(t => availability[t] === false);
+
+    const runTestSearch = async (type: string) => {
+        setTestType(type);
+        setSearching(true);
+        setError(null);
+        setMatches(null);
+        try {
+            const token = await getAuthToken();
+            const rows = await fetchTestCredits(apiBaseUrl, token, type);
+            const matched = rows.filter((row: any) =>
+                flattenCourseList(row.utd_courses_list).some(c => normalizeCourseCode(c) === targetCode)
+            );
+            setMatches(matched);
+        } catch {
+            setError('Could not load test credits right now.');
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const runTransferSearch = async () => {
+        if (!schoolQuery.trim()) return;
+        setSearching(true);
+        setError(null);
+        setMatches(null);
+        try {
+            const token = await getAuthToken();
+            const rows = await fetchTransferCredits(apiBaseUrl, token, schoolQuery);
+            const matched = rows.filter((row: any) =>
+                normalizeCourseCode(row.utd_equivalent ?? '') === targetCode
+            );
+            setMatches(matched);
+        } catch {
+            setError('Could not find that school. Check the spelling and try again.');
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    if (detail) {
+        return (
+            <div className="mb-2.5 flex items-center justify-between gap-2 text-[11px] bg-green-50 text-green-700 rounded-md px-2.5 py-2">
+                <span className="truncate">{detail.label}</span>
+                <button onClick={onClear} className="text-green-500 hover:text-green-700 flex-shrink-0">
+                    <X className="w-3 h-3" />
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="mb-2.5 border border-gray-200 rounded-md p-2.5 bg-gray-50">
+            {source === 'test' ? (
+                <>
+                    <div className="text-[10px] text-gray-500 mb-1.5 flex items-center gap-1.5">
+                        Which exam?
+                        {availability === null && !noExamsApply && (
+                            <Loader2 className="w-2.5 h-2.5 animate-spin text-gray-300" />
+                        )}
+                    </div>
+                    {noExamsApply ? (
+                        <p className="text-[10px] text-gray-400 mb-2">
+                            No test credit equivalencies found for {courseCode}, on any exam type.
+                        </p>
+                    ) : (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                            {EXAM_TYPES.map(type => {
+                                const disabled = availability?.[type] === false;
+                                return (
+                                    <button
+                                        key={type}
+                                        onClick={() => !disabled && runTestSearch(type)}
+                                        disabled={disabled}
+                                        title={disabled ? `No ${type} equivalency found for ${courseCode}` : undefined}
+                                        className={`text-[10px] font-medium px-2 py-1 rounded-full border transition-colors
+                                        ${testType === type
+                                                ? 'bg-green-500 border-green-500 text-white'
+                                                : disabled
+                                                    ? 'border-gray-100 bg-gray-50 text-gray-300 line-through cursor-not-allowed'
+                                                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'}`}
+                                    >
+                                        {type}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </>
+            ) : (
+                <>
+                    <div className="text-[10px] text-gray-500 mb-1.5">Which school? (exact name, e.g. "Collin College")</div>
+                    <div className="flex gap-1.5 mb-2">
+                        <input
+                            value={schoolQuery}
+                            onChange={(e) => setSchoolQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && runTransferSearch()}
+                            placeholder="School name"
+                            className="flex-1 text-[11px] px-2 py-1 rounded border border-gray-200 focus:outline-hidden focus:border-green-400"
+                        />
+                        <button
+                            onClick={runTransferSearch}
+                            className="text-[10px] font-medium px-2.5 py-1 rounded bg-green-500 text-white hover:bg-green-600"
+                        >
+                            Search
+                        </button>
+                    </div>
+                </>
+            )}
+
+            {searching && <p className="text-[10px] text-gray-400">Searching…</p>}
+            {error && <p className="text-[10px] text-red-500">{error}</p>}
+
+            {matches && matches.length === 0 && !searching && (
+                <p className="text-[10px] text-gray-400">No equivalency found for {courseCode} there.</p>
+            )}
+
+            {matches && matches.length > 0 && (
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {source === 'test'
+                        ? matches.map((row, i) => (
+                            <button
+                                key={i}
+                                onClick={() => onSelect({
+                                    label: `${row.test_type} · ${row.exam} (${row.score})`,
+                                    test_type: row.test_type,
+                                    exam: row.exam,
+                                    score: row.score,
+                                })}
+                                className="w-full text-left text-[11px] px-2 py-1.5 rounded bg-white border border-gray-200 hover:border-green-300 hover:bg-green-50"
+                            >
+                                {row.exam} <span className="text-gray-400">— score {row.score}</span>
+                            </button>
+                        ))
+                        : matches.map((row, i) => (
+                            <button
+                                key={i}
+                                onClick={() => onSelect({
+                                    label: `${row.school_name} · ${row.external_course}`,
+                                    school_name: row.school_name,
+                                    external_course: row.external_course,
+                                })}
+                                className="w-full text-left text-[11px] px-2 py-1.5 rounded bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"
+                            >
+                                {row.external_course} <span className="text-gray-400">— {row.external_title}</span>
+                            </button>
+                        ))
+                    }
+                </div>
+            )}
+        </div>
+    );
+};
+
 type RightPanel = 'detail' | 'cart' | 'checkout' | null;
 
 const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
@@ -721,7 +1059,8 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     apiBaseUrl,
     getAuthToken,
     educationLevel = 'undergraduate',
-    completedCourseCodes = [],
+    completedCourseCodes = NO_CODES,
+    plannedCourseCodes = NO_CODES,
 }) => {
     const [query, setQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -730,6 +1069,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const [selectedPrefixes, setSelectedPrefixes] = useState<string[]>([]);
     const [selectedCredits, setSelectedCredits] = useState<string[]>([]);
     const [selectedFrequency, setSelectedFrequency] = useState<string[]>([]);
+    const [defaultCreditSource, setDefaultCreditSource] = useState<CreditSource>('university');
     const [coreOnly, setCoreOnly] = useState(false);
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
     const [rightPanel, setRightPanel] = useState<RightPanel>(null);
@@ -752,6 +1092,12 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const [selectedStanding, setSelectedStanding] = useState<string[]>([]);
     const [hideCompleted, setHideCompleted] = useState(true);
     const [hideStaged, setHideStaged] = useState(true);
+    const [sort, setSort] = useState<SortKey>('code');
+    const [smart, setSmart] = useState(false);
+    const [semanticApplied, setSemanticApplied] = useState(false);   // did the last fetch use semantic ranking?
+    const [smartNote, setSmartNote] = useState<string | null>(null);
+    const fetchSeq = useRef(0);   // only the latest request may update the list (smart search adds a slow step)
+    const semanticCache = useRef(new Map<string, string[] | null>());   // filters change often; embedding a query shouldn't
 
     const addStagedCourses = usePlannerStore(s => s.addStagedCourses);
     const searchRef = useRef<HTMLInputElement>(null);
@@ -759,6 +1105,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const fetchCourses = useCallback(async (newOffset: number = 0) => {
         const token = await getAuthToken();
         if (!token) return;
+        const seq = ++fetchSeq.current;
         setLoading(true);
         setError(null);
 
@@ -767,7 +1114,22 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         const upperQuery = debouncedQuery.trim().toUpperCase();
         const isPrefix = allPrefixes.includes(upperQuery);
 
-        if (debouncedQuery) {
+        const wantsSmart = smart && debouncedQuery.trim().length >= SMART_MIN_CHARS
+            && !isPrefix && !COURSE_CODE_QUERY.test(debouncedQuery.trim());
+        let semanticCodes: string[] | null = null;
+        if (wantsSmart) {
+            const key = `${educationLevel}|${debouncedQuery.trim().toLowerCase()}`;
+            if (!semanticCache.current.has(key)) {
+                semanticCache.current.set(key, await semanticSearch(debouncedQuery.trim(), educationLevel, token));
+            }
+            semanticCodes = semanticCache.current.get(key) ?? null;
+            if (!semanticCodes) semanticCache.current.delete(key);   // don't remember failures
+        }
+        if (seq !== fetchSeq.current) return;
+        const usedSemantic = !!semanticCodes;
+        if (semanticCodes) params.set('codes', semanticCodes.join(','));
+
+        if (debouncedQuery && !usedSemantic) {
             if (isPrefix) {
                 params.set('subjects', upperQuery);
             } else {
@@ -784,6 +1146,8 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         params.set('education_level', educationLevel);
         params.set('limit', String(newOffset === 0 ? 500 : LIMIT));
         params.set('offset', String(newOffset));
+        if (sort !== 'code') params.set('sort', sort);
+        else if (usedSemantic) params.set('sort', 'relevance');
 
         try {
             const res = await fetch(`${apiBaseUrl}/discover?${params}`, {
@@ -791,9 +1155,10 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
             });
             if (!res.ok) throw new Error('Failed to fetch');
             const data = await res.json();
+            if (seq !== fetchSeq.current) return;
 
             const satisfiedSet = new Set<string>(
-                completedCourseCodes.map((code: string) => normalizeCourseCode(code)).filter(Boolean) as string[]
+                [...completedCourseCodes, ...plannedCourseCodes].map((code: string) => normalizeCourseCode(code)).filter(Boolean) as string[]
             );
 
             const normalized: DiscoveryCourse[] = data.courses.map((c: any) => {
@@ -814,15 +1179,19 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                 return merged.filter((c, i, arr) => arr.findIndex(x => x.course_id === c.course_id) === i);
             });
 
+            setSemanticApplied(usedSemantic);
+            setSmartNote(wantsSmart && !usedSemantic ? 'Smart search unavailable, showing keyword matches' : null);
             setTotal(data.total);
             setHasMore(data.has_more);
-            setOffset(newOffset + LIMIT);
+            // Advance by what was actually returned (the first page is 500, not LIMIT),
+            // otherwise "Load more" re-requests rows that are already loaded.
+            setOffset(newOffset + data.courses.length);
         } catch {
             setError('Failed to load courses. Please try again.');
         } finally {
-            setLoading(false);
+            if (seq === fetchSeq.current) setLoading(false);
         }
-    }, [selectedSchools, selectedPrefixes, selectedCredits, selectedFrequency, coreOnly, educationLevel, apiBaseUrl, completedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding]);
+    }, [selectedSchools, selectedPrefixes, selectedCredits, selectedFrequency, coreOnly, educationLevel, apiBaseUrl, completedCourseCodes, plannedCourseCodes, debouncedQuery, noAleks, noPerm, selectedStanding, sort, smart]);
 
     useEffect(() => { searchRef.current?.focus(); }, []);
 
@@ -835,7 +1204,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     // Fetch on filter change, reset to page 0
     useEffect(() => {
         fetchCourses(0);
-    }, [selectedSchools, selectedPrefixes, coreOnly, selectedDept, educationLevel, debouncedQuery, noAleks, noPerm, selectedStanding]);
+    }, [selectedSchools, selectedPrefixes, coreOnly, selectedDept, educationLevel, debouncedQuery, noAleks, noPerm, selectedStanding, sort, smart]);
 
     const coursesWithInstructors = useMemo(() =>
         courses.map(c => ({
@@ -883,27 +1252,49 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
 
     const stagedCourses = usePlannerStore(s => s.stagedCourses);
 
+    const completedSet = useMemo(
+        () => new Set(completedCourseCodes.map(c => normalizeCourseCode(c)).filter(Boolean) as string[]),
+        [completedCourseCodes]
+    );
+    const plannedSet = useMemo(
+        () => new Set(plannedCourseCodes.map(c => normalizeCourseCode(c)).filter(Boolean) as string[]),
+        [plannedCourseCodes]
+    );
+    const stagedSet = useMemo(() => new Set(stagedCourses.map(c => c.course_id)), [stagedCourses]);
+
+    // A course counts as completed if it, or anything it is listed as equivalent to, is on the transcript.
+    const statusOf = useCallback((c: DiscoveryCourse): CourseStatus | null => {
+        const codes = [normalizeCourseCode(c.course_code), ...equivalentCodes(c)].filter(Boolean) as string[];
+        if (codes.some(x => completedSet.has(x))) return 'completed';
+        if (codes.some(x => plannedSet.has(x))) return 'planned';
+        if (stagedSet.has(c.course_id)) return 'staged';
+        return null;
+    }, [completedSet, plannedSet, stagedSet]);
+
+    const searching = !!query.trim();
+
+    // How many loaded courses the "hide" toggles are currently removing (only while browsing).
+    const hiddenCount = useMemo(() => searching ? 0 : courses.filter(c => {
+        const s = statusOf(c);
+        return s === 'staged' ? hideStaged : s ? hideCompleted : false;
+    }).length, [courses, searching, statusOf, hideCompleted, hideStaged]);
+
     const filteredCourses = useMemo(() => {
-        const completedSet = new Set(completedCourseCodes.map(c => normalizeCourseCode(c)));
-        const stagedSet = new Set(stagedCourses.map(c => c.course_id));
+        let results = searching
+            ? courses
+            : courses.filter(c => {
+                const s = statusOf(c);
+                if (!s) return true;
+                return s === 'staged' ? !hideStaged : !hideCompleted;
+            });
 
-        let results = hideCompleted
-            ? courses.filter(c => !completedSet.has(normalizeCourseCode(c.course_code)))
-            : courses;
-
-        if (hideCompleted) results = results.filter(c => !completedSet.has(normalizeCourseCode(c.course_code)));
-        if (hideStaged) results = results.filter(c => !stagedSet.has(c.course_id));
-        
         if (selectedCredits.length) {
             const mapped = selectedCredits.map(c => c === '4+' ? '4' : c.toLowerCase());
-            console.log('filtering credits, mapped:', mapped);
-            console.log('sample credits values:', results.slice(0, 5).map(c => ({ code: c.course_code, credits: c.credits, type: typeof c.credits })));
             results = results.filter(c => {
                 const credit = String(c.credits);
                 if (mapped.includes('4')) return typeof c.credits === 'number' && c.credits >= 4;
                 return mapped.includes(credit);
             });
-            console.log('after filter:', results.length);
         }
 
         if (selectedFrequency.length) {
@@ -911,21 +1302,29 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         }
 
         if (!query.trim()) return results;
+        // Semantic results were already matched and ordered by the server; Fuse would re-filter by words.
+        if (semanticApplied) return results;
 
         const resultIds = new Set(results.map(c => c.course_id));
-        return fuse.search(query).map(r => r.item).filter(c => resultIds.has(c.course_id));
-    }, [query, fuse, courses, hideCompleted, hideStaged, completedCourseCodes, stagedCourses, selectedFrequency, selectedCredits]);
+        const matches = fuse.search(query).map(r => r.item).filter(c => resultIds.has(c.course_id));
+        // With an explicit sort, keep the server's order and use Fuse only to filter.
+        if (sort !== 'code') {
+            const matched = new Set(matches.map(c => c.course_id));
+            return results.filter(c => matched.has(c.course_id));
+        }
+        return matches;
+    }, [query, searching, sort, semanticApplied, fuse, courses, statusOf, hideCompleted, hideStaged, selectedFrequency, selectedCredits]);
 
     const selectedCourse = courses.find(c => c.course_id === selectedCourseId) ?? null;
     const cartItem = selectedCourse ? cart.find(i => i.course.course_id === selectedCourse.course_id) : undefined;
-    const isClientFiltering = !hideCompleted || !hideStaged || selectedCredits.length > 0 || selectedFrequency.length > 0 || !!query.trim();
+    const isClientFiltering = hiddenCount > 0 || selectedCredits.length > 0 || selectedFrequency.length > 0 || !!query.trim();
 
-    const addToCart = useCallback((courseId: string, section?: string) => {
+    const addToCart = useCallback((courseId: string, section?: string, source?: CreditSource, detail?: CreditSourceDetail) => {
         const course = courses.find(c => c.course_id === courseId);
         if (!course) return;
         if (cart.find(i => i.course.course_id === courseId)) return;
-        onCartChange([...cart, { course, pinned_section: section }]);
-    }, [courses, cart, onCartChange]);
+        onCartChange([...cart, { course, pinned_section: section, credit_source: source ?? defaultCreditSource, credit_source_detail: detail }]);
+    }, [courses, cart, onCartChange, defaultCreditSource]);
 
     const removeFromCart = useCallback((courseId: string) => {
         onCartChange(cart.filter(i => i.course.course_id !== courseId));
@@ -934,6 +1333,12 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     const swapSection = useCallback((courseId: string, section: string) => {
         onCartChange(cart.map(i =>
             i.course.course_id === courseId ? { ...i, pinned_section: section } : i
+        ));
+    }, [cart, onCartChange]);
+
+    const setCreditSource = useCallback((courseId: string, source: CreditSource, detail?: CreditSourceDetail) => {
+        onCartChange(cart.map(i =>
+            i.course.course_id === courseId ? { ...i, credit_source: source, credit_source_detail: detail } : i
         ));
     }, [cart, onCartChange]);
 
@@ -965,6 +1370,9 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
             description: item.course.description,
             prerequisites: item.course.prereqs_raw,
             'Pre-Requisite': item.course.prereqs_raw,
+            max_repeat_credits: item.course.max_repeat_credits,
+            credit_source: item.credit_source,
+            credit_source_detail: item.credit_source_detail,
         }));
 
         addStagedCourses(staged);
@@ -977,7 +1385,6 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
     };
 
     const handleSchoolChange = (schools: string[]) => {
-        console.log('school changed', schools);
         setSelectedSchools(schools);
         setSelectedDept('All');
         setSelectedPrefixes([]);
@@ -994,14 +1401,37 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
         setNoPerm(false);
         setSelectedStanding([]);
         setSelectedFrequency([]);
+        setDefaultCreditSource('university');
     };
 
     const showingAll = !hideCompleted && !hideStaged;
     const year = getCurrentCatalogYear();
 
+    // Rendered in the results header and in the empty state, so you can always un-hide courses.
+    const statusToggles = (
+        <div className="flex items-center gap-1">
+            <button
+                onClick={() => { setHideCompleted(showingAll); setHideStaged(showingAll); }}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
+                ${showingAll ? 'bg-gray-200 text-gray-700' : 'text-gray-400 hover:bg-gray-100'}`}
+            >All</button>
+            <button
+                onClick={() => setHideCompleted(p => !p)}
+                title="Show courses you've completed or already planned"
+                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
+                ${!hideCompleted ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`}
+            >Completed/planned</button>
+            <button
+                onClick={() => setHideStaged(p => !p)}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
+                ${!hideStaged ? 'bg-purple-100 text-purple-700' : 'text-gray-400 hover:bg-gray-100'}`}
+            >Staged</button>
+        </div>
+    );
+
     return ReactDOM.createPortal(
         <>
-            <div className="fixed inset-0 bg-black bg-opacity-40 z-[9998]" />
+            <div className="fixed inset-0 bg-black/40 z-[9998]" />
             <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
                 <div className={`
                     bg-white sm:rounded-xl rounded-t-2xl shadow-2xl w-full pointer-events-auto
@@ -1055,17 +1485,17 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                     </div>
 
                     {/* Search */}
-                    <div className="px-5 py-3 border-b border-gray-200 flex-shrink-0">
-                        <div className="relative">
+                    <div className="px-5 py-3 border-b border-gray-200 flex-shrink-0 flex items-center gap-2">
+                        <div className="relative flex-1">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
                                 ref={searchRef}
                                 type="text"
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
-                                placeholder="Search courses, professors, keywords…"
+                                placeholder={smart ? 'Describe what you want, e.g. intro to machine learning…' : 'Search courses, professors, keywords…'}
                                 className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg
-                                    focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent
+                                    focus:outline-hidden focus:ring-2 focus:ring-green-400 focus:border-transparent
                                     bg-gray-50 placeholder-gray-400"
                             />
                             {query && (
@@ -1076,6 +1506,32 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                     <X className="w-3.5 h-3.5" />
                                 </button>
                             )}
+                        </div>
+                        <button
+                            onClick={() => setSmart(v => !v)}
+                            aria-pressed={smart}
+                            title="Describe what you want in your own words and results are ranked by meaning, not just matching words."
+                            className={`flex-shrink-0 flex items-center gap-1.5 text-xs px-2.5 py-2 rounded-lg border transition-colors
+                                ${smart
+                                    ? 'bg-green-50 border-green-300 text-green-700'
+                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                        >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Smart search</span>
+                        </button>
+                        <div
+                            className="flex-shrink-0"
+                            title="Best professor ranks by the RateMyProfessors rating of whoever is teaching the course this term."
+                        >
+                            <FilterDropdown
+                                label="Sort"
+                                options={['grade', 'rating', 'best_prof']}
+                                optionLabels={SORT_LABELS}
+                                selected={sort === 'code' ? [] : [sort]}
+                                onChange={vals => setSort((vals[0] as SortKey) ?? 'code')}
+                                single
+                                allLabel={semanticApplied ? 'Sort: best match' : 'Sort: default'}
+                            />
                         </div>
                     </div>
 
@@ -1223,6 +1679,39 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                         </div>
                     )}
 
+                    {/* Credit Source */}
+                    <div className="px-5 py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50">
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">How will you get credit for these courses?</span>
+                            <div className="flex gap-2 flex-1 min-w-[420px]">
+                                {(Object.keys(CREDIT_SOURCE_LABELS) as CreditSource[]).map(src => {
+                                    const Icon = CREDIT_SOURCE_ICON[src];
+                                    const active = defaultCreditSource === src;
+                                    return (
+                                        <button
+                                            key={src}
+                                            onClick={() => setDefaultCreditSource(src)}
+                                            className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-md border-2 text-left transition-colors
+                                                ${active ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-100'}`}
+                                        >
+                                            <Icon className="w-4 h-4 flex-shrink-0" />
+                                            <span>
+                                                <span className="block text-xs font-semibold">{CREDIT_SOURCE_LABELS[src]}</span>
+                                                <span className="block text-[10px] opacity-75">{CREDIT_SOURCE_SUBTEXT[src]}</span>
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-gray-500">
+                            <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                            {defaultCreditSource === 'university'
+                                ? 'Every course you add below will be tagged as University enrollment.'
+                                : `Add any course below, then match it to ${defaultCreditSource === 'test' ? 'your exam' : 'the school you want to take it at'} right in its detail card.`}
+                        </div>
+                    </div>
+
                     {/* Main content */}
                     <div className="flex flex-1 overflow-hidden">
                         <div className={`flex-1 overflow-y-auto min-w-0 ${rightPanel ? 'hidden sm:block' : ''}`}>
@@ -1241,6 +1730,12 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                 <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400 py-16">
                                     <AlertCircle className="w-6 h-6 opacity-30" />
                                     <p className="text-sm">No courses match your filters</p>
+                                    {hiddenCount > 0 && (
+                                        <p className="text-xs text-gray-400 text-center max-w-xs">
+                                            {hiddenCount} course{hiddenCount !== 1 ? 's are' : ' is'} hidden because you've already completed, planned or staged {hiddenCount !== 1 ? 'them' : 'it'}.
+                                        </p>
+                                    )}
+                                    {statusToggles}
                                     <button onClick={clearAllFilters} className="text-xs text-green-600 hover:underline">
                                         Clear filters
                                     </button>
@@ -1251,23 +1746,14 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                         <span>
                                             {isClientFiltering ? `${filteredCourses.length} of ${total}` : total} course{total !== 1 ? 's' : ''} found
                                         </span>
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                onClick={() => { setHideCompleted(showingAll); setHideStaged(showingAll); }}
-                                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
-                                                ${showingAll ? 'bg-gray-200 text-gray-700' : 'text-gray-400 hover:bg-gray-100'}`}
-                                            >All</button>
-                                            <button
-                                                onClick={() => setHideCompleted(p => !p)}
-                                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
-                                                ${!hideCompleted ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`}
-                                            >Completed</button>
-                                            <button
-                                                onClick={() => setHideStaged(p => !p)}
-                                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors
-                                                ${!hideStaged ? 'bg-purple-100 text-purple-700' : 'text-gray-400 hover:bg-gray-100'}`}
-                                            >Staged</button>
-                                        </div>
+                                        {sort !== 'code' && (
+                                            <span>· {SORT_LABELS[sort]}, courses without data last</span>
+                                        )}
+                                        {semanticApplied && sort === 'code' && (
+                                            <span>· best matches for “{debouncedQuery.trim()}”</span>
+                                        )}
+                                        {smartNote && <span className="text-amber-600">· {smartNote}</span>}
+                                        {statusToggles}
                                         {loading && <Loader2 className="w-3 h-3 animate-spin opacity-40" />}
                                     </div>
 
@@ -1278,6 +1764,7 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                                 course={course}
                                                 inCart={!!cart.find(i => i.course.course_id === course.course_id)}
                                                 isSelected={selectedCourseId === course.course_id && rightPanel === 'detail'}
+                                                status={statusOf(course)}
                                                 onClick={() => openDetail(course.course_id)}
                                             />
                                         ))}
@@ -1317,10 +1804,17 @@ const CourseDiscoveryModal: React.FC<CourseDiscoveryModalProps> = ({
                                             course={selectedCourse}
                                             inCart={!!cartItem}
                                             cartPinnedSection={cartItem?.pinned_section}
+                                            cartCreditSource={cartItem?.credit_source}
+                                            cartCreditSourceDetail={cartItem?.credit_source_detail}
+                                            defaultCreditSource={defaultCreditSource}
                                             onAdd={addToCart}
                                             onRemove={removeFromCart}
                                             onSwapSection={swapSection}
+                                            onSetCreditSource={setCreditSource}
                                             semester={semester}
+                                            status={statusOf(selectedCourse)}
+                                            apiBaseUrl={apiBaseUrl}
+                                            getAuthToken={getAuthToken}
                                         />
                                     )}
                                     {rightPanel === 'cart' && (

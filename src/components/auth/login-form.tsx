@@ -224,7 +224,7 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
                           <Input
                             placeholder="Enter email"
                             type="email"
-                            className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                            className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-hidden focus:border-accent focus:ring-1 focus:ring-accent"
                             {...field}
                             onChange={(e) => {
                               setLoginError(false);
@@ -249,7 +249,7 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
                             {...field}
                             placeholder="Enter password"
                             type="password"
-                            className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"                          
+                            className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-hidden focus:border-accent focus:ring-1 focus:ring-accent"                          
                             onChange={(e) => {
                               setLoginError(false);
                               field.onChange(e);
@@ -325,7 +325,7 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
                         <Input
                           placeholder="Enter email"
                           type="email"
-                          className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                          className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-hidden focus:border-accent focus:ring-1 focus:ring-accent"
                           {...field}
                           onChange={(e) => {
                             setLoginError(false);
@@ -349,7 +349,7 @@ export default function LoginForm(props: { isMobile: boolean, setLoading: (loadi
                         <Input
                           placeholder="Enter password"
                           type="password"
-                          className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                          className="h-[2.5rem] px-4 rounded-full border border-border text-[15px] placeholder:text-textsecondary focus:outline-hidden focus:border-accent focus:ring-1 focus:ring-accent"
                           {...field}
                           onChange={(e) => {
                             setLoginError(false);

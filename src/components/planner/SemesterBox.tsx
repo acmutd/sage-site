@@ -698,7 +698,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
                                 {!canHover && showWarnings && ReactDOM.createPortal(
                                     <>
                                         <div
-                                            className="fixed inset-0 bg-black bg-opacity-30 z-[9998]"
+                                            className="fixed inset-0 bg-black/30 z-[9998]"
                                             onClick={() => setShowWarnings(false)}
                                         />
                                         <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-white text-black rounded-t-2xl p-4 shadow-2xl border-t-2 border-red-300 max-h-[calc(100vh-3rem)] overflow-y-auto">
@@ -929,7 +929,7 @@ const SemesterBox: React.FC<SemesterBoxProps> = ({
             )}
 
             {showRemoveModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[90]" onClick={() => setShowRemoveModal(false)}>
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[90]" onClick={() => setShowRemoveModal(false)}>
                     <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
                         <h3 className="text-lg font-semibold mb-4">Remove Course?</h3>
                         <p className="text-sm text-gray-600 mb-6">This course will be removed from {title}.</p>

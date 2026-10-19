@@ -5,6 +5,7 @@ import CoursesCarousel from "@/components/planner/CoursesCarousel";
 import { getCreditsBreakdownRecursive, getCompletionForCategory } from "@/utils/plannerCredits";
 import type { SemestersForCredits } from "@/utils/plannerCredits";
 import { usePlannerStore } from "@/stores/plannerStore";
+import ProgramRecommendations from "./ProgramRecommendations";
 
 interface PlannerSidebarContentProps {
   onClose: () => void;
@@ -14,6 +15,7 @@ interface PlannerSidebarContentProps {
   transcriptData: any;
   onDropCourse?: (courseId: string, sourceYear: string, sourceSemesterIndex: number) => void;
   placedSuggestedCourses?: Set<string>;
+  placedHoursByCode?: Map<string, number>;
   allCompletedCourseCodes?: string[];
   allPlannedCoursesWithOrder?: Array<{
     code: string;
@@ -45,6 +47,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
   onClose,
   requirements,
   placedSuggestedCourses = new Set(),
+  placedHoursByCode = new Map(),
   allCompletedCourseCodes = [],
   allPlannedCoursesWithOrder = [],
   onRestartOnboarding,
@@ -56,6 +59,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
   gradesData,
   coursebookSemester,
   onOpenDiscovery,
+  transcriptData,
 }) => {
   const [autoExpandedCategories, setAutoExpandedCategories] = React.useState<{ [key: number]: boolean }>({});
   const [expandedSubcategories, setExpandedSubcategories] = React.useState<Record<string, boolean>>({});
@@ -344,6 +348,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
                 type="suggested"
                 showAvailableOnly={showAvailableOnly}
                 placedSuggestedCourses={placedSuggestedCourses}
+                placedHoursByCode={placedHoursByCode}
                 categoryName={category.name}
                 availableSemesters={availableSemesters}
                 onAddCourse={onAddCourse}
@@ -441,6 +446,12 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
         </div>
       )}
 
+      <ProgramRecommendations
+          tourAnchors={false}
+          refreshKey={transcriptData}
+          onSelect={() => { onRestartOnboarding?.(); onClose(); }}
+      />
+
       <div className="mb-4">
         <h2 className="text-xl font-bold text-gray-900 mb-2">
           Degree Requirements
@@ -450,7 +461,7 @@ const PlannerSidebarContent: React.FC<PlannerSidebarContentProps> = ({
             role="switch"
             aria-checked={showAvailableOnly}
             onClick={() => setShowAvailableOnly(prev => !prev)}
-            className={`relative w-9 h-5 rounded-full transition-colors duration-200 flex-shrink-0 focus:outline-none ${showAvailableOnly ? 'bg-green-500' : 'bg-gray-300'
+            className={`relative w-9 h-5 rounded-full transition-colors duration-200 flex-shrink-0 focus:outline-hidden ${showAvailableOnly ? 'bg-green-500' : 'bg-gray-300'
               }`}
           >
             <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${showAvailableOnly ? 'left-[18px]' : 'left-0.5'
