@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
+import { resolveTier } from "@/access/tiers";
+import type { OfficerDirectory } from "@/officers/officerDirectory";
+import { useTierStore } from "@/stores/tierStore";
 import {
   ADMIN_ACCESS_DENIED_MESSAGE,
   AdminAccessError,
@@ -37,37 +39,69 @@ function notifySignInError(error: unknown) {
   toast.error(SIGN_IN_FAILED_MESSAGE);
 }
 
-export function AdminSessionProvider({ auth, children }: { auth: AdminAuthAdapter; children: ReactNode }) {
+interface AdminSessionProviderProps {
+  auth: AdminAuthAdapter;
+  directory: OfficerDirectory;
+  children: ReactNode;
+}
+
+export function AdminSessionProvider({ auth, directory, children }: AdminSessionProviderProps) {
   const [state, setState] = useState<SessionState>({ status: "checking", user: null });
+  const setTier = useTierStore((store) => store.setTier);
+  const clearTier = useTierStore((store) => store.clearTier);
+
+  // Runs after every sign-in and restored session. Anything short of a tier signs out (default deny).
+  const admit = useCallback(
+    async (user: AdminUser) => {
+      const record = await directory.getMyRecord(user.email).catch(async (error: unknown) => {
+        await auth.signOut();
+        throw error;
+      });
+      const tier = resolveTier(record);
+      if (tier === "none") {
+        await auth.signOut();
+        // Same toast as a personal account, so the UI never reveals who is an officer
+        throw new AdminAccessError();
+      }
+      // Set before signedIn, so RequireTier never sees a session without a tier
+      setTier(tier);
+      setState({ status: "signedIn", user });
+    },
+    [auth, directory, setTier],
+  );
 
   useEffect(() => {
     let active = true;
-    auth.resumeSession().then(
-      (user) => active && setState(user ? { status: "signedIn", user } : SIGNED_OUT),
-      (error: unknown) => {
+    auth
+      .resumeSession()
+      .then(async (user) => {
+        if (!active) return;
+        if (user) await admit(user);
+        else setState(SIGNED_OUT);
+      })
+      .catch((error: unknown) => {
         if (!active) return;
         setState(SIGNED_OUT);
         notifySignInError(error);
-      },
-    );
+      });
     return () => {
       active = false;
     };
-  }, [auth]);
+  }, [auth, admit]);
 
   const signIn = useCallback(async () => {
     try {
-      const user = await auth.signInWithGoogle();
-      setState({ status: "signedIn", user });
+      await admit(await auth.signInWithGoogle());
     } catch (error) {
       notifySignInError(error);
     }
-  }, [auth]);
+  }, [auth, admit]);
 
   const signOut = useCallback(async () => {
     await auth.signOut();
+    clearTier();
     setState(SIGNED_OUT);
-  }, [auth]);
+  }, [auth, clearTier]);
 
   const value = useMemo(() => ({ ...state, signIn, signOut }), [state, signIn, signOut]);
   return <AdminSessionContext.Provider value={value}>{children}</AdminSessionContext.Provider>;
@@ -77,12 +111,4 @@ export function useAdminSession(): AdminSession {
   const session = useContext(AdminSessionContext);
   if (!session) throw new Error("useAdminSession must be used inside AdminSessionProvider");
   return session;
-}
-
-// Phase 3 replaces this with RequireTier
-export function RequireAdminSession({ children }: { children: ReactNode }) {
-  const { status } = useAdminSession();
-  if (status === "checking") return null;
-  if (status === "signedOut") return <Navigate to="/login" replace />;
-  return children;
 }

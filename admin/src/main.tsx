@@ -3,11 +3,12 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
 import { loadAdminAuth } from "./auth";
+import { loadOfficerDirectory } from "./officers";
 
-loadAdminAuth().then((auth) => {
+Promise.all([loadAdminAuth(), loadOfficerDirectory()]).then(([auth, directory]) => {
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
-      <App auth={auth} />
+      <App auth={auth} directory={directory} />
     </StrictMode>,
   );
 });

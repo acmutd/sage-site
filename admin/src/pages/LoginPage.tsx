@@ -8,7 +8,7 @@ export default function LoginPage() {
   const { status, signIn } = useAdminSession();
   const [pending, setPending] = useState(false);
 
-  // Phase 3 routes to the admin views by tier
+  // Signed in means admitted with the suggest or admin tier; both share the admin views
   if (status === "signedIn") return <Navigate to="/" replace />;
 
   async function handleGoogleSignIn() {
