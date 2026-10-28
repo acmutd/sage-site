@@ -1,26 +1,22 @@
 import { useState } from "react";
-import { toast } from "sonner";
+import { Navigate } from "react-router-dom";
 import { NavBrand } from "@sage/ui";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
-import { adminAuth, ADMIN_ACCESS_DENIED_MESSAGE, type AdminAuthAdapter } from "@/auth";
+import { useAdminSession } from "@/auth/AdminSession";
 
-interface LoginPageProps {
-  auth?: AdminAuthAdapter;
-}
+export default function LoginPage() {
+  const { status, signIn } = useAdminSession();
+  const [pending, setPending] = useState(false);
 
-export default function LoginPage({ auth = adminAuth }: LoginPageProps) {
-  const [loading, setLoading] = useState(false);
+  // Phase 3 routes to the admin views by tier
+  if (status === "signedIn") return <Navigate to="/" replace />;
 
   async function handleGoogleSignIn() {
-    setLoading(true);
+    setPending(true);
     try {
-      const user = await auth.signInWithGoogle();
-      // Phase 3 routes to the admin views by tier
-      toast.success(`Signed in as ${user.email}`);
-    } catch {
-      toast.error(ADMIN_ACCESS_DENIED_MESSAGE);
+      await signIn();
     } finally {
-      setLoading(false);
+      setPending(false);
     }
   }
 
@@ -42,7 +38,8 @@ export default function LoginPage({ auth = adminAuth }: LoginPageProps) {
           <section className="flex flex-col">
             <h3 className="text-xl leading-none">Sign in to your admin account</h3>
             <div className="mt-5">
-              <GoogleSignInButton onClick={handleGoogleSignIn} loading={loading} />
+              {/* Also busy while a restored session or redirect result is being checked */}
+              <GoogleSignInButton onClick={handleGoogleSignIn} loading={pending || status === "checking"} />
             </div>
             <p className="mt-4 text-sm leading-normal text-textsecondary">
               Sign in with your ACM account (@acmutd.co). Personal Google accounts can't access SAGE Admin.
