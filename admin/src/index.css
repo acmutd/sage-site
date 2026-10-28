@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Roboto:wght@500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply font-dmsans font-medium text-textdark;
+  }
+  h3 {
+    @apply font-dmsans text-2xl font-semibold;
+  }
+  body {
+    @apply bg-bglight;
+  }
+}
