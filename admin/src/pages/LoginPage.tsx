@@ -1,0 +1,52 @@
+import { useState } from "react";
+import { Navigate } from "react-router-dom";
+import { NavBrand } from "@sage/ui";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
+import { useAdminSession } from "@/auth/AdminSession";
+
+export default function LoginPage() {
+  const { status, signIn } = useAdminSession();
+  const [pending, setPending] = useState(false);
+
+  // Signed in means admitted with the suggest or admin tier; both share the admin views
+  if (status === "signedIn") return <Navigate to="/" replace />;
+
+  async function handleGoogleSignIn() {
+    setPending(true);
+    try {
+      await signIn();
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-bglight">
+      {/* Track art, laid out on the 1440 x 1024 Figma frame and centered vertically like the panel content.
+          Shifted 121px left of Figma's x=569 so the line ends stay under the narrowed panel's edge. */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 hidden h-[1024px] -translate-y-1/2 lg:block">
+        <img src="/track-art.svg" alt="" className="absolute left-[448px] top-[227px] h-[563px] w-[708px] max-w-none" />
+      </div>
+
+      {/* Narrower than Figma's 650px panel: the column is capped at 400px, Google's max sign-in button width */}
+      <main className="relative flex min-h-screen w-full flex-col justify-center bg-innercontainer/85 px-6 sm:px-16 lg:w-[529px] lg:border-r lg:border-border">
+        <div className="flex w-full max-w-[400px] flex-col gap-10">
+          <header>
+            <NavBrand isDarkMode={false} homeHref="/login" imgClassName="h-12 w-auto" />
+          </header>
+
+          <section className="flex flex-col">
+            <h3 className="text-xl leading-none">Sign in to your admin account</h3>
+            <div className="mt-5">
+              {/* Also busy while a restored session or redirect result is being checked */}
+              <GoogleSignInButton onClick={handleGoogleSignIn} loading={pending || status === "checking"} />
+            </div>
+            <p className="mt-4 text-sm leading-normal text-textsecondary">
+              Sign in with your ACM account (@acmutd.co). Personal Google accounts can't access SAGE Admin.
+            </p>
+          </section>
+        </div>
+      </main>
+    </div>
+  );
+}
