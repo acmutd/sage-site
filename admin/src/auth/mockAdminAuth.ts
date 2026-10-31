@@ -14,5 +14,8 @@ export function createMockAdminAuth(mode: MockAdminAuthMode = "allow", delayMs =
       return null;
     },
     async signOut() {},
+    async getIdToken() {
+      return "mock-id-token";
+    },
   };
 }

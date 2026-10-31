@@ -7,8 +7,8 @@ import AdminHomePage from "./AdminHomePage";
 import { createMockAdminAuth } from "@/auth/mockAdminAuth";
 import { AdminSessionProvider } from "@/auth/AdminSession";
 import { RequireTier } from "@/access/RequireTier";
-import { createFixtureOfficerDirectory, type DevOfficerCase } from "@/officers/fixtureOfficerDirectory";
-import type { OfficerDirectory } from "@/officers/officerDirectory";
+import { createMockAdminAccess, type AdminAccess } from "@/access/adminAccess";
+import type { AccessTier } from "@/access/tiers";
 import { useTierStore } from "@/stores/tierStore";
 import {
   ADMIN_ACCESS_DENIED_MESSAGE,
@@ -19,12 +19,12 @@ import {
 
 function renderAdmin(
   auth: AdminAuthAdapter,
-  directory: OfficerDirectory = createFixtureOfficerDirectory("sage-officer"),
+  access: AdminAccess = createMockAdminAccess("suggest"),
 ) {
   return render(
     <MemoryRouter initialEntries={["/login"]}>
       <Toaster />
-      <AdminSessionProvider auth={auth} directory={directory}>
+      <AdminSessionProvider auth={auth} access={access}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
@@ -117,31 +117,28 @@ describe("LoginPage", () => {
   });
 });
 
-describe("officer tiers", () => {
-  function signInAs(officerCase: DevOfficerCase) {
+describe("access tiers", () => {
+  function signInAs(tier: AccessTier) {
     const auth = createMockAdminAuth("allow", 0);
     const signOut = vi.spyOn(auth, "signOut");
-    renderAdmin(auth, createFixtureOfficerDirectory(officerCase));
+    renderAdmin(auth, createMockAdminAccess(tier));
     return { signOut };
   }
 
-  it.each<DevOfficerCase>(["non-sage-officer", "no-record"])(
-    "signs out %s with the same generic toast as a personal account",
-    async (officerCase) => {
-      const { signOut } = signInAs(officerCase);
+  it("signs out an account the backend refuses with the same generic toast as a personal account", async () => {
+    const { signOut } = signInAs("none");
 
-      fireEvent.click(await googleButton());
+    fireEvent.click(await googleButton());
 
-      expect(await screen.findByText(ADMIN_ACCESS_DENIED_MESSAGE)).toBeInTheDocument();
-      expect(signOut).toHaveBeenCalled();
-      expect(await googleButton()).toBeEnabled();
-      expect(useTierStore.getState().tier).toBeNull();
-    },
-  );
+    expect(await screen.findByText(ADMIN_ACCESS_DENIED_MESSAGE)).toBeInTheDocument();
+    expect(signOut).toHaveBeenCalled();
+    expect(await googleButton()).toBeEnabled();
+    expect(useTierStore.getState().tier).toBeNull();
+  });
 
   it("shows the suggest tier every action as a suggestion", async () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
-    signInAs("sage-officer");
+    signInAs("suggest");
 
     fireEvent.click(await googleButton());
 
@@ -153,22 +150,19 @@ describe("officer tiers", () => {
     expect(info).toHaveBeenCalledWith(expect.stringContaining("submitSuggestion"), { action: "delete" });
   });
 
-  it.each<DevOfficerCase>(["sage-lead", "director-of-development", "exec"])(
-    "gives %s the direct actions",
-    async (officerCase) => {
-      signInAs(officerCase);
+  it("gives the admin tier the direct actions", async () => {
+    signInAs("admin");
 
-      fireEvent.click(await googleButton());
+    fireEvent.click(await googleButton());
 
-      for (const name of ["Create", "Update", "Delete"]) {
-        expect(await screen.findByRole("button", { name })).toBeInTheDocument();
-      }
-      expect(screen.queryByRole("button", { name: "Suggest change" })).not.toBeInTheDocument();
-    },
-  );
+    for (const name of ["Create", "Update", "Delete"]) {
+      expect(await screen.findByRole("button", { name })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("button", { name: "Suggest change" })).not.toBeInTheDocument();
+  });
 
   it("clears the tier on sign out", async () => {
-    signInAs("sage-lead");
+    signInAs("admin");
     fireEvent.click(await googleButton());
 
     fireEvent.click(await screen.findByRole("button", { name: /sign out/i }));
@@ -183,18 +177,18 @@ describe("officer tiers", () => {
       resumeSession: async () => ({ email: "officer@acmutd.co", displayName: null }),
     };
     const signOut = vi.spyOn(auth, "signOut");
-    renderAdmin(auth, createFixtureOfficerDirectory("non-sage-officer"));
+    renderAdmin(auth, createMockAdminAccess("none"));
 
     expect(await screen.findByText(ADMIN_ACCESS_DENIED_MESSAGE)).toBeInTheDocument();
     expect(signOut).toHaveBeenCalled();
     expect(screen.queryByText(/signed in as/i)).not.toBeInTheDocument();
   });
 
-  it("signs out with the retry toast when the officer lookup fails", async () => {
+  it("signs out with the retry toast when the access lookup fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const auth = createMockAdminAuth("allow", 0);
     const signOut = vi.spyOn(auth, "signOut");
-    renderAdmin(auth, { getMyRecord: () => Promise.reject(new Error("offline")) });
+    renderAdmin(auth, { getMyTier: () => Promise.reject(new Error("offline")) });
 
     fireEvent.click(await googleButton());
 

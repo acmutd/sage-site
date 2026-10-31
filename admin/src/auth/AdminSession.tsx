@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { resolveTier } from "@/access/tiers";
-import type { OfficerDirectory } from "@/officers/officerDirectory";
+import type { AdminAccess } from "@/access/adminAccess";
 import { useTierStore } from "@/stores/tierStore";
 import {
   ADMIN_ACCESS_DENIED_MESSAGE,
@@ -41,23 +40,23 @@ function notifySignInError(error: unknown) {
 
 interface AdminSessionProviderProps {
   auth: AdminAuthAdapter;
-  directory: OfficerDirectory;
+  access: AdminAccess;
   children: ReactNode;
 }
 
-export function AdminSessionProvider({ auth, directory, children }: AdminSessionProviderProps) {
+export function AdminSessionProvider({ auth, access, children }: AdminSessionProviderProps) {
   const [state, setState] = useState<SessionState>({ status: "checking", user: null });
   const setTier = useTierStore((store) => store.setTier);
   const clearTier = useTierStore((store) => store.clearTier);
 
-  // Runs after every sign-in and restored session. Anything short of a tier signs out (default deny).
+  // Runs after every sign-in and restored session. Anything short of a tier signs out.
   const admit = useCallback(
     async (user: AdminUser) => {
-      const record = await directory.getMyRecord(user.email).catch(async (error: unknown) => {
+      // The backend decides the tier; a failed lookup signs out too (default deny)
+      const tier = await access.getMyTier().catch(async (error: unknown) => {
         await auth.signOut();
         throw error;
       });
-      const tier = resolveTier(record);
       if (tier === "none") {
         await auth.signOut();
         // Same toast as a personal account, so the UI never reveals who is an officer
@@ -67,7 +66,7 @@ export function AdminSessionProvider({ auth, directory, children }: AdminSession
       setTier(tier);
       setState({ status: "signedIn", user });
     },
-    [auth, directory, setTier],
+    [auth, access, setTier],
   );
 
   useEffect(() => {

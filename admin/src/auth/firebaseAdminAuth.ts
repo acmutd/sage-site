@@ -91,5 +91,10 @@ export function createFirebaseAdminAuth(auth: Auth): AdminAuthAdapter {
     async signOut() {
       await signOut(auth);
     },
+
+    async getIdToken() {
+      if (!auth.currentUser) throw new Error("Not signed in");
+      return auth.currentUser.getIdToken();
+    },
   };
 }

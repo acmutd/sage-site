@@ -179,3 +179,15 @@ describe("resumeSession", () => {
     expect(getRedirectResult).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("getIdToken", () => {
+  it("returns a fresh ID token for the signed-in user", async () => {
+    const user = { ...fakeUser("officer@acmutd.co"), getIdToken: vi.fn().mockResolvedValue("id-token") } as unknown as User;
+
+    await expect(createFirebaseAdminAuth(fakeAuth(user)).getIdToken()).resolves.toBe("id-token");
+  });
+
+  it("rejects when nobody is signed in", async () => {
+    await expect(createFirebaseAdminAuth(fakeAuth()).getIdToken()).rejects.toThrow("Not signed in");
+  });
+});

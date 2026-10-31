@@ -31,4 +31,6 @@ export interface AdminAuthAdapter {
   // Resolves null when nobody is signed in; rejects with AdminAccessError for a rejected redirect.
   resumeSession(): Promise<AdminUser | null>;
   signOut(): Promise<void>;
+  // Fresh Firebase ID token of the signed-in user, for calling the admin API.
+  getIdToken(): Promise<string>;
 }
